@@ -19,8 +19,8 @@ export const authAxios = axios.create({
 });
 
 // Define this outside to track refresh state
-const isRefreshing = false;
-const refreshPromise: Promise<any> | null = null;
+// const isRefreshing = false;
+// const refreshPromise: Promise<any> | null = null;
 
 // ✅ Define routes that don't need auth using your constants
 const PUBLIC_ROUTES = [
@@ -30,7 +30,7 @@ const PUBLIC_ROUTES = [
 
 // SITE UNDER MAINTENANCE
 const redirectToSiteUnderMaintenacePage = () => {
-  console.log("Redirecting to site under maintenance page...");
+  // console.log("Redirecting to site under maintenance page...");
 };
 
 // 🚦 Axios Request Interceptor
@@ -52,10 +52,10 @@ axiosInstance.interceptors.request.use(
     }
 
     // 2️⃣ Check if backend is reachable
-    const online = await isServerOnline();
+    const serverRes = await isServerOnline();
 
-    if (!online) {
-      console.log("AXIOS REQUEST INTERCEPTOR: Server offline");
+    if (!serverRes.online) {
+      // console.log("AXIOS REQUEST INTERCEPTOR: Server offline");
       redirectToSiteUnderMaintenacePage();
 
       return Promise.reject(
@@ -69,24 +69,25 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// 🚦 Axios Response Interceptor
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     try {
       const errorStatus = error.response?.data?.statusCode;
 
-      const errorMessage: string = error.response?.data?.message;
+      // const errorMessage: string = error.response?.data?.message;
 
-      const message = errorMessage.includes("revoked")
-        ? "Permission Denied"
-        : errorMessage;
+      // const message = errorMessage.includes("revoked")
+      //   ? "Permission Denied"
+      //   : errorMessage;
 
-      const errorCode = errorMessage.includes("revoked") ? 403 : 401;
+      // const errorCode = errorMessage.includes("revoked") ? 403 : 401;
 
       // Check server availability
-      const online = await isServerOnline();
-      if (!online) {
-        console.log("AXIOS RESPONSE INTERCEPTOR: SERVER IS OFFLINE");
+      const serverRes = await isServerOnline();
+      if (!serverRes.online) {
+        // console.log("AXIOS RESPONSE INTERCEPTOR: SERVER IS OFFLINE");
         redirectToSiteUnderMaintenacePage();
 
         return Promise.reject(
@@ -98,7 +99,7 @@ axiosInstance.interceptors.response.use(
 
       // Handle unauthorized
       if (errorStatus === 403) {
-        console.log("Session expired. Redirecting to login...");
+        // console.log("Session expired. Redirecting to login...");
 
         //  redirect to access denied page or show message
 
@@ -107,7 +108,7 @@ axiosInstance.interceptors.response.use(
 
       return Promise.reject(error);
     } catch (err) {
-      return Promise.reject(error);
+      return Promise.reject(err);
     }
   },
 );

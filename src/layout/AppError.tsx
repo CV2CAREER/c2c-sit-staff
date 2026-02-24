@@ -2,9 +2,7 @@
 
 import React from "react";
 
-type Props = {};
-
-const AppError = (props: Props) => {
+const AppError = () => {
   return <div>AppError</div>;
 };
 

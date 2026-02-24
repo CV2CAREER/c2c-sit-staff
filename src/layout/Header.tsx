@@ -1,9 +1,7 @@
 import React from "react";
 import Navbar from "./Navbar";
 
-type Props = {};
-
-const Header = (props: Props) => {
+const Header = () => {
   return (
     <header>
       <Navbar />

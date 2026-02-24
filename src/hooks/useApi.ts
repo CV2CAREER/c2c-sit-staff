@@ -97,7 +97,7 @@ export function useMutateData<TResponse, TRequest = unknown>({
   });
 }
 
-interface FetchOptions<T> {
+interface FetchOptions {
   url: string;
   method: "GET";
   queryKey: (string | number)[];
@@ -118,7 +118,7 @@ export function useFetchData<T>({
   staleEarly = false,
   initialData,
   forceRefresh = false,
-}: FetchOptions<T>) {
+}: FetchOptions) {
   return useQuery<ApiSuccess<T>, ApiError>({
     queryKey: [...queryKey],
     queryFn: async () => {

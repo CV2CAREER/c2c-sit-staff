@@ -1,10 +1,17 @@
 import { SERVER_URI } from "@/constants/env";
 
-export const isServerOnline = async (): Promise<boolean> => {
+export const isServerOnline = async (): Promise<{
+  online: boolean;
+  message: string;
+}> => {
   try {
     const res = await fetch(`${SERVER_URI}/api/health`);
-    return res.ok;
+    return { online: res.ok, message: "Server is alive" };
   } catch (error) {
-    return false;
+    // Here we "use" the error by capturing its message
+    const message = error instanceof Error ? error.message : "Unknown error";
+
+    // console.error("Health check failed:", message);
+    return { online: false, message };
   }
 };

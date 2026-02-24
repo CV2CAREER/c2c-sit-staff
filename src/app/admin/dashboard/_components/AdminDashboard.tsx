@@ -1,8 +1,6 @@
 import React from "react";
 
-type Props = {};
-
-const AdminDashboard = (props: Props) => {
+const AdminDashboard = () => {
   return <div>AdminDashboard</div>;
 };
 

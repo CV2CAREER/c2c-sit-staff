@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+// import { useRouter } from "next/navigation";
 
 interface DashboardProtectedGuardProps {
   children: React.ReactNode;
@@ -11,10 +9,10 @@ interface DashboardProtectedGuardProps {
 
 export function DashboardProtectedGuard({
   children,
-  redirectTo = "/login",
+  // redirectTo = "/login",
 }: DashboardProtectedGuardProps) {
   //   const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  // const router = useRouter();
 
   //   useEffect(() => {
   //     // 🚫 If not loading AND not authenticated, redirect immediately

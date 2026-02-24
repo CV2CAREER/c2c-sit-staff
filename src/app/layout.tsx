@@ -49,11 +49,3 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
-// git init
-// git add .
-// git commit -m "feat: initialize Next.js 14 project scaffold"
-
-// git remote add origin https://github.com/<your-username>/c2c-staff-rft.git
-// git branch -M iat
-// git push -u origin iat

@@ -1,6 +1,6 @@
 import { AuthStoreProvider } from "@/store/user.store";
 import { Metadata } from "next";
-import { DashboardProtectedGuard } from "@/components/guards/DashboardProtectedGuard";
+import { DashboardProtectedGuard } from "@/utils/guards/DashboardProtectedGuard";
 import AdminDashboardClientLayout from "./_components/AdminDashboardClientLayout";
 
 export const metadata: Metadata = {

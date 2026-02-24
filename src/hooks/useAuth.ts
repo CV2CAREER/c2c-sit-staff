@@ -1,14 +1,14 @@
 "use client";
 
-import { useAuthStore } from "@/store/user.store";
-import { useRef, useState } from "react";
+// import { useAuthStore } from "@/store/user.store";
+// import { useRef, useState } from "react";
 
-type SessionState = "checking" | "valid" | "invalid" | "noToken";
+// type SessionState = "checking" | "valid" | "invalid" | "noToken";
 
 export function useAuth() {
-  const setUser = useAuthStore((s) => s.setUser);
-  const [sessionState, setSessionState] = useState<SessionState>("checking");
-  const sessionLocked = useRef(false);
+  // const setUser = useAuthStore((s) => s.setUser);
+  // const [sessionState, setSessionState] = useState<SessionState>("checking");
+  // const sessionLocked = useRef(false);
 
   // 1️⃣ Validate session on mount
   //   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/store/user.store";
+// import { useAuthStore } from "@/store/user.store";
 import { createContext, useContext, ReactNode } from "react";
 
 interface DashboardDataContextType {}
@@ -8,7 +8,7 @@ const DashboardDataContext = createContext<
 >(undefined);
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
-  const stateUser = useAuthStore((s) => s.user);
+  // const stateUser = useAuthStore((s) => s.user);
 
   return (
     <DashboardDataContext.Provider value={{}}>
