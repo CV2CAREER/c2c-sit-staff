@@ -9,7 +9,7 @@ const Home = () => {
     <main className="  min-h-screen w-full overflow-x-hidden">
       <Header />
 
-      <h1>STAFF</h1>
+      <h1>STAFF PORTAL</h1>
       {/* REMAINING SECTIONS */}
       <Hero />
 
