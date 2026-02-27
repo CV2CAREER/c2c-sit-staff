@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true, // for sequelize
+    "emitDecoratorMetadata": true, // for sequelize
+    "target": "es2016",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./build",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "src/tests/loadTests.js"],
+  "exclude": [
+    "node_modules",
+    "src/tests",
+    "src/jest.config.ts",
+    "src/app-test.ts",
+    "src/docs",
+    "src/logs"
+  ]
+}

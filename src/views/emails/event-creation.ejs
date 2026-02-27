@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,600;0,700;1,700&display=swap"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <title>PadiPlus</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f3f4f6;
+        font-family: "Figtree", Helvetica, Arial, sans-serif;
+      }
+      .email-container {
+        width: 100%;
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .cta-button:hover {
+        transform: translateY(-2px);
+      }
+
+      @media only screen and (max-width: 480px) {
+        .body-wrapper {
+          padding: 5px !important;
+        }
+
+        .content-body {
+          padding: 20px !important; /* Reduced padding for mobile */
+        }
+      }
+    </style>
+  </head>
+  <body class="body-wrapper" style="background-color: #f3f4f6; padding: 20px">
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+    >
+      <tr>
+        <td align="center">
+          <div class="email-container">
+            <table
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              style="margin-top: 32px; margin-bottom: 16px"
+            >
+              <tr>
+                <td align="center">
+                  <table cellspacing="0" cellpadding="0" border="0">
+                    <tr>
+                      <td style="padding-right: 10px">
+                        <img
+                          src="cid:padiplus_logo"
+                          alt="Padi Plus"
+                          width="35"
+                          height="35"
+                          style="display: block; object-fit: cover"
+                        />
+                      </td>
+                      <td style="text-align: left">
+                        <h2
+                          style="
+                            margin: 0;
+                            font-size: 24px;
+                            font-weight: bold;
+                            font-style: italic;
+                            color: #4f426f;
+                          "
+                        >
+                          Padi Plus
+                        </h2>
+                        <p
+                          style="
+                            margin: 0;
+                            font-size: 10px;
+                            color: #666;
+                            margin-top: -2px;
+                            font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                          "
+                        >
+                          Event Planning Made Easy
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <table
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              class="content-body"
+              style="padding: 40px; background-color: #ffffff"
+            >
+              <tr>
+                <td
+                  valign="top"
+                  style="font-family: 'Figtree', Helvetica, Arial, sans-serif"
+                >
+                  <h1
+                    style="
+                      font-size: 28px;
+                      font-weight: bold;
+                      color: #111827;
+                      margin: 0 0 8px 0;
+                      font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                    "
+                  >
+                    Your Event is Live!
+                  </h1>
+                  <p
+                    style="
+                      font-size: 14px;
+                      color: #6b7280;
+                      margin: 0 0 24px 0;
+                      font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                    "
+                  >
+                    Time to start the celebration.
+                  </p>
+
+                  <p
+                    style="
+                      font-size: 16px;
+                      color: #1f2937;
+                      line-height: 1.6;
+                      margin-bottom: 12px;
+                      font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                    "
+                  >
+                    Hi <strong><%= name %>,</strong> you've successfully created
+                    your event:
+                  </p>
+
+                  <h2
+                    style="
+                      font-size: 22px;
+                      color: #4f378b;
+                      margin: 0 0 24px 0;
+                      font-weight: 700;
+                    "
+                  >
+                    <%= eventTitle %>
+                  </h2>
+
+                  <table
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                      background-color: #f3f1f7;
+                      border-radius: 12px;
+                      margin-bottom: 24px;
+                      border: 1px solid #eaddff;
+                    "
+                  >
+                    <tr>
+                      <td style="padding: 24px; text-align: center">
+                        <p
+                          style="
+                            font-size: 14px;
+                            color: #6b7280;
+                            margin: 0 0 12px 0;
+                          "
+                        >
+                          Share this link with friends and family to start
+                          receiving contributions:
+                        </p>
+                        <div
+                          style="
+                            background-color: #ffffff;
+                            padding: 12px;
+                            border-radius: 6px;
+                            border: 1px solid #d1d5db;
+                            word-break: break-all;
+                          "
+                        >
+                          <a
+                            href="<%= shareUrl %>"
+                            style="
+                              color: #4f378b;
+                              font-weight: 600;
+                              text-decoration: none;
+                              font-size: 16px;
+                            "
+                          >
+                            <%= shareUrl %>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p
+                    style="
+                      font-size: 14px;
+                      color: #6b7280;
+                      line-height: 1.6;
+                      margin-bottom: 24px;
+                      font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                    "
+                  >
+                    You can track all contributions, manage your Virtual Spray
+                    settings, and update event details directly from your
+                    dashboard.
+                  </p>
+
+                  <a
+                    href="<%= dashboardUrl %>"
+                    style="
+                      display: inline-block;
+                      background: #facc15;
+                      color: #111827;
+                      padding: 12px 32px;
+                      border-radius: 9999px;
+                      text-decoration: none;
+                      font-weight: 600;
+                      font-size: 14px;
+                      font-family: 'Figtree', Helvetica, Arial, sans-serif;
+                    "
+                  >
+                    Go to Dashboard
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <table
+              width="100%"
+              cellspacing="0"
+              cellpadding="0"
+              border="0"
+              class="content-body"
+              style="
+                background-color: #1a1a1a;
+                color: #ffffff;
+                padding: 40px;
+                text-align: center;
+              "
+            >
+              <tr>
+                <td align="center">
+                  <img
+                    src="cid:padiplus_logo"
+                    alt="Padi Plus"
+                    width="30"
+                    height="30"
+                    style="margin-bottom: 10px"
+                  />
+                  <p
+                    style="font-size: 14px; margin: 0 0 20px 0; color: #ffffff"
+                  >
+                    &copy; <%= new Date().getFullYear() %> Padi Plus Inc.
+                  </p>
+
+                  <p style="font-size: 12px; color: #9ca3af; margin: 0">
+                    Questions?
+                    <a href="mailto:helpdesk@plusplus.ng" style="color: #ffffff"
+                      >helpdesk@plusplus.ng</a
+                    >
+                  </p>
+
+                  <div
+                    style="
+                      display: none !important;
+                      visibility: hidden;
+                      mso-hide: all;
+                      font-size: 1px;
+                      color: #1a1a1a;
+                      line-height: 1px;
+                      max-height: 0px;
+                      max-width: 0px;
+                      opacity: 0;
+                      overflow: hidden;
+                    "
+                  >
+                    Reference: <%= Math.random().toString(36).substring(7) %>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
