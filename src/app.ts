@@ -100,7 +100,7 @@ app.use(compression());
 app.use(responseFormatter);
 
 app.get("/api", async (_, res: Response) => {
-  res.status(200).send("Welcome to C2C CUSTOMER SERVER API");
+  res.status(200).send("Welcome to C2C STAFF SERVER API");
 });
 
 // Testing endpoint
