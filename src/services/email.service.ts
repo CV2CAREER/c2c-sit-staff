@@ -1,0 +1,317 @@
+import path from "path";
+import { sendMail } from "../config/sendGrid";
+import { TEAM_EMAIL } from "../config/env";
+import { name } from "ejs";
+
+const mailDirectory = path.resolve(__dirname, "../views/emails");
+
+interface DeploymentSuccessEmailOptions {
+  email: string;
+  appName: string;
+  environment: "rat" | "iat" | "sit" | "uat" | "prod";
+  commitSha: string;
+  commitMessage: string;
+  deployedBy: string;
+  duration: string; // e.g. "1m 42s"
+  deploymentUrl: string;
+  logsUrl: string;
+  timestamp?: string; // defaults to now
+}
+
+export const sendDeploymentSuccessEmail = async (
+  options: DeploymentSuccessEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `✅ ${options.appName} deployed to ${options.environment}`,
+    templateName: "deployment-success.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      timestamp: options.timestamp ?? new Date().toUTCString(),
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface DeploymentFailureEmailOptions {
+  email: string;
+  appName: string;
+  environment: string;
+  errorMessage: string;
+}
+
+export const sendDeploymentFailureEmail = async (
+  options: DeploymentFailureEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `❌ ${options.appName} deployment failed on ${options.environment}`,
+    templateName: "deployment-failure.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      timestamp: new Date().toUTCString(),
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface ActivationEmailOptions {
+  name: string;
+  email: string;
+  otp: string;
+  verificationLink: string;
+}
+
+export const sendActivationEmail = async (
+  options: ActivationEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Activate Your Account`,
+    templateName: "activation.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface NewReferralEmailOptions {
+  name: string;
+  email: string;
+  refName: string;
+  frontendUrl: string;
+}
+
+export const sendNewReferralEmail = async (
+  options: NewReferralEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `New Invitee Alert`,
+    templateName: "new-referral-alert.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface AdminActivationEmailOptions {
+  name: string;
+  email: string;
+  frontendUrl: string;
+}
+
+export const sendAdminActivationEmail = async (
+  options: AdminActivationEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `New User Registration: Action Required`,
+    templateName: "admin-activation.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface WelcomeEmailOptions {
+  name: string;
+  email: string;
+  frontendUrl: string;
+}
+
+export const sendWelcomeEmail = async (
+  options: WelcomeEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Welcome Email`,
+    templateName: "welcome-email.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+interface AdminWelcomeEmailOptions {
+  name: string;
+  lastName: string;
+  email: string;
+  frontendUrl: string;
+}
+
+export const sendAdminWelcomeEmail = async (
+  options: AdminWelcomeEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `${options.name} ${options.lastName} Welcome to CVtoCAREER`,
+    templateName: "admin-welcome-email.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface NewOTPEmailOptions {
+  name: string;
+  email: string;
+  frontendUrl: string;
+  otp: string;
+}
+
+export const sendNewOTPEmail = async (
+  options: NewOTPEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `New OTP Token`,
+    templateName: "new-otp.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface AdminNewOTPEmailOptions {
+  name: string;
+  lastName: string;
+  email: string;
+  frontendUrl: string;
+}
+
+export const sendAdminNewOTPEmail = async (
+  options: AdminNewOTPEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `${options.name} ${options.lastName} New OTP Token`,
+    templateName: "admin-new-otp.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface PasswordResetEmailOptions {
+  name: string;
+  email: string;
+  frontendUrl: string;
+  otp: string;
+}
+
+export const sendPasswordResetEmail = async (
+  options: PasswordResetEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Request for Password Change`,
+    templateName: "reset-password.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface TermsConditionsEmailOptions {
+  name: string;
+  email: string;
+  planName: string;
+  validityPeriod: string;
+  frontendUrl: string;
+  pdfAttachment: {
+    filename: string;
+    content: string; // base64 encoded PDF
+    type: string;
+  };
+}
+
+export const sendTermsConditionsEmail = async (
+  options: TermsConditionsEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Terms & Conditions - ${options.planName}`,
+    templateName: "terms-conditions.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      name: options.name,
+      planName: options.planName,
+      validityPeriod: options.validityPeriod,
+      frontendUrl: options.frontendUrl,
+      currentYear: new Date().getFullYear(),
+    },
+    attachments: [
+      {
+        filename: options.pdfAttachment.filename,
+        content: options.pdfAttachment.content,
+        type: options.pdfAttachment.type || "application/pdf",
+        disposition: "attachment",
+      },
+    ],
+  });
+};
+
+interface SendReferralEmailOptions {
+  email: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  referrerName: string;
+  referralLink: string;
+  frontendUrl: string;
+}
+
+export const sendReferralInvitationEmail = async (
+  options: SendReferralEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `${options.referrerName} invites you to join CVtoCAREER`,
+    templateName: "referral-invitation.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface ReferralClaimedEmailOptions {
+  email: string;
+  name: string;
+  claimedUserName: string;
+  frontendUrl: string;
+}
+
+export const sendReferralClaimedEmail = async (
+  options: ReferralClaimedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your referral has been claimed!`,
+    templateName: "referral-claimed.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};

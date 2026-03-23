@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        color: #474747;
+        width: 100%;
+        background-color: #fff;
+        text-align: justify;
+        line-height: 1.6;
+      }
+
+      .header {
+        background-color: #004174;
+        background:
+          linear-gradient(90deg, #004174 0%, #00568f 100%);
+        width: 100%;
+        height: 112px;
+        text-align: center;
+        display: table;
+      }
+
+      .header-content {
+        display: table-cell;
+        vertical-align: middle;
+      }
+
+      .header img {
+        width: 149px;
+        height: 32px;
+      }
+
+      .content {
+        font-family: "Poppins", sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 32px;
+        color: #474747;
+        text-transform: capitalize;
+        margin-bottom: 20px;
+      }
+
+      .body-content {
+        background-color: #fff;
+        width: 100%;
+      }
+
+      .body-content p {
+        margin-bottom: 16px;
+      }
+
+      .body-content b {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .signature {
+        margin-top: 24px;
+      }
+
+      .footer {
+        background-color: #f9f9f9;
+        padding: 32px 16px;
+        text-align: center;
+      }
+
+      .footer-logo {
+        margin-bottom: 16px;
+      }
+
+      .footer-logo img {
+        width: 35px;
+        height: 25px;
+      }
+
+      .social-links {
+        margin: 16px auto;
+      }
+
+      .social-links a {
+        text-decoration: none;
+        vertical-align: middle;
+        display: inline-block;
+        padding: 0 6px;
+      }
+
+      .social-links img {
+        width: 24px;
+        height: 24px;
+        border: 0;
+      }
+
+      .copyright {
+        margin: 16px auto;
+      }
+
+      .footer-links {
+        margin-top: 16px;
+      }
+
+      .footer-links a {
+        text-decoration: none;
+        color: #a3a3a3;
+      }
+
+      .contact-link {
+        color: #004174;
+        text-decoration: none;
+      }
+
+      .alert-box {
+        background-color: #cce5ff;
+        border: 1px solid #b8daff;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+      }
+
+      .alert-box h2 {
+        color: #004085;
+        margin-bottom: 10px;
+      }
+
+      .alert-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+
+      .customer-details {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .customer-details h3 {
+        color: #004174;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #004174;
+        padding-bottom: 10px;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .detail-label {
+        font-weight: 600;
+        color: #6c757d;
+      }
+
+      .detail-value {
+        color: #004174;
+        font-weight: 500;
+      }
+
+      .cta-button {
+        display: inline-block;
+        background-color: #004174;
+        color: #ffffff;
+        padding: 12px 30px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+        margin: 20px 0;
+      }
+
+      .cta-button:hover {
+        background-color: #00325a;
+      }
+
+      .amount-highlight {
+        font-size: 1.5rem;
+        color: #28a745;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+          alt="CV To Career"
+        />
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="alert-box">
+        <div class="alert-icon">💰</div>
+        <h2>New Payment Received!</h2>
+        <p class="amount-highlight"><%= plan %></p>
+      </div>
+
+      <h1 class="title">Payment Notification</h1>
+
+      <div class="body-content">
+        <b>Hello Admin,</b>
+
+        <p>
+          A new payment has been successfully processed. Below are the details of the transaction:
+        </p>
+
+        <div class="customer-details">
+          <h3>Customer Information</h3>
+          <div class="detail-row">
+            <span class="detail-label">Customer Name:</span>
+            <span class="detail-value"><%= name %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email:</span>
+            <span class="detail-value"><%= email %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Service Plan:</span>
+            <span class="detail-value"><%= plan %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Payment Date:</span>
+            <span class="detail-value"><%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Payment Status:</span>
+            <span class="detail-value" style="color: #28a745;">Completed</span>
+          </div>
+        </div>
+
+        <p>
+          The customer has been sent a confirmation email with their subscription details.
+          A separate email with Terms & Conditions PDF will also be sent to the customer.
+        </p>
+
+        <p>
+          You can view the customer's full profile and manage their subscription from the admin dashboard.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="<%= link %>" class="cta-button">View Customer Profile</a>
+        </div>
+
+        <div class="signature">
+          <p>Best regards,<br />CVtoCAREER System</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">
+        <img
+          src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/laigusbucket/bea7d3a092f0710b014b1f203.png?GoogleAccessId=firebase-adminsdk-f76vf%40cvtocareer-394713.iam.gserviceaccount.com&Expires=4070905200&Signature=gWB9jqmAcwN9nLbugMdOj%2FD0BROrGRX4a8qnGa9cZGuOkc0Z2M9itk0pzUtoUtyedrxv%2B2hO%2BFqDqlduJ6J7WqVBAJ3wQ17oe72S5BwTvRXEY3Q7OM%2B9wuxsFsSwgrtfldf79sly6nIJQCXqb94FDFL661YxCbeGN%2BIq0j2volsUvmKtParJXXLo3LO%2BBmOms1nVf6HHldXbD%2FfMno5f%2FB8wj%2FLDF%2FvMk5LfTsISh0kSOXmvfRNQvktImOAH2rTt%2B6ejVByGrxstPLhViGGI0BSIWEOn0oFaihxHK3Lo%2B3T0WePp5Q0PoYFrERpTtGReyZFGIVc%2Bs%2B9PReVzHoL86g%3D%3D"
+          alt="CVtoCAREER"
+        />
+      </div>
+
+      <div class="social-links">
+        <a href="https://facebook.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
+            alt="Facebook"
+          />
+        </a>
+        <a href="https://x.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
+            alt="X"
+          />
+        </a>
+        <a href="https://youtube.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
+            alt="YouTube"
+          />
+        </a>
+        <a href="mailto:deliveryteam@cvtocareer.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
+            alt="Email"
+          />
+        </a>
+        <a href="https://instagram.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
+            alt="Instagram"
+          />
+        </a>
+        <a href="https://linkedin.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
+            alt="LinkedIn"
+          />
+        </a>
+        <a href="https://www.google.com/search?q=cvtocareer">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_google.png"
+            alt="Google"
+          />
+        </a>
+        <a href="https://www.tiktok.com/@cvtocareer?lang=en">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_tiktok.png"
+            alt="TikTok"
+          />
+        </a>
+      </div>
+
+      <p class="copyright">
+        © <%= currentYear %> CVtoCAREER. All rights reserved.
+      </p>
+
+      <div class="footer-links">
+        <a href="<%= frontendUrl %>/admin-dashboard">Admin Dashboard</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="<%= frontendUrl %>">Web</a>
+      </div>
+    </div>
+  </body>
+</html>

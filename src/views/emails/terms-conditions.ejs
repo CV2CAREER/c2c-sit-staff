@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        color: #474747;
+        width: 100%;
+        background-color: #fff;
+        text-align: justify;
+        line-height: 1.6;
+      }
+
+      .header {
+        background-color: #004174;
+        background:
+          linear-gradient(90deg, #004174 0%, #00568f 100%);
+        width: 100%;
+        height: 112px;
+        text-align: center;
+        display: table;
+      }
+
+      .header-content {
+        display: table-cell;
+        vertical-align: middle;
+      }
+
+      .header img {
+        width: 149px;
+        height: 32px;
+      }
+
+      .content {
+        font-family: "Poppins", sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 32px;
+        color: #474747;
+        text-transform: capitalize;
+        margin-bottom: 20px;
+      }
+
+      .body-content {
+        background-color: #fff;
+        width: 100%;
+      }
+
+      .body-content p {
+        margin-bottom: 16px;
+      }
+
+      .body-content b {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .signature {
+        margin-top: 24px;
+      }
+
+      .footer {
+        background-color: #f9f9f9;
+        padding: 32px 16px;
+        text-align: center;
+      }
+
+      .footer-logo {
+        margin-bottom: 16px;
+      }
+
+      .footer-logo img {
+        width: 35px;
+        height: 25px;
+      }
+
+      .social-links {
+        margin: 16px auto;
+      }
+
+      .social-links a {
+        text-decoration: none;
+        vertical-align: middle;
+        display: inline-block;
+        padding: 0 6px;
+      }
+
+      .social-links img {
+        width: 24px;
+        height: 24px;
+        border: 0;
+      }
+
+      .copyright {
+        margin: 16px auto;
+      }
+
+      .footer-links {
+        margin-top: 16px;
+      }
+
+      .footer-links a {
+        text-decoration: none;
+        color: #a3a3a3;
+      }
+
+      .contact-link {
+        color: #004174;
+        text-decoration: none;
+      }
+
+      .highlight-box {
+        background-color: #f0f7ff;
+        border-left: 4px solid #004174;
+        padding: 16px;
+        margin: 20px 0;
+      }
+
+      .attachment-note {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 16px;
+        margin: 20px 0;
+      }
+
+      .attachment-note strong {
+        color: #856404;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+          alt="CV To Career"
+        />
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h1 class="title">Terms & Conditions - <%= planName %></h1>
+
+      <div class="body-content">
+        <b>Dear <%= name %>,</b>
+
+        <p>
+          Thank you for subscribing to the <strong><%= planName %></strong> service at
+          <a href="<%= frontendUrl %>" class="contact-link">CVtoCAREER</a>.
+        </p>
+
+        <p>
+          Please find attached the Terms and Conditions document for your records.
+          This document outlines the scope of services, limitations, refund policies,
+          and other important information regarding your subscription.
+        </p>
+
+        <div class="attachment-note">
+          <strong>📎 Attachment:</strong>
+          <p>Your personalized Terms & Conditions PDF document is attached to this email.
+          Please download and keep it for your records.</p>
+        </div>
+
+        <div class="highlight-box">
+          <p><strong>Key Points to Remember:</strong></p>
+          <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>Payments are non-refundable once job application automation has commenced</li>
+            <li>CVtoCAREER does not guarantee callbacks for interviews or job offers</li>
+            <li>Your service validity period: <strong><%= validityPeriod %></strong></li>
+          </ul>
+        </div>
+
+        <p>
+          If you have any questions about these Terms & Conditions, please do not hesitate
+          to contact us at
+          <a href="https://cvtocareer.com/contactus" class="contact-link">CVtoCAREER Support</a>.
+        </p>
+
+        <p>
+          We look forward to supporting you on your career journey!
+        </p>
+
+        <div class="signature">
+          <p>Best regards,<br />CVtoCAREER Team</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">
+        <img
+          src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/laigusbucket/bea7d3a092f0710b014b1f203.png?GoogleAccessId=firebase-adminsdk-f76vf%40cvtocareer-394713.iam.gserviceaccount.com&Expires=4070905200&Signature=gWB9jqmAcwN9nLbugMdOj%2FD0BROrGRX4a8qnGa9cZGuOkc0Z2M9itk0pzUtoUtyedrxv%2B2hO%2BFqDqlduJ6J7WqVBAJ3wQ17oe72S5BwTvRXEY3Q7OM%2B9wuxsFsSwgrtfldf79sly6nIJQCXqb94FDFL661YxCbeGN%2BIq0j2volsUvmKtParJXXLo3LO%2BBmOms1nVf6HHldXbD%2FfMno5f%2FB8wj%2FLDF%2FvMk5LfTsISh0kSOXmvfRNQvktImOAH2rTt%2B6ejVByGrxstPLhViGGI0BSIWEOn0oFaihxHK3Lo%2B3T0WePp5Q0PoYFrERpTtGReyZFGIVc%2Bs%2B9PReVzHoL86g%3D%3D"
+          alt="CVtoCAREER"
+        />
+      </div>
+
+      <div class="social-links">
+        <a href="https://facebook.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
+            alt="Facebook"
+          />
+        </a>
+        <a href="https://x.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
+            alt="X"
+          />
+        </a>
+        <a href="https://youtube.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
+            alt="YouTube"
+          />
+        </a>
+        <a href="mailto:deliveryteam@cvtocareer.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
+            alt="Email"
+          />
+        </a>
+        <a href="https://instagram.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
+            alt="Instagram"
+          />
+        </a>
+        <a href="https://linkedin.com">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
+            alt="LinkedIn"
+          />
+        </a>
+        <a href="https://www.google.com/search?q=cvtocareer">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_google.png"
+            alt="Google"
+          />
+        </a>
+        <a href="https://www.tiktok.com/@cvtocareer?lang=en">
+          <img
+            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_tiktok.png"
+            alt="TikTok"
+          />
+        </a>
+      </div>
+
+      <p class="copyright">
+        © <%= currentYear %> CVtoCAREER. All rights reserved.
+      </p>
+
+      <div class="footer-links">
+        <a href="<%= frontendUrl %>/dashboard/account?run=unsubscribe %>">Unsubscribe</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="<%= frontendUrl %>/privacy-policy">Privacy Policy</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="<%= frontendUrl %>">Web</a>
+      </div>
+    </div>
+  </body>
+</html>

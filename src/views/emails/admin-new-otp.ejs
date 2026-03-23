@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f5;
+      padding: 40px;
+      color: #333;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div style="background-color: #008ed3; padding: 28px 32px">
+        <h1 style="margin: 0; color: #fff; font-size: 22px">New OTP Token</h1>
+      </div>
+
+      <!-- Body -->
+      <div class="body-content">
+        <b>Dear Admin,</b>
+
+        <p>
+          User, <strong><%= name %></strong> with email,
+          <strong><%= email %></strong> has received a new verification token.
+        </p>
+
+        <p>Please take note of this new registration activity.</p>
+
+        <p>
+          Details: <br />Name: <strong><%= name %></strong> <br />
+          Email: <strong><%= email %></strong>. <br />
+          They've been sent a verification token to confirm their email within
+          10 minutes.
+        </p>
+
+        <div class="signature">
+          <p>Best regards,<br />CVtoCAREER</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          padding: 16px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+        "
+      >
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">
+          © <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

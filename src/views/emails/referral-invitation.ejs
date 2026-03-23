@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're Invited to CVtoCAREER</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">CVtoCAREER</h1>
+      </td>
+    </tr>
+    
+    <!-- Body -->
+    <tr>
+      <td style="padding: 40px 30px;">
+        <h2 style="color: #1f2937; margin: 0 0 20px; font-size: 24px;">You've Been Invited!</h2>
+        
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+          Hello <%= firstName %>,
+        </p>
+        
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+          <strong><%= referrerName %></strong> thinks you would benefit from CVtoCAREER's professional career services and has invited you to join!
+        </p>
+        
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
+          CVtoCAREER helps professionals like you transform their careers with expert CV writing, job application support, and career coaching services.
+        </p>
+        
+        <!-- CTA Button -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="text-align: center;">
+              <a href="<%= referralLink %>" style="display: inline-block; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                Accept Invitation
+              </a>
+            </td>
+          </tr>
+        </table>
+        
+        <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 30px 0 0;">
+          Or copy and paste this link into your browser:<br>
+          <a href="<%= referralLink %>" style="color: #2563eb; word-break: break-all;"><%= referralLink %></a>
+        </p>
+      </td>
+    </tr>
+    
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 30px; border-radius: 0 0 8px 8px; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 14px; margin: 0; text-align: center;">
+          © <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
