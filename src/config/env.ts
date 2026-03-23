@@ -24,13 +24,17 @@ export const REDIS_PASSWORD = process.env.CLIENT_SAMPLE_REDIS_PASSWORD;
 // Configurable toggle
 export const USE_REDIS = process.env.USE_REDIS;
 
-// URL
+// FRONTEND URL
 export const RAT_FRONTEND_URL = process.env.RAT_FRONTEND_URL;
 export const IAT_FRONTEND_URL = process.env.IAT_FRONTEND_URL;
 export const SIT_FRONTEND_URL = process.env.SIT_FRONTEND_URL;
 export const UAT_FRONTEND_URL = process.env.UAT_FRONTEND_URL;
 export const PROD_FRONTEND_URL = process.env.PROD_FRONTEND_URL;
 export const LOCAL_FRONTEND_URL = process.env.LOCAL_FRONTEND_URL;
+
+// BACKEND URL (for serving static assets in emails)
+export const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:50001";
+
 // URL
 export const COOKIE_SECRET = process.env.COOKIE_SECRET;
 
@@ -45,4 +49,57 @@ export const SLACK_TOKEN_KEY = process.env.SLACK_TOKEN_KEY;
 // SENDGRID
 export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY!;
 export const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL!;
-export const SENDGRID_FROM_NAME = process.env.SENDGRID_FROM_NAME!;
+export const SENDGRID_FROM_NAME = "CVtoCAREER PTY LTD";
+
+// PASSWORD HASH
+export const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS!);
+
+// TOKEN ENCRYPTION (STRING)
+export const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
+
+// TOKEN ENCRYPTION (OBJECT)
+export const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+
+// OTP VERIFICATION SECRET
+export const JWT_VERIFICATION_SECRET_KEY =
+  process.env.JWT_VERIFICATION_SECRET_KEY;
+
+// OTP VERIFICATION SECRET - EXPIRY
+export const JWT_VERIFICATION_SECRET_KEY_EXPIRY = parseInt(
+  process.env.JWT_VERIFICATION_SECRET_KEY_EXPIRY!,
+);
+
+// EMAIL
+export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
+
+// ACCESS TOKEN SECRET
+export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;
+
+// TOKEN EXPIRATION
+export const ACCESS_TOKEN_EXPIRATION = parseInt(
+  process.env.ACCESS_TOKEN_EXPIRATION!,
+);
+
+// COOKIE NAMES
+export const VERIFY_OTP_COOKIE_NAME = "c2c-verify";
+export const RESET_PASSWORD_OTP_COOKIE_NAME = "c2c-reset";
+export const ACCESS_TOKEN_COOKIE_NAME = "c2c-access";
+
+// PAYPAL
+export const PAYPAL_BASE_URL = process.env.PAY_PAL_BASE_URL!;
+export const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID!;
+export const PAYPAL_SECRET_KEY = process.env.PAYPAL_SECRET_KEY!;
+
+// ZOHO BOOKS
+export const ZOHO_BASE_URI = process.env.ZOHO_BASE_URI!;
+export const ZOHO_ORG_ID = process.env.ZOHO_ORG_ID!;
+export const ZOHO_CLIENT_ID = process.env.ZOHO_CLIENT_ID!;
+export const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
+export const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
+export const ZOHO_REDIRECT_URI = process.env.ZOHO_REDIRECT_URI!;
+export const ZOHO_OAUTH_URI = process.env.ZOHO_OAUTH_URI!;
+
+// DIGITAL OCEAN AI
+export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
+export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
+export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;

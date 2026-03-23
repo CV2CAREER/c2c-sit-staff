@@ -1,0 +1,142 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/deployWebhook/deploy:
+    post:
+      tags:
+        - Webhook
+      summary: Handle GitHub deployment webhook
+      description: |
+        Receives GitHub webhook payloads to trigger automated deployments.
+        This endpoint verifies the GitHub signature and triggers deployment
+        scripts based on the repository and branch configuration.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPayload'
+            examples:
+              backend_rat:
+                summary: Backend deployment to RAT environment
+                value:
+                  repository:
+                    name: "c2c-staff-backend"
+                  ref: "refs/heads/rat"
+                  head_commit:
+                    id: "abc123def456789..."
+                    message: "Update deployment configuration"
+                    author:
+                      name: "John Doe"
+                      email: "john@example.com"
+              frontend_rat:
+                summary: Frontend deployment to RAT environment
+                value:
+                  repository:
+                    name: "c2c-staff-rft"
+                  ref: "refs/heads/rat"
+                  head_commit:
+                    id: "def456ghi789..."
+                    message: "Update frontend styles"
+                    author:
+                      name: "Jane Smith"
+                      email: "jane@example.com"
+      responses:
+        '200':
+          description: Deployment triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Deployment triggered
+                  value:
+                    success: true
+                    message: "Deployment triggered for c2c-staff-backend on rat environment."
+                    statusCode: 200
+        '400':
+          description: Invalid signature or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_signature:
+                  summary: Invalid signature
+                  value:
+                    success: false
+                    message: "Invalid signature"
+                    statusCode: 400
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                config_error:
+                  summary: Configuration error
+                  value:
+                    success: false
+                    message: "Webhook received, but execution failed: Automation not configured for unknown-repo on branch main"
+                    statusCode: 500
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          description: GitHub webhook signature for verification
+          schema:
+            type: string
+            example: "sha256=abc123def456..."
+
+  /:
+    get:
+      summary: Welcome endpoint
+      description: Returns a welcome message for the C2C Staff Server API
+      responses:
+        '200':
+          description: Welcome message
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Welcome to C2C STAFF SERVER API.."
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                healthy:
+                  summary: API is healthy
+                  value:
+                    success: true
+                    message: "API is healthy"
+                    statusCode: 200
+
+  /ping:
+    get:
+      tags:
+        - Health
+      summary: Database ping endpoint
+      description: Pings the database to check connectivity
+      responses:
+        '200':
+          description: Database is responsive
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "pong"

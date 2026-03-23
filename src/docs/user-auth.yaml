@@ -1,0 +1,529 @@
+# OpenAPI Specification for User Authentication Endpoints
+
+paths:
+  /v1/user/login:
+    post:
+      tags:
+        - User Authentication
+      summary: User login
+      description: |
+        Authenticates a user with email and password.
+        
+        Only users with valid staff roles can access this system.
+        If the user's email is not verified, login will be denied.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  description: User's password
+            example:
+              email: "user@example.com"
+              password: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie containing access token
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: User's unique identifier
+                          email:
+                            type: string
+                            format: email
+                            description: User's email address
+                          firstName:
+                            type: string
+                            description: User's first name
+                          lastName:
+                            type: string
+                            description: User's last name
+                          role:
+                            type: string
+                            description: User's role
+                          isEmailVerified:
+                            type: boolean
+                            description: Whether the user's email is verified
+                      accessToken:
+                        type: string
+                        description: JWT access token
+            examples:
+              login_success:
+                summary: Successful login
+                value:
+                  success: true
+                  message: "Welcome Back John"
+                  statusCode: 200
+                  data:
+                    user:
+                      id: "user-uuid-123"
+                      email: "john.doe@example.com"
+                      firstName: "John"
+                      lastName: "Doe"
+                      role: "sales"
+                      isEmailVerified: true
+                    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Bad request - Invalid credentials or unverified account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              examples:
+                invalid_credentials:
+                  summary: Invalid credentials
+                  value:
+                    success: false
+                    message: "Invalid credentials"
+                    statusCode: 400
+                    data: null
+                unverified_account:
+                  summary: Unverified account
+                  value:
+                    success: false
+                    message: "This account is not a verified account. Please verify your account or contact support."
+                    statusCode: 400
+                    data: null
+        '403':
+          description: Forbidden - Invalid role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Access denied. This account does not have the required permissions to access this system."
+                statusCode: 403
+                data: null
+
+  /v1/user/promote/{userId}:
+    patch:
+      tags:
+        - User Authentication
+      summary: Promote user to admin role
+      description: |
+        Promotes a user to a specified admin role.
+        
+        This endpoint requires authentication and proper authorization.
+        A Slack notification will be sent to inform stakeholders of the promotion.
+      operationId: promoteUserToAdmin
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The unique identifier of the user to promote
+          schema:
+            type: string
+            format: uuid
+            example: "user-uuid-123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  enum: ["sales", "coach", "admin", "technology", "business", "assistant"]
+                  description: The role to promote the user to
+                  example: "admin"
+            example:
+              role: "admin"
+      responses:
+        '200':
+          description: User promoted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: User's unique identifier
+                          email:
+                            type: string
+                            format: email
+                            description: User's email address
+                          firstName:
+                            type: string
+                            description: User's first name
+                          lastName:
+                            type: string
+                            description: User's last name
+                          role:
+                            type: string
+                            description: User's new role
+                          isEmailVerified:
+                            type: boolean
+                            description: Whether the user's email is verified
+            examples:
+              promotion_success:
+                summary: User promoted successfully
+                value:
+                  success: true
+                  message: "User successfully promoted to admin"
+                  statusCode: 200
+                  data:
+                    user:
+                      id: "user-uuid-123"
+                      email: "john.doe@example.com"
+                      firstName: "John"
+                      lastName: "Doe"
+                      role: "admin"
+                      isEmailVerified: true
+        '400':
+          description: Bad request - Invalid role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Invalid role specified"
+                statusCode: 400
+                data: null
+        '404':
+          description: Not found - User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "User not found"
+                statusCode: 404
+                data: null
+
+  /v1/user/{userId}:
+    get:
+      tags:
+        - User Authentication
+      summary: Get user information
+      description: |
+        Retrieves detailed information about a specific user.
+        
+        This endpoint requires authentication and proper authorization.
+        User information is cached for performance optimization.
+      operationId: getUserInfo
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The unique identifier of the user to retrieve
+          schema:
+            type: string
+            format: uuid
+            example: "user-uuid-123"
+      responses:
+        '200':
+          description: User information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: User's unique identifier
+                          email:
+                            type: string
+                            format: email
+                            description: User's email address
+                          firstName:
+                            type: string
+                            description: User's first name
+                          lastName:
+                            type: string
+                            description: User's last name
+                          role:
+                            type: string
+                            description: User's role
+                          isEmailVerified:
+                            type: boolean
+                            description: Whether the user's email is verified
+            examples:
+              user_info_success:
+                summary: User information retrieved
+                value:
+                  success: true
+                  message: "User information retrieved successfully"
+                  statusCode: 200
+                  data:
+                    user:
+                      id: "user-uuid-123"
+                      email: "john.doe@example.com"
+                      firstName: "John"
+                      lastName: "Doe"
+                      role: "sales"
+                      isEmailVerified: true
+        '400':
+          description: Bad request - Invalid user ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Invalid user ID."
+                statusCode: 400
+                data: null
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+
+  /v1/user/profile:
+    get:
+      tags:
+        - User Authentication
+      summary: Get current user profile
+      description: |
+        Retrieves the profile information of the currently authenticated user.
+        
+        This endpoint requires authentication and returns the full profile
+        of the user making the request. User information is cached for
+        performance optimization.
+      operationId: getCurrentUserProfile
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: User's unique identifier
+                          email:
+                            type: string
+                            format: email
+                            description: User's email address
+                          firstName:
+                            type: string
+                            description: User's first name
+                          lastName:
+                            type: string
+                            description: User's last name
+                          role:
+                            type: string
+                            description: User's role
+                          isEmailVerified:
+                            type: boolean
+                            description: Whether the user's email is verified
+            examples:
+              profile_success:
+                summary: User profile retrieved
+                value:
+                  success: true
+                  message: "User profile retrieved successfully"
+                  statusCode: 200
+                  data:
+                    user:
+                      id: "user-uuid-123"
+                      email: "john.doe@example.com"
+                      firstName: "John"
+                      lastName: "Doe"
+                      role: "sales"
+                      isEmailVerified: true
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null

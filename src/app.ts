@@ -8,6 +8,7 @@ import {
   COOKIE_SECRET,
   IAT_FRONTEND_URL,
   LOCAL_FRONTEND_URL,
+  NODE_ENV,
   PROD_FRONTEND_URL,
   RAT_FRONTEND_URL,
   UAT_FRONTEND_URL,
@@ -18,6 +19,8 @@ import { getServiceLogger } from "./utils/createLogger";
 import centralAppErrors from "./middlewares/centralAppErrors";
 import responseFormatter from "./middlewares/responseFormatter";
 import deployWebhookRouterV1 from "./routes/v1/deploy-webhook.route";
+import { swaggerSpec } from "./config/swagger";
+import swaggerUi from "swagger-ui-express";
 
 export const app = express();
 
@@ -123,6 +126,9 @@ app.get("/api/ping", async (req, res) => {
 // 12. API Routes
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
+
+// 15. Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // 13. Unknown route
 app.all("*", (req, res, next) => {

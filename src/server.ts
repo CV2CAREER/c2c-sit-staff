@@ -57,6 +57,7 @@ const startServer = async () => {
 
     server.listen(PORT, async () => {
       logger.info(`SERVER IS RUNNING ON PORT ${PORT}`);
+      logger.info(`📚 Swagger documentation available at: http://localhost:${PORT}/api-docs`);
 
       // connected redis
       await connectRedis();
