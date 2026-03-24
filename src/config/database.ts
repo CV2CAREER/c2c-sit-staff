@@ -1,6 +1,7 @@
 import { ENVIRONMENTNAME } from "../constants/constants";
 import { setDbReady } from "../middlewares/dbReady";
 import { getServiceLogger } from "../utils/createLogger";
+import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
 
@@ -108,6 +109,8 @@ export const connectDB = async (): Promise<void> => {
           `LOCAL: Total tables in DB: ${tablesAfter.length} Tables (took ${duration}s)`,
         );
       }
+
+      await ensureAnalyticsIndexes();
 
       return; // ✅ exit once connected
     } catch (error: any) {

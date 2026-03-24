@@ -1,0 +1,82 @@
+# OpenAPI Specification for Admin Analytics Endpoint
+
+paths:
+  /v1/admin/analytics:
+    get:
+      tags:
+        - Admin
+      summary: Get admin analytics metrics
+      description: |
+        Returns high-performance aggregate metrics for Successful vs Failed records.
+        This endpoint is admin-only and supports optional date-window filtering.
+        Metrics include plans, users, and applications (when the applications table exists).
+      operationId: getAdminAnalytics
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: ISO-8601 start date (inclusive). Defaults to 30 days before `to`.
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: ISO-8601 end date (exclusive). Defaults to current time.
+      responses:
+        "200":
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  statusCode:
+                    type: number
+                  data:
+                    type: object
+                    properties:
+                      range:
+                        type: object
+                        properties:
+                          from:
+                            type: string
+                            format: date-time
+                          to:
+                            type: string
+                            format: date-time
+                      metrics:
+                        type: object
+                        properties:
+                          successful:
+                            type: number
+                          failed:
+                            type: number
+                      breakdown:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            successful:
+                              type: number
+                            failed:
+                              type: number
+                      generatedAt:
+                        type: string
+                        format: date-time
+        "400":
+          description: Invalid date query parameters
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required

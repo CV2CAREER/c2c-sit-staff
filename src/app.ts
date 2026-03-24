@@ -21,6 +21,7 @@ import responseFormatter from "./middlewares/responseFormatter";
 import deployWebhookRouterV1 from "./routes/v1/deploy-webhook.route";
 import { swaggerSpec } from "./config/swagger";
 import swaggerUi from "swagger-ui-express";
+import adminRouterV1 from "./routes/v1/admin.route";
 
 export const app = express();
 
@@ -126,6 +127,7 @@ app.get("/api/ping", async (req, res) => {
 // 12. API Routes
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
+app.use("/api/v1/admin", adminRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
