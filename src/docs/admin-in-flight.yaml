@@ -1,0 +1,173 @@
+# OpenAPI Specification for Admin In-Flight Allocation Endpoints
+
+paths:
+  /v1/admin/in-flight:
+    get:
+      tags:
+        - Admin
+      summary: Get in-flight subscriptions with assigned placement controllers
+      description: |
+        Returns active subscriptions and their current placement-controller allocation.
+        This endpoint powers the In-Flight admin table.
+      operationId: getInFlightSubscriptions
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+            default: 20
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+          description: Search by subscriber email/name or subscription title.
+        - in: query
+          name: staffUserId
+          required: false
+          schema:
+            type: string
+          description: Filter to subscriptions assigned to one placement controller.
+        - in: query
+          name: assigned
+          required: false
+          schema:
+            type: boolean
+          description: Filter by assignment state (`true` for assigned, `false` for unassigned).
+      responses:
+        "200":
+          description: In-flight subscriptions retrieved successfully
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+
+  /v1/admin/in-flight/staff:
+    get:
+      tags:
+        - Admin
+      summary: Get placement-controller staff list
+      description: |
+        Returns eligible placement controllers for assignment with active-allocation counts.
+      operationId: getPlacementControllers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+            default: 20
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+          description: Search by staff name or email.
+      responses:
+        "200":
+          description: Placement controllers retrieved successfully
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+
+  /v1/admin/in-flight/assign:
+    post:
+      tags:
+        - Admin
+      summary: Assign placement controller to a subscription
+      description: Creates a new active allocation for a subscription.
+      operationId: assignPlacementController
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - planId
+                - staffUserId
+              properties:
+                planId:
+                  type: string
+                  description: Subscription ID (plan ID)
+                staffUserId:
+                  type: string
+                  description: Placement-controller staff user ID
+                notes:
+                  type: string
+                  description: Optional assignment notes
+      responses:
+        "200":
+          description: Placement controller assigned successfully
+        "400":
+          description: Invalid assignment request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+        "404":
+          description: Subscription or staff not found
+        "409":
+          description: Active allocation conflict
+
+  /v1/admin/in-flight/{planId}/unassign:
+    patch:
+      tags:
+        - Admin
+      summary: Unassign placement controller from a subscription
+      description: Ends the active allocation for a subscription.
+      operationId: unassignPlacementController
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: planId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  description: Optional unassignment notes
+      responses:
+        "200":
+          description: Placement controller unassigned successfully
+        "400":
+          description: Invalid unassignment request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+        "404":
+          description: Subscription not found
+
