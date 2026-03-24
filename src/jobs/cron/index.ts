@@ -1,5 +1,8 @@
 import { ScheduledTask } from "node-cron";
+import { USE_REDIS } from "../../config/env";
 import { getServiceLogger } from "../../utils/createLogger";
+import { enqueueAnalyticsCacheRefresh } from "../background/analyticsCacheWorker";
+import { createAnalyticsCacheWarmupJob } from "./analytics-cache.job";
 import { createTokenCleanUpJob } from "./token-cleanup.job";
 
 const logger = getServiceLogger("app-cron-jobs");
@@ -11,23 +14,31 @@ interface NamedJob {
 
 let jobInstances: NamedJob[] = [];
 export function startAllCronJobs() {
-  logger.info("⏰ Starting cron jobs...");
+  logger.info("Starting cron jobs...");
 
   jobInstances = [
     { name: "Token Clean Up Job", task: createTokenCleanUpJob() },
+    { name: "Analytics Cache Warmup Job", task: createAnalyticsCacheWarmupJob() },
   ].flat();
 
   jobInstances.forEach(({ name, task }) => {
     task.start();
-    logger.info(`✅ Started cron job: ${name}`);
+    logger.info(`Started cron job: ${name}`);
   });
+
+  if (USE_REDIS === "true") {
+    void enqueueAnalyticsCacheRefresh("startup").catch((error: any) => {
+      logger.error(`Failed to queue startup analytics warmup: ${error.message}`);
+    });
+  }
 }
 
 export function stopAllCronJobs() {
-  logger.info("⏹️ Stopping all cron jobs...");
+  logger.info("Stopping all cron jobs...");
 
   jobInstances.forEach(({ name, task }) => {
     task.stop();
-    logger.info(`🛑 Stopped cron job: ${name}`);
+    logger.info(`Stopped cron job: ${name}`);
   });
 }
+

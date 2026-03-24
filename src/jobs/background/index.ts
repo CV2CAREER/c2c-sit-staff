@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import { emailWorker } from "./emailWorker";
+import { analyticsCacheWorker } from "./analyticsCacheWorker";
 import { getServiceLogger } from "../../utils/createLogger";
 import { USE_REDIS } from "../../config/env";
 // import { smsWorker } from "./smsWorker";
@@ -9,6 +10,7 @@ const logger = getServiceLogger("background-jobs");
 
 const allWorkers: Worker[] = [
   emailWorker,
+  analyticsCacheWorker,
   // smsWorker,
   // reportWorker,
 ];

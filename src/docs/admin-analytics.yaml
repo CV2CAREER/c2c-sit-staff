@@ -10,6 +10,7 @@ paths:
         Returns high-performance aggregate metrics for Successful vs Failed records.
         This endpoint is admin-only and supports optional date-window filtering.
         Metrics include plans, users, and applications (when the applications table exists).
+        Default dashboard metrics are pre-calculated in BullMQ every 6 hours and served from Redis cache.
       operationId: getAdminAnalytics
       security:
         - bearerAuth: []

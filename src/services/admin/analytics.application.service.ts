@@ -37,8 +37,12 @@ interface SourceMetricsRow {
 }
 
 const DEFAULT_LOOKBACK_DAYS = 30;
-const CACHE_TTL_SECONDS = 300;
+const WINDOW_CACHE_TTL_SECONDS = 300;
+const DASHBOARD_CACHE_TTL_SECONDS = 6 * 60 * 60 + 300; // 6h + 5m
 const APPLICATIONS_TABLE = "applications";
+
+export const ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY =
+  "admin:analytics:dashboard:v1:latest";
 
 const logger = getServiceLogger("analytics-application-service");
 
@@ -71,6 +75,12 @@ const resolveWindow = (input: AnalyticsWindowInput): { from: Date; to: Date } =>
 
   return { from: parsedFrom, to: parsedTo };
 };
+
+const buildWindowCacheKey = (fromIso: string, toIso: string) =>
+  `admin:analytics:v1:${fromIso}:${toIso}`;
+
+const isDefaultWindowRequest = (input: AnalyticsWindowInput) =>
+  !input.from && !input.to;
 
 class AnalyticsApplicationService {
   private buildApplicationsSelect(shape: {
@@ -163,30 +173,11 @@ class AnalyticsApplicationService {
     });
   }
 
-  async getSuccessfulVsFailedMetrics(
-    input: AnalyticsWindowInput,
-  ): Promise<AnalyticsResponse> {
-    const window = resolveWindow(input);
-    const fromIso = window.from.toISOString();
-    const toIso = window.to.toISOString();
-    const cacheKey = `admin:analytics:v1:${fromIso}:${toIso}`;
-
-    let redis: any = null;
-    let hasUsableRedis = false;
-    if (!input.bypassCache) {
-      redis = await getConnectedRedis();
-      hasUsableRedis = isRedisUsable(redis);
-      if (hasUsableRedis && redis) {
-        const cachedPayload = await redis.get(cacheKey);
-        if (cachedPayload) {
-          logger.info(`Analytics cache hit for ${cacheKey}`);
-          return JSON.parse(cachedPayload) as AnalyticsResponse;
-        }
-      }
-    }
-
-    const rows = await this.executeAggregateQuery(fromIso, toIso);
-
+  private buildPayload(
+    rows: SourceMetricsRow[],
+    fromIso: string,
+    toIso: string,
+  ): AnalyticsResponse {
     const breakdown = rows.reduce<Record<string, SourceMetrics>>((acc, row) => {
       acc[row.source] = {
         successful: toNumber(row.successful),
@@ -204,7 +195,7 @@ class AnalyticsApplicationService {
       { successful: 0, failed: 0 },
     );
 
-    const payload: AnalyticsResponse = {
+    return {
       range: {
         from: fromIso,
         to: toIso,
@@ -213,9 +204,135 @@ class AnalyticsApplicationService {
       breakdown,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private async computePayload(
+    fromIso: string,
+    toIso: string,
+  ): Promise<AnalyticsResponse> {
+    const rows = await this.executeAggregateQuery(fromIso, toIso);
+    return this.buildPayload(rows, fromIso, toIso);
+  }
+
+  private async readCachedPayload(
+    redis: any,
+    cacheKey: string,
+  ): Promise<AnalyticsResponse | null> {
+    if (!redis) {
+      return null;
+    }
+
+    const cached = await redis.get(cacheKey);
+    if (!cached) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(cached) as AnalyticsResponse;
+    } catch {
+      return null;
+    }
+  }
+
+  private async writeCachedPayload(
+    redis: any,
+    cacheKey: string,
+    payload: AnalyticsResponse,
+    ttlSeconds: number,
+  ) {
+    if (!redis) {
+      return;
+    }
+
+    await redis.set(cacheKey, JSON.stringify(payload), "EX", ttlSeconds);
+  }
+
+  async warmDashboardCache(trigger = "manual"): Promise<AnalyticsResponse> {
+    const window = resolveWindow({});
+    const fromIso = window.from.toISOString();
+    const toIso = window.to.toISOString();
+    const windowCacheKey = buildWindowCacheKey(fromIso, toIso);
+
+    const payload = await this.computePayload(fromIso, toIso);
+
+    const redis = await getConnectedRedis();
+    if (isRedisUsable(redis)) {
+      await Promise.all([
+        this.writeCachedPayload(
+          redis,
+          ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY,
+          payload,
+          DASHBOARD_CACHE_TTL_SECONDS,
+        ),
+        this.writeCachedPayload(
+          redis,
+          windowCacheKey,
+          payload,
+          WINDOW_CACHE_TTL_SECONDS,
+        ),
+      ]);
+    }
+
+    logger.info(
+      `Dashboard analytics cache warmed (trigger=${trigger}, from=${fromIso}, to=${toIso})`,
+    );
+
+    return payload;
+  }
+
+  async getSuccessfulVsFailedMetrics(
+    input: AnalyticsWindowInput,
+  ): Promise<AnalyticsResponse> {
+    const window = resolveWindow(input);
+    const fromIso = window.from.toISOString();
+    const toIso = window.to.toISOString();
+    const windowCacheKey = buildWindowCacheKey(fromIso, toIso);
+    const useDashboardCache = isDefaultWindowRequest(input);
+
+    let redis: any = null;
+    let hasUsableRedis = false;
+    if (!input.bypassCache) {
+      redis = await getConnectedRedis();
+      hasUsableRedis = isRedisUsable(redis);
+
+      if (hasUsableRedis && redis && useDashboardCache) {
+        const dashboardCached = await this.readCachedPayload(
+          redis,
+          ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY,
+        );
+        if (dashboardCached) {
+          logger.info("Analytics dashboard cache hit.");
+          return dashboardCached;
+        }
+      }
+
+      if (hasUsableRedis && redis) {
+        const windowCached = await this.readCachedPayload(redis, windowCacheKey);
+        if (windowCached) {
+          logger.info(`Analytics window cache hit for ${windowCacheKey}`);
+          return windowCached;
+        }
+      }
+    }
+
+    const payload = await this.computePayload(fromIso, toIso);
 
     if (!input.bypassCache && hasUsableRedis && redis) {
-      await redis.set(cacheKey, JSON.stringify(payload), "EX", CACHE_TTL_SECONDS);
+      await this.writeCachedPayload(
+        redis,
+        windowCacheKey,
+        payload,
+        WINDOW_CACHE_TTL_SECONDS,
+      );
+
+      if (useDashboardCache) {
+        await this.writeCachedPayload(
+          redis,
+          ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY,
+          payload,
+          DASHBOARD_CACHE_TTL_SECONDS,
+        );
+      }
     }
 
     return payload;
@@ -248,3 +365,4 @@ class AnalyticsApplicationService {
 }
 
 export const analyticsApplicationService = new AnalyticsApplicationService();
+
