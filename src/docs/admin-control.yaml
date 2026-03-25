@@ -54,6 +54,7 @@ paths:
       summary: Update admin control switches
       description: |
         Updates global bot switches. Provide at least one field.
+        When `botEnabled` changes, the backend will immediately pause/resume configured BullMQ scraping queues (`BOT_SCRAPING_QUEUES`).
       operationId: patchAdminBotToggle
       security:
         - bearerAuth: []
@@ -85,4 +86,3 @@ paths:
           description: Unauthorized
         "403":
           description: Forbidden - Admin role required
-

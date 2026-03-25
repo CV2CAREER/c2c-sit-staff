@@ -4,6 +4,7 @@ import { getServiceLogger } from "../../utils/createLogger";
 import { enqueueAnalyticsCacheRefresh } from "../background/analyticsCacheWorker";
 import { createDailySummaryJob } from "./daily-summary.job";
 import { createAnalyticsCacheWarmupJob } from "./analytics-cache.job";
+import { createBotHealthJob } from "./bot-health.job";
 import { createTokenCleanUpJob } from "./token-cleanup.job";
 
 const logger = getServiceLogger("app-cron-jobs");
@@ -21,6 +22,7 @@ export function startAllCronJobs() {
     { name: "Token Clean Up Job", task: createTokenCleanUpJob() },
     { name: "Analytics Cache Warmup Job", task: createAnalyticsCacheWarmupJob() },
     { name: "Daily Summary Job", task: createDailySummaryJob() },
+    { name: "Bot Health Job", task: createBotHealthJob() },
   ].flat();
 
   jobInstances.forEach(({ name, task }) => {

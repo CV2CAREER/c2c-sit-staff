@@ -4,6 +4,7 @@ import { adminControlApplicationService } from "../../services/admin/admin-contr
 import { inFlightAllocationApplicationService } from "../../services/admin/in-flight-allocation.application.service";
 import { schemaManagementApplicationService } from "../../services/admin/schema-management.application.service";
 import { throttleApplicationService } from "../../services/admin/throttle.application.service";
+import { botWorkerIntegrationService } from "../../services/admin/bot-worker-integration.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -205,6 +206,35 @@ export const patchAdminBotToggle = catchAsyncError(
       questionAnswerMode,
       updatedByUserId: user.id,
     });
+
+    // Integrate with BullMQ: pause/resume scraping queues immediately when botEnabled changes.
+    if (typeof botEnabled === "boolean") {
+      try {
+        if (status.botEnabled) {
+          await botWorkerIntegrationService.resumeScrapingQueues(
+            `admin-toggle:${user.email}`,
+          );
+        } else {
+          await botWorkerIntegrationService.pauseScrapingQueues(
+            `admin-toggle:${user.email}`,
+          );
+        }
+      } catch (error: any) {
+        // Alert and surface an error so the admin sees the failure.
+        await botWorkerIntegrationService.alertStatusUnavailable(
+          {
+            name: "scraping-queues",
+            status: "unavailable",
+            error: error?.message || String(error),
+          },
+          "admin-toggle",
+        );
+        throw new ErrorHandler(
+          "Control updated, but worker queue sync failed. Check Redis/BullMQ.",
+          503,
+        );
+      }
+    }
 
     res.apiSuccess(status, "Admin control updated successfully");
   },
