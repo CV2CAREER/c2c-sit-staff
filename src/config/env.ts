@@ -23,6 +23,10 @@ export const REDIS_HOST = process.env.CLIENT_SAMPLE_REDIS_HOST;
 export const REDIS_PASSWORD = process.env.CLIENT_SAMPLE_REDIS_PASSWORD;
 // Configurable toggle
 export const USE_REDIS = process.env.USE_REDIS;
+export const ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS = parseInt(
+  process.env.ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS || "180",
+  10,
+);
 
 // FRONTEND URL
 export const RAT_FRONTEND_URL = process.env.RAT_FRONTEND_URL;

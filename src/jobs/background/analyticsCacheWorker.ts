@@ -48,7 +48,10 @@ export const analyticsCacheWorker = createWorker(
     const trigger = job.data?.trigger || "unknown";
     logger.info(`Refreshing analytics dashboard cache (trigger=${trigger})`);
 
-    const payload = await analyticsApplicationService.warmDashboardCache(trigger);
+    const [payload] = await Promise.all([
+      analyticsApplicationService.warmDashboardCache(trigger),
+      analyticsApplicationService.warmDailySeriesCache(trigger),
+    ]);
 
     logger.info(
       `Dashboard analytics cache refreshed: successful=${payload.metrics.successful}, failed=${payload.metrics.failed}`,
@@ -56,4 +59,3 @@ export const analyticsCacheWorker = createWorker(
   },
   { concurrency: 1 },
 );
-

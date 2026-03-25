@@ -11,6 +11,7 @@ paths:
         This endpoint is admin-only and supports optional date-window filtering.
         Metrics include plans, users, and applications (when the applications table exists).
         Default dashboard metrics are pre-calculated in BullMQ every 6 hours and served from Redis cache.
+        Date-only ranges (YYYY-MM-DD) and whole-day aligned windows are served by summing a precomputed daily cache series when available.
       operationId: getAdminAnalytics
       security:
         - bearerAuth: []
@@ -22,14 +23,26 @@ paths:
           schema:
             type: string
             format: date-time
-          description: ISO-8601 start date (inclusive). Defaults to 30 days before `to`.
+          description: ISO-8601 start date (inclusive). Also accepts YYYY-MM-DD. Defaults to 30 days before `to`.
         - in: query
           name: to
           required: false
           schema:
             type: string
             format: date-time
-          description: ISO-8601 end date (exclusive). Defaults to current time.
+          description: ISO-8601 end date (exclusive). Also accepts YYYY-MM-DD. Defaults to current time.
+        - in: query
+          name: startDate
+          required: false
+          schema:
+            type: string
+          description: Alias for `from` used by the admin UI (accepts YYYY-MM-DD or ISO date-time).
+        - in: query
+          name: endDate
+          required: false
+          schema:
+            type: string
+          description: Alias for `to` used by the admin UI (accepts YYYY-MM-DD or ISO date-time).
       responses:
         "200":
           description: Analytics retrieved successfully

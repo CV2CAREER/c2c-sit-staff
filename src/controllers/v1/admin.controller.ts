@@ -47,8 +47,19 @@ export const getAdminAnalytics = catchAsyncError(
   async (req: Request, res: Response) => {
     const user = ensureAdmin(req);
 
-    const from = typeof req.query.from === "string" ? req.query.from : undefined;
-    const to = typeof req.query.to === "string" ? req.query.to : undefined;
+    const from =
+      typeof req.query.from === "string"
+        ? req.query.from
+        : typeof (req.query as any).startDate === "string"
+          ? (req.query as any).startDate
+          : undefined;
+
+    const to =
+      typeof req.query.to === "string"
+        ? req.query.to
+        : typeof (req.query as any).endDate === "string"
+          ? (req.query as any).endDate
+          : undefined;
 
     logger.info(
       `Processing analytics request for admin ${user.email} (from=${from ?? "default"}, to=${to ?? "default"})`,
