@@ -1,0 +1,88 @@
+# OpenAPI Specification for Admin Control Endpoints
+
+paths:
+  /v1/admin/status:
+    get:
+      tags:
+        - Admin
+      summary: Get admin control status
+      description: |
+        Returns high-level admin switches:
+        - botEnabled: global bot On/Off
+        - questionAnswerMode: 'db' or 'ai'
+      operationId: getAdminStatus
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  statusCode:
+                    type: number
+                  data:
+                    type: object
+                    properties:
+                      botEnabled:
+                        type: boolean
+                      questionAnswerMode:
+                        type: string
+                        enum: ["db", "ai"]
+                      updatedByUserId:
+                        type: string
+                        nullable: true
+                      updatedAt:
+                        type: string
+                        format: date-time
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+
+  /v1/admin/bot-toggle:
+    patch:
+      tags:
+        - Admin
+      summary: Update admin control switches
+      description: |
+        Updates global bot switches. Provide at least one field.
+      operationId: patchAdminBotToggle
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                botEnabled:
+                  type: boolean
+                questionAnswerMode:
+                  type: string
+                  enum: ["db", "ai"]
+                mode:
+                  type: string
+                  enum: ["db", "ai"]
+              example:
+                botEnabled: true
+                questionAnswerMode: "db"
+      responses:
+        "200":
+          description: Admin control updated successfully
+        "400":
+          description: Invalid input
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+

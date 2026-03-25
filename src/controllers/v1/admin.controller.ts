@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { analyticsApplicationService } from "../../services/admin/analytics.application.service";
+import { adminControlApplicationService } from "../../services/admin/admin-control.application.service";
 import { inFlightAllocationApplicationService } from "../../services/admin/in-flight-allocation.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -164,5 +165,45 @@ export const unassignPlacementController = catchAsyncError(
       });
 
     res.apiSuccess(payload, "Placement controller unassigned successfully");
+  },
+);
+
+export const getAdminStatus = catchAsyncError(async (req: Request, res: Response) => {
+  ensureAdmin(req);
+
+  const status = await adminControlApplicationService.getStatus(false);
+  res.apiSuccess(status, "Admin status retrieved successfully");
+});
+
+export const patchAdminBotToggle = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const botEnabled =
+      typeof req.body?.botEnabled === "boolean"
+        ? (req.body.botEnabled as boolean)
+        : undefined;
+
+    const rawMode =
+      typeof req.body?.questionAnswerMode === "string"
+        ? String(req.body.questionAnswerMode).trim().toLowerCase()
+        : typeof req.body?.mode === "string"
+          ? String(req.body.mode).trim().toLowerCase()
+          : undefined;
+
+    const questionAnswerMode =
+      rawMode === "db" || rawMode === "ai" ? (rawMode as "db" | "ai") : undefined;
+
+    if (rawMode && !questionAnswerMode) {
+      throw new ErrorHandler("questionAnswerMode must be 'db' or 'ai'.", 400);
+    }
+
+    const status = await adminControlApplicationService.updateControl({
+      botEnabled,
+      questionAnswerMode,
+      updatedByUserId: user.id,
+    });
+
+    res.apiSuccess(status, "Admin control updated successfully");
   },
 );

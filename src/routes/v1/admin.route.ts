@@ -2,8 +2,10 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminStatus,
   getInFlightSubscriptions,
   getPlacementControllers,
+  patchAdminBotToggle,
   unassignPlacementController,
 } from "../../controllers/v1/admin.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
@@ -16,6 +18,18 @@ adminRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   getAdminAnalytics,
+);
+adminRouterV1.get(
+  "/status",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminStatus,
+);
+adminRouterV1.patch(
+  "/bot-toggle",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchAdminBotToggle,
 );
 adminRouterV1.get(
   "/in-flight",

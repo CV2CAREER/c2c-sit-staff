@@ -9,6 +9,7 @@ import { Plan } from "../models/v1/plan.model";
 import { Feature } from "../models/v1/feature.model";
 import BlacklistedToken from "../models/v1/blacklistedToken.model";
 import { SubscriptionAllocation } from "../models/v1/subscription-allocation.model";
+import { AdminControl } from "../models/v1/admin-control.model";
 
 export const modelList = [
     User, 
@@ -21,5 +22,6 @@ export const modelList = [
     Plan,
     Feature,
     SubscriptionAllocation,
+    AdminControl,
     BlacklistedToken,
 ];
