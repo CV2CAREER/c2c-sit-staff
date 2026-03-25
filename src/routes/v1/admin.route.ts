@@ -3,10 +3,15 @@ import {
   assignPlacementController,
   getAdminAnalytics,
   getAdminStatus,
+  getAdminThrottle,
   getInFlightSubscriptions,
   getPlacementControllers,
+  getSchemaColumns,
+  patchAdminThrottle,
   patchAdminBotToggle,
+  postSchemaExpandColumn,
   unassignPlacementController,
+  deleteSchemaColumn,
 } from "../../controllers/v1/admin.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
@@ -30,6 +35,36 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   patchAdminBotToggle,
+);
+adminRouterV1.get(
+  "/throttle",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminThrottle,
+);
+adminRouterV1.patch(
+  "/throttle",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchAdminThrottle,
+);
+adminRouterV1.get(
+  "/schema/:tableName/columns",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getSchemaColumns,
+);
+adminRouterV1.post(
+  "/schema/expand",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postSchemaExpandColumn,
+);
+adminRouterV1.delete(
+  "/schema/:tableName/columns/:columnName",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteSchemaColumn,
 );
 adminRouterV1.get(
   "/in-flight",

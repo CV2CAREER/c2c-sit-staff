@@ -28,6 +28,11 @@ export const ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS = parseInt(
   10,
 );
 
+export const SCHEMA_MANAGED_TABLES = (process.env.SCHEMA_MANAGED_TABLES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 // FRONTEND URL
 export const RAT_FRONTEND_URL = process.env.RAT_FRONTEND_URL;
 export const IAT_FRONTEND_URL = process.env.IAT_FRONTEND_URL;

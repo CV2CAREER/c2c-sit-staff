@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { analyticsApplicationService } from "../../services/admin/analytics.application.service";
 import { adminControlApplicationService } from "../../services/admin/admin-control.application.service";
 import { inFlightAllocationApplicationService } from "../../services/admin/in-flight-allocation.application.service";
+import { schemaManagementApplicationService } from "../../services/admin/schema-management.application.service";
+import { throttleApplicationService } from "../../services/admin/throttle.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -205,5 +207,85 @@ export const patchAdminBotToggle = catchAsyncError(
     });
 
     res.apiSuccess(status, "Admin control updated successfully");
+  },
+);
+
+export const getAdminThrottle = catchAsyncError(async (req: Request, res: Response) => {
+  ensureAdmin(req);
+
+  const status = await throttleApplicationService.getThrottleStatus();
+  res.apiSuccess(status, "Throttle configuration retrieved successfully");
+});
+
+export const patchAdminThrottle = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const config = typeof req.body?.config === "object" && req.body?.config
+      ? req.body.config
+      : req.body;
+
+    const status = await throttleApplicationService.updateThrottle({
+      config,
+      updatedByUserId: user.id,
+    });
+
+    res.apiSuccess(status, "Throttle configuration updated successfully");
+  },
+);
+
+export const getSchemaColumns = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const tableName = req.params.tableName;
+    const columns = await schemaManagementApplicationService.listColumns(tableName);
+
+    res.apiSuccess(
+      { tableName, columns, generatedAt: new Date().toISOString() },
+      "Schema columns retrieved successfully",
+    );
+  },
+);
+
+export const postSchemaExpandColumn = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const tableName = String(req.body?.tableName || "").trim();
+    const columnName = String(req.body?.columnName || "").trim();
+    const type = String(req.body?.type || "").trim().toLowerCase();
+
+    await schemaManagementApplicationService.expandColumn({
+      tableName,
+      columnName,
+      type: type as any,
+      updatedByUserId: user.id,
+    });
+
+    res.apiSuccess(
+      { ok: true },
+      "Schema column expanded successfully",
+    );
+  },
+);
+
+export const deleteSchemaColumn = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const tableName = req.params.tableName;
+    const columnName = req.params.columnName;
+
+    await schemaManagementApplicationService.deleteColumn({
+      tableName,
+      columnName,
+      updatedByUserId: user.id,
+    });
+
+    res.apiSuccess(
+      { ok: true },
+      "Schema column deleted successfully",
+    );
   },
 );

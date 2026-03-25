@@ -1,0 +1,68 @@
+# OpenAPI Specification for Admin Throttle Endpoint
+
+paths:
+  /v1/admin/throttle:
+    get:
+      tags:
+        - Admin
+      summary: Get aggregator throttle configuration
+      description: |
+        Returns the persisted throttle config and publishes updates to Redis key `aggregator:throttle:v1`
+        for the aggregator engine to consume.
+      operationId: getAdminThrottle
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Throttle configuration retrieved successfully
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+    patch:
+      tags:
+        - Admin
+      summary: Update aggregator throttle configuration
+      description: |
+        Updates throttle settings for the aggregator engine. Accepts either `{ config: {...} }` or a config object.
+      operationId: patchAdminThrottle
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                maxConcurrentJobs:
+                  type: integer
+                maxRequestsPerMinute:
+                  type: integer
+                minDelayMs:
+                  type: integer
+                perAggregator:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      maxConcurrentJobs:
+                        type: integer
+                      maxRequestsPerMinute:
+                        type: integer
+                      minDelayMs:
+                        type: integer
+      responses:
+        "200":
+          description: Throttle configuration updated successfully
+        "400":
+          description: Invalid input
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+

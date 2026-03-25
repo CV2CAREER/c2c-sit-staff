@@ -9,6 +9,7 @@ import { Plan } from "../models/v1/plan.model";
 import { Feature } from "../models/v1/feature.model";
 import BlacklistedToken from "../models/v1/blacklistedToken.model";
 import { SubscriptionAllocation } from "../models/v1/subscription-allocation.model";
+import { AggregatorThrottleConfig } from "../models/v1/aggregator-throttle-config.model";
 import { AdminControl } from "../models/v1/admin-control.model";
 
 export const modelList = [
@@ -22,6 +23,7 @@ export const modelList = [
     Plan,
     Feature,
     SubscriptionAllocation,
+    AggregatorThrottleConfig,
     AdminControl,
     BlacklistedToken,
 ];
