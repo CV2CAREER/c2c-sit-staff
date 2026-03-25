@@ -3,6 +3,8 @@ import { AdminControl, QuestionAnswerMode } from "../../models/v1/admin-control.
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { isRedisUsable } from "../../utils/helpers";
+import { auditTrailApplicationService } from "./audit-trail.application.service";
+import { systemConfigApplicationService } from "./system-config.application.service";
 
 export interface AdminControlStatus {
   botEnabled: boolean;
@@ -21,12 +23,24 @@ const logger = getServiceLogger("admin-control-service");
 
 const ADMIN_CONTROL_CACHE_KEY = "admin:control:v1";
 const ADMIN_CONTROL_CACHE_TTL_SECONDS = 60;
+const SYSTEM_CONFIG_KEY = "admin.control";
 
 const toStatus = (row: AdminControl): AdminControlStatus => ({
   botEnabled: Boolean(row.botEnabled),
   questionAnswerMode: row.questionAnswerMode,
   updatedByUserId: row.updatedByUserId ?? null,
   updatedAt: row.updatedAt.toISOString(),
+});
+
+const toStatusFromSystemConfig = (record: {
+  value: any;
+  updatedByUserId: string | null;
+  updatedAt: string;
+}): AdminControlStatus => ({
+  botEnabled: Boolean(record.value?.botEnabled),
+  questionAnswerMode: (record.value?.questionAnswerMode || "db") as QuestionAnswerMode,
+  updatedByUserId: record.updatedByUserId ?? null,
+  updatedAt: record.updatedAt,
 });
 
 class AdminControlApplicationService {
@@ -73,8 +87,40 @@ class AdminControlApplicationService {
       }
     }
 
-    const row = await this.ensureSingleton();
-    const status = toStatus(row);
+    // Prefer SystemConfig as the source of truth.
+    const systemRecord = await systemConfigApplicationService.getOrCreate(
+      SYSTEM_CONFIG_KEY,
+      { botEnabled: true, questionAnswerMode: "db" },
+    );
+
+    // One-time backfill from legacy AdminControl row if SystemConfig is still defaulted.
+    if (
+      systemRecord.updatedByUserId === null &&
+      Boolean(systemRecord.value?.botEnabled) === true &&
+      String(systemRecord.value?.questionAnswerMode || "db") === "db"
+    ) {
+      const legacyRow = await this.ensureSingleton();
+      const legacyStatus = toStatus(legacyRow);
+      if (
+        legacyStatus.botEnabled !== true ||
+        legacyStatus.questionAnswerMode !== "db"
+      ) {
+        await systemConfigApplicationService.set({
+          key: SYSTEM_CONFIG_KEY,
+          value: {
+            botEnabled: legacyStatus.botEnabled,
+            questionAnswerMode: legacyStatus.questionAnswerMode,
+          },
+          updatedByUserId: legacyStatus.updatedByUserId,
+        });
+      }
+    }
+
+    const freshRecord = await systemConfigApplicationService.getOrCreate(
+      SYSTEM_CONFIG_KEY,
+      { botEnabled: true, questionAnswerMode: "db" },
+    );
+    const status = toStatusFromSystemConfig(freshRecord);
 
     if (!bypassCache && isRedisUsable(redis)) {
       await this.writeCached(redis, status);
@@ -94,28 +140,41 @@ class AdminControlApplicationService {
       );
     }
 
-    const row = await this.ensureSingleton();
+    const before = await this.getStatus(true);
 
-    if (typeof input.botEnabled === "boolean") {
-      row.botEnabled = input.botEnabled;
-    }
-    if (typeof input.questionAnswerMode === "string") {
-      row.questionAnswerMode = input.questionAnswerMode;
-    }
+    const merged = {
+      botEnabled:
+        typeof input.botEnabled === "boolean" ? input.botEnabled : before.botEnabled,
+      questionAnswerMode:
+        typeof input.questionAnswerMode === "string"
+          ? input.questionAnswerMode
+          : before.questionAnswerMode,
+    };
 
-    row.updatedByUserId = input.updatedByUserId;
-    await row.save();
+    const saved = await systemConfigApplicationService.set({
+      key: SYSTEM_CONFIG_KEY,
+      value: merged,
+      updatedByUserId: input.updatedByUserId,
+    });
 
-    const status = toStatus(row);
+    const status = toStatusFromSystemConfig(saved);
 
     const redis = await getConnectedRedis();
     if (isRedisUsable(redis)) {
       await this.writeCached(redis, status);
     }
 
+    await auditTrailApplicationService.log({
+      action: "ADMIN_CONTROL_UPDATE",
+      actorUserId: input.updatedByUserId,
+      targetType: "SystemConfig",
+      targetKey: SYSTEM_CONFIG_KEY,
+      before,
+      after: status,
+    });
+
     return status;
   }
 }
 
 export const adminControlApplicationService = new AdminControlApplicationService();
-

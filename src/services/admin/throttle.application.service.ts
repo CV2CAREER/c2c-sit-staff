@@ -3,6 +3,8 @@ import { AggregatorThrottleConfig } from "../../models/v1/aggregator-throttle-co
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { isRedisUsable } from "../../utils/helpers";
+import { auditTrailApplicationService } from "./audit-trail.application.service";
+import { systemConfigApplicationService } from "./system-config.application.service";
 
 export interface AggregatorThrottleConfigPayload {
   enabled: boolean;
@@ -33,6 +35,7 @@ const logger = getServiceLogger("throttle-service");
 
 export const AGGREGATOR_THROTTLE_CACHE_KEY = "aggregator:throttle:v1";
 const THROTTLE_CACHE_TTL_SECONDS = 6 * 60 * 60 + 300; // 6h + 5m
+const SYSTEM_CONFIG_KEY = "aggregator.throttle";
 
 const DEFAULT_CONFIG: AggregatorThrottleConfigPayload = {
   enabled: true,
@@ -113,8 +116,37 @@ class ThrottleApplicationService {
   }
 
   async getThrottleStatus(): Promise<AggregatorThrottleStatus> {
-    const row = await this.ensureSingleton();
-    return toStatus(row);
+    const systemRecord = await systemConfigApplicationService.getOrCreate(
+      SYSTEM_CONFIG_KEY,
+      DEFAULT_CONFIG,
+    );
+
+    // One-time backfill from legacy singleton row if SystemConfig is still defaulted.
+    if (
+      systemRecord.updatedByUserId === null &&
+      JSON.stringify(systemRecord.value || {}) === JSON.stringify(DEFAULT_CONFIG)
+    ) {
+      const legacyRow = await this.ensureSingleton();
+      const legacyStatus = toStatus(legacyRow);
+      if (JSON.stringify(legacyStatus.config) !== JSON.stringify(DEFAULT_CONFIG)) {
+        await systemConfigApplicationService.set({
+          key: SYSTEM_CONFIG_KEY,
+          value: legacyStatus.config,
+          updatedByUserId: legacyStatus.updatedByUserId,
+        });
+      }
+    }
+
+    const fresh = await systemConfigApplicationService.getOrCreate(
+      SYSTEM_CONFIG_KEY,
+      DEFAULT_CONFIG,
+    );
+
+    return {
+      config: normalizeConfig(fresh.value || {}),
+      updatedByUserId: fresh.updatedByUserId ?? null,
+      updatedAt: fresh.updatedAt,
+    };
   }
 
   async updateThrottle(input: UpdateAggregatorThrottleInput): Promise<AggregatorThrottleStatus> {
@@ -122,19 +154,35 @@ class ThrottleApplicationService {
       throw new ErrorHandler("Invalid throttle update payload.", 400);
     }
 
-    const row = await this.ensureSingleton();
-    const merged = normalizeConfig({ ...(row.config || {}), ...(input.config || {}) });
+    const before = await this.getThrottleStatus();
+    const merged = normalizeConfig({ ...(before.config || {}), ...(input.config || {}) });
 
-    row.config = merged as any;
-    row.updatedByUserId = input.updatedByUserId;
-    await row.save();
+    const saved = await systemConfigApplicationService.set({
+      key: SYSTEM_CONFIG_KEY,
+      value: merged,
+      updatedByUserId: input.updatedByUserId,
+    });
 
     // Publish to Redis for the aggregator engine to consume.
     await this.writeRedis(merged);
 
-    return toStatus(row);
+    const status: AggregatorThrottleStatus = {
+      config: normalizeConfig(saved.value || {}),
+      updatedByUserId: saved.updatedByUserId ?? null,
+      updatedAt: saved.updatedAt,
+    };
+
+    await auditTrailApplicationService.log({
+      action: "AGGREGATOR_THROTTLE_UPDATE",
+      actorUserId: input.updatedByUserId,
+      targetType: "SystemConfig",
+      targetKey: SYSTEM_CONFIG_KEY,
+      before,
+      after: status,
+    });
+
+    return status;
   }
 }
 
 export const throttleApplicationService = new ThrottleApplicationService();
-

@@ -11,6 +11,8 @@ import BlacklistedToken from "../models/v1/blacklistedToken.model";
 import { SubscriptionAllocation } from "../models/v1/subscription-allocation.model";
 import { AggregatorThrottleConfig } from "../models/v1/aggregator-throttle-config.model";
 import { AdminControl } from "../models/v1/admin-control.model";
+import { SystemConfig } from "../models/v1/system-config.model";
+import { AuditTrail } from "../models/v1/audit-trail.model";
 
 export const modelList = [
     User, 
@@ -25,5 +27,7 @@ export const modelList = [
     SubscriptionAllocation,
     AggregatorThrottleConfig,
     AdminControl,
+    SystemConfig,
+    AuditTrail,
     BlacklistedToken,
 ];

@@ -3,6 +3,7 @@ import { SCHEMA_MANAGED_TABLES } from "../../config/env";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { getSequelize } from "../../utils/sequelize";
+import { auditTrailApplicationService } from "./audit-trail.application.service";
 
 export type SchemaColumnType =
   | "text"
@@ -129,6 +130,15 @@ class SchemaManagementApplicationService {
       `Expanded table ${tableName} with column ${columnName} (type=${input.type}, by=${input.updatedByUserId})`,
     );
 
+    await auditTrailApplicationService.log({
+      action: "SCHEMA_EXPAND_COLUMN",
+      actorUserId: input.updatedByUserId,
+      targetType: "Schema",
+      targetKey: `${tableName}.${columnName}`,
+      before: null,
+      after: { tableName, columnName, type: input.type },
+    });
+
     return { ok: true };
   }
 
@@ -146,11 +156,28 @@ class SchemaManagementApplicationService {
       return { ok: true };
     }
 
+    const before = {
+      tableName,
+      columnName,
+      type: description[columnName]?.type,
+      allowNull: description[columnName]?.allowNull,
+      defaultValue: description[columnName]?.defaultValue,
+    };
+
     await queryInterface.removeColumn(tableName, columnName);
 
     logger.info(
       `Deleted column ${columnName} from ${tableName} (by=${input.updatedByUserId})`,
     );
+
+    await auditTrailApplicationService.log({
+      action: "SCHEMA_DELETE_COLUMN",
+      actorUserId: input.updatedByUserId,
+      targetType: "Schema",
+      targetKey: `${tableName}.${columnName}`,
+      before,
+      after: null,
+    });
 
     return { ok: true };
   }
@@ -158,4 +185,3 @@ class SchemaManagementApplicationService {
 
 export const schemaManagementApplicationService =
   new SchemaManagementApplicationService();
-

@@ -2,7 +2,9 @@ import { ENVIRONMENTNAME } from "../constants/constants";
 import { setDbReady } from "../middlewares/dbReady";
 import { AdminControl } from "../models/v1/admin-control.model";
 import { AggregatorThrottleConfig } from "../models/v1/aggregator-throttle-config.model";
+import { AuditTrail } from "../models/v1/audit-trail.model";
 import { SubscriptionAllocation } from "../models/v1/subscription-allocation.model";
+import { SystemConfig } from "../models/v1/system-config.model";
 import { ensureInFlightIndexes } from "../services/admin/in-flight.index-bootstrap.service";
 import { getServiceLogger } from "../utils/createLogger";
 import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
@@ -41,6 +43,8 @@ export const connectDB = async (): Promise<void> => {
         await SubscriptionAllocation.sync({ force: false });
         await AdminControl.sync({ force: false });
         await AggregatorThrottleConfig.sync({ force: false });
+        await SystemConfig.sync({ force: false });
+        await AuditTrail.sync({ force: false });
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await NewModel.sync({ force: false });        // new table
         // await ExistingModel.sync({ alter: true });
@@ -97,6 +101,8 @@ export const connectDB = async (): Promise<void> => {
         await SubscriptionAllocation.sync({ force: false });
         await AdminControl.sync({ force: false });
         await AggregatorThrottleConfig.sync({ force: false });
+        await SystemConfig.sync({ force: false });
+        await AuditTrail.sync({ force: false });
         await newSequelize.sync({ alter: true });
 
         // Get tables AFTER sync
