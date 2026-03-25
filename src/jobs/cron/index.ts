@@ -2,6 +2,7 @@ import { ScheduledTask } from "node-cron";
 import { USE_REDIS } from "../../config/env";
 import { getServiceLogger } from "../../utils/createLogger";
 import { enqueueAnalyticsCacheRefresh } from "../background/analyticsCacheWorker";
+import { createDailySummaryJob } from "./daily-summary.job";
 import { createAnalyticsCacheWarmupJob } from "./analytics-cache.job";
 import { createTokenCleanUpJob } from "./token-cleanup.job";
 
@@ -19,6 +20,7 @@ export function startAllCronJobs() {
   jobInstances = [
     { name: "Token Clean Up Job", task: createTokenCleanUpJob() },
     { name: "Analytics Cache Warmup Job", task: createAnalyticsCacheWarmupJob() },
+    { name: "Daily Summary Job", task: createDailySummaryJob() },
   ].flat();
 
   jobInstances.forEach(({ name, task }) => {
@@ -41,4 +43,3 @@ export function stopAllCronJobs() {
     logger.info(`Stopped cron job: ${name}`);
   });
 }
-

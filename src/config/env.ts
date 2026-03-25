@@ -45,6 +45,7 @@ export const JUSTCALL_API_SECRET = process.env.JUSTCALL_API_SECRET!;
 // SLACK
 export const SLACK_USERS_TOKEN = process.env.SLACK_USERS_TOKEN;
 export const SLACK_TOKEN_KEY = process.env.SLACK_TOKEN_KEY;
+export const SLACK_ADMIN_CHANNEL_ID = process.env.SLACK_ADMIN_CHANNEL_ID;
 
 // SENDGRID
 export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY!;
@@ -98,6 +99,21 @@ export const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
 export const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
 export const ZOHO_REDIRECT_URI = process.env.ZOHO_REDIRECT_URI!;
 export const ZOHO_OAUTH_URI = process.env.ZOHO_OAUTH_URI!;
+export const ZOHO_BOOKS_DASHBOARD_MODULE_API_NAME =
+  process.env.ZOHO_BOOKS_DASHBOARD_MODULE_API_NAME || "cm_business_snapshot";
+export const ZOHO_BOOKS_TOTAL_USERS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_TOTAL_USERS_FIELD_API_NAME || "cf_total_users";
+export const ZOHO_BOOKS_ACTIVE_AGGREGATORS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_ACTIVE_AGGREGATORS_FIELD_API_NAME ||
+  "cf_active_aggregators";
+export const ZOHO_BOOKS_ACTIVE_SUBSCRIPTIONS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_ACTIVE_SUBSCRIPTIONS_FIELD_API_NAME ||
+  "cf_active_subscriptions";
+export const ZOHO_BOOKS_VERIFIED_AGGREGATOR_LINKS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_VERIFIED_AGGREGATOR_LINKS_FIELD_API_NAME ||
+  "cf_verified_aggregator_links";
+export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME || "cf_generated_at";
 
 // DIGITAL OCEAN AI
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;

@@ -15,7 +15,7 @@ export interface StandardSlackNotification {
   severity: SlackSeverity;
   type: SlackEventType;
   body: string;
-  channel?: SlackChannel;
+  channel?: SlackChannel | string;
   teamMentions?: "DEVOPS" | "CSM";
   trigger?: string;
   location?: SlackLocation; // Enum for routing
@@ -37,7 +37,7 @@ export interface SlackJobPayload {
   eventType: SlackEventType;
   body: string;
   host: string;
-  channel?: SlackChannel;
+  channel?: SlackChannel | string;
   teamMentions?: "DEVOPS" | "CSM";
   location?: SlackLocation;
 }
