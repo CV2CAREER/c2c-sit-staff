@@ -38,6 +38,12 @@ export const BOT_SCRAPING_QUEUES = (process.env.BOT_SCRAPING_QUEUES || "")
   .map((value) => value.trim())
   .filter(Boolean);
 
+export const TABLE_MANAGER_TABLES = (process.env.TABLE_MANAGER_TABLES ||
+  "users,campaigns,applications")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 // FRONTEND URL
 export const RAT_FRONTEND_URL = process.env.RAT_FRONTEND_URL;
 export const IAT_FRONTEND_URL = process.env.IAT_FRONTEND_URL;

@@ -1,0 +1,35 @@
+# OpenAPI Specification for Admin Table Metadata Endpoint
+
+paths:
+  /v1/admin/table-metadata/{tableName}:
+    get:
+      tags:
+        - Admin
+      summary: Get current column headers for Table Manager
+      description: |
+        Returns current database column headers for an allowlisted table so the admin Table Manager can
+        render dynamic columns without frontend code changes.
+        Allowed tables are controlled by `TABLE_MANAGER_TABLES`.
+      operationId: getAdminTableMetadata
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+          description: Table name (e.g. users, campaigns, applications)
+      responses:
+        "200":
+          description: Table metadata retrieved successfully
+        "400":
+          description: Invalid tableName
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required or table not allowlisted
+        "404":
+          description: Table not available
+

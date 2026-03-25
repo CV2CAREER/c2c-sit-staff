@@ -5,6 +5,7 @@ import { inFlightAllocationApplicationService } from "../../services/admin/in-fl
 import { schemaManagementApplicationService } from "../../services/admin/schema-management.application.service";
 import { throttleApplicationService } from "../../services/admin/throttle.application.service";
 import { botWorkerIntegrationService } from "../../services/admin/bot-worker-integration.service";
+import { tableMetadataApplicationService } from "../../services/admin/table-metadata.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -317,5 +318,16 @@ export const deleteSchemaColumn = catchAsyncError(
       { ok: true },
       "Schema column deleted successfully",
     );
+  },
+);
+
+export const getAdminTableMetadata = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const tableName = req.params.tableName;
+    const metadata = await tableMetadataApplicationService.getTableMetadata(tableName);
+
+    res.apiSuccess(metadata, "Table metadata retrieved successfully");
   },
 );

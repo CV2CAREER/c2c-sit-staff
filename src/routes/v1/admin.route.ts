@@ -3,6 +3,7 @@ import {
   assignPlacementController,
   getAdminAnalytics,
   getAdminStatus,
+  getAdminTableMetadata,
   getAdminThrottle,
   getInFlightSubscriptions,
   getPlacementControllers,
@@ -65,6 +66,12 @@ adminRouterV1.delete(
   checkBlacklistedTokens,
   isUserAuthenticated,
   deleteSchemaColumn,
+);
+adminRouterV1.get(
+  "/table-metadata/:tableName",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminTableMetadata,
 );
 adminRouterV1.get(
   "/in-flight",
