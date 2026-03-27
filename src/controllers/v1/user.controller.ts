@@ -1,5 +1,12 @@
 import { Request, Response } from "express";
-import { loginUser as loginUserService, promoteUserToAdmin, handleGetUserInfo } from "../../services/user.service";
+import { 
+  loginUser as loginUserService, 
+  promoteUserToAdmin, 
+  handleGetUserInfo, 
+  logoutUser as logoutUserService, 
+  getClients as getClientsService, 
+  getAssistants as getAssistantsService 
+} from "../../services/user.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import { accessTokenOptions } from "../../utils/tokensOption";
@@ -90,6 +97,75 @@ export const getCurrentUserProfile = catchAsyncError(
         user: fullUser,
       },
       "User profile retrieved successfully",
+    );
+  },
+);
+
+// Logout User
+export const logoutUser = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { user } = req;
+    const token = req.authToken;
+
+    if (!token) {
+      logger.warn(`Logout failed: No token provided for user: ${user.email}`);
+      return res.apiSuccess(
+        {},
+        "No active session found",
+      );
+    }
+
+    logger.info(`Processing logout request for user: ${user.email}`);
+
+    // Blacklist the token
+    await logoutUserService(token, user.id); 
+
+    // Clear the cookie
+    res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, accessTokenOptions);
+
+    logger.info(`Logout successful for user: ${user.email}`);
+
+    res.apiSuccess(
+      {},
+      "Logout successful",
+    );
+  },
+);
+
+// Get all users with role 'client'
+export const getClients = catchAsyncError(
+  async (req: Request, res: Response) => {
+    logger.info(`Processing request to get all clients`);
+
+    const clients = await getClientsService();
+
+    logger.info(`Retrieved ${clients.length} clients`);
+
+    res.apiSuccess(
+      {
+        clients,
+        count: clients.length
+      },
+      "Clients retrieved successfully",
+    );
+  },
+);
+
+// Get all users with role 'assistant' (returned as PC - Placement Control)
+export const getAssistants = catchAsyncError(
+  async (req: Request, res: Response) => {
+    logger.info(`Processing request to get all assistants`);
+
+    const pcUsers = await getAssistantsService();
+
+    logger.info(`Retrieved ${pcUsers.length} assistants (returned as PC)`);
+
+    res.apiSuccess(
+      {
+        pcUsers,
+        count: pcUsers.length
+      },
+      "Placement Control (PC) retrieved successfully",
     );
   },
 );
