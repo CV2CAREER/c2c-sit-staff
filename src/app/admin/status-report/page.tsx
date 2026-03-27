@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -28,10 +29,14 @@ const StatusReportPage = () => {
   const [_error, setError] = useState<string | null>(null);
 
   // --- Centralized API Hooks (Queries) ---
-  const { botStatusDomain: seekDomain } = useAdminQueries({ fetchBotStatus: true, botName: "Seek" });
-  const { botStatusDomain: joraDomain } = useAdminQueries({ fetchBotStatus: true, botName: "Jora" });
-  const { botStatusDomain: reedDomain } = useAdminQueries({ fetchBotStatus: true, botName: "Reed" });
-  const { botStatusDomain: jobserveDomain } = useAdminQueries({ fetchBotStatus: true, botName: "Jobserve" });
+  const { 
+    botStatusDomain: consolidatedBotDomain,
+    answerModeDomain: consolidatedAnswerDomain,
+    adminStatusDomain 
+  } = useAdminQueries({ 
+    fetchAdminStatus: true,
+    fetchBotStatus: true, // We still use this to trigger the mapping in admin.api.ts
+  });
   
   const { answerModeDomain } = useAdminQueries({ fetchAnswerMode: true });
   const { data: answerModeData, isLoading: isAnswerModeDataLoading, error: answerModeError } = answerModeDomain;
@@ -39,72 +44,43 @@ const StatusReportPage = () => {
   // --- Centralized API Hooks (Mutations) ---
   const { toggleBotMutation, updateAnswerModeMutation } = useAdminMutations();
 
-  // Check if any bot is still loading
-  const isBotStatusLoading = seekDomain.isLoading || joraDomain.isLoading || jobserveDomain.isLoading;
-  const botStatusError = seekDomain.error || joraDomain.error || jobserveDomain.error;
+  const isBotStatusLoading = adminStatusDomain.isLoading;
+  const botStatusError = adminStatusDomain.error;
 
-  // Update bot status when individual queries complete
+  // Update bot status when consolidated data changes
   useEffect(() => {
-    const newBotStatus: Partial<BotStatusState> = {};
-    let hasUpdates = false;
-
-    if (seekDomain.data) {
-      newBotStatus["Seek"] = seekDomain.data === "On" ? "On" : "Off";
-      hasUpdates = true;
-    }
-    if (joraDomain.data) {
-      newBotStatus["Jora"] = joraDomain.data === "On" ? "On" : "Off";
-      hasUpdates = true;
-    }
-    if (reedDomain.data) {
-      newBotStatus["Reed"] = reedDomain.data === "On" ? "On" : "Off";
-      hasUpdates = true;
-    }
-    if (jobserveDomain.data) {
-      newBotStatus["Jobserve"] = jobserveDomain.data === "On" ? "On" : "Off";
-      hasUpdates = true;
+    if (consolidatedBotDomain.data) {
+      const status = consolidatedBotDomain.data.status as BotStatusState[BotName];
+      setBotStatus(prev => {
+        const next = { ...prev };
+        BOT_NAMES.forEach(name => {
+          next[name] = status;
+        });
+        return next;
+      });
     }
 
-    if (hasUpdates) {
-      setBotStatus((prev) => ({ ...prev, ...newBotStatus }));
-    }
-
-    // Handle errors
-    const errorMessages = [];
-    if (seekDomain.error) errorMessages.push(`Seek: ${seekDomain.error.message}`);
-    if (joraDomain.error) errorMessages.push(`Jora: ${joraDomain.error.message}`);
-    if (reedDomain.error) errorMessages.push(`Reed: ${reedDomain.error.message}`);
-    if (jobserveDomain.error) errorMessages.push(`Jobserve: ${jobserveDomain.error.message}`);
-
-    if (errorMessages.length > 0) {
-      setError(errorMessages.join(", "));
+    if (botStatusError) {
+      setError(`Backend error: ${botStatusError.message}`);
     } else {
       setError(null);
     }
-  }, [seekDomain.data, joraDomain.data, reedDomain.data, jobserveDomain.data, seekDomain.error, joraDomain.error, reedDomain.error, jobserveDomain.error]);
+  }, [consolidatedBotDomain.data, botStatusError]);
 
   const getBotError = (botName: string): string | null => {
-    switch (botName) {
-      case "Seek": return seekDomain.error?.message || null;
-      case "Jora": return joraDomain.error?.message || null;
-      case "Reed": return reedDomain.error?.message || null;
-      case "Jobserve": return jobserveDomain.error?.message || null;
-      default: return null;
-    }
+    return botStatusError?.message || null;
   };
 
   const handleAnswerModeToggle = () => {
-    if (answerMode && !updateAnswerModeMutation.isPending && answerModeData && answerModeData[0]) {
-      const target = answerModeData[0];
-      const nextMode = answerMode === "AI" ? "DB" : "AI";
-      const statusToSend = nextMode === "AI" ? "True" : "False";
+    if (answerMode && !updateAnswerModeMutation.isPending) {
+      const nextMode = answerMode === "AI" ? "db" : "ai";
 
       updateAnswerModeMutation.mutate(
-        { id: target.id, description: target.description, status: statusToSend },
+        { questionAnswerMode: nextMode },
         {
           onSuccess: () => {
-            toast.success(`Answer mode updated to ${nextMode}`);
-            setAnswerMode(nextMode);
+            toast.success(`Answer mode updated to ${nextMode.toUpperCase()}`);
+            setAnswerMode(nextMode.toUpperCase() as AnswerModeState);
           },
           onError: (err) => {
             setError(`Failed to update answer mode: ${err.message}`);
@@ -117,38 +93,36 @@ const StatusReportPage = () => {
 
   const handleBotToggle = (botName: BotName) => {
     const currentStatus = botStatus[botName];
-    const newAction = currentStatus === "On" ? "stop" : "start";
+    const nextEnabled = currentStatus !== "On";
 
     toggleBotMutation.mutate(
-      { bot: botName.toLowerCase(), action: newAction },
+      { botEnabled: nextEnabled },
       {
         onSuccess: () => {
-          toast.success(`${botName} bot ${newAction}ed successfully`);
-          const expectedNewStatus = newAction === "start" ? "On" : "Off";
-          setBotStatus((prev) => ({ ...prev, [botName]: expectedNewStatus }));
+          toast.success(`Bots ${nextEnabled ? "started" : "stopped"} successfully`);
+          const expectedNewStatus = nextEnabled ? "On" : "Off";
+          setBotStatus((prev) => {
+            const next = { ...prev };
+            BOT_NAMES.forEach(name => {
+              next[name] = expectedNewStatus;
+            });
+            return next;
+          });
         },
         onError: (err) => {
-          toast.error(err.message || `Failed to ${newAction} ${botName} bot`);
+          toast.error(err.message || `Failed to ${nextEnabled ? "start" : "stop"} bots`);
         }
       }
     );
   };
 
   useEffect(() => {
-    if (answerModeData && answerModeData[0]) {
-      setAnswerMode(answerModeData[0].status === "True" ? "AI" : "DB");
+    if (consolidatedAnswerDomain.data && consolidatedAnswerDomain.data[0]) {
+      setAnswerMode(consolidatedAnswerDomain.data[0].mode.toUpperCase() as AnswerModeState);
     }
-  }, [answerModeData]);
+  }, [consolidatedAnswerDomain.data]);
 
-  useEffect(() => {
-    if (botStatusError) setError("Failed to load bot status data");
-  }, [botStatusError]);
-
-  useEffect(() => {
-    if (answerModeError) setError("Failed to load answer mode data");
-  }, [answerModeError]);
-
-  const isInitialLoading = isBotStatusLoading || isAnswerModeDataLoading;
+  const isInitialLoading = isBotStatusLoading || consolidatedAnswerDomain.isLoading;
 
   return (
     <div className="flex flex-col gap-8 mt-8">
@@ -221,8 +195,7 @@ const StatusReportPage = () => {
                   botName={bot}
                   status={botStatus[bot]}
                   isLoading={
-                    toggleBotMutation.isPending &&
-                    toggleBotMutation.variables?.bot === bot.toLowerCase()
+                    toggleBotMutation.isPending
                   }
                   botError={getBotError(bot)}
                   onToggle={handleBotToggle}

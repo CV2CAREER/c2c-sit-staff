@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../useApi";
+import axiosInstance from "@/services/api-client";
+import { useMutation } from "@tanstack/react-query";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { 
   Throttle,
@@ -58,6 +62,7 @@ interface AdminQueriesOptions {
   fetchApplicationsCount?: boolean;
   fetchFollowersCount?: boolean;
   fetchInflightClientsList?: boolean;
+  fetchAdminStatus?: boolean; 
   fetchBotStatus?: boolean;
   botName?: string;
   fetchAnswerMode?: boolean;
@@ -68,6 +73,7 @@ interface AdminQueriesOptions {
   inflightPage?: number;
   inflightLimit?: number;
   chartPeriod?: string;
+  tableName?: string;
 }
 
 export const useAdminQueries = (options: AdminQueriesOptions) => {
@@ -85,6 +91,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     fetchApplicationsCount = false,
     fetchFollowersCount = false,
     fetchInflightClientsList = false,
+    fetchAdminStatus = false,
     fetchBotStatus = false,
     botName = "",
     fetchAnswerMode = false,
@@ -97,6 +104,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     inflightPage = 1,
     inflightLimit = 5,
     chartPeriod = "six-months",
+    // tableName = "",
   } = options;
 
   const vaAllocations = useFetchData<VaAllocationsResponse>({
@@ -190,33 +198,138 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     enabled: fetchInflightClientsList,
   });
 
+  const adminStatus = useFetchData<any>({
+    method: "GET",
+    url: endpoints.ADMIN_STATUS,
+    queryKey: ["admin-status"],
+    enabled: fetchAdminStatus || fetchBotStatus || fetchAnswerMode,
+  });
+
   const botStatus = useFetchData<BotStatus>({
     method: "GET",
     url: `${endpoints.ADMIN_BOT_CONTROL}?bot=${botName.toLowerCase()}&action=status`,
     queryKey: ["admin-bot-status", botName],
-    enabled: fetchBotStatus && !!botName,
+    enabled: fetchBotStatus && !!botName && false, // Disabled in favor of consolidated status
   });
 
   const answerMode = useFetchData<AnswerModeItem[]>({
     method: "GET",
     url: endpoints.ADMIN_ANSWER_MODE,
     queryKey: ["admin-answer-mode"],
-    enabled: fetchAnswerMode,
+    enabled: fetchAnswerMode && false, // Disabled in favor of consolidated status
   });
 
-  const tables = useFetchData<ApiTable[]>({
+  // Map consolidated status to per-bot format for frontend compatibility
+  const mappedBotStatus = adminStatus.data?.data ? {
+    status: adminStatus.data.data.botEnabled ? "On" : "Off",
+    bot: botName
+  } : null;
+
+  const mappedAnswerMode = adminStatus.data?.data ? [
+    { botName: "Seek", mode: adminStatus.data.data.questionAnswerMode },
+    { botName: "Jora", mode: adminStatus.data.data.questionAnswerMode },
+    { botName: "Indeed", mode: adminStatus.data.data.questionAnswerMode },
+    { botName: "Adzuna", mode: adminStatus.data.data.questionAnswerMode },
+    { botName: "LinkedIn", mode: adminStatus.data.data.questionAnswerMode },
+  ] : [];
+
+  const HARDCODED_TABLES = [
+    "Users",
+    "Partners",
+    "Referrers",
+    "SalesConsultants",
+    "CustomerServices",
+    "Locations",
+    "AggregatorThrottleConfigs",
+    "Plans",
+    "Profiles"
+  ];
+
+  const tables = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_TABLE_MANAGER,
-    queryKey: ["admin-tables"],
-    enabled: fetchTables,
+    url: options.tableName ? `${endpoints.ADMIN_TABLE_MANAGER}/${options.tableName}` : endpoints.ADMIN_TABLE_MANAGER,
+    queryKey: ["admin-schema", options.tableName || "all"],
+    enabled: fetchTables && !!options.tableName,
   });
 
-  const throttles = useFetchData<Throttle[]>({
+  const mappedTables: ApiTable[] = useMemo(() => {
+    if (options.tableName && tables.data?.data?.columns) {
+      return [{
+        _id: options.tableName,
+        name: options.tableName,
+        columns: tables.data.data.columns.map((c: any) => c.name)
+      }];
+    }
+    return HARDCODED_TABLES.map(table => ({
+      _id: table,
+      name: table,
+      columns: []
+    }));
+  }, [tables.data, options.tableName]);
+
+  const throttles = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_THROTTLE,
     queryKey: ["admin-throttles"],
     enabled: fetchThrottles,
   });
+
+  const mappedThrottles: Throttle[] = useMemo(() => {
+    if (!throttles.data?.data?.config) return [];
+    const config = throttles.data.data.config;
+    const result: Throttle[] = [
+      {
+        id: 0,
+        aggregator: "Global (Max Jobs)",
+        value: config.maxConcurrentJobs,
+      },
+      {
+        id: -1,
+        aggregator: "Global (Req/Min)",
+        value: config.maxRequestsPerMinute,
+      }
+    ];
+
+    if (config.perAggregator) {
+      Object.entries(config.perAggregator).forEach(([agg, settings]: [string, any], idx) => {
+        result.push({
+          id: idx + 1,
+          aggregator: agg,
+          value: settings.maxConcurrentJobs ?? config.maxConcurrentJobs,
+        });
+      });
+    }
+    return result;
+  }, [throttles.data]);
+
+  const mappedApplicationsCount = useMemo(() => {
+    if (!applicationsCount.data?.data?.metrics) return null;
+    const metrics = applicationsCount.data.data.metrics;
+    return {
+      successCount: metrics.successful,
+      failedCount: metrics.failed,
+    };
+  }, [applicationsCount.data]);
+
+  const mappedChartData = useMemo(() => {
+    if (!applicationChartData.data?.data?.days) return null;
+    const days = applicationChartData.data.data.days;
+    const sortedDays = Object.keys(days).sort();
+    
+    // Extract applications source metrics for each day
+    const successful: number[] = [];
+    const failed: number[] = [];
+    const label: string[] = [];
+
+    sortedDays.forEach(day => {
+      const metrics = days[day].applications || { successful: 0, failed: 0 };
+      successful.push(metrics.successful);
+      failed.push(metrics.failed);
+      label.push(day);
+    });
+
+    return { successful, failed, label };
+  }, [applicationChartData.data]);
 
   return {
     vaAllocationsDomain: {
@@ -269,11 +382,23 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       error: overallStats.error,
     },
     applicationChartDataDomain: {
-      data: applicationChartData.data?.data,
+      data: mappedChartData,
       isLoading: applicationChartData.isLoading,
       isSuccess: applicationChartData.isSuccess,
       isError: applicationChartData.isError,
       error: applicationChartData.error,
+    },
+    totalApplicationsCard: {
+      title: "Total Applications",
+      data: (applicationsCount.data?.data?.metrics?.successful || 0) + (applicationsCount.data?.data?.metrics?.failed || 0),
+    },
+    successfulApplicationsCard: {
+      title: "Successful Applications",
+      data: applicationsCount.data?.data?.metrics?.successful || 0,
+    },
+    failedApplicationsCard: {
+      title: "Failed Applications",
+      data: applicationsCount.data?.data?.metrics?.failed || 0,
     },
     usersCountDomain: {
       data: usersCount.data?.data,
@@ -290,14 +415,14 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       error: aggregatorsCount.error,
     },
     applicationsCountDomain: {
-      data: applicationsCount.data?.data,
+      data: mappedApplicationsCount,
       isLoading: applicationsCount.isLoading,
       isSuccess: applicationsCount.isSuccess,
       isError: applicationsCount.isError,
       error: applicationsCount.error,
     },
     followersCountDomain: {
-      data: followersCount.data, // Followers data is usually direct from backend response in v2
+      data: followersCount.data?.data,
       isLoading: followersCount.isLoading,
       isSuccess: followersCount.isSuccess,
       isError: followersCount.isError,
@@ -311,28 +436,35 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       error: inflightClientsList.error,
     },
     botStatusDomain: {
-      data: botStatus.data?.data, // Now returns BotStatus directly
-      isLoading: botStatus.isLoading,
-      isSuccess: botStatus.isSuccess,
-      isError: botStatus.isError,
-      error: botStatus.error,
+      data: mappedBotStatus,
+      isLoading: adminStatus.isLoading,
+      isSuccess: adminStatus.isSuccess,
+      isError: adminStatus.isError,
+      error: adminStatus.error,
     },
     answerModeDomain: {
-      data: answerMode.data?.data, // Now returns AnswerModeItem[] directly
-      isLoading: answerMode.isLoading,
-      isSuccess: answerMode.isSuccess,
-      isError: answerMode.isError,
-      error: answerMode.error,
+      data: mappedAnswerMode,
+      isLoading: adminStatus.isLoading,
+      isSuccess: adminStatus.isSuccess,
+      isError: adminStatus.isError,
+      error: adminStatus.error,
+    },
+    adminStatusDomain: {
+      data: adminStatus.data?.data,
+      isLoading: adminStatus.isLoading,
+      isSuccess: adminStatus.isSuccess,
+      isError: adminStatus.isError,
+      error: adminStatus.error,
     },
     tablesDomain: {
-      data: tables.data?.data, // Now returns ApiTable[] directly
+      data: mappedTables,
       isLoading: tables.isLoading,
       isSuccess: tables.isSuccess,
       isError: tables.isError,
       error: tables.error,
     },
     throttlesDomain: {
-      data: throttles.data?.data, // Now returns Throttle[] directly
+      data: mappedThrottles,
       isLoading: throttles.isLoading,
       isSuccess: throttles.isSuccess,
       isError: throttles.isError,
@@ -342,16 +474,16 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
 };
 
 export const useAdminMutations = () => {
-  const toggleBot = useMutateData<any, { bot: string; action: string }>({
-    method: "POST", // Changed from GET to POST
+  const toggleBot = useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
+    method: "PATCH",
     url: endpoints.ADMIN_BOT_CONTROL,
     mutationKey: ["admin-bot-toggle"],
     onSuccess: () => {},
     onError: () => {},
   });
 
-  const updateAnswerMode = useMutateData<any, UpdateAnswerModePayload>({
-    method: "PUT",
+  const updateAnswerMode = useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
+    method: "PATCH",
     url: endpoints.ADMIN_ANSWER_MODE,
     mutationKey: ["admin-update-answer-mode"],
     onSuccess: () => {},
@@ -366,8 +498,8 @@ export const useAdminMutations = () => {
     onError: () => {},
   });
 
-  const updateTable = useMutateData<ApiTable, CreateColumnPayload>({
-    method: "PUT",
+  const updateTable = useMutateData<any, any>({
+    method: "POST", // v1 uses POST /schema for expandColumn
     url: endpoints.ADMIN_TABLE_MANAGER,
     mutationKey: ["admin-update-table"],
     onSuccess: () => {},
@@ -382,32 +514,32 @@ export const useAdminMutations = () => {
     onError: () => {},
   });
 
-  const deleteColumn = useMutateData<any, { tableName: string; columnName: string }>({
-    method: "DELETE",
-    url: endpoints.ADMIN_TABLE_MANAGER,
+  const deleteColumn = useMutation({
     mutationKey: ["admin-delete-column"],
-    onSuccess: () => {},
-    onError: () => {},
+    mutationFn: async ({ tableName, columnName }: { tableName: string; columnName: string }) => {
+      const response = await axiosInstance.delete(`${endpoints.ADMIN_TABLE_MANAGER}/${tableName}/${columnName}`);
+      return response.data;
+    },
   });
 
   const createThrottle = useMutateData<any, any>({
-    method: "POST",
+    method: "PATCH",
     url: endpoints.ADMIN_THROTTLE,
     mutationKey: ["admin-create-throttle"],
     onSuccess: () => {},
     onError: () => {},
   });
 
-  const updateThrottle = useMutateData<any, { id: number; value: number }>({
-    method: "PUT",
+  const updateThrottle = useMutateData<any, any>({
+    method: "PATCH",
     url: endpoints.ADMIN_THROTTLE,
     mutationKey: ["admin-update-throttle"],
     onSuccess: () => {},
     onError: () => {},
   });
 
-  const deleteThrottle = useMutateData<any, { id: number }>({
-    method: "DELETE",
+  const deleteThrottle = useMutateData<any, any>({
+    method: "PATCH",
     url: endpoints.ADMIN_THROTTLE,
     mutationKey: ["admin-delete-throttle"],
     onSuccess: () => {},

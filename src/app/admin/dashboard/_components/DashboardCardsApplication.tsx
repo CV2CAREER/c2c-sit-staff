@@ -35,27 +35,31 @@ const DashboardCardsApplication: React.FC = () => {
     };
   }, [selected]);
 
-  const { applicationsCountDomain } = useAdminQueries({
+  const { 
+    totalApplicationsCard,
+    successfulApplicationsCard,
+    failedApplicationsCard,
+    applicationsCountDomain 
+  } = useAdminQueries({
     fetchApplicationsCount: true,
     startDate,
     endDate
   });
 
-  const queryJobAppsCount = applicationsCountDomain;
-  const isLoading = queryJobAppsCount.isLoading;
+  const isLoading = applicationsCountDomain.isLoading;
 
   const dashboardData = [
     {
-      title: "Total Applications",
-      data: (queryJobAppsCount.data?.data.successCount || 0) + (queryJobAppsCount.data?.data.failedCount || 0),
+      title: totalApplicationsCard.title,
+      data: totalApplicationsCard.data,
     },
     {
-      title: "Successful Applications",
-      data: queryJobAppsCount.data?.data.successCount || 0,
+      title: successfulApplicationsCard.title,
+      data: successfulApplicationsCard.data,
     },
     {
-      title: "Failed Applications",
-      data: queryJobAppsCount.data?.data.failedCount || 0,
+      title: failedApplicationsCard.title,
+      data: failedApplicationsCard.data,
     }
   ];
   

@@ -1,6 +1,5 @@
 "use client";
 import React, { useMemo } from "react";
-import toast from "react-hot-toast";
 import { StyledDataGridPro } from "@/utils/table";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 
@@ -52,21 +51,25 @@ const modifyArray = () => [
      width: 150,
    },
  ];
- 
- const transformedClientData = useMemo(() => {
-  if (Array.isArray(clientsData)) {
-    return clientsData.map((client, index) => {
-      const id = Number(client.CustomerId);
-      return {
-        id: !isNaN(id) ? id : index, 
-        ...client,
-      };
-    });
-  } else {
-    toast.error("Invalid data format from server");
-    return [];
-  }
-}, [clientsData]);
+  const transformedClientData = useMemo(() => {
+   const items = clientsData?.items || [];
+   if (Array.isArray(items)) {
+     return items.map((item: any, index: number) => {
+       return {
+         id: item.subscription.id || index,
+         Full_Name: `${item.subscriber.firstName} ${item.subscriber.lastName}`,
+         Alias_Email: item.subscriber.email,
+         SeekSubStartDate: new Date(item.subscription.createdAt).toLocaleDateString(),
+         SeekSubEndDate: item.subscription.expiresAt ? new Date(item.subscription.expiresAt).toLocaleDateString() : "N/A",
+         Assurance: item.subscription.title,
+         VaName: item.allocation.placementController ? `${item.allocation.placementController.firstName} ${item.allocation.placementController.lastName}` : "Unassigned",
+         status: item.subscription.paymentStatus,
+       };
+     });
+   } else {
+     return [];
+   }
+ }, [clientsData]);
  
   return (
     <section className="py-6">

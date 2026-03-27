@@ -53,8 +53,17 @@ const AggregatorsThrottle = () => {
       return;
     }
 
+    // Backend PATCH /throttle expects { config: { perAggregator: { [name]: { maxConcurrentJobs: value } } } }
     createThrottleMutation.mutate(
-      { ...newThrottle, value: Number(newThrottle.value) },
+      { 
+        config: { 
+          perAggregator: { 
+            [newThrottle.aggregator]: { 
+              maxConcurrentJobs: Number(newThrottle.value) 
+            } 
+          } 
+        } 
+      },
       {
         onSuccess: () => {
           toast.success("Throttle added successfully");
@@ -68,15 +77,30 @@ const AggregatorsThrottle = () => {
     );
   };
 
-  const handleUpdateThrottle = (id: number) => {
+  const handleUpdateThrottle = (id: number, aggregator: string) => {
     const newValue = editedThrottles[id];
     if (newValue === undefined || newValue === "" || isNaN(Number(newValue))) {
       toast.error("Invalid throttle value.");
       return;
     }
 
+    let payload: any = {};
+    if (aggregator === "Global (Max Jobs)") {
+      payload = { config: { maxConcurrentJobs: Number(newValue) } };
+    } else if (aggregator === "Global (Req/Min)") {
+      payload = { config: { maxRequestsPerMinute: Number(newValue) } };
+    } else {
+      payload = { 
+        config: { 
+          perAggregator: { 
+            [aggregator]: { maxConcurrentJobs: Number(newValue) } 
+          } 
+        } 
+      };
+    }
+
     updateThrottleMutation.mutate(
-      { id, value: Number(newValue) },
+      payload,
       {
         onSuccess: () => {
           toast.success("Throttle updated successfully");
@@ -94,11 +118,20 @@ const AggregatorsThrottle = () => {
     );
   };
 
-  const handleDeleteThrottle = (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this throttle?")) return;
+  const handleDeleteThrottle = (id: number, aggregator: string) => {
+    if (!window.confirm(`Are you sure you want to delete the throttle for ${aggregator}?`)) return;
 
+    // Backend delete for perAggregator usually involves removing the key.
+    // Assuming backend PATCH with null/undefined key might work or it might need a specialized DELETE.
+    // For now, we'll try to set it to null in PATCH.
     deleteThrottleMutation.mutate(
-      { id },
+      { 
+        config: { 
+          perAggregator: { 
+            [aggregator]: null 
+          } 
+        } 
+      },
       {
         onSuccess: () => {
           toast.success("Throttle deleted successfully");
@@ -161,7 +194,7 @@ const AggregatorsThrottle = () => {
                       </td>
                       <td className="py-4 text-right flex justify-end gap-2">
                         <button
-                          onClick={() => handleUpdateThrottle(throttle.id)}
+                          onClick={() => handleUpdateThrottle(throttle.id, throttle.aggregator)}
                           disabled={!isEdited || isDisabled || currentValue === "" || isNaN(Number(currentValue))}
                           className={`bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors ${
                             (!isEdited || isDisabled || currentValue === "" || isNaN(Number(currentValue))) ? "opacity-30 cursor-not-allowed" : ""
@@ -171,7 +204,7 @@ const AggregatorsThrottle = () => {
                           {isUpdating ? <CircularProgress size={16} color="inherit" /> : "Save"}
                         </button>
                         <button
-                          onClick={() => handleDeleteThrottle(throttle.id)}
+                          onClick={() => handleDeleteThrottle(throttle.id, throttle.aggregator)}
                           disabled={isDisabled}
                           className={`bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition-colors ${
                             isDisabled ? "opacity-50 cursor-not-allowed" : ""

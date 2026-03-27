@@ -57,7 +57,7 @@ const ApplicationPerformanceChart = () =>  {
   
   const pData = data?.successful || [];
   const uData = data?.failed || [];
-  const xLabels = data?.labels || [];
+  const xLabels = data?.label || [];
 
   return (
     <div className="w-full bg-white rounded-md p-4 flex flex-col gap-4 justify-between shadow">
