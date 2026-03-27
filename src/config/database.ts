@@ -10,6 +10,7 @@ import { getServiceLogger } from "../utils/createLogger";
 import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
+import { User } from "../models/v1/user.model";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -47,7 +48,7 @@ export const connectDB = async (): Promise<void> => {
         await AuditTrail.sync({ force: false });
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await NewModel.sync({ force: false });        // new table
-        // await ExistingModel.sync({ alter: true });
+        await User.sync({ alter: true });
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();

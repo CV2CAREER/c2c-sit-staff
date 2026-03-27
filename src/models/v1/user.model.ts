@@ -58,7 +58,7 @@ import { Location } from "./location.model";
 export class User extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   @AllowNull(true)
@@ -244,13 +244,16 @@ export class User extends Model {
   // Foreign Keys - assuming Profile model exists
   @ForeignKey(() => Profile)
   @AllowNull(true)
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   profileId?: string;
 
   @ForeignKey(() => Profile)
   @AllowNull(true)
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   secondaryProfileId?: string;
+
+  @BelongsTo(() => Profile, "profileId")
+  profile?: Profile;
 
   @BelongsTo(() => Profile, "secondaryProfileId")
   secondaryProfile?: Profile;
@@ -358,9 +361,6 @@ export class User extends Model {
 
   @HasOne(() => SalesConsultant)
   salesConsultant?: SalesConsultant;
-
-  @HasOne(() => Profile)
-  profile?: Profile;
 
   @HasOne(() => CustomerService)
   customerService?: CustomerService;
