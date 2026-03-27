@@ -1,0 +1,12 @@
+export const ADMIN_STATS = "/api/admin/overall-stats";
+export const ADMIN_APPLICATION_STATS = "/api/admin/application-stats";
+export const ADMIN_CLIENT_ALLOCATION = "/api/admin/client-allocation";
+export const ADMIN_CLIENT_MILESTONE_STATS = "/api/admin/job-applications/client-milestones";
+export const ADMIN_ONBOARDED_CLIENTS = "/api/admin/job-applications/onboarded-clients";
+export const ADMIN_JOBSITE_STATS = "/api/admin/job-applications/jobsites-analytics";
+export const ADMIN_INFLIGHT_CLIENTS = "/api/admin/inflight-clients";
+export const ADMIN_APPLICATION_CHART_DATA = "/api/admin/job-applications/applications-chart";
+export const ADMIN_USERS = "/api/admin/users";
+export const ADMIN_AGGREGATORS = "/api/admin/job-management/aggregators";
+export const ADMIN_APPLICATIONS = "/api/admin/job-management/applications";
+export const ADMIN_FOLLOWERS = "/api/admin/followers";

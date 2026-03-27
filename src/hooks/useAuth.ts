@@ -1,69 +1,56 @@
 "use client";
 
-// import { useAuthStore } from "@/store/user.store";
-// import { useRef, useState } from "react";
+import { useAuthStore } from "@/store/user.store";
+import { useEffect } from "react";
+import { useUserQueries } from "./api/user.api";
 
-// type SessionState = "checking" | "valid" | "invalid" | "noToken";
-
+/**
+ * useAuth — Manages the authentication lifecycle via a single network call.
+ *
+ * Strategy (backend-constrained):
+ * Since there is no dedicated /validate-session endpoint in the staff-backend,
+ * we use GET /api/v1/user/profile directly as both a session check and a user fetch.
+ *
+ * 200 OK  → User is authenticated. Populate Zustand store with user data.
+ * 401     → No cookie / expired. isAuthenticated = false. Guard redirects to /login.
+ * Loading → isLoading = true. Guard renders a spinner (no white flash).
+ */
 export function useAuth() {
-  // const setUser = useAuthStore((s) => s.setUser);
-  // const [sessionState, setSessionState] = useState<SessionState>("checking");
-  // const sessionLocked = useRef(false);
+  const { setUser, setViewingAsUser, isViewingAsUser, viewedByUserEmail } =
+    useAuthStore((s) => s);
+ 
+   // Single request: fetch user profile (acts as session validation + data hydration)
+   const { userData, userLoading, userError, userSuccess } = useUserQueries({
+    fetchUserData: true, // Always fetch on mount
+  }).userDomain;
 
-  // 1️⃣ Validate session on mount
-  //   useEffect(() => {
-  //     if (sessionLocked.current) return;
+  // Sync fetched user into the Zustand global store
+  useEffect(() => {
+    if (userSuccess && userData?.user) {
+      setUser(userData.user);
+      setViewingAsUser(
+        userData.user.isViewingAsUser ?? false,
+        userData.user.viewedByUserEmail ?? null
+      );
+    }
+  }, [userSuccess, userData, setUser, setViewingAsUser]);
 
-  //     (async () => {
-  //       try {
-  //         // const res = await validateSession();
+  // Clear store if session expired / token rejected
+  useEffect(() => {
+    if (userError) {
+      setUser(null);
+    }
+  }, [userError, setUser]);
 
-  //         if (res === "no-token") {
-  //           // 🚫 No cookie/token → skip everything, no spinner
-  //           setSessionState("noToken");
-  //           return;
-  //         }
+  const isAuthenticated = userSuccess && !!userData?.user;
 
-  //         if (res === "valid") {
-  //           // ✅ Valid session → proceed to user fetch
-  //           setSessionState("valid");
-  //           sessionLocked.current = true;
-  //         } else {
-  //           setSessionState("invalid");
-  //         }
-  //       } catch (err) {
-  //         console.error("Session validation failed:", err);
-  //         setSessionState("invalid");
-  //       }
-  //     })();
-  //   }, []);
-
-  // 4️⃣ Fetch user data once session is valid
-  //   const { userData, userLoading, userError } = useUserQueries({
-  //     fetchUserData: sessionState === "valid",
-  //   }).userDomain;
-
-  //   console.log("USER DATA", userData);
-
-  // Sync Zustand with fetched user
-  //   useEffect(() => {
-  //     if (userData) setUser(userData.user);
-  //   }, [userData, setUser]);
-
-  //   const noToken = sessionState === "noToken";
-  //   const checking = sessionState === "checking";
-  //   const valid = sessionState === "valid";
-
-  //   const isLoading = checking || (valid && userLoading);
-  //   const isAuthenticated = valid && !!userData?.user && !userError;
-
-  // 5️⃣ Return clean shape
   return {
-    // user: userData?.user ?? null,
-    // token: userData?.token ?? null,
-    // isLoading: noToken ? false : isLoading, // ✅ no spinner for noToken
-    // isAuthenticated,
-    // isError: !!userError,
-    // error: userError,
+    user: userData?.user ?? null,
+    isLoading: userLoading,
+    isAuthenticated,
+    isViewingAsUser: isViewingAsUser || (userData?.user?.isViewingAsUser ?? false),
+    viewedByUserEmail: viewedByUserEmail || userData?.user?.viewedByUserEmail || null,
+    isError: !!userError,
+    error: userError,
   };
 }

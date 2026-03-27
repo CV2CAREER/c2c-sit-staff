@@ -1,3 +1,208 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@theme {
+  --font-poppins: "Poppins", sans-serif;
+
+  --breakpoint-mobileSM: 370px;
+  --breakpoint-mobile: 640px;
+  --breakpoint-tablet: 768px;
+  --breakpoint-smallLaptop: 1024px;
+  --breakpoint-desktop: 1280px;
+  --breakpoint-bigLaptop: 1440px;
+  --breakpoint-television: 1536px;
+
+  --color-blue: #008ED3;
+  --color-lightblue: #D3FFFF;
+  --color-success: #1EB62D;
+  --color-warning: #FADB50;
+  --color-black: #131414;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-blueLight: var(--primary-blue-light);
+  --color-primary-black: var(--primary-black);
+  --color-primary-blackLight: var(--primary-black-light);
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-career-blue-100: #EDFFFF;
+  --color-career-blue-200: #D3FFFF;
+  --color-career-blue-300: #88D0FF;
+  --color-career-blue-500: #004174;
+  --color-career-blue-800: #008ED3;
+  --color-career-blue-400: #1A56DB;
+
+  --color-career-gray-200: #797979;
+  --color-career-gray-300: #F3F3F3;
+  --color-career-gray-400: #F9F9F9;
+
+  --color-career-black-200: #131414;
+
+  --color-green-900: #1EB62D;
+
+  --color-blue-gray-200: #000000;
+
+  --color-warning-alt: #E48F40;
+  --color-warning-light: #FFFAF5;
+  --color-success-alt: #1EB62D;
+  --color-success-light: #F0FFF1;
+  --color-neutral: #797979;
+  --color-tertiary: #00BFF2;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Regular.ttf') format('truetype');
+  font-weight: 400; /* Regular */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Medium.ttf') format('truetype');
+  font-weight: 500; /* Medium */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-SemiBold.ttf') format('truetype');
+  font-weight: 600; /* SemiBold */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('/fonts/Poppins-Bold.ttf') format('truetype');
+  font-weight: 700; /* Bold */
+  font-style: normal;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  color: var(--accent);
+    
+}
+
+.sidebar {
+  @apply fixed top-0 bottom-0 w-[250px] z-20 bg-white hidden lg:flex flex-col overflow-y-auto p-4;
+}
+
+.topbar {
+  @apply h-[65px] bg-white px-4 py-4 rounded-md flex justify-between items-center;
+}
+
+/* Globals */
+.btn-transparent {
+  @apply h-[40px] bg-transparent text-[17px] px-4 py-2 border border-black rounded-md;
+}
+.btn-primary {
+  @apply h-[40px] bg-blue text-[17px] text-white px-4 py-2 rounded-md;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 200 100% 41%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --primary-black: #333333; /* Pick this from te=he login page */;
+    --primary-black-light: #666666;  /* Pick this from the login page label */;
+    --primary-blue-light: #c1dae7;  /* Pick this from the login page label */;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: #008ED3;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+}
+}
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+.input-wrapper{
+  @apply text-primary-blackLight w-full h-12 bg-none border rounded-lg py-3 px-2 flex justify-between items-center text-sm 
+}
+.input-style{
+  @apply w-full bg-inherit border-none outline-none mx-2 text-sm placeholder:text-input  
+}
+.btn-primary {
+  @apply text-white transition ease-in-out delay-150 bg-primary hover:-translate-y-1 hover:scale-110 duration-300 px-4 py-2 rounded
+}
+
+.btn-disabled {
+  @apply text-white bg-primary-blueLight hover:cursor-not-allowed hover:-translate-y-1 hover:scale-110 duration-300 px-4 py-2 rounded disabled:cursor-not-allowed
+}

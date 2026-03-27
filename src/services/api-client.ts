@@ -9,24 +9,26 @@ declare module "axios" {
   }
 }
 
+export const BASE_URL = SERVER_URI?.endsWith("/")
+  ? SERVER_URI
+  : `${SERVER_URI}/`;
+
 const axiosInstance = axios.create({
+  baseURL: BASE_URL,
   withCredentials: true,
 });
 
 export const authAxios = axios.create({
-  baseURL: SERVER_URI,
+  baseURL: BASE_URL,
   withCredentials: true,
 });
 
-// Define this outside to track refresh state
-// const isRefreshing = false;
-// const refreshPromise: Promise<any> | null = null;
-
 // ✅ Define routes that don't need auth using your constants
 const PUBLIC_ROUTES = [
-  `${SERVER_URI}${API_AUTH_PATHS.LOGIN}`,
-  `${SERVER_URI}${API_AUTH_PATHS.SIGNUP}`,
+  `${BASE_URL}${API_AUTH_PATHS.LOGIN}`,
+  `${BASE_URL}${API_AUTH_PATHS.VALIDATESESSION}`,
 ];
+
 
 // SITE UNDER MAINTENANCE
 const redirectToSiteUnderMaintenacePage = () => {

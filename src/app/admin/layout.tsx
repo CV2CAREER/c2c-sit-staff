@@ -1,9 +1,13 @@
 import { AuthStoreProvider } from "@/store/user.store";
 import { Metadata } from "next";
-import { DashboardProtectedGuard } from "@/utils/guards/DashboardProtectedGuard";
 import AdminDashboardClientLayout from "./_components/AdminDashboardClientLayout";
+import React, { Suspense } from "react";
+import Sidebar from "@/components/SideBar";
+import TopBar from "@/components/TopBar";
+import ViewAsUserBanner from "@/components/ViewAsUserBanner";
 
 export const metadata: Metadata = {
+  // ... (metadata remains unchanged)
   title: {
     default: "Admin Dashboard",
     template: "%s | CVtoCAREER Admin",
@@ -49,16 +53,33 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AdminDashboardLayout({
+import AdminPersonaGuard from "./_components/AdminPersonaGuard";
+
+function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
     <AuthStoreProvider user={null} accessToken={null}>
-      <DashboardProtectedGuard>
-        <AdminDashboardClientLayout>{children}</AdminDashboardClientLayout>
-      </DashboardProtectedGuard>
+      <AdminPersonaGuard>
+        <AdminDashboardClientLayout>
+
+    <main className="relative flex max-w-screen overflow-hidden overflow-x-hidden">
+      <Sidebar />
+      <section className="w-full lg:max-w-[calc(100vw-250px)] min-h-screen lg:ms-[250px] bg-[#f3f3f3] overflow-hidden overflow-x-hidden">
+        <ViewAsUserBanner />
+        <div className="p-3 sm:p-6">
+          <TopBar title={"Admin"} />
+          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+        </div>
+      </section>
+    </main>
+
+</AdminDashboardClientLayout>
+      </AdminPersonaGuard>
     </AuthStoreProvider>
   );
 }
+
+export default AdminDashboardLayout;

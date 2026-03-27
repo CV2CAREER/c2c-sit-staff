@@ -1,0 +1,181 @@
+/* eslint-disable no-console */
+"use client";
+import React, { useEffect, useState } from "react";
+import { FiLoader } from "react-icons/fi";
+import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Eye, EyeOff } from "lucide-react";
+import { LoginSchema } from "@/utils/validationSchemas";
+import { useAuthMutations } from "@/hooks/api/auth.api";
+
+export default function LoginForm() {
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const handleShowPassword = (): void => {
+    setShowPassword(!showPassword);
+  };
+  // const router = useRouter();
+
+  const searchParams = useSearchParams();
+  // const callbackUrl = searchParams?.get("callbackUrl") || undefined;
+  const error = searchParams?.get("error");
+
+  // Consume auth hook — login mutation drives state, redirect, and store sync
+  const {
+    loginDomain: { loginUser, loginUserLoading },
+  } = useAuthMutations();
+
+  // Show error messages based on URL parameters
+  useEffect(() => {
+    if (error) {
+      switch (error) {
+        case "unauthorized":
+          toast.error(
+            "Access denied. You don't have permission to access this area."
+          );
+          break;
+        case "unauthorized_app":
+          toast.error("You don't have permission to access that application.");
+          break;
+        case "SessionRequired":
+          toast.error("Please sign in to continue.");
+          break;
+        default:
+          toast.error("An error occurred. Please try signing in again.");
+      }
+    }
+  }, [error]);
+
+  /*---- Form Definition ----*/
+  const form = useForm<z.infer<typeof LoginSchema>>({
+    resolver: zodResolver(LoginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  /*---- Submit handler ----*/
+  async function onSubmit(values: z.infer<typeof LoginSchema>) {
+    const toastId = toast.loading("Signing in...");
+
+    loginUser(
+      {
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
+      },
+      {
+        onSuccess: () => {
+          toast.dismiss(toastId);
+          toast.success("Login successful!");
+          // Role-based redirect is handled automatically in useAuthMutations onSuccess
+        },
+        onError: (error) => {
+          toast.dismiss(toastId);
+          let message = "Invalid email or password. Please try again.";
+
+          // 403 = valid credentials but role not permitted by backend (Staff validation)
+          if (error?.statusCode === 403) {
+            message =
+              "Access denied: This account does not have staff permissions.";
+          } else if (error?.message) {
+            message = error.message;
+          }
+
+          toast.error(message);
+        },
+      }
+    );
+  }
+
+  // // Use Effect to redirect after successful login
+  // useEffect(() => {
+  //   const isAuthenticated = status === "authenticated";
+  //   const userRole = (session as any)?.user?.role;
+
+  //   if (!isAuthenticated || !userRole) return;
+
+  //   const trimmedCallbackUrl = callbackUrl?.trim();
+
+  //   if (trimmedCallbackUrl) {
+  //     router.push(trimmedCallbackUrl);
+  //   } else {
+  //     redirectBasedOnRole(userRole);
+  //   }
+  // }, [status, session, redirectBasedOnRole, callbackUrl, router]);
+
+  return (
+    <Form {...form}>
+      <form
+        className="bg-white flex flex-col gap-9 rounded-lg px-4 md:px-12 py-2 md:py-7 shadow-xl w-full"
+        onSubmit={form.handleSubmit(onSubmit)}
+      >
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="Johndoe@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <div className="flex gap-3 justify-between items-center border rounded-md">
+                  <Input
+                    className="border-none shadow-none rounded-tr-none rounded-br-none"
+                    placeholder="Password"
+                    type={showPassword ? "text" : "password"}
+                    {...field}
+                  />
+                  <span
+                    className="flex items-center pr-3 cursor-pointer"
+                    onClick={handleShowPassword}
+                  >
+                    {showPassword ? <Eye /> : <EyeOff />}
+                  </span>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button
+          type="submit"
+          disabled={loginUserLoading || form.formState.isSubmitting}
+        >
+          {loginUserLoading || form.formState.isSubmitting ? (
+            <>
+              <FiLoader className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            "Sign In"
+          )}
+        </Button>
+      </form>
+    </Form>
+  );
+};

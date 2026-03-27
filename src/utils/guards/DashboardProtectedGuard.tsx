@@ -1,37 +1,55 @@
 "use client";
 
-// import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardProtectedGuardProps {
   children: React.ReactNode;
   redirectTo?: string;
 }
 
+/**
+ * Client-side route guard for all protected dashboard pages.
+ *
+ * Strategy (mirrors customer-rft DashboardProtectedGuard):
+ * 1. useAuth pings the backend to validate the session cookie.
+ * 2. While checking → show a loading state (never white-flash).
+ * 3. Not authenticated → instant redirect to redirectTo (default: /login).
+ * 4. Authenticated → render children.
+ */
 export function DashboardProtectedGuard({
   children,
-  // redirectTo = "/login",
+  redirectTo = "/login",
 }: DashboardProtectedGuardProps) {
-  //   const { isAuthenticated, isLoading } = useAuth();
-  // const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
-  //   useEffect(() => {
-  //     // 🚫 If not loading AND not authenticated, redirect immediately
-  //     if (!isLoading && !isAuthenticated) {
-  //       console.log("🔒 No active session → redirecting to", redirectTo);
-  //       router.replace(redirectTo);
-  //     }
-  //   }, [isAuthenticated, isLoading, router, redirectTo]);
+  useEffect(() => {
+    // Only redirect once we are done loading and user is NOT authenticated
+    if (!isLoading && !isAuthenticated) {
+      router.replace(redirectTo);
+    }
+  }, [isAuthenticated, isLoading, router, redirectTo]);
 
-  //   // 🌀 Show skeleton loader ONLY while an authenticated session is being validated/fetched
-  //   if (isLoading && isAuthenticated === false) {
-  //     return <div>Loading...</div> // 👈 prevents spinner flicker for anonymous visitors
-  //   }
+  // 🌀 Show loading spinner while validating the session
+  if (isLoading && isAuthenticated === false) {
+    return (
+      <div className="w-screen h-screen flex justify-center items-center">
+        <div className="text-sm text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
-  //   // 🚫 Block rendering if not authenticated (after redirect)
-  //   if (!isAuthenticated) {
-  //     return <div>Loading...</div>
-  //   }
+  // 🚫 Block rendering while unauthenticated (after redirect has been triggered)
+  if (!isAuthenticated) {
+    return (
+      <div className="w-screen h-screen flex justify-center items-center">
+        <div className="text-sm text-gray-500">Redirecting...</div>
+      </div>
+    );
+  }
 
-  // ✅ All checks passed → render protected content
+  // ✅ Authenticated — render protected content
   return <>{children}</>;
 }

@@ -1,0 +1,28 @@
+import React from 'react';
+
+/**
+ *
+ * @param {Object} props Component props
+ * @return {React.Component} React component
+ */
+const CheckingIcon = (props: any): unknown => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <circle cx="12" cy="12" r="10" stroke="#808080" strokeWidth="2" fill="none" />
+    <path
+      d="M8 12.5L10.5 15L16 9"
+      stroke="#808080"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export default CheckingIcon;
