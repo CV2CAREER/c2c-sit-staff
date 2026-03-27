@@ -1,5 +1,4 @@
 import { getConnectedRedis } from "../../config/redis";
-import { AggregatorThrottleConfig } from "../../models/v1/aggregator.model";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { isRedisUsable } from "../../utils/helpers";
@@ -24,6 +23,12 @@ export interface AggregatorThrottleStatus {
   config: AggregatorThrottleConfigPayload;
   updatedByUserId: string | null;
   updatedAt: string;
+}
+
+export interface AggregatorThrottleConfig {
+  config: AggregatorThrottleConfigPayload;
+  updatedByUserId: string | null;
+  updatedAt: Date;
 }
 
 export interface UpdateAggregatorThrottleInput {
@@ -84,21 +89,7 @@ const normalizeConfig = (
   };
 };
 
-const toStatus = (row: AggregatorThrottleConfig): AggregatorThrottleStatus => ({
-  config: normalizeConfig(row.config || {}),
-  updatedByUserId: row.updatedByUserId ?? null,
-  updatedAt: row.updatedAt.toISOString(),
-});
-
 class ThrottleApplicationService {
-  private async ensureSingleton(): Promise<AggregatorThrottleConfig> {
-    const existing = await AggregatorThrottleConfig.findOne({ order: [["id", "ASC"]] });
-    if (existing) return existing;
-
-    logger.warn("Throttle config row missing; creating default singleton.");
-    return AggregatorThrottleConfig.create({ config: DEFAULT_CONFIG });
-  }
-
   private async writeRedis(config: AggregatorThrottleConfigPayload) {
     const redis = await getConnectedRedis();
     if (!isRedisUsable(redis)) return;
@@ -116,27 +107,6 @@ class ThrottleApplicationService {
   }
 
   async getThrottleStatus(): Promise<AggregatorThrottleStatus> {
-    const systemRecord = await systemConfigApplicationService.getOrCreate(
-      SYSTEM_CONFIG_KEY,
-      DEFAULT_CONFIG,
-    );
-
-    // One-time backfill from legacy singleton row if SystemConfig is still defaulted.
-    if (
-      systemRecord.updatedByUserId === null &&
-      JSON.stringify(systemRecord.value || {}) === JSON.stringify(DEFAULT_CONFIG)
-    ) {
-      const legacyRow = await this.ensureSingleton();
-      const legacyStatus = toStatus(legacyRow);
-      if (JSON.stringify(legacyStatus.config) !== JSON.stringify(DEFAULT_CONFIG)) {
-        await systemConfigApplicationService.set({
-          key: SYSTEM_CONFIG_KEY,
-          value: legacyStatus.config,
-          updatedByUserId: legacyStatus.updatedByUserId,
-        });
-      }
-    }
-
     const fresh = await systemConfigApplicationService.getOrCreate(
       SYSTEM_CONFIG_KEY,
       DEFAULT_CONFIG,
