@@ -1,6 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { useFetchData } from "../useApi";
+import { useFetchData, useMutateData } from "../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
+import { 
+  Throttle,
+  UpdateAnswerModePayload,
+  CreateTablePayload,
+  CreateColumnPayload,
+  ApiTable,
+  BotStatus,
+  AnswerModeItem
+} from "@/types/admin.types";
 
 export interface VaStats {
   yearly: number;
@@ -25,6 +33,7 @@ export interface VaAllocationsResponse {
   parsedData: VaAllocationsData;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface MilestoneStat {
   month: string;
   commenced: number;
@@ -49,6 +58,11 @@ interface AdminQueriesOptions {
   fetchApplicationsCount?: boolean;
   fetchFollowersCount?: boolean;
   fetchInflightClientsList?: boolean;
+  fetchBotStatus?: boolean;
+  botName?: string;
+  fetchAnswerMode?: boolean;
+  fetchTables?: boolean;
+  fetchThrottles?: boolean;
   startDate?: string;
   endDate?: string;
   inflightPage?: number;
@@ -71,6 +85,11 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     fetchApplicationsCount = false,
     fetchFollowersCount = false,
     fetchInflightClientsList = false,
+    fetchBotStatus = false,
+    botName = "",
+    fetchAnswerMode = false,
+    fetchTables = false,
+    fetchThrottles = false,
     milestonesRange = "this-month",
     onboardedRange = "this-month",
     startDate = "",
@@ -171,6 +190,34 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     enabled: fetchInflightClientsList,
   });
 
+  const botStatus = useFetchData<BotStatus>({
+    method: "GET",
+    url: `${endpoints.ADMIN_BOT_CONTROL}?bot=${botName.toLowerCase()}&action=status`,
+    queryKey: ["admin-bot-status", botName],
+    enabled: fetchBotStatus && !!botName,
+  });
+
+  const answerMode = useFetchData<AnswerModeItem[]>({
+    method: "GET",
+    url: endpoints.ADMIN_ANSWER_MODE,
+    queryKey: ["admin-answer-mode"],
+    enabled: fetchAnswerMode,
+  });
+
+  const tables = useFetchData<ApiTable[]>({
+    method: "GET",
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    queryKey: ["admin-tables"],
+    enabled: fetchTables,
+  });
+
+  const throttles = useFetchData<Throttle[]>({
+    method: "GET",
+    url: endpoints.ADMIN_THROTTLE,
+    queryKey: ["admin-throttles"],
+    enabled: fetchThrottles,
+  });
+
   return {
     vaAllocationsDomain: {
       data: vaAllocations.data?.data,
@@ -263,9 +310,119 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       isError: inflightClientsList.isError,
       error: inflightClientsList.error,
     },
+    botStatusDomain: {
+      data: botStatus.data?.data, // Now returns BotStatus directly
+      isLoading: botStatus.isLoading,
+      isSuccess: botStatus.isSuccess,
+      isError: botStatus.isError,
+      error: botStatus.error,
+    },
+    answerModeDomain: {
+      data: answerMode.data?.data, // Now returns AnswerModeItem[] directly
+      isLoading: answerMode.isLoading,
+      isSuccess: answerMode.isSuccess,
+      isError: answerMode.isError,
+      error: answerMode.error,
+    },
+    tablesDomain: {
+      data: tables.data?.data, // Now returns ApiTable[] directly
+      isLoading: tables.isLoading,
+      isSuccess: tables.isSuccess,
+      isError: tables.isError,
+      error: tables.error,
+    },
+    throttlesDomain: {
+      data: throttles.data?.data, // Now returns Throttle[] directly
+      isLoading: throttles.isLoading,
+      isSuccess: throttles.isSuccess,
+      isError: throttles.isError,
+      error: throttles.error,
+    },
   };
 };
 
 export const useAdminMutations = () => {
-  return {};
+  const toggleBot = useMutateData<any, { bot: string; action: string }>({
+    method: "POST", // Changed from GET to POST
+    url: endpoints.ADMIN_BOT_CONTROL,
+    mutationKey: ["admin-bot-toggle"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const updateAnswerMode = useMutateData<any, UpdateAnswerModePayload>({
+    method: "PUT",
+    url: endpoints.ADMIN_ANSWER_MODE,
+    mutationKey: ["admin-update-answer-mode"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const createTable = useMutateData<ApiTable, CreateTablePayload>({
+    method: "POST",
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    mutationKey: ["admin-create-table"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const updateTable = useMutateData<ApiTable, CreateColumnPayload>({
+    method: "PUT",
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    mutationKey: ["admin-update-table"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const deleteTable = useMutateData<any, { table: string }>({
+    method: "DELETE",
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    mutationKey: ["admin-delete-table"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const deleteColumn = useMutateData<any, { tableName: string; columnName: string }>({
+    method: "DELETE",
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    mutationKey: ["admin-delete-column"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const createThrottle = useMutateData<any, any>({
+    method: "POST",
+    url: endpoints.ADMIN_THROTTLE,
+    mutationKey: ["admin-create-throttle"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const updateThrottle = useMutateData<any, { id: number; value: number }>({
+    method: "PUT",
+    url: endpoints.ADMIN_THROTTLE,
+    mutationKey: ["admin-update-throttle"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  const deleteThrottle = useMutateData<any, { id: number }>({
+    method: "DELETE",
+    url: endpoints.ADMIN_THROTTLE,
+    mutationKey: ["admin-delete-throttle"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+
+  return {
+    toggleBotMutation: toggleBot,
+    updateAnswerModeMutation: updateAnswerMode,
+    createTableMutation: createTable,
+    updateTableMutation: updateTable,
+    deleteTableMutation: deleteTable,
+    deleteColumnMutation: deleteColumn,
+    createThrottleMutation: createThrottle,
+    updateThrottleMutation: updateThrottle,
+    deleteThrottleMutation: deleteThrottle,
+  };
 };

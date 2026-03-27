@@ -10,3 +10,7 @@ export const ADMIN_USERS = "/api/admin/users";
 export const ADMIN_AGGREGATORS = "/api/admin/job-management/aggregators";
 export const ADMIN_APPLICATIONS = "/api/admin/job-management/applications";
 export const ADMIN_FOLLOWERS = "/api/admin/followers";
+export const ADMIN_BOT_CONTROL = "/api/remote/switch";
+export const ADMIN_ANSWER_MODE = "/api/admin/answer-status";
+export const ADMIN_TABLE_MANAGER = "/api/admin/table-manager";
+export const ADMIN_THROTTLE = "/api/admin/throttle";

@@ -22,6 +22,7 @@
     "@heroui/tabs": "^2.2.29",
     "@heroui/theme": "^2.4.17",
     "@hookform/resolvers": "^5.2.2",
+    "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
     "@mui/x-charts": "^8.28.0",
     "@mui/x-data-grid-pro": "^8.28.1",
