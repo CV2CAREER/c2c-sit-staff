@@ -11,7 +11,7 @@ import { StaffRole } from "@/types/user.types";
  * @param Component The page component to wrap.
  * @param allowedRoles A single role or array of roles allowed to access the page.
  */
-const BYPASS_AUTH = true; // TOGGLE THIS TO DISABLE/ENABLE SECURITY IN DEVELOPMENT
+const BYPASS_AUTH = false; // TOGGLE THIS TO DISABLE/ENABLE SECURITY IN DEVELOPMENT
 
 export function withPersonaGuard<P extends object>(
   Component: ComponentType<P>,
