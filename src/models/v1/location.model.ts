@@ -19,7 +19,7 @@ import { User } from "./user.model";
 export class Location extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   @AllowNull(true)

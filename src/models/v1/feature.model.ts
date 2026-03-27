@@ -31,7 +31,7 @@ export enum SubscriptionTier {
 export class Feature extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   // Subscription tier name (Bronze, Silver, Gold, Platinum, Copper)
@@ -128,7 +128,7 @@ export class Feature extends Model {
   // PostgreSQL doesn't support foreign keys on ARRAY columns
   @AllowNull(false)
   @Default([])
-  @Column(DataType.ARRAY(DataType.STRING))
+  @Column(DataType.ARRAY(DataType.UUID))
   locationIds!: string[];
 
   @CreatedAt

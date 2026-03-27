@@ -21,7 +21,7 @@ import {
 export default class OTPToken extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   @Column({ type: DataType.TEXT, allowNull: false })

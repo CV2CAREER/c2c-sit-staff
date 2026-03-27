@@ -32,6 +32,7 @@ const workers = new Map<string, Worker>();
 export const createWorker = (
   queueName: string,
   processor: (job: Job) => Promise<any>,
+  options?: { concurrency?: number },
 ): Worker => {
   if (workers.has(queueName)) {
     logger.warn(`⚠️ Worker for queue "${queueName}" already exists`);
@@ -40,7 +41,7 @@ export const createWorker = (
 
   const worker = new Worker(queueName, processor, {
     connection: bullMQConnection,
-    concurrency: 5,
+    concurrency: options?.concurrency ?? 5,
   });
 
   worker.on("completed", (job) =>

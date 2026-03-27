@@ -15,7 +15,7 @@ export const DATABASE_NAME = process.env.DB_NAME;
 export const DATABASE_USERNAME = process.env.DB_USER;
 export const DATABASE_PASSWORD = process.env.DB_PASSWORD;
 export const DATABASE_HOST = process.env.DB_HOST;
-export const DATABASE_PORT = parseInt(process.env.DB_PORT || "", 10);
+export const DATABASE_PORT = parseInt(process.env.DB_PORT || "5432", 10) || 5432;
 
 // PROXY DATABASE
 export const REDIS_PORT = parseInt(process.env.CLIENT_SAMPLE_REDIS_PORT!, 10);
@@ -23,6 +23,26 @@ export const REDIS_HOST = process.env.CLIENT_SAMPLE_REDIS_HOST;
 export const REDIS_PASSWORD = process.env.CLIENT_SAMPLE_REDIS_PASSWORD;
 // Configurable toggle
 export const USE_REDIS = process.env.USE_REDIS;
+export const ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS = parseInt(
+  process.env.ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS || "180",
+  10,
+);
+
+export const SCHEMA_MANAGED_TABLES = (process.env.SCHEMA_MANAGED_TABLES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+export const BOT_SCRAPING_QUEUES = (process.env.BOT_SCRAPING_QUEUES || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+export const TABLE_MANAGER_TABLES = (process.env.TABLE_MANAGER_TABLES ||
+  "users,campaigns,applications")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
 
 // FRONTEND URL
 export const RAT_FRONTEND_URL = process.env.RAT_FRONTEND_URL;
@@ -45,6 +65,7 @@ export const JUSTCALL_API_SECRET = process.env.JUSTCALL_API_SECRET!;
 // SLACK
 export const SLACK_USERS_TOKEN = process.env.SLACK_USERS_TOKEN;
 export const SLACK_TOKEN_KEY = process.env.SLACK_TOKEN_KEY;
+export const SLACK_ADMIN_CHANNEL_ID = process.env.SLACK_ADMIN_CHANNEL_ID;
 
 // SENDGRID
 export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY!;
@@ -98,6 +119,21 @@ export const ZOHO_CLIENT_SECRET = process.env.ZOHO_CLIENT_SECRET!;
 export const ZOHO_REFRESH_TOKEN = process.env.ZOHO_REFRESH_TOKEN!;
 export const ZOHO_REDIRECT_URI = process.env.ZOHO_REDIRECT_URI!;
 export const ZOHO_OAUTH_URI = process.env.ZOHO_OAUTH_URI!;
+export const ZOHO_BOOKS_DASHBOARD_MODULE_API_NAME =
+  process.env.ZOHO_BOOKS_DASHBOARD_MODULE_API_NAME || "cm_business_snapshot";
+export const ZOHO_BOOKS_TOTAL_USERS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_TOTAL_USERS_FIELD_API_NAME || "cf_total_users";
+export const ZOHO_BOOKS_ACTIVE_AGGREGATORS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_ACTIVE_AGGREGATORS_FIELD_API_NAME ||
+  "cf_active_aggregators";
+export const ZOHO_BOOKS_ACTIVE_SUBSCRIPTIONS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_ACTIVE_SUBSCRIPTIONS_FIELD_API_NAME ||
+  "cf_active_subscriptions";
+export const ZOHO_BOOKS_VERIFIED_AGGREGATOR_LINKS_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_VERIFIED_AGGREGATOR_LINKS_FIELD_API_NAME ||
+  "cf_verified_aggregator_links";
+export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
+  process.env.ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME || "cf_generated_at";
 
 // DIGITAL OCEAN AI
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;

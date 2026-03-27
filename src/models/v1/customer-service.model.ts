@@ -22,13 +22,13 @@ import { User } from "./user.model";
 export class CustomerService extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   @ForeignKey(() => User)
   @AllowNull(false)
   @Unique // One customer service record per user
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   userId!: string;
 
   @BelongsTo(() => User, {

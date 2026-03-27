@@ -22,11 +22,21 @@ import { AggregatorLink } from "../../types/aggregator.types";
 @Table({
   tableName: "profiles",
   timestamps: true,
+  indexes: [
+    {
+      name: "idx_profile_user_id",
+      fields: ["userId"],
+    },
+    {
+      name: "idx_profile_updated_at",
+      fields: ["updatedAt"],
+    },
+  ],
 })
 export class Profile extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   // Foreign key to users table
@@ -53,7 +63,7 @@ export class Profile extends Model {
   // Foreign key to plans table
   @ForeignKey(() => Plan)
   @AllowNull(true)
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   planId?: string;
 
   @BelongsTo(() => Plan)

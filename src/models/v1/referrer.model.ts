@@ -23,13 +23,13 @@ import { ReferrerStatus } from "../../utils/enum";
 export class Referrer extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   id!: string;
 
   // Foreign key to users table (one-to-many )
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   userId!: string;
 
   @BelongsTo(() => User, {

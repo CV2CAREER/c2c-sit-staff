@@ -1,0 +1,865 @@
+# OpenAPI Specification for Document Management Endpoints
+
+paths:
+  /v1/document/all:
+    get:
+      tags:
+        - Document Management
+      summary: Get all documents
+      description: |
+        Retrieves all documents in the system.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: getAllDocuments
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: All documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      documents:
+                        type: array
+                        description: List of all documents
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: Document unique identifier
+                            userId:
+                              type: string
+                              description: User ID who owns the document
+                            type:
+                              type: string
+                              enum: ["resume", "coverletter", "certificate", "otherDocs"]
+                              description: Document type
+                            status:
+                              type: string
+                              enum: ["Pending", "Revised", "Accepted", "Rejected"]
+                              description: Document status
+                            document:
+                              type: object
+                              description: Document file information
+                            cvDataPoints:
+                              type: object
+                              description: CV data points extracted from document
+                            cvJobTitles:
+                              type: array
+                              items:
+                                type: string
+                              description: Job titles from CV
+                            keywords:
+                              type: array
+                              items:
+                                type: string
+                              description: Keywords from document
+                            isDefault:
+                              type: boolean
+                              description: Whether this is the default document
+                            source:
+                              type: string
+                              enum: ["client", "admin"]
+                              description: Source of the document
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: Document creation timestamp
+                            updatedAt:
+                              type: string
+                              format: date-time
+                              description: Document last update timestamp
+                            user:
+                              type: object
+                              description: User information
+                              properties:
+                                id:
+                                  type: string
+                                  description: User unique identifier
+                                firstName:
+                                  type: string
+                                  description: User first name
+                                lastName:
+                                  type: string
+                                  description: User last name
+                                email:
+                                  type: string
+                                  format: email
+                                  description: User email address
+                      count:
+                        type: number
+                        description: Total number of documents
+            examples:
+              all_documents_success:
+                summary: All documents retrieved successfully
+                value:
+                  success: true
+                  message: "All documents retrieved successfully"
+                  statusCode: 200
+                  data:
+                    documents:
+                      - id: "doc-uuid-123"
+                        userId: "user-uuid-456"
+                        type: "resume"
+                        status: "Accepted"
+                        document:
+                          url: "https://storage.example.com/resume.pdf"
+                          publicId: "resume-123"
+                          name: "John_Doe_Resume.pdf"
+                          size: 102400
+                          mimeType: "application/pdf"
+                        cvDataPoints:
+                          cvType: "refined"
+                          contactInformation: "john.doe@example.com"
+                          professionalSummary: "Experienced software engineer"
+                          workExperience: []
+                          education: []
+                          skills: ["JavaScript", "TypeScript", "Node.js"]
+                        cvJobTitles: ["Software Engineer", "Full Stack Developer"]
+                        keywords: ["javascript", "react", "nodejs"]
+                        isDefault: true
+                        source: "client"
+                        createdAt: "2024-01-01T00:00:00.000Z"
+                        updatedAt: "2024-01-01T00:00:00.000Z"
+                        user:
+                          id: "user-uuid-456"
+                          firstName: "John"
+                          lastName: "Doe"
+                          email: "john.doe@example.com"
+                    count: 1
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+        '403':
+          description: Forbidden - Insufficient permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Access denied. Required role(s): admin, assistant"
+                statusCode: 403
+                data: null
+
+  /v1/document/user/{userId}:
+    get:
+      tags:
+        - Document Management
+      summary: Get all documents for a user
+      description: |
+        Retrieves all documents for a specific user.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: getUserDocuments
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The unique identifier of the user
+          schema:
+            type: string
+            format: uuid
+            example: "user-uuid-123"
+      responses:
+        '200':
+          description: User documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      documents:
+                        type: array
+                        description: List of user documents
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: Document unique identifier
+                            userId:
+                              type: string
+                              description: User ID who owns the document
+                            type:
+                              type: string
+                              enum: ["resume", "coverletter", "certificate", "otherDocs"]
+                              description: Document type
+                            status:
+                              type: string
+                              enum: ["Pending", "Revised", "Accepted", "Rejected"]
+                              description: Document status
+                            document:
+                              type: object
+                              description: Document file information
+                              properties:
+                                url:
+                                  type: string
+                                  description: Document URL
+                                publicId:
+                                  type: string
+                                  description: Public ID for cloud storage
+                                name:
+                                  type: string
+                                  description: Document file name
+                                size:
+                                  type: number
+                                  description: Document file size
+                                mimeType:
+                                  type: string
+                                  description: Document MIME type
+                            cvDataPoints:
+                              type: object
+                              description: CV data points extracted from document
+                            cvJobTitles:
+                              type: array
+                              items:
+                                type: string
+                              description: Job titles from CV
+                            keywords:
+                              type: array
+                              items:
+                                type: string
+                              description: Keywords from document
+                            isDefault:
+                              type: boolean
+                              description: Whether this is the default document
+                            source:
+                              type: string
+                              enum: ["client", "admin"]
+                              description: Source of the document
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: Document creation timestamp
+                            updatedAt:
+                              type: string
+                              format: date-time
+                              description: Document last update timestamp
+                            user:
+                              type: object
+                              description: User information
+                              properties:
+                                id:
+                                  type: string
+                                  description: User unique identifier
+                                firstName:
+                                  type: string
+                                  description: User first name
+                                lastName:
+                                  type: string
+                                  description: User last name
+                                email:
+                                  type: string
+                                  format: email
+                                  description: User email address
+                      count:
+                        type: number
+                        description: Total number of documents
+            examples:
+              documents_success:
+                summary: Documents retrieved successfully
+                value:
+                  success: true
+                  message: "User documents retrieved successfully"
+                  statusCode: 200
+                  data:
+                    documents:
+                      - id: "doc-uuid-123"
+                        userId: "user-uuid-456"
+                        type: "resume"
+                        status: "Accepted"
+                        document:
+                          url: "https://storage.example.com/resume.pdf"
+                          publicId: "resume-123"
+                          name: "John_Doe_Resume.pdf"
+                          size: 102400
+                          mimeType: "application/pdf"
+                        cvDataPoints:
+                          cvType: "refined"
+                          contactInformation: "john.doe@example.com"
+                          professionalSummary: "Experienced software engineer"
+                          workExperience: []
+                          education: []
+                          skills: ["JavaScript", "TypeScript", "Node.js"]
+                        cvJobTitles: ["Software Engineer", "Full Stack Developer"]
+                        keywords: ["javascript", "react", "nodejs"]
+                        isDefault: true
+                        source: "client"
+                        createdAt: "2024-01-01T00:00:00.000Z"
+                        updatedAt: "2024-01-01T00:00:00.000Z"
+                        user:
+                          id: "user-uuid-456"
+                          firstName: "John"
+                          lastName: "Doe"
+                          email: "john.doe@example.com"
+                    count: 1
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+        '403':
+          description: Forbidden - Insufficient permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Access denied. Required role(s): admin, assistant"
+                statusCode: 403
+                data: null
+
+  /v1/document/user/{userId}/type/{type}:
+    get:
+      tags:
+        - Document Management
+      summary: Get documents by type for a user
+      description: |
+        Retrieves documents of a specific type for a user.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: getUserDocumentsByType
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The unique identifier of the user
+          schema:
+            type: string
+            format: uuid
+            example: "user-uuid-123"
+        - name: type
+          in: path
+          required: true
+          description: Document type to filter by
+          schema:
+            type: string
+            enum: ["resume", "coverletter", "certificate", "otherDocs"]
+            example: "resume"
+      responses:
+        '200':
+          description: Documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      documents:
+                        type: array
+                        description: List of documents of specified type
+                        items:
+                          type: object
+                          description: Document object
+                      count:
+                        type: number
+                        description: Total number of documents of specified type
+            examples:
+              documents_by_type_success:
+                summary: Documents retrieved successfully
+                value:
+                  success: true
+                  message: "resume documents retrieved successfully"
+                  statusCode: 200
+                  data:
+                    documents: []
+                    count: 0
+
+  /v1/document/{documentId}:
+    get:
+      tags:
+        - Document Management
+      summary: Get a specific document by ID
+      description: |
+        Retrieves a specific document by its ID.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: getDocumentById
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: The unique identifier of the document
+          schema:
+            type: string
+            format: uuid
+            example: "doc-uuid-123"
+      responses:
+        '200':
+          description: Document retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      document:
+                        type: object
+                        description: Document object
+            examples:
+              document_success:
+                summary: Document retrieved successfully
+                value:
+                  success: true
+                  message: "Document retrieved successfully"
+                  statusCode: 200
+                  data:
+                    document:
+                      id: "doc-uuid-123"
+                      userId: "user-uuid-456"
+                      type: "resume"
+                      status: "Accepted"
+                      document:
+                        url: "https://storage.example.com/resume.pdf"
+                        name: "John_Doe_Resume.pdf"
+                      isDefault: true
+        '404':
+          description: Not found - Document not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Document not found"
+                statusCode: 404
+                data: null
+
+    patch:
+      tags:
+        - Document Management
+      summary: Update document
+      description: |
+        Updates a document's information.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: updateDocument
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: The unique identifier of the document
+          schema:
+            type: string
+            format: uuid
+            example: "doc-uuid-123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: ["resume", "coverletter", "certificate", "otherDocs"]
+                  description: Document type
+                status:
+                  type: string
+                  enum: ["Pending", "Revised", "Accepted", "Rejected"]
+                  description: Document status
+                document:
+                  type: object
+                  description: Document file information
+                cvDataPoints:
+                  type: object
+                  description: CV data points
+                cvJobTitles:
+                  type: array
+                  items:
+                    type: string
+                  description: Job titles from CV
+                keywords:
+                  type: array
+                  items:
+                    type: string
+                  description: Keywords from document
+                isDefault:
+                  type: boolean
+                  description: Whether this is the default document
+            example:
+              status: "Accepted"
+              isDefault: true
+      responses:
+        '200':
+          description: Document updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      document:
+                        type: object
+                        description: Updated document object
+            examples:
+              document_updated:
+                summary: Document updated successfully
+                value:
+                  success: true
+                  message: "Document updated successfully"
+                  statusCode: 200
+                  data:
+                    document:
+                      id: "doc-uuid-123"
+                      status: "Accepted"
+                      isDefault: true
+        '404':
+          description: Not found - Document not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Document not found"
+                statusCode: 404
+                data: null
+
+    delete:
+      tags:
+        - Document Management
+      summary: Delete document (soft delete)
+      description: |
+        Soft deletes a document.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: deleteDocument
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: The unique identifier of the document
+          schema:
+            type: string
+            format: uuid
+            example: "doc-uuid-123"
+      responses:
+        '200':
+          description: Document deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        description: Deletion confirmation message
+            examples:
+              document_deleted:
+                summary: Document deleted successfully
+                value:
+                  success: true
+                  message: "Document deleted successfully"
+                  statusCode: 200
+                  data:
+                    message: "Document deleted successfully"
+        '404':
+          description: Not found - Document not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Document not found"
+                statusCode: 404
+                data: null
+
+  /v1/document/{documentId}/status:
+    patch:
+      tags:
+        - Document Management
+      summary: Update document status
+      description: |
+        Updates a document's status.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only.
+      operationId: updateDocumentStatus
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: The unique identifier of the document
+          schema:
+            type: string
+            format: uuid
+            example: "doc-uuid-123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: ["Pending", "Revised", "Accepted", "Rejected"]
+                  description: New document status
+            example:
+              status: "Accepted"
+      responses:
+        '200':
+          description: Document status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      document:
+                        type: object
+                        description: Updated document object
+            examples:
+              status_updated:
+                summary: Document status updated successfully
+                value:
+                  success: true
+                  message: "Document status updated successfully"
+                  statusCode: 200
+                  data:
+                    document:
+                      id: "doc-uuid-123"
+                      status: "Accepted"
+        '404':
+          description: Not found - Document not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Document not found"
+                statusCode: 404
+                data: null

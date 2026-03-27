@@ -431,6 +431,467 @@ paths:
                 statusCode: 401
                 data: null
 
+  /v1/user/dispatch-client:
+    post:
+      tags:
+        - User Authentication
+      summary: Dispatch client information to a PC (Placement Control)
+      description: |
+        Dispatches client information to a PC (Placement Control) by sending a Slack message
+        with client details and credentials.
+        
+        This endpoint requires authentication and proper authorization.
+        The PC receives client information including profile details, salary expectations,
+        sample results link, and aggregator credentials.
+        
+        A Slack notification is sent asynchronously using setImmediate to inform
+        the PC about the dispatched client information.
+      operationId: dispatchClient
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pcId
+              properties:
+                pcId:
+                  type: string
+                  description: The unique identifier of the PC (Placement Control) to dispatch to
+                  example: "pc-uuid-123"
+                clientId:
+                  type: string
+                  description: Single client ID to dispatch (optional if userIds provided)
+                  example: "client-uuid-456"
+                userIds:
+                  type: array
+                  description: Array of client IDs to dispatch (optional if clientId provided)
+                  items:
+                    type: string
+                  example: ["client-uuid-789", "client-uuid-101"]
+            example:
+              pcId: "pc-uuid-123"
+              clientId: "client-uuid-456"
+              userIds: ["client-uuid-789", "client-uuid-101"]
+      responses:
+        '200':
+          description: Client dispatch completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      successCount:
+                        type: number
+                        description: Number of clients successfully dispatched
+                      failedCount:
+                        type: number
+                        description: Number of clients that failed to dispatch
+                      totalClients:
+                        type: number
+                        description: Total number of clients attempted
+            examples:
+              dispatch_success:
+                summary: Client dispatch completed
+                value:
+                  success: true
+                  message: "Client dispatch completed: 2 successful, 0 failed"
+                  statusCode: 200
+                  data:
+                    successCount: 2
+                    failedCount: 0
+                    totalClients: 2
+        '400':
+          description: Bad request - Missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              examples:
+                missing_pc_id:
+                  summary: PC ID required
+                  value:
+                    success: false
+                    message: "PC ID is required"
+                    statusCode: 400
+                    data: null
+                no_clients:
+                  summary: No clients provided
+                  value:
+                    success: false
+                    message: "At least one client ID must be provided"
+                    statusCode: 400
+                    data: null
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+
+  /v1/user/clients:
+    get:
+      tags:
+        - User Authentication
+      summary: Get all users with client role
+      description: |
+        Retrieves all users who have the 'client' role.
+        
+        This endpoint requires authentication and proper authorization.
+        Returns a list of client users with sensitive information excluded.
+      operationId: getClients
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Clients retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      clients:
+                        type: array
+                        description: List of client users
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: User's unique identifier
+                            email:
+                              type: string
+                              format: email
+                              description: User's email address
+                            firstName:
+                              type: string
+                              description: User's first name
+                            lastName:
+                              type: string
+                              description: User's last name
+                            role:
+                              type: string
+                              description: User's role (always 'client')
+                            isEmailVerified:
+                              type: boolean
+                              description: Whether the user's email is verified
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: User creation timestamp
+                      count:
+                        type: number
+                        description: Total number of clients
+            examples:
+              clients_success:
+                summary: Clients retrieved successfully
+                value:
+                  success: true
+                  message: "Clients retrieved successfully"
+                  statusCode: 200
+                  data:
+                    clients:
+                      - id: "client-uuid-123"
+                        email: "client1@example.com"
+                        firstName: "Client"
+                        lastName: "One"
+                        role: "client"
+                        isEmailVerified: true
+                        createdAt: "2024-01-01T00:00:00.000Z"
+                      - id: "client-uuid-456"
+                        email: "client2@example.com"
+                        firstName: "Client"
+                        lastName: "Two"
+                        role: "client"
+                        isEmailVerified: false
+                        createdAt: "2024-01-02T00:00:00.000Z"
+                    count: 2
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+
+  /v1/user/assistants:
+    get:
+      tags:
+        - User Authentication
+      summary: Get all users with assistant role (returned as PC)
+      description: |
+        Retrieves all users who have the 'assistant' role and returns them
+        with the role field changed to 'PC' (Placement Control).
+        
+        This endpoint requires authentication and proper authorization.
+        Returns a list of assistant users with sensitive information excluded
+        and role field transformed to 'PC'.
+      operationId: getAssistants
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Placement Control (PC) users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      pcUsers:
+                        type: array
+                        description: List of assistant users returned as PC
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: User's unique identifier
+                            email:
+                              type: string
+                              format: email
+                              description: User's email address
+                            firstName:
+                              type: string
+                              description: User's first name
+                            lastName:
+                              type: string
+                              description: User's last name
+                            role:
+                              type: string
+                              description: User's role (always 'PC')
+                            isEmailVerified:
+                              type: boolean
+                              description: Whether the user's email is verified
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: User creation timestamp
+                      count:
+                        type: number
+                        description: Total number of PC users
+            examples:
+              pc_users_success:
+                summary: Placement Control users retrieved successfully
+                value:
+                  success: true
+                  message: "Placement Control (PC) retrieved successfully"
+                  statusCode: 200
+                  data:
+                    pcUsers:
+                      - id: "assistant-uuid-123"
+                        email: "assistant1@example.com"
+                        firstName: "Assistant"
+                        lastName: "One"
+                        role: "PC"
+                        isEmailVerified: true
+                        createdAt: "2024-01-01T00:00:00.000Z"
+                      - id: "assistant-uuid-456"
+                        email: "assistant2@example.com"
+                        firstName: "Assistant"
+                        lastName: "Two"
+                        role: "PC"
+                        isEmailVerified: false
+                        createdAt: "2024-01-02T00:00:00.000Z"
+                    count: 2
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+
+  /v1/user/logout:
+    post:
+      tags:
+        - User Authentication
+      summary: User logout
+      description: |
+        Logs out the currently authenticated user by blacklisting their token
+        and clearing the authentication cookie.
+        
+        This endpoint requires authentication. The token is added to a blacklist
+        to prevent reuse, and the HTTP-only cookie is cleared from the client.
+        A Slack notification is sent to track logout events for security auditing.
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          headers:
+            Set-Cookie:
+              description: Clears the HTTP-only access token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties: {}
+            examples:
+              logout_success:
+                summary: Successful logout
+                value:
+                  success: true
+                  message: "Logout successful"
+                  statusCode: 200
+                  data: {}
+        '401':
+          description: Unauthorized - Authentication required or no active session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              examples:
+                no_token:
+                  summary: No token provided
+                  value:
+                    success: true
+                    message: "No active session found"
+                    statusCode: 200
+                    data: null
+                unauthorized:
+                  summary: Unauthorized access
+                  value:
+                    success: false
+                    message: "Unauthorized"
+                    statusCode: 401
+                    data: null
+
   /v1/user/profile:
     get:
       tags:
@@ -527,3 +988,168 @@ paths:
                 message: "Unauthorized"
                 statusCode: 401
                 data: null
+
+  /v1/user/all:
+    get:
+      tags:
+        - User Authentication
+      summary: Get all users (admin and assistant only)
+      description: |
+        Retrieves all active users in the system.
+        
+        This endpoint requires authentication and is restricted to users
+        with 'admin' or 'assistant' roles only. Returns a list of all users
+        with sensitive information excluded (password, accessToken, adminPassword).
+        
+        Role-based access control is enforced using the authorizeRoles middleware.
+      operationId: getAllUsers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        description: List of all active users
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: User's unique identifier
+                            email:
+                              type: string
+                              format: email
+                              description: User's email address
+                            firstName:
+                              type: string
+                              description: User's first name
+                            lastName:
+                              type: string
+                              description: User's last name
+                            role:
+                              type: string
+                              description: User's role
+                            isEmailVerified:
+                              type: boolean
+                              description: Whether the user's email is verified
+                            isActive:
+                              type: boolean
+                              description: Whether the user account is active
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: User creation timestamp
+                            updatedAt:
+                              type: string
+                              format: date-time
+                              description: User last update timestamp
+                      count:
+                        type: number
+                        description: Total number of users
+            examples:
+              users_success:
+                summary: Users retrieved successfully
+                value:
+                  success: true
+                  message: "Users retrieved successfully"
+                  statusCode: 200
+                  data:
+                    users:
+                      - id: "user-uuid-123"
+                        email: "admin@example.com"
+                        firstName: "Admin"
+                        lastName: "User"
+                        role: "admin"
+                        isEmailVerified: true
+                        isActive: true
+                        createdAt: "2024-01-01T00:00:00.000Z"
+                        updatedAt: "2024-01-01T00:00:00.000Z"
+                      - id: "user-uuid-456"
+                        email: "assistant@example.com"
+                        firstName: "Assistant"
+                        lastName: "User"
+                        role: "assistant"
+                        isEmailVerified: true
+                        isActive: true
+                        createdAt: "2024-01-02T00:00:00.000Z"
+                        updatedAt: "2024-01-02T00:00:00.000Z"
+                      - id: "user-uuid-789"
+                        email: "client@example.com"
+                        firstName: "Client"
+                        lastName: "User"
+                        role: "client"
+                        isEmailVerified: true
+                        isActive: true
+                        createdAt: "2024-01-03T00:00:00.000Z"
+                        updatedAt: "2024-01-03T00:00:00.000Z"
+                    count: 3
+        '401':
+          description: Unauthorized - Authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+        '403':
+          description: Forbidden - Insufficient permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Error message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: null
+                    description: No data returned
+              examples:
+                insufficient_permissions:
+                  summary: Insufficient permissions
+                  value:
+                    success: false
+                    message: "Access denied. Required role(s): admin, assistant"
+                    statusCode: 403
+                    data: null

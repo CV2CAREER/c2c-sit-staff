@@ -7,7 +7,6 @@ import { connectDB, disconnectDB, startDbWatchdog } from "./config/database";
 import {
   connectRedis,
   disconnectRedis,
-  getUserRedisDbReady,
   startRedisReconnectInterval,
 } from "./config/redis";
 import { startAllCronJobs, stopAllCronJobs } from "./jobs/cron";
@@ -61,14 +60,11 @@ const startServer = async () => {
 
       // connected redis
       await connectRedis();
+      // Start Redis reconnect watchdog (independent of DB)
+      startRedisReconnectInterval();
 
-      if (getUserRedisDbReady()) {
-        // Start Redis reconnect watchdog (independent of DB)
-        startRedisReconnectInterval();
-
-        // Initialize BullMQ workers
-        initializeBullMQWorkers();
-      }
+      // Initialize BullMQ workers (safe no-op when Redis is disabled)
+      initializeBullMQWorkers();
 
       // Initial DB connection with retry
       try {

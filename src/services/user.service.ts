@@ -10,6 +10,9 @@ import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity }
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { validateSignInInput } from "../validators/input.validator";
 import { signInCredentials } from "./signin.service";
+import BlacklistedToken from "../models/v1/blacklistedToken.model";
+import jwt from "jsonwebtoken";
+import { SIGN_IN_ACCESS_SECRET_KEY } from "../config/env";
 
 const logger = getServiceLogger("user");
 
@@ -69,7 +72,7 @@ export const loginUser = async (req: any, body: { email: string; password: strin
           severity: SlackSeverity.INFO,
           trigger: `Unverified user login attempt: ${user.email}`,
           type: SlackEventType.USER_TRIGGERED,
-          channel: SlackChannel.CRY_WOLF,
+          channel: SlackChannel.TOWN_CRIER,
           body: `Unverified user attempted to login.
 What happened: ${user.firstName} ${user.lastName} (${user.email}) attempted to login but email is not verified.
 Immediate impact: User needs to verify account or contact support.
@@ -119,7 +122,7 @@ export const promoteUserToAdmin = async (userId: string, newRole: string, reques
           severity: SlackSeverity.INFO,
           trigger: "Unauthorized promotion attempt",
           type: SlackEventType.USER_TRIGGERED,
-          channel: SlackChannel.CRY_WOLF,
+          channel: SlackChannel.TOWN_CRIER,
           body: `Unauthorized promotion attempt detected.
 What happened: ${requestingUser.firstName} ${requestingUser.lastName} (${requestingUser.email}) attempted to promote user ${userId} to ${newRole}.
 Immediate impact: Promotion blocked - user is not an admin.
@@ -171,4 +174,94 @@ Next steps: Only admin users can perform promotions. Consider escalating if this
 
   logger.info(`User ${user.firstName} ${user.lastName} (${user.email}) successfully promoted to ${user.role}`);
   return user;
+};
+
+// Logout User
+export const logoutUser = async (token: string, userId: string) => {
+  logger.info(`Processing logout request for user ID: ${userId}`);
+  
+  try {
+    // Decode the token to get expiration time
+    const decoded = jwt.decode(token) as any;
+    const expiresAt = new Date(decoded.exp * 1000); // Convert from seconds to milliseconds
+
+    // Add token to blacklist database
+    await BlacklistedToken.create({
+      token,
+      expiresAt,
+    });
+
+    logger.info(`Token blacklisted for user: ${userId}`);
+  } catch (error) {
+    logger.error(`Failed to blacklist token for user ${userId}: ${error}`);
+    // Continue with logout even if blacklisting fails
+  }
+
+  logger.info(`Logout successful for user: ${userId}`);
+  return { message: "Logout successful" };
+};
+
+// Get all users with role 'client'
+export const getClients = async () => {
+  logger.info(`Retrieving all clients from database`);
+  
+  const clients = await User.findAll({
+    where: {
+      role: 'client',
+      isActive: true,
+      deletedAt: null
+    },
+    attributes: {
+      exclude: ['password', 'accessToken', 'adminPassword']
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  logger.info(`Retrieved ${clients.length} clients from database`);
+  return clients;
+};
+
+// Get all users with role 'assistant' (returned as PC - Placement Control)
+export const getAssistants = async () => {
+  logger.info(`Retrieving all assistants from database`);
+  
+  const assistants = await User.findAll({
+    where: {
+      role: 'assistant',
+      isActive: true,
+      deletedAt: null
+    },
+    attributes: {
+      exclude: ['password', 'accessToken', 'adminPassword']
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  // Transform the response to return 'PC' instead of 'assistant'
+  const pcUsers = assistants.map(assistant => ({
+    ...assistant.toJSON(),
+    role: 'PC' // Change role from 'assistant' to 'PC'
+  }));
+
+  logger.info(`Retrieved ${pcUsers.length} assistants (returned as PC) from database`);
+  return pcUsers;
+};
+
+// Get all users (for admin and assistant roles)
+export const getAllUsers = async () => {
+  logger.info(`Retrieving all users from database`);
+  
+  const users = await User.findAll({
+    where: {
+      isActive: true,
+      deletedAt: null
+    },
+    attributes: {
+      exclude: ['password', 'accessToken', 'adminPassword']
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  logger.info(`Retrieved ${users.length} users from database`);
+  return users;
 };

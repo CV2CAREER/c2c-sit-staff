@@ -1,6 +1,8 @@
 import { ENVIRONMENTNAME } from "../constants/constants";
 import { setDbReady } from "../middlewares/dbReady";
+import { ensureInFlightIndexes } from "../services/admin/in-flight.index-bootstrap.service";
 import { getServiceLogger } from "../utils/createLogger";
+import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
 
@@ -36,7 +38,7 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await NewModel.sync({ force: false });        // new table
-        // await ExistingModel.sync({ alter: true });
+        // await User.sync({ alter: true });
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -108,6 +110,9 @@ export const connectDB = async (): Promise<void> => {
           `LOCAL: Total tables in DB: ${tablesAfter.length} Tables (took ${duration}s)`,
         );
       }
+
+      await ensureAnalyticsIndexes();
+      await ensureInFlightIndexes();
 
       return; // ✅ exit once connected
     } catch (error: any) {
@@ -216,3 +221,4 @@ export const disconnectDB = async () => {
     throw new Error("Database FAILED to disconnect");
   }
 };
+

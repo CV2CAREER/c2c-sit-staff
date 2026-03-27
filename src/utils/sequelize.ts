@@ -19,6 +19,7 @@ dotenv.config();
 let sequelize: Sequelize | null;
 
 export const createSequelize = () => {
+
   return NODE_ENV !== "local"
     ? new Sequelize({
         database: DATABASE_NAME,
@@ -58,11 +59,12 @@ export const createSequelize = () => {
           acquire: 60000,
           idle: 10000,
         },
-        // retry: {
-        //   max: 5, // retry queries when connection lost
-        // },
+        retry: {
+          max: 5, // retry queries when connection lost
+        },
       });
 };
+
 export const getSequelize = (): Sequelize => {
   if (!sequelize) {
     logger.warn("Sequelize connection missing or closed, recreating...");
