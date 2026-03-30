@@ -1,0 +1,143 @@
+﻿
+> c2c-staff-rft@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.2.1 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 98s
+  Running TypeScript ...
+node.exe : Failed to 
+type check.
+At line:1 char:1
++ & "C:\nvm4w\nodejs/n
+ode.exe" "C:\nvm4w\nod
+ejs/node_modules/npm/b
+in/np ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (Failed to    
+ type check.:Strin    
+g) [], RemoteExce    
+ption
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+
+./src/app/admin/campai
+gn-mgt/_components/Edi
+tModal.tsx:120:5
+Type error: Type 
+'Resolver<{ Batch: 
+string | null; Craft: 
+string | null; 
+Status: string | 
+null; Full_Name?: 
+string | null | 
+undefined; 
+First_Name?: string | 
+null | undefined; 
+Middle_Name?: string 
+| null | undefined; 
+... 31 more ...; 
+Assurance?: string | 
+... 1 more ... | 
+undefined; }, any, { 
+...; }>' is not 
+assignable to type 
+'Resolver<{ Active: 
+boolean | null; 
+SeekAnswerPriority: 
+boolean | null; 
+Seek_Aggregator: 
+boolean | null; 
+Linkedin_Aggregator: 
+boolean | null; 
+Jobserve_Aggregator: 
+boolean | null; Escape
+City_Aggregator: 
+boolean | null; ... 
+31 more ...; 
+Assurance?: string | 
+... 1 more ... | 
+undefined; }, any, { 
+...; }>'.
+  Types of parameters 
+'options' and 
+'options' are 
+incompatible.
+    Type 
+'ResolverOptions<{ 
+Active: boolean | 
+null; 
+SeekAnswerPriority: 
+boolean | null; 
+Seek_Aggregator: 
+boolean | null; 
+Linkedin_Aggregator: 
+boolean | null; 
+Jobserve_Aggregator: 
+boolean | null; Escape
+City_Aggregator: 
+boolean | null; ... 
+31 more ...; 
+Assurance?: string | 
+... 1 more ... | 
+undefined; }>' is not 
+assignable to type 
+'ResolverOptions<{ 
+Batch: string | null; 
+Craft: string | null; 
+Status: string | 
+null; Full_Name?: 
+string | null | 
+undefined; 
+First_Name?: string | 
+null | undefined; 
+Middle_Name?: string 
+| null | undefined; 
+... 31 more ...; 
+Assurance?: string | 
+... 1 more ... | 
+undefined; }>'.
+      Type 'boolean | 
+null | undefined' is 
+not assignable to 
+type 'boolean | null'.
+        Type 
+'undefined' is not 
+assignable to type 
+'boolean | null'.
+
+  [90m118 |[0m   
+[90m// Form 
+Definition[0m
+  [90m119 |[0m   
+[36mconst[0m form = 
+useForm<[33mCampaignF
+ormValues[0m>({
+[31m[1m>[0m 
+[90m120 |[0m     
+resolver: zodResolver(
+formSchema),
+  [90m    |[0m     
+[31m[1m^[0m
+  [90m121 |[0m     
+defaultValues: {
+  [90m122 |[0m      
+ [33mFull_Name[0m: c
+lient.[33mFull_Name[
+0m,
+  [90m123 |[0m      
+ [33mFirst_Name[0m: 
+client.[33mFirst_Name
+[0m,
+Next.js build worker 
+exited with code: 1 
+and signal: null

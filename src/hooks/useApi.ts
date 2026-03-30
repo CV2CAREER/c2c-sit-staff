@@ -6,9 +6,9 @@ import axios from "axios";
 
 // FOR POST, PUT, DELETE requests
 interface MutationOptions<TResponse, TRequest = unknown> {
-  mutationKey: (string | number)[];
-  url: string;
-  method: "POST" | "PUT" | "PATCH" | "DELETE";
+  mutationKey: any[];
+  url: string | ((data: TRequest) => string);
+  method: "POST" | "PUT" | "PATCH" | "DELETE" | "GET";
   params?: string;
   paramKey?: keyof TRequest;
   headers?: Record<string, string>;
@@ -44,9 +44,11 @@ export function useMutateData<TResponse, TRequest = unknown>({
           dynamicParams = `/${value}`;
         }
 
+        const evaluatedUrl = typeof url === "function" ? url(data) : url;
+
         const finalUrl = dynamicParams
-          ? `${SERVER_URI}${url}${dynamicParams}`
-          : `${SERVER_URI}${url}`;
+          ? `${SERVER_URI}${evaluatedUrl}${dynamicParams}`
+          : `${SERVER_URI}${evaluatedUrl}`;
 
         const config: any = {
           method,
@@ -100,9 +102,9 @@ export function useMutateData<TResponse, TRequest = unknown>({
 interface FetchOptions {
   url: string;
   method: "GET";
-  queryKey: (string | number)[];
+  queryKey: any[];
   enabled: boolean;
-  params?: string;
+  params?: any;
   staleEarly?: boolean;
   forceRefresh?: boolean;
   initialData?: any;
@@ -125,7 +127,8 @@ export function useFetchData<T>({
       try {
         const config: any = {
           method,
-          url: params ? `${SERVER_URI}${url}${params}` : `${SERVER_URI}${url}`,
+          url: `${SERVER_URI}${url}`,
+          params,
           withCredentials: true,
         };
 

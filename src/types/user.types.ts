@@ -35,4 +35,47 @@ export type IUser = {
   updatedAt?: string;
 };
 
+export type ReferrerType = {
+  referrer: string;
+  status: string;
+};
+
+export type ProfileType = {
+  aggregators: any[];
+};
+
+export interface IUserDetail {
+  _id: string;
+  userSessionsMilestones: {
+    documentAccepted: boolean;
+  }[];
+  progress: string;
+  gender: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  middleName: string;
+  paymentStatus: string;
+  status: string;
+  totalAmountPaid: number;
+  updatedBy: string | undefined;
+  revenue: string;
+  referrer: ReferrerType | undefined;
+  profileHistories: any[];
+  service_history: any[];
+  isDeleted: boolean;
+  heritage: string;
+  country: string;
+  emailVerified: boolean;
+  isEmailVerified: boolean;
+  isDocumentUploaded: boolean;
+  isDocumentApproved: boolean;
+  isUserSubscribed: boolean;
+  plan: null | any;
+  role: StaffRole | any;
+  profile: ProfileType | undefined | null;
+  phoneNumber: string | undefined | null;
+  currentCityOfResidence: string | null | undefined;
+}
+
 

@@ -1,0 +1,172 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+"use client";
+import React, { useEffect } from "react";
+import { IoMdTime } from "react-icons/io";
+import { Stepper, Step } from "@material-tailwind/react";
+import { Chip } from "@heroui/chip";
+import { LucideVerified } from "lucide-react";
+import { IUserDetail } from "@/types/user.types";
+import { useAdminUserDetailContext } from "../context/userDetailContext";
+
+const milestoneLabels = [
+  { id: 0, label: "Email Verification" },
+  { id: 1, label: "Document Accepted" },
+  { id: 2, label: "Service Selection" },
+  { id: 3, label: "Payment Confirmation" },
+  { id: 4, label: "Social Follow Verification" },
+  { id: 5, label: "Jobsite Verification" },
+  { id: 6, label: "Preference Update" },
+  { id: 7, label: "CV Variant Dispatch" },
+  { id: 8, label: "Sample Results Review" },
+  { id: 9, label: "Preparatory Session" },
+  { id: 10, label: "Job Applications" },
+];
+
+export default function OnBoardingProgress() {
+  const [userDetails, setUserDetails] = React.useState<IUserDetail | null>(null);
+  const { user } = useAdminUserDetailContext()
+
+  return (
+    <section className="flex flex-col gap-3 bg-white rounded-md p-4 shadow-lg">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Onboarding Progress</h2>
+        {user?.isEmailVerified ? (
+          <Chip
+            size="sm"
+            color="success"
+            className="*:flex items-center gap-1 font-semibold capitalize text-white"
+          >
+            <LucideVerified size={13} />
+            <span>Verified</span>
+          </Chip>
+        ) : (
+          <Chip
+            size="sm"
+            color="warning"
+            className="*:flex *:items-center *:gap-1 *:font-semibold *:capitalize *:text-white"
+          >
+            <IoMdTime />
+            <span>Unverified</span>
+          </Chip>
+        )}
+      </div>
+
+      <div className="">
+        <OnboardingStatusBarStepper userInfo={user} />
+      </div>
+    </section>
+  );
+}
+
+/* Internal Components */
+function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
+  const [currentStep, setCurrentStep] = React.useState<number>(0);
+
+  // Helper function to check if any aggregator is verified
+  const isAnyAggregatorVerified = (aggregators: any[] | undefined): boolean => {
+    if (!aggregators || !Array.isArray(aggregators)) return false;
+    return aggregators.some((agg) => agg?.isVerified === true);
+  };
+
+  useEffect(() => {
+    if (userInfo) {
+      handleActiveStep();
+    }
+  }, [userInfo]);
+
+  const handleActiveStep = () => {
+    if (userInfo) {
+      const emailVerified = userInfo?.isEmailVerified;
+      const documentUploaded = userInfo?.isDocumentUploaded ?? false;
+      const documentApproved = userInfo?.isDocumentApproved ?? false;
+      const userSubscribed = userInfo?.isUserSubscribed ? true: userInfo?.plan ? true : false;
+      const planChosen = userInfo?.selectedPlan ? true : false; // Using selectedPlan instead of plan
+      const isSampleDispatchedValue: string =
+        userInfo?.isSampleDispatched || "";
+      const isAggregatorVerified: boolean = isAnyAggregatorVerified(
+        userInfo?.profile && typeof userInfo.profile === "object"
+          ? (userInfo.profile as any)?.aggregators
+          : []
+      );
+      const prepSession = userInfo?.prepSessionStatus ?? 0;
+      const applicationStarted: boolean =
+        userInfo?.isApplicationStarted ?? false;
+
+      if (
+        userInfo.progress === "Application Commenced" || userInfo.progress === "Application Hold" || userInfo.progress === "Application Expired"
+      ) {
+        setCurrentStep(10)
+      } else if(
+        userInfo === "Preparatory Session Accepted" || userInfo.progress === "Preparatory Session Declined"
+      ){
+        setCurrentStep(9)
+      } else if(
+        userInfo.progress === "Sample Results Dispatched" || userInfo.progress === "Sample Results Accepted"
+      ){
+        setCurrentStep(8)
+      } else if(
+        userInfo.progress === "CV/Resume Uplifted"
+      ){
+        setCurrentStep(7)
+      } else if(
+        userInfo.progress === "Preference Inserted"
+      ){
+        setCurrentStep(6)
+      } else if(
+        userInfo.progress === "Login Credentials Verified"
+      ){
+        setCurrentStep(5)
+      }else if (
+        userInfo.progress === "Followed on Socials"
+      ) {
+        setCurrentStep(4);
+      } else if (
+        userSubscribed || userInfo.progress === "Payment Confirmed"
+      ) {
+        setCurrentStep(3);
+      } else if (
+        planChosen || userInfo.progress === "Plan Selected"
+      ) {
+        setCurrentStep(2);
+      } else if (documentUploaded && documentApproved) {
+        setCurrentStep(1);
+      } else if (emailVerified) {
+        setCurrentStep(0);
+      }
+    }
+  };
+
+  return (
+    <div className="w-full h-[150px] flex justify-center items-center overflow-x-auto px-8">
+      {
+        // @ts-ignore
+        <Stepper
+          placeholder=""
+          activeStep={currentStep}
+          lineClassName="bg-[#E5E5E5] h-[5px]"
+          className="w-full flex justify-between items-center"
+          onPointerEnterCapture={() => {}}
+          onPointerLeaveCapture={() => {}}
+        >
+          {milestoneLabels.map((milestone, index) => (
+            // @ts-ignore
+            <Step
+              key={index}
+              className="w-3 h-3 !bg-[#E5E5E5] text-[#666] !font-medium"
+              activeClassName="!bg-blue !text-blue"
+              completedClassName="!text-blue !bg-blue"
+              placeholder=""
+              onPointerEnterCapture={() => {}}
+              onPointerLeaveCapture={() => {}}
+            >
+              <div className="absolute -bottom-[3rem] flex flex-col items-center text-xs">
+                <span>{milestone.label}</span>
+              </div>
+            </Step>
+          ))}
+        </Stepper>
+      }
+    </div>
+  );
+}

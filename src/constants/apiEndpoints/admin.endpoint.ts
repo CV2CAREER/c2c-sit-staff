@@ -8,6 +8,7 @@ export const ADMIN_INFLIGHT_CLIENTS = "/api/v1/admin/in-flight";
 export const ADMIN_APPLICATION_SERIES = "/api/v1/admin/analytics/series";
 export const ADMIN_APPLICATION_CHART_DATA = "/api/v1/admin/analytics/series";
 export const ADMIN_USERS = "/api/v1/admin/analytics/users";
+export const ADMIN_USERS_FULL_NAME = "/api/v1/admin/users/full-name";
 export const ADMIN_AGGREGATORS = "/api/v1/admin/analytics/aggregators";
 export const ADMIN_APPLICATIONS = "/api/v1/admin/analytics"; // Match the backend route
 export const ADMIN_FOLLOWERS = "/api/v1/admin/analytics/followers";
@@ -16,3 +17,58 @@ export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the s
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
 export const ADMIN_THROTTLE = "/api/v1/admin/throttle";
 export const ADMIN_STATUS = "/api/v1/admin/status";
+export const ADMIN_JOBSITES = "/api/v1/admin/jobsites";
+export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info/${id}`;
+export const ADMIN_CAMPAIGN = "/api/v1/admin/campaign";
+export const ADMIN_CAMPAIGN_SHEET = "/api/v1/admin/campaign/sheet";
+export const ADMIN_CAMPAIGN_SHEET_UPDATE = "/api/v1/admin/campaign/sheet/update";
+export const ADMIN_CAMPAIGN_SHEET_UPDATE_SINGLE = "/api/v1/admin/campaign/sheet/update-single";
+export const ADMIN_CAMPAIGN_SHEET_DELETE = "/api/v1/admin/campaign/sheet/delete";
+export const ADMIN_CAMPAIGN_SHEET_UPDATE_KEYWORDS = "/api/v1/admin/campaign/sheet/update-keywords";
+export const ADMIN_CLIENT_SAMPLE = "/api/v1/admin/client-sample";
+export const ADMIN_DISPATCH_SAMPLE = "/api/v1/admin/users/dispatch-sample";
+export const ADMIN_CAMPAIGN_GET_CLIENTS = "/api/v1/admin/campaign/sheet/get-clients";
+export const ADMIN_CAMPAIGN_CLIENT_INSIGHTS = (id: string | number) => `/api/v1/admin/campaign/client/${id}`;
+export const ADMIN_CAMPAIGN_COUNT_APPLICATIONS = "/api/v1/admin/campaign/sheet/count-applications";
+
+// User specific actions
+export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/admin/users/${id}`;
+export const ADMIN_GENERATE_PASSWORD = "/api/v1/admin/generatePassword";
+export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/admin/dispatchCredentials";
+export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/admin/send-preference-email";
+export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/admin/send-preference-email-userid";
+export const ADMIN_DISPATCH_CLIENT = "/api/v1/admin/dispatch-client";
+export const ADMIN_USER_EXTRACT_CV = "/api/v1/admin/extract-cv-data";
+export const ADMIN_UPDATE_USER_PROGRESS = "/api/v1/admin/user-progress";
+export const ADMIN_ASSIGN_VA = "/api/v1/admin/assign-va";
+export const SHORTEN_WORDS = "/api/shortenWords";
+
+// Dropdown/Schema management
+export const ADMIN_DROPDOWN = "/api/v1/admin/dropdown";
+export const ADMIN_CLIENT_JOBSITE = "/api/v1/admin/client-jobsite";
+export const ADMIN_UPGRADE_PLAN = "/api/v1/admin/upgrade-plan";
+export const ADMIN_PLANS = "/api/v1/admin/plans";
+export const ADMIN_ACCOUNT_ACTION = "/api/v1/admin/account-action";
+export const ADMIN_DELETE_USER = "/api/v1/admin/users";
+export const ADMIN_APPLICATION_EMAILS = "/api/v1/admin/applications/emails";
+export const ADMIN_DOCUMENTS = "/api/v1/admin/documents";
+export const ADMIN_UPLOAD_DOCUMENTS = "/api/v1/admin/documents/upload";
+export const ADMIN_DOCUMENTS_GET_SIGNED_URL = "/api/v1/admin/documents/get-signed-url";
+export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/document-review";
+export const ADMIN_USER_PREFERENCES = "/api/v1/admin/users/preferences";
+export const ADMIN_JOB_PREFERENCES = "/api/v1/job-preferences";
+export const ADMIN_UPDATE_USER_PREFERENCES = "/api/v1/admin/users/update-preferences";
+export const ADMIN_PROFILE_HISTORY = (userId: string) => `/api/v1/admin/profile-history/${userId}`;
+export const ADMIN_REFERRAL_HISTORY = "/api/v1/admin/referral";
+export const ADMIN_REGEX_QUEUE = "/api/v1/admin/regexqueue";
+export const ADMIN_NOTIFY_ADMIN = "/api/v1/notify-admin";
+export const ADMIN_UPLOAD_FILES = "/api/v1/uploadfiles";
+export const ADMIN_USER_PROFILE = "/api/v1/userprofile";
+export const ADMIN_COACHING_SESSION = "/api/v1/admin/coaching/session";
+export const ADMIN_EXTRACT_CV_DATA_POINTS = "/api/v1/admin/extractCVDataPoints";
+export const ADMIN_REVERSE_USER_ID = "/api/v1/admin/userId";
+export const ADMIN_CV_REVAMP = "/api/v1/admin/cv-revamp";
+export const ADMIN_SHEETS_TEMPLATES = "/api/v1/admin/sheets/templates";
+export const SHEETS_API = "/api/v1/sheets";
+export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
+export const COUNTRY_INFO = "/api/v1/country-info";

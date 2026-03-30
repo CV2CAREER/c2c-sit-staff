@@ -1,0 +1,10 @@
+@keyframes flashGreen {
+    0% { background-color: transparent; }
+    50% { background-color: #0E9F6E; }
+    100% { background-color: transparent; }
+  }
+  
+  .flash-green {
+    animation: flashGreen 2s infinite;
+  }
+  

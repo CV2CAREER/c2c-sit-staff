@@ -1,0 +1,12 @@
+﻿src/app/admin/campaign-mgt/_components/AssignVA.tsx(1,26): error TS2307: Cannot find module '@/components/ui/react-select' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/AssignVA.tsx(2,28): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/AssignVA.tsx(6,52): error TS2307: Cannot find module '@/hooks/api/admin.api' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(12,8): error TS2307: Cannot find module '@/components/ui/dialog' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(13,24): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(21,8): error TS2307: Cannot find module '@/components/ui/form' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(22,23): error TS2307: Cannot find module '@/components/ui/input' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(24,38): error TS2307: Cannot find module '@/types/apiResponse.types' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(25,24): error TS2307: Cannot find module '@/components/ui/switch' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(28,26): error TS2307: Cannot find module '@/components/ui/react-select' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(29,28): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+src/app/admin/campaign-mgt/_components/EditModal.tsx(32,38): error TS2307: Cannot find module '@/types/admin' or its corresponding type declarations.

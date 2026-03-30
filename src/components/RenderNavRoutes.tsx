@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { usePathname } from "next/navigation";
-import StaffNavRoutes from "@/app/admin/_components/nav-routes";
+import StaffNavRoutes from "@/components/layout/nav-routes";
 import { NAV_LINKS_BY_ROLE } from "@/constants/navLinks";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminPersonaSwitchStore } from "@/store/switchPersonaStore";

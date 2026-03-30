@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Icon from "../../../../public/icons";
+import Icon from "../../../public/icons";
 import {
   Dropdown,
   DropdownTrigger,
