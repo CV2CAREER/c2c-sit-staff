@@ -127,7 +127,6 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
   const [mongoClientID, setMongoClientID] = useState<string | null>(null);
   const [clientData, setClientData] = useState<null | any[]>(null);
   const [isloading, setIsLoading] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
   const [preferences, setPreferences] = useState<Pred>();
   const [credentialsId, setCredentialsId] = useState<null | number>(null);
   const [jobType, setJobType] = useState([]);
@@ -336,30 +335,6 @@ const queryClient = useQueryClient();
     }
   }, [usersId]);
 
-  const fetchJobPreferencesOptions = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch all preferences in parallel
-      const [jobTypeResponse, workingRightResponse] = await Promise.all([
-        fetch('/api/jobPreferences?category=Job Type'),
-        fetch('/api/jobPreferences?category=Working Rights'),
-      ]);
-
-      const jobTypeData = await jobTypeResponse.json();
-      const workingRightData = await workingRightResponse.json();
-
-      setJobType(jobTypeData?.data);
-      setWorkingRights(workingRightData?.data);
-    } catch (error) {
-      console.error('Error fetching job preferences:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchJobPreferencesOptions();
-  }, [fetchJobPreferencesOptions, preferences]);
 
   return (
     <main className="mt-10">
@@ -584,7 +559,7 @@ const queryClient = useQueryClient();
                     //@ts-ignore 
                     id={usersId ?? mongoClientID}
                     preference={preferences}
-                    loading={loading}
+                    loading={isLoading}
                     jobType={jobType}
                     workingRights={workingRights}
                     setReload={setReload}

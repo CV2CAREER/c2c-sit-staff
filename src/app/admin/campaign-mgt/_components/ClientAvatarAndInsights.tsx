@@ -47,7 +47,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   useEffect(() => {
     if (allUserData) {
       setClientList(
-        allUserData
+        allUserData?.data
           ?.map(({ Full_Name, id }: { Full_Name: string; id: number }) => {
             return { Full_Name, id };
           })

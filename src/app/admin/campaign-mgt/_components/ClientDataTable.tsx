@@ -287,6 +287,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                 aggregator: selectedAggregator?.value ?? "",
                 processENV: isStage(selectedAggregator?.value ?? "") ? "staging" : "production",
                 clientId: clientId,
+                email: (clientInfo as any)?.email || "",
             });
 
             toast.success(response.message || "Successfully pushed to aggregator queue");

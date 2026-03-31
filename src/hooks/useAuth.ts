@@ -16,8 +16,10 @@ import { useUserQueries } from "./api/user.api";
  * Loading → isLoading = true. Guard renders a spinner (no white flash).
  */
 export function useAuth() {
-  const { setUser, setViewingAsUser, isViewingAsUser, viewedByUserEmail } =
-    useAuthStore((s) => s);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setViewingAsUser = useAuthStore((s) => s.setViewingAsUser);
+  const isViewingAsUser = useAuthStore((s) => s.isViewingAsUser);
+  const viewedByUserEmail = useAuthStore((s) => s.viewedByUserEmail);
  
    // Single request: fetch user profile (acts as session validation + data hydration)
    const { userData, userLoading, userError, userSuccess } = useUserQueries({

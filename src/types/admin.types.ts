@@ -41,3 +41,41 @@ export interface UpdateAnswerModePayload {
   description: string;
   status: "True" | "False";
 }
+
+export interface Aggregator {
+  _id: string;
+  name: string;
+  isEnabled: boolean;
+  picture?: {
+    fileUrl: string;
+    [key: string]: any;
+  };
+}
+
+export interface CreateAggregatorPayload {
+  name: string;
+  picture: any;
+}
+
+export interface ToggleAggregatorPayload {
+  isEnabled: boolean;
+}
+
+export interface SlackQueueResponse {
+  data: {
+    result: string[];
+  };
+}
+
+export interface ResourceMode {
+  success: boolean;
+  data: {
+    resourceName: string;
+    value: string;
+  };
+}
+
+export interface UpdateResourcePayload {
+  resourceName: string;
+  value: string;
+}

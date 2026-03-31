@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../useApi";
 import axiosInstance from "@/services/api-client";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { 
   Throttle,
@@ -11,8 +11,25 @@ import {
   CreateColumnPayload,
   ApiTable,
   BotStatus,
-  AnswerModeItem
+  AnswerModeItem,
+  SlackQueueResponse,
+  ResourceMode,
+  UpdateResourcePayload
 } from "@/types/admin.types";
+import {
+  ClientSampleUser,
+  ClientSampleRow,
+  ClientSamplePayload,
+  RemoveFromQueuePayload,
+  RetryClientSamplePayload
+} from "@/types/client-sample.types";
+import {
+  PricingLocation,
+  PricingPlan,
+  UpdateMultiplierPayload,
+  UpdatePlanPayload
+} from "@/types/pricing.types";
+import toast from "react-hot-toast";
 
 export interface VaStats {
   yearly: number;
@@ -129,6 +146,18 @@ interface AdminQueriesOptions {
     page?: number;
     limit?: number;
   };
+  fetchClientSampleUsers?: boolean;
+  fetchClientSampleTable?: boolean;
+  sampleTableVariance?: string;
+  selectedJobsite?: string;
+  selectedEnv?: string;
+  fetchAdminLocations?: boolean;
+  fetchPricingPlans?: boolean;
+  locationId?: string;
+  fetchSlackQueue?: boolean;
+  slackQueue?: string;
+  fetchResources?: boolean;
+  resourceType?: string;
 }
 
 export const useAdminQueries = (options: AdminQueriesOptions) => {
@@ -197,6 +226,18 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     fetchCountryInfo = false,
     countryName = "",
     countryType = "region",
+    fetchClientSampleUsers = false,
+    fetchClientSampleTable = false,
+    sampleTableVariance = "queue",
+    selectedJobsite = "",
+    selectedEnv = "",
+    fetchAdminLocations = false,
+    fetchPricingPlans = false,
+    locationId = "",
+    fetchSlackQueue = false,
+    slackQueue = "",
+    fetchResources = false,
+    resourceType = "",
   } = options;
 
   const vaAllocations = useFetchData<VaAllocationsResponse>({
@@ -373,7 +414,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     queryKey: ["admin-throttles"],
     enabled: fetchThrottles,
   });
- 
+  
   const userDetail = useFetchData<any>({
     method: "GET",
     url: userId ? endpoints.ADMIN_USER_DETAIL(userId) : "",
@@ -580,6 +621,56 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     queryKey: ["admin-country-info", countryName, countryType],
     enabled: fetchCountryInfo && !!countryName,
   });
+  
+  const clientSampleUsers = useFetchData<ClientSampleUser[]>({
+    method: "GET",
+    url: endpoints.ADMIN_CLIENT_SAMPLE_USERS,
+    queryKey: ["admin-client-sample-users"],
+    enabled: fetchClientSampleUsers,
+  });
+
+  const clientSampleTable = useFetchData<ClientSampleRow[]>({
+    method: "GET",
+    url: endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
+    params: { 
+      variance: sampleTableVariance, 
+      environment: selectedEnv, 
+      jobsite: selectedJobsite 
+    },
+    queryKey: ["admin-client-sample-table", sampleTableVariance, selectedEnv, selectedJobsite],
+    enabled: fetchClientSampleTable,
+  });
+  
+  const adminLocations = useFetchData<PricingLocation[]>({
+    method: "GET",
+    url: endpoints.ADMIN_LOCATIONS,
+    queryKey: ["admin-locations"],
+    enabled: fetchAdminLocations,
+  });
+
+  const pricingPlans = useFetchData<PricingPlan[]>({
+    method: "GET",
+    url: endpoints.ADMIN_PRICING_PLANS,
+    params: { locationId },
+    queryKey: ["admin-pricing-plans", locationId],
+    enabled: fetchPricingPlans,
+  });
+
+  const slackQueueResult = useFetchData<SlackQueueResponse>({
+    method: "GET",
+    url: endpoints.ADMIN_SLACK_QUEUE,
+    params: { queue: slackQueue },
+    queryKey: ["admin-slack-queue", slackQueue],
+    enabled: fetchSlackQueue && !!slackQueue,
+  });
+
+  const resourcesResult = useFetchData<ResourceMode>({
+    method: "GET",
+    url: endpoints.ADMIN_RESOURCES,
+    params: { type: resourceType },
+    queryKey: ["admin-resources", resourceType],
+    enabled: fetchResources && !!resourceType,
+  });
 
   const mappedThrottles: Throttle[] = useMemo(() => {
     if (!throttles.data?.data?.config) return [];
@@ -638,7 +729,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     return { successful, failed, label };
   }, [applicationChartData.data]);
 
-  return {
+  return useMemo(() => ({
     vaAllocationsDomain: {
       data: vaAllocations.data?.data,
       isLoading: vaAllocations.isLoading,
@@ -834,84 +925,84 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       error: clientJobsite.error,
     },
     userPreferencesDomain: {
-      data: userPreferences.data,
+      data: userPreferences.data?.data,
       isLoading: userPreferences.isLoading,
       isSuccess: userPreferences.isSuccess,
       isError: userPreferences.isError,
       error: userPreferences.error,
     },
     jobPreferencesOptionsDomain: {
-      data: jobPreferences.data,
+      data: jobPreferences.data?.data,
       isLoading: jobPreferences.isLoading,
       isSuccess: jobPreferences.isSuccess,
       isError: jobPreferences.isError,
       error: jobPreferences.error,
     },
     profileHistoryDomain: {
-      data: profileHistory.data,
+      data: profileHistory.data?.data,
       isLoading: profileHistory.isLoading,
       isSuccess: profileHistory.isSuccess,
       isError: profileHistory.isError,
       error: profileHistory.error,
     },
     referralHistoryDomain: {
-      data: referralHistory.data,
+      data: referralHistory.data?.data,
       isLoading: referralHistory.isLoading,
       isSuccess: referralHistory.isSuccess,
       isError: referralHistory.isError,
       error: referralHistory.error,
     },
     regexQueueDomain: {
-      data: regexQueue.data,
+      data: regexQueue.data?.data,
       isLoading: regexQueue.isLoading,
       isSuccess: regexQueue.isSuccess,
       isError: regexQueue.isError,
       error: regexQueue.error,
     },
     usersPersonaCountDomain: {
-      data: usersPersonaCount.data,
+      data: usersPersonaCount.data?.data,
       isLoading: usersPersonaCount.isLoading,
       isSuccess: usersPersonaCount.isSuccess,
       isError: usersPersonaCount.isError,
       error: usersPersonaCount.error,
     },
     userInfoDomain: {
-      data: userInfo.data,
+      data: userInfo.data?.data,
       isLoading: userInfo.isLoading,
       isSuccess: userInfo.isSuccess,
       isError: userInfo.isError,
       error: userInfo.error,
     },
     campaignSheetDomain: {
-      data: campaignSheet.data,
+      data: campaignSheet.data?.data,
       isLoading: campaignSheet.isLoading,
       isSuccess: campaignSheet.isSuccess,
       isError: campaignSheet.isError,
       error: campaignSheet.error,
     },
     aggregatorsDomain: {
-      data: aggregators.data,
+      data: aggregators.data?.data,
       isLoading: aggregators.isLoading,
       isSuccess: aggregators.isSuccess,
       isError: aggregators.isError,
       error: aggregators.error,
     },
     cvRevampDomain: {
-      data: cvRevamp.data,
+      data: cvRevamp.data?.data,
       isLoading: cvRevamp.isLoading,
       isSuccess: cvRevamp.isSuccess,
       isError: cvRevamp.isError,
       error: cvRevamp.error,
     },
     campaignClientsDomain: {
-      data: campaignClients.data?.data,
+      data: campaignClients.data,
       isLoading: campaignClients.isLoading,
       isSuccess: campaignClients.isSuccess,
       isError: campaignClients.isError,
       error: campaignClients.error,
     },
     clientCampaignInsightsDomain: {
-      data: clientCampaignInsights.data,
+      data: clientCampaignInsights.data?.data,
       isLoading: clientCampaignInsights.isLoading,
       isSuccess: clientCampaignInsights.isSuccess,
       isError: clientCampaignInsights.isError,
@@ -959,10 +1050,66 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
       isError: countryInfo.isError,
       error: countryInfo.error,
     },
-  };
+    clientSampleUsersDomain: {
+      data: clientSampleUsers.data?.data || [],
+      isLoading: clientSampleUsers.isLoading,
+      isSuccess: clientSampleUsers.isSuccess,
+      isError: clientSampleUsers.isError,
+      error: clientSampleUsers.error,
+    },
+    clientSampleTableDomain: {
+      data: clientSampleTable.data?.data || [],
+      isLoading: clientSampleTable.isLoading,
+      isSuccess: clientSampleTable.isSuccess,
+      isError: clientSampleTable.isError,
+      error: clientSampleTable.error,
+    },
+    adminLocationsDomain: {
+      data: adminLocations.data?.data,
+      isLoading: adminLocations.isLoading,
+      isSuccess: adminLocations.isSuccess,
+      isError: adminLocations.isError,
+      error: adminLocations.error,
+    },
+    pricingPlansDomain: {
+      data: pricingPlans.data?.data,
+      isLoading: pricingPlans.isLoading,
+      isSuccess: pricingPlans.isSuccess,
+      isError: pricingPlans.isError,
+      error: pricingPlans.error,
+    },
+    slackQueueDomain: {
+      data: slackQueueResult.data?.data,
+      isLoading: slackQueueResult.isLoading,
+      isSuccess: slackQueueResult.isSuccess,
+      isError: slackQueueResult.isError,
+      error: slackQueueResult.error,
+    },
+    resourcesDomain: {
+      data: resourcesResult.data?.data,
+      isLoading: resourcesResult.isLoading,
+      isSuccess: resourcesResult.isSuccess,
+      isError: resourcesResult.isError,
+      error: resourcesResult.error,
+    },
+  }), [
+    vaAllocations, milestoneStats, onboardedClients, jobsiteStats, inflightClients,
+    applicationStats, overallStats, applicationChartData, usersCount, usersPersonaCount,
+    aggregatorsCount, applicationsCount, followersCount, inflightClientsList,
+    adminStatus, tables, throttles, userDetail, adminDropdowns, usersList,
+    clients, pcs, plans, documents, clientJobsite, userPreferences, jobPreferences,
+    profileHistory, referralHistory, regexQueue, userInfo, campaignSheet,
+    aggregators, cvRevamp, campaignClients, clientCampaignInsights, usersFullName,
+    campaigns, sheetsTemplates, userDocsAndPreferences, aggregatorLocations, countryInfo,
+    clientSampleUsers, clientSampleTable, adminLocations, pricingPlans,
+    slackQueueResult, resourcesResult,
+    mappedTables, mappedThrottles, mappedApplicationsCount, mappedChartData, mappedBotStatus, mappedAnswerMode
+  ]);
 };
 
 export const useAdminMutations = () => {
+  const queryClient = useQueryClient();
+
   const toggleBot = useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
     method: "PATCH",
     url: endpoints.ADMIN_BOT_CONTROL,
@@ -1233,13 +1380,6 @@ export const useAdminMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    runClientSampleMutation: useMutateData<any, { queue: string; environment: string; aggregator: string; processENV: string; clientId: string | number }>({
-      method: "POST",
-      url: endpoints.ADMIN_CLIENT_SAMPLE,
-      mutationKey: ["admin-run-client-sample"],
-      onSuccess: () => {},
-      onError: () => {},
-    }),
     dispatchSampleMutation: useMutateData<any, { clientId: string | number }>({
       method: "PATCH",
       url: endpoints.ADMIN_DISPATCH_SAMPLE,
@@ -1361,7 +1501,7 @@ export const useAdminMutations = () => {
     }),
     fileUploadMutation: useMutateData<any, FormData>({
       method: "POST",
-      url: "/api/fileupload", // Not in constants yet? I'll check or add it.
+      url: "/api/fileupload",
       mutationKey: ["admin-file-upload"],
       onSuccess: () => {},
       onError: () => {},
@@ -1383,7 +1523,7 @@ export const useAdminMutations = () => {
     }),
     generateKeywordRoleTitlesMutation: useMutateData<any, { id: string; keywords?: boolean; roleTitles?: boolean; increment?: boolean; existing?: any }>({
       method: "POST",
-      url: "/api/v1/admin/generateKeywordRoleTitles", // Using v1 prefix for consistency
+      url: "/api/v1/admin/generateKeywordRoleTitles",
       mutationKey: ["admin-generate-keyword-role-titles"],
       onSuccess: () => {},
       onError: () => {},
@@ -1414,6 +1554,98 @@ export const useAdminMutations = () => {
       url: endpoints.SHORTEN_WORDS,
       mutationKey: ["admin-shorten-words"],
       onSuccess: () => {},
+      onError: () => {},
+    }),
+    runClientSampleMutation: useMutateData<any, ClientSamplePayload>({
+      method: "POST",
+      url: endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
+      mutationKey: ["admin-run-client-sample"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-sample-table"] });
+      },
+      onError: () => {},
+    }),
+    removeFromQueueMutation: useMutateData<any, RemoveFromQueuePayload>({
+      method: "DELETE",
+      url: endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
+      mutationKey: ["admin-remove-from-queue"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-sample-table"] });
+        toast.success("Removed from queue successfully");
+      },
+      onError: () => {},
+    }),
+    retryClientSampleMutation: useMutateData<any, RetryClientSamplePayload>({
+      method: "POST",
+      url: endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
+      mutationKey: ["admin-retry-client-sample"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-sample-table"] });
+        toast.success("Retry initiated successfully");
+      },
+      onError: () => {},
+    }),
+    updateMultiplierMutation: useMutateData<any, UpdateMultiplierPayload>({
+      method: "PATCH",
+      url: endpoints.ADMIN_LOCATIONS,
+      mutationKey: ["admin-update-multiplier"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-locations"] });
+        toast.success("Multiplier updated successfully");
+      },
+      onError: () => {},
+    }),
+    updatePricingPlanMutation: useMutateData<any, UpdatePlanPayload>({
+      method: "PATCH",
+      url: endpoints.ADMIN_PRICING_PLANS,
+      mutationKey: ["admin-update-pricing-plan"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-pricing-plans"] });
+        toast.success("Pricing plan updated successfully");
+      },
+      onError: () => {},
+    }),
+    createAggregatorMutation: useMutateData<any, any>({
+      method: "POST",
+      url: endpoints.ADMIN_JOBSITES,
+      mutationKey: ["admin-create-aggregator"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-aggregators-list"] });
+      },
+      onError: () => {},
+    }),
+    toggleAggregatorMutation: useMutateData<any, { aid: string; body: { isEnabled: boolean } }>({
+      method: "PUT",
+      url: (params) => `${endpoints.ADMIN_JOBSITES}?aid=${params?.aid}`,
+      mutationKey: ["admin-toggle-aggregator"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-aggregators-list"] });
+      },
+      onError: () => {},
+    }),
+    slackQueueMutation: useMutation({
+      mutationKey: ["admin-slack-queue-action"],
+      mutationFn: async ({ action, email, queue }: { action: "POST" | "DELETE"; email: string; queue: string }) => {
+        const url = endpoints.ADMIN_SLACK_QUEUE;
+        if (action === "POST") {
+          const res = await axiosInstance.post(url, { email, queue });
+          return res.data;
+        } else {
+          const res = await axiosInstance.delete(url, { data: { email, queue } });
+          return res.data;
+        }
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-slack-queue"] });
+      },
+    }),
+    updateResourceMutation: useMutateData<any, UpdateResourcePayload>({
+      method: "PUT",
+      url: endpoints.ADMIN_RESOURCES,
+      mutationKey: ["admin-update-resource"],
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-resources"] });
+      },
       onError: () => {},
     }),
   };

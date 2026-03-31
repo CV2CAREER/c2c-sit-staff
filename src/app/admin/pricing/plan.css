@@ -1,0 +1,9 @@
+  @media screen and (min-width: 1500px) {
+  .large-screens {
+        max-width:1000px;
+         margin:auto;
+         
+      
+  }
+
+}
