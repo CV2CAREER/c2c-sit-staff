@@ -163,8 +163,8 @@ const queryClient = useQueryClient();
 
   const usersItems = usersFullNameDomain.data || [];
   const rowsData = campaignsDomain.data?.campaigns || campaignsDomain.data || [];
-  const templatesData = sheetsTemplatesDomain.data || [];
-  const jobPreferencesOptionsData = jobPreferencesOptionsDomain.data || [];
+  const templatesData = sheetsTemplatesDomain.data;
+  const jobPreferencesOptionsData = jobPreferencesOptionsDomain.data;
   
   const isLoading = usersFullNameDomain.isLoading || campaignsDomain.isLoading;
 
@@ -211,9 +211,11 @@ const queryClient = useQueryClient();
   // Handle different possible response structures
   const apiResponse = campaignsDomain.data;
   console.log('API Response:', apiResponse?.length);
-  const rows: GridRowsProp<CampaignTableColType> = Array.isArray(apiResponse)
-    ? apiResponse
-    : (apiResponse?.campaigns || []);
+  const rows: GridRowsProp<CampaignTableColType> = React.useMemo(() => {
+    return Array.isArray(apiResponse)
+      ? apiResponse
+      : (apiResponse?.campaigns || []);
+  }, [apiResponse]);
 
   useEffect(() => {
     console.log('Rows length:', rows.length);
