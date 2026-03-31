@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import moment from "moment";
-import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, AwaitedReactNode } from "react";
+import {
+  ReactElement,
+  JSXElementConstructor,
+  ReactNode,
+  ReactPortal,
+  AwaitedReactNode,
+} from "react";
 
 export const applyAggregatorColumn = (el: any) => {
   switch (el.field) {
@@ -37,7 +43,7 @@ export const applyAggregatorColumn = (el: any) => {
               {Array.from(
                 { length: params?.value?.length },
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                (_, i) => "*"
+                (_, i) => "*",
               )}
             </p>
           );
