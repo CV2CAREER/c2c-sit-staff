@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import AppProvider from "@/providers/app.provider";
 import "./globals.css";
+import MuiXLicense from "./muiXLicense";
 
 export const metadata: Metadata = {
   title: {
@@ -40,10 +41,13 @@ export const metadata: Metadata = {
   },
 };
 
+
+// Set the license key OUTSIDE of your React component
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <MuiXLicense />
         <AppProvider>{children}</AppProvider>
       </body>
     </html>
