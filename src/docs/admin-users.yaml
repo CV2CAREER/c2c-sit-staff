@@ -1,0 +1,106 @@
+# OpenAPI Specification for Admin User Endpoints
+
+paths:
+  /v1/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Get users for admin operations
+      description: |
+        Returns paginated users for admin table operations.
+        Supports filtering by role and fuzzy search by name/email.
+      operationId: getAdminUsers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+            default: 20
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+          description: Search by first name, last name, or email.
+        - in: query
+          name: role
+          required: false
+          schema:
+            type: string
+          description: Filter by user role.
+      responses:
+        "200":
+          description: Admin users retrieved successfully
+        "400":
+          description: Invalid query parameters
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+
+  /v1/admin/users/persona:
+    patch:
+      tags:
+        - Admin
+      summary: Bulk assign user personas
+      description: |
+        Bulk-promote or demote users between `guest`, `coach`, and `admin` roles.
+        Includes server-side validation for UUIDs, duplicate targets, missing users,
+        self-role updates, and last-admin protection.
+      operationId: patchAdminUserPersona
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assignments:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    type: object
+                    required:
+                      - userId
+                      - role
+                    properties:
+                      userId:
+                        type: string
+                        format: uuid
+                      role:
+                        type: string
+                        enum: ["guest", "coach", "admin"]
+                reason:
+                  type: string
+            example:
+              assignments:
+                - userId: "0d8ff868-20f8-4540-a578-0fce9324edbc"
+                  role: "coach"
+                - userId: "b2f4bc63-81f1-4bb6-af2e-640af8fd2bb4"
+                  role: "admin"
+              reason: "Quarterly persona review"
+      responses:
+        "200":
+          description: User persona assignment updated successfully
+        "400":
+          description: Validation failed
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+        "404":
+          description: One or more users not found

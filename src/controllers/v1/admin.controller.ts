@@ -6,6 +6,7 @@ import { schemaManagementApplicationService } from "../../services/admin/schema-
 import { throttleApplicationService } from "../../services/admin/throttle.application.service";
 import { botWorkerIntegrationService } from "../../services/admin/bot-worker-integration.service";
 import { tableMetadataApplicationService } from "../../services/admin/table-metadata.application.service";
+import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -329,5 +330,51 @@ export const getAdminTableMetadata = catchAsyncError(
     const metadata = await tableMetadataApplicationService.getTableMetadata(tableName);
 
     res.apiSuccess(metadata, "Table metadata retrieved successfully");
+  },
+);
+
+export const getAdminUsers = catchAsyncError(async (req: Request, res: Response) => {
+  const user = ensureAdmin(req);
+
+  const page = toOptionalNumber(req.query.page);
+  const limit = toOptionalNumber(req.query.limit);
+  const search =
+    typeof req.query.search === "string" ? req.query.search : undefined;
+  const role = typeof req.query.role === "string" ? req.query.role : undefined;
+
+  logger.info(
+    `Processing admin users request for admin ${user.email} (page=${page ?? "default"}, limit=${limit ?? "default"})`,
+  );
+
+  const payload = await adminUserApplicationService.getUsers({
+    page,
+    limit,
+    search,
+    role,
+  });
+
+  res.apiSuccess(payload, "Admin users retrieved successfully");
+});
+
+export const patchAdminUserPersona = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const assignments = Array.isArray(req.body?.assignments)
+      ? req.body.assignments
+      : req.body?.userId && req.body?.role
+        ? [{ userId: req.body.userId, role: req.body.role }]
+        : [];
+
+    const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
+
+    const payload = await adminUserApplicationService.bulkAssignPersona({
+      assignments,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      reason,
+    });
+
+    res.apiSuccess(payload, "User persona assignment updated successfully");
   },
 );

@@ -5,7 +5,9 @@ import {
   getAdminStatus,
   getAdminTableMetadata,
   getAdminThrottle,
+  getAdminUsers,
   getInFlightSubscriptions,
+  patchAdminUserPersona,
   getPlacementControllers,
   getSchemaColumns,
   patchAdminThrottle,
@@ -72,6 +74,18 @@ adminRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   getAdminTableMetadata,
+);
+adminRouterV1.get(
+  "/users",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminUsers,
+);
+adminRouterV1.patch(
+  "/users/persona",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchAdminUserPersona,
 );
 adminRouterV1.get(
   "/in-flight",
