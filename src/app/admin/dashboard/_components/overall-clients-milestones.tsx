@@ -53,56 +53,58 @@ export default function OverallClientMilestoneChart() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          {isLoading ? (
+        {isLoading ? (
+          <div className="h-[300px] flex items-center justify-center">
             <LoadingSpinner />
-          ) : chartData.length <= 0 ? ( 
-            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground"> 
-                Nothing to see here  
-            </div> ):
-          (
-          <BarChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value}
-            />
-            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar
-              dataKey="commenced"
-              stackId="a"
-              fill="var(--color-commenced)"
-              radius={[0, 0, 4, 4]}
-              cursor="none"
-            />
-            <Bar
-              dataKey="hold"
-              stackId="a"
-              fill="var(--color-hold)"
-              radius={[0, 0, 0, 0]}
-              cursor="none"
-            />
-            <Bar
-              dataKey="expired"
-              stackId="a"
-              fill="var(--color-expired)"
-              radius={[0, 0, 0, 0]}
-              cursor="none"
-            />
-            <Bar
-              dataKey="offerNotification"
-              stackId="a"
-              fill="var(--color-offerNotification)"
-              radius={[4, 4, 0, 0]}
-              cursor="none"
-            />
-          </BarChart>
-          )}
-        </ChartContainer>
+          </div>
+        ) : chartData.length <= 0 ? (
+          <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+            Nothing to see here
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig}>
+            <BarChart accessibilityLayer data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value}
+              />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="commenced"
+                stackId="a"
+                fill="var(--color-commenced)"
+                radius={[0, 0, 4, 4]}
+                cursor="none"
+              />
+              <Bar
+                dataKey="hold"
+                stackId="a"
+                fill="var(--color-hold)"
+                radius={[0, 0, 0, 0]}
+                cursor="none"
+              />
+              <Bar
+                dataKey="expired"
+                stackId="a"
+                fill="var(--color-expired)"
+                radius={[0, 0, 0, 0]}
+                cursor="none"
+              />
+              <Bar
+                dataKey="offerNotification"
+                stackId="a"
+                fill="var(--color-offerNotification)"
+                radius={[4, 4, 0, 0]}
+                cursor="none"
+              />
+            </BarChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );

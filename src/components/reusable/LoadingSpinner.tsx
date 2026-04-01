@@ -9,6 +9,7 @@ const StyledGridOverlay = styled('div')(({ theme } : any) => ({
   alignItems: 'center',
   justifyContent: 'center',
   height: '100%',
+  width: '100%',
   backgroundColor: 'rgba(18, 18, 18, 0.9)',
   ...theme.applyStyles('light', {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',

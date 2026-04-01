@@ -8,6 +8,7 @@ import { modifyHeader, modifyRowData, reOrderKeys } from "@/utils/newTableFunc";
 import { IoTrashSharp } from "react-icons/io5";
 import { MdRestore } from "react-icons/md";
 import Image from "next/image";
+import hLogo from "../../../public/svg/h-logo.svg";
 import {
   GridRowsProp,
   DataGridPro,
@@ -572,7 +573,7 @@ const Table = ({
       {isLoading && (
         <div className="flex items-center justify-center bg-white p-6 h-[20vh]">
           <div className="h-[200px] flex items-center justify-center animate-pulse">
-            <Image className="" src="/assets/h-logo.svg" alt="Laigus logo" />
+            <Image className="" src={hLogo} alt="Laigus logo" />
           </div>
         </div>
       )}

@@ -260,3 +260,14 @@ export function generatePartnerCode(length = 5) {
   }
   return result;
 }
+
+
+export function camelCaseToTitleCase(camelCaseString: string) {
+  return (
+    camelCaseString
+      // Insert a space before each uppercase letter
+      .replace(/([A-Z])/g, " $1")
+      // Capitalize the first letter of each word
+      .replace(/^./, (str) => str.toUpperCase())
+  );
+}

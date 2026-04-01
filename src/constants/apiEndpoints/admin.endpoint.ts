@@ -63,6 +63,7 @@ export const ADMIN_USER_PREFERENCES = "/api/v1/admin/users/preferences";
 export const ADMIN_JOB_PREFERENCES = "/api/v1/job-preferences";
 export const ADMIN_UPDATE_USER_PREFERENCES = "/api/v1/admin/users/update-preferences";
 export const ADMIN_PROFILE_HISTORY = (userId: string) => `/api/v1/admin/profile-history/${userId}`;
+export const ADMIN_REFERRAL = "/api/v1/referrals"; 
 export const ADMIN_REFERRAL_HISTORY = "/api/v1/admin/referral";
 export const ADMIN_REGEX_QUEUE = "/api/v1/admin/regexqueue";
 export const ADMIN_NOTIFY_ADMIN = "/api/v1/notify-admin";
@@ -78,3 +79,10 @@ export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
 export const COUNTRY_INFO = "/api/v1/country-info";
 export const ADMIN_SLACK_QUEUE = "/api/v1/admin/slack";
 export const ADMIN_RESOURCES = "/api/v1/admin/resources";
+export const ADMIN_PROMOTION = "/api/promotion";
+export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/promotion/${id}`;
+
+// Blog Endpoints
+export const ADMIN_BLOG = "/api/admin/blog";
+export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/admin/blog?id=${id}`;
+export const ADMIN_BLOG_DETAILS = (id: string) => `/api/admin/blog?id=${id}`;

@@ -44,43 +44,45 @@ export default function OnboardedClientsChart() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          {isLoading ? (
+        {isLoading ? (
+          <div className="h-[300px] flex items-center justify-center">
             <LoadingSpinner />
-          ) : chartData.length <= 0 ? <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">  Nothing to see here </div> 
-          : (
-          <LineChart
-            accessibilityLayer
-            data={chartData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="label"
-              interval="preserveStartEnd"
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Line
-              dataKey="clients"
-              type="natural"
-              stroke="var(--color-clients)"
-              strokeWidth={2}
-              dot={{
-                fill: "var(--color-clients)",
+          </div>
+        ) : chartData.length <= 0 ? (
+          <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+            Nothing to see here
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig}>
+            <LineChart
+              accessibilityLayer
+              data={chartData}
+              margin={{
+                left: 12,
+                right: 12,
               }}
-              activeDot={{
-                r: 6,
-              }}
-            />
-          </LineChart>
-          )}
-        </ChartContainer>
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="label" interval="preserveStartEnd" />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
+              <Line
+                dataKey="clients"
+                type="natural"
+                stroke="var(--color-clients)"
+                strokeWidth={2}
+                dot={{
+                  fill: "var(--color-clients)",
+                }}
+                activeDot={{
+                  r: 6,
+                }}
+              />
+            </LineChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   )
