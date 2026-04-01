@@ -2,6 +2,7 @@ import { Worker } from "bullmq";
 import { emailWorker } from "./emailWorker";
 import { analyticsCacheWorker } from "./analyticsCacheWorker";
 import { dailySummaryWorker } from "./dailySummaryWorker";
+import { adminUserExportWorker } from "./adminUserExportWorker";
 import { getServiceLogger } from "../../utils/createLogger";
 import { USE_REDIS } from "../../config/env";
 // import { smsWorker } from "./smsWorker";
@@ -13,6 +14,7 @@ const allWorkers: Worker[] = [
   emailWorker,
   analyticsCacheWorker,
   dailySummaryWorker,
+  adminUserExportWorker,
   // smsWorker,
   // reportWorker,
 ];

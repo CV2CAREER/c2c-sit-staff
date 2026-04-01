@@ -7,6 +7,10 @@ import {
   getAdminThrottle,
   getAdminUsers,
   getInFlightSubscriptions,
+  getAdminUsersExportStatus,
+  downloadAdminUsersExport,
+  postAdminUsersExport,
+  postAdminUsers,
   patchAdminUserPersona,
   getPlacementControllers,
   getSchemaColumns,
@@ -81,11 +85,35 @@ adminRouterV1.get(
   isUserAuthenticated,
   getAdminUsers,
 );
+adminRouterV1.post(
+  "/users",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminUsers,
+);
 adminRouterV1.patch(
   "/users/persona",
   checkBlacklistedTokens,
   isUserAuthenticated,
   patchAdminUserPersona,
+);
+adminRouterV1.post(
+  "/users/export",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminUsersExport,
+);
+adminRouterV1.get(
+  "/users/export/:taskId",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminUsersExportStatus,
+);
+adminRouterV1.get(
+  "/users/export/:taskId/download",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  downloadAdminUsersExport,
 );
 adminRouterV1.get(
   "/in-flight",

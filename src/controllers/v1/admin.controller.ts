@@ -7,6 +7,7 @@ import { throttleApplicationService } from "../../services/admin/throttle.applic
 import { botWorkerIntegrationService } from "../../services/admin/bot-worker-integration.service";
 import { tableMetadataApplicationService } from "../../services/admin/table-metadata.application.service";
 import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
+import { adminUserExportApplicationService } from "../../services/admin/admin-user-export.application.service";
 import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -364,6 +365,29 @@ export const getAdminUsers = catchAsyncError(async (req: Request, res: Response)
   res.apiSuccess(payload, "Admin users retrieved successfully");
 });
 
+export const postAdminUsers = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const users = Array.isArray(req.body?.users)
+      ? req.body.users
+      : req.body?.email
+        ? [req.body]
+        : [];
+
+    const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
+
+    const payload = await adminUserApplicationService.bulkAddUsers({
+      users,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      reason,
+    });
+
+    res.apiSuccess(payload, "Admin users added successfully");
+  },
+);
+
 export const patchAdminUserPersona = catchAsyncError(
   async (req: Request, res: Response) => {
     const user = ensureAdmin(req);
@@ -384,5 +408,58 @@ export const patchAdminUserPersona = catchAsyncError(
     });
 
     res.apiSuccess(payload, "User persona assignment updated successfully");
+  },
+);
+
+export const postAdminUsersExport = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const format =
+      typeof req.body?.format === "string" ? req.body.format : undefined;
+    const search =
+      typeof req.body?.search === "string"
+        ? req.body.search
+        : typeof req.body?.filters?.search === "string"
+          ? req.body.filters.search
+          : undefined;
+    const role =
+      typeof req.body?.role === "string"
+        ? req.body.role
+        : typeof req.body?.filters?.role === "string"
+          ? req.body.filters.role
+          : undefined;
+
+    const payload = await adminUserExportApplicationService.createExportTask({
+      format,
+      filters: { search, role },
+      actorUserId: user.id,
+      actorEmail: user.email,
+    });
+
+    res.apiSuccess(payload, "Admin user export queued successfully");
+  },
+);
+
+export const getAdminUsersExportStatus = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const taskId = req.params.taskId;
+    const payload = await adminUserExportApplicationService.getTaskStatus(taskId);
+
+    res.apiSuccess(payload, "Admin user export status retrieved successfully");
+  },
+);
+
+export const downloadAdminUsersExport = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const taskId = req.params.taskId;
+    const download = await adminUserExportApplicationService.getDownloadInfo(taskId);
+
+    res.setHeader("Content-Type", download.mimeType);
+    res.download(download.filePath, download.fileName);
   },
 );

@@ -47,6 +47,107 @@ paths:
           description: Unauthorized
         "403":
           description: Forbidden - Admin role required
+    post:
+      tags:
+        - Admin
+      summary: Add users (single or bulk)
+      description: |
+        Adds users for admin operations.
+        Accepts either:
+        - `{ users: [...] }` for bulk adds
+        - a single user payload for one add operation.
+        Each user is validated server-side before creation.
+      operationId: postAdminUsers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required:
+                    - users
+                  properties:
+                    users:
+                      type: array
+                      minItems: 1
+                      maxItems: 200
+                      items:
+                        type: object
+                        required:
+                          - firstName
+                          - lastName
+                          - email
+                        properties:
+                          firstName:
+                            type: string
+                          lastName:
+                            type: string
+                          email:
+                            type: string
+                            format: email
+                          role:
+                            type: string
+                            enum: ["guest", "coach", "admin"]
+                          country:
+                            type: string
+                          password:
+                            type: string
+                          isActive:
+                            type: boolean
+                          isEmailVerified:
+                            type: boolean
+                    reason:
+                      type: string
+                - type: object
+                  required:
+                    - firstName
+                    - lastName
+                    - email
+                  properties:
+                    firstName:
+                      type: string
+                    lastName:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    role:
+                      type: string
+                      enum: ["guest", "coach", "admin"]
+                    country:
+                      type: string
+                    password:
+                      type: string
+                    isActive:
+                      type: boolean
+                    isEmailVerified:
+                      type: boolean
+                    reason:
+                      type: string
+            example:
+              users:
+                - firstName: "Ari"
+                  lastName: "Cole"
+                  email: "ari.cole@example.com"
+                  role: "coach"
+                - firstName: "Mina"
+                  lastName: "Bane"
+                  email: "mina.bane@example.com"
+                  role: "guest"
+              reason: "Admin add users utility"
+      responses:
+        "200":
+          description: Users added successfully
+        "400":
+          description: Validation failed
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
 
   /v1/admin/users/persona:
     patch:
@@ -104,3 +205,111 @@ paths:
           description: Forbidden - Admin role required
         "404":
           description: One or more users not found
+
+  /v1/admin/users/export:
+    post:
+      tags:
+        - Admin
+      summary: Queue admin user export
+      description: |
+        Queues CSV/Excel export generation in the background.
+        Supports the same search/role filters as the admin users list.
+      operationId: postAdminUsersExport
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: ["csv", "excel", "xls", "xlsx"]
+                search:
+                  type: string
+                role:
+                  type: string
+                filters:
+                  type: object
+                  properties:
+                    search:
+                      type: string
+                    role:
+                      type: string
+            example:
+              format: "csv"
+              filters:
+                search: "coach"
+                role: "coach"
+      responses:
+        "200":
+          description: Export task queued successfully
+        "400":
+          description: Validation failed
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+
+  /v1/admin/users/export/{taskId}:
+    get:
+      tags:
+        - Admin
+      summary: Get export task status
+      description: Returns the status of an export task.
+      operationId: getAdminUsersExportStatus
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Export status retrieved successfully
+        "400":
+          description: Invalid taskId
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+        "404":
+          description: Task not found
+
+  /v1/admin/users/export/{taskId}/download:
+    get:
+      tags:
+        - Admin
+      summary: Download completed export file
+      description: Downloads the generated CSV/Excel file when task is completed.
+      operationId: downloadAdminUsersExport
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Export file download stream
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Admin role required
+        "404":
+          description: Task not found
+        "409":
+          description: Export not ready yet
+        "410":
+          description: Export expired or file unavailable
