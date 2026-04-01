@@ -12,6 +12,7 @@ paths:
         Metrics include plans, users, and applications (when the applications table exists).
         Default dashboard metrics are pre-calculated in BullMQ every 6 hours and served from Redis cache.
         Date-only ranges (YYYY-MM-DD) and whole-day aligned windows are served by summing a precomputed daily cache series when available.
+        Response also includes near-real-time subscription-tier user counts used by the Analytics Header and Tier Overview cards.
       operationId: getAdminAnalytics
       security:
         - bearerAuth: []
@@ -85,6 +86,36 @@ paths:
                               type: number
                             failed:
                               type: number
+                      subscriptionTiers:
+                        type: object
+                        properties:
+                          tiers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                key:
+                                  type: string
+                                label:
+                                  type: string
+                                users:
+                                  type: number
+                          allPaidTierCounts:
+                            type: object
+                            additionalProperties:
+                              type: number
+                          totals:
+                            type: object
+                            properties:
+                              sixTierUsers:
+                                type: number
+                              activeSubscribers:
+                                type: number
+                              activeSubscriptions:
+                                type: number
+                          generatedAt:
+                            type: string
+                            format: date-time
                       generatedAt:
                         type: string
                         format: date-time

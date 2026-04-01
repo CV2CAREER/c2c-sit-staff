@@ -7,6 +7,7 @@ import { throttleApplicationService } from "../../services/admin/throttle.applic
 import { botWorkerIntegrationService } from "../../services/admin/bot-worker-integration.service";
 import { tableMetadataApplicationService } from "../../services/admin/table-metadata.application.service";
 import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
+import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -71,11 +72,18 @@ export const getAdminAnalytics = catchAsyncError(
       `Processing analytics request for admin ${user.email} (from=${from ?? "default"}, to=${to ?? "default"})`,
     );
 
-    const analytics = await analyticsApplicationService.getSuccessfulVsFailedMetrics(
-      { from, to },
-    );
+    const [analytics, subscriptionTiers] = await Promise.all([
+      analyticsApplicationService.getSuccessfulVsFailedMetrics({ from, to }),
+      subscriptionTierAggregatorApplicationService.getRealtimeTierAnalytics(false),
+    ]);
 
-    res.apiSuccess(analytics, "Admin analytics retrieved successfully");
+    res.apiSuccess(
+      {
+        ...analytics,
+        subscriptionTiers,
+      },
+      "Admin analytics retrieved successfully",
+    );
   },
 );
 

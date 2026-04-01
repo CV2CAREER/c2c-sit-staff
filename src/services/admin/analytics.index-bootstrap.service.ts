@@ -48,6 +48,17 @@ const ensureStaticIndexes = async () => {
     `,
     "users(createdAt,applicationStatus) partial",
   );
+
+  await runSafeStatement(
+    `
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_plans_active_user_latest_feature
+      ON plans ("userId", "createdAt" DESC, "updatedAt" DESC, id, "featureId")
+      WHERE "deletedAt" IS NULL
+        AND "paymentStatus" = 'completed'
+        AND "hasExpired" IS FALSE;
+    `,
+    "plans(userId,createdAt desc,updatedAt desc,id,featureId) active partial",
+  );
 };
 
 const ensureApplicationsIndexes = async () => {
@@ -104,4 +115,3 @@ export const ensureAnalyticsIndexes = async () => {
 
   return ensureAnalyticsIndexesPromise;
 };
-
