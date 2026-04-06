@@ -20,6 +20,8 @@ import {
   unassignPlacementController,
   deleteSchemaColumn,
 } from "../../controllers/v1/admin.controller";
+// ✅ Add this import
+import { generateExternalPassword } from "../../controllers/v1/generate-password.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 
@@ -138,6 +140,14 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   unassignPlacementController,
+);
+
+
+adminRouterV1.post(
+  "/generate-password",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  generateExternalPassword,
 );
 
 export default adminRouterV1;
