@@ -46,26 +46,24 @@ export const handleGithubWebhook = catchAsyncError(
       const startTime = Date.now();
 
       // Slack notification for deployment start
-      setImmediate(async () => {
-        try {
-          await SlackService.notify({
-            location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
-            host: repository.html_url,
-            node: SlackNode.APPLICATION,
-            provider: SlackProvider.GITHUB,
-            severity: SlackSeverity.INFO,
-            trigger: "Deployment Started",
-            type: SlackEventType.USER_TRIGGERED,
-            channel: SlackChannel.DEPLOYMENTS_LOGS,
-            body: `Deployment started for ${initiative} on ${branch} by ${deployedBy}. Commit: ${commitSha} - ${commitMessage}`,
-            teamMentions: "CSM",
-          });
-          
-          logger.info(`Slack notification sent for deployment start of ${initiative}`);
-        } catch (err) {
-          logger.error(`Failed to send Slack notification: ${err}`);
-        }
-      });
+      try {
+        await SlackService.notify({
+          location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
+          host: repository.html_url,
+          node: SlackNode.APPLICATION,
+          provider: SlackProvider.GITHUB,
+          severity: SlackSeverity.INFO,
+          trigger: "Deployment Started",
+          type: SlackEventType.USER_TRIGGERED,
+          channel: SlackChannel.DEPLOYMENTS_LOGS,
+          body: `Deployment started for ${initiative} on ${branch} by ${deployedBy}. Commit: ${commitSha} - ${commitMessage}`,
+          teamMentions: "CSM",
+        });
+        
+        logger.info(`Slack notification sent for deployment start of ${initiative}`);
+      } catch (err) {
+        logger.error(`Failed to send Slack notification: ${err}`);
+      }
 
       // 2. Trigger the shell script
       WebhookService.triggerDeployment(initiative, branch);
@@ -87,26 +85,24 @@ export const handleGithubWebhook = catchAsyncError(
       });
 
       // Slack notification for deployment success
-      setImmediate(async () => {
-        try {
-          await SlackService.notify({
-            location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
-            host: repository.html_url,
-            node: SlackNode.APPLICATION,
-            provider: SlackProvider.GITHUB,
-            severity: SlackSeverity.INFO,
-            trigger: "Deployment Success",
-            type: SlackEventType.USER_TRIGGERED,
-            channel: SlackChannel.DEPLOYMENTS_LOGS,
-            body: `Deployment successful for ${initiative} on ${branch}. Duration: ${duration}. Commit: ${commitSha} - ${commitMessage}`,
-            teamMentions: "CSM",
-          });
-          
-          logger.info(`Slack notification sent for deployment success of ${initiative}`);
-        } catch (err) {
-          logger.error(`Failed to send Slack notification: ${err}`);
-        }
-      });
+      try {
+        await SlackService.notify({
+          location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
+          host: repository.html_url,
+          node: SlackNode.APPLICATION,
+          provider: SlackProvider.GITHUB,
+          severity: SlackSeverity.INFO,
+          trigger: "Deployment Success",
+          type: SlackEventType.USER_TRIGGERED,
+          channel: SlackChannel.DEPLOYMENTS_LOGS,
+          body: `Deployment successful for ${initiative} on ${branch}. Duration: ${duration}. Commit: ${commitSha} - ${commitMessage}`,
+          teamMentions: "CSM",
+        });
+        
+        logger.info(`Slack notification sent for deployment success of ${initiative}`);
+      } catch (err) {
+        logger.error(`Failed to send Slack notification: ${err}`);
+      }
 
 
       return res.apiSuccess(
@@ -124,26 +120,24 @@ export const handleGithubWebhook = catchAsyncError(
       });
 
       // Slack notification for deployment failure
-      setImmediate(async () => {
-        try {
-          await SlackService.notify({
-            location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
-            host: repository.html_url,
-            node: SlackNode.APPLICATION,
-            provider: SlackProvider.GITHUB,
-            severity: SlackSeverity.ERROR,
-            trigger: "Deployment Failed",
-            type: SlackEventType.USER_TRIGGERED,
-            channel: SlackChannel.DEPLOYMENTS_LOGS,
-            body: `Deployment failed for ${initiative} on ${branch}. Error: ${error.message}. Commit: ${commitSha} - ${commitMessage}`,
-            teamMentions: "CSM",
-          });
-          
-          logger.info(`Slack notification sent for deployment failure of ${initiative}`);
-        } catch (err) {
-          logger.error(`Failed to send Slack notification: ${err}`);
-        }
-      });
+      try {
+        await SlackService.notify({
+          location: branch === "prod" ? SlackLocation.PRODUCTION : SlackLocation.STAGING,
+          host: repository.html_url,
+          node: SlackNode.APPLICATION,
+          provider: SlackProvider.GITHUB,
+          severity: SlackSeverity.ERROR,
+          trigger: "Deployment Failed",
+          type: SlackEventType.USER_TRIGGERED,
+          channel: SlackChannel.DEPLOYMENTS_LOGS,
+          body: `Deployment failed for ${initiative} on ${branch}. Error: ${error.message}. Commit: ${commitSha} - ${commitMessage}`,
+          teamMentions: "CSM",
+        });
+        
+        logger.info(`Slack notification sent for deployment failure of ${initiative}`);
+      } catch (err) {
+        logger.error(`Failed to send Slack notification: ${err}`);
+      }
 
       // We still return 200/Success to GitHub so it doesn't keep retrying
       // if the error is just an unconfigured branch.
