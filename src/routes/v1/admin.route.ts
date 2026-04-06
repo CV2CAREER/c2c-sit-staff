@@ -20,10 +20,11 @@ import {
   unassignPlacementController,
   deleteSchemaColumn,
 } from "../../controllers/v1/admin.controller";
-// ✅ Add this import
+
 import { generateExternalPassword } from "../../controllers/v1/generate-password.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { campaignCalculatorMiddleware } from "../middlewares/campaign.middleware";
 
 const adminRouterV1 = Router();
 
@@ -33,6 +34,19 @@ adminRouterV1.get(
   isUserAuthenticated,
   getAdminAnalytics,
 );
+
+adminRouterV1.post(
+  "/campaign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  campaignCalculatorMiddleware,
+  async (req, res) => {
+    res.json(req.body);
+  }
+);
+
+
+
 adminRouterV1.get(
   "/status",
   checkBlacklistedTokens,
