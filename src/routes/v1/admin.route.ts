@@ -25,6 +25,10 @@ import { generateExternalPassword } from "../../controllers/v1/generate-password
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { campaignCalculatorMiddleware } from "../middlewares/campaign.middleware";
+import { 
+  countApplications, 
+  toggleAggregatorStatus 
+} from "../../controllers/v1/count-applications.controller";
 
 const adminRouterV1 = Router();
 
@@ -45,6 +49,20 @@ adminRouterV1.post(
   }
 );
 
+
+adminRouterV1.post(
+  "/campaign/sheet/count-applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  countApplications
+);
+
+adminRouterV1.put(
+  "/campaign/sheet/count-applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  toggleAggregatorStatus
+);
 
 
 adminRouterV1.get(
