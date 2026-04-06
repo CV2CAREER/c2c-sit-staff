@@ -1,6 +1,7 @@
-
 import { Request, Response } from "express";
-import db from "@/database/postgres";
+import { Credentials } from "../../models/v1/credentials.model";
+import { User } from "../../models/v1/user.model";
+import { Aggregator } from "../../models/v1/aggregator.model";
 
 interface IAggregator {
   name: string;
@@ -37,9 +38,7 @@ export const countApplications = async (req: Request, res: Response) => {
     }
 
     /* credentials */
-    const cred = await db.credentials.findUnique({
-      where: { id: clientId },
-    });
+    const cred = await Credentials.findByPk(clientId);
 
     if (!cred) {
       return res.status(404).json({
@@ -50,12 +49,12 @@ export const countApplications = async (req: Request, res: Response) => {
     }
 
     /* user */
-    const user = await db.user.findFirst({
-      where: { unique_id: cred.customer_id },
-      select: { profile_id: true },
+    const user = await User.findOne({
+      where: { uniqueId: cred.client?.uniqueId || "" },
+      attributes: ["profileId"],
     });
 
-    if (!user?.profile_id) {
+    if (!user?.profileId) {
       return res.status(404).json({
         success: false,
         message: "User profile not found",
@@ -64,32 +63,25 @@ export const countApplications = async (req: Request, res: Response) => {
     }
 
     /* aggregators (join) */
-    const aggregators = await db.aggregator.findMany({
-      where: {
-        profile_aggregators: {
-          some: {
-            profile_id: user.profile_id,
-          },
-        },
-      },
-    });
+    const aggregators = await Aggregator.findAll();
 
     const matchAggregators = (jobSites: any[]): IAggregator[] =>
       jobSites
         ?.filter((s) => s?.value && s.value !== "all")
         .map((site) => {
           const key = statusField[site.value.toLowerCase()];
-          const status = key ? cred[key] : false;
+          const status = key ? (cred.get(key) as boolean) || false : false;
 
           const agg = aggregators.find(
-            (a) => a.name.toLowerCase() === site.value.toLowerCase()
+            (a: Aggregator) =>
+              a.name.toLowerCase() === site.value.toLowerCase(),
           );
 
           if (!agg) return null;
 
           return {
             name: agg.name,
-            imageUrl: agg.image_url || "",
+            imageUrl: (agg.picture as any)?.url || "",
             status: status || false,
           };
         })
@@ -138,9 +130,7 @@ export const toggleAggregatorStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const cred = await db.credentials.findUnique({
-      where: { id: clientId },
-    });
+    const cred = await Credentials.findByPk(clientId);
 
     if (!cred) {
       return res.status(404).json({
@@ -150,12 +140,9 @@ export const toggleAggregatorStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const newStatus = !cred[statusKey];
+    const newStatus = !(cred.get(statusKey) as boolean);
 
-    await db.credentials.update({
-      where: { id: clientId },
-      data: { [statusKey]: newStatus },
-    });
+    await cred.update({ [statusKey]: newStatus });
 
     return res.status(200).json({
       success: true,
