@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import pool from '@/config/database';
-import { sendSlackMessage } from '@/utils/sendSlackMessage';
-import { SlackChannel } from '@/types/enum';
+import pool from '../../config/database'; // Fixed: relative path
+import { sendSlackMessage } from '../../utils/sendSlackMessage'; // Fixed: relative path
+import { SlackChannel } from '../../types/enum'; // Fixed: relative path
 
 /**
  * Non-blocking Slack notification - fire and forget
@@ -25,27 +25,18 @@ const sendSlackNotification = (user: any, req: Request) => {
       trigger: 'USER_ACTION',
       type: 'AUTH'
     }
-  ).catch(error => {
+  ).catch((error: Error) => { // Fixed: added type
     // Silent fail - log but don't crash
     console.error('[Slack Notification Failed]', error.message);
   });
 };
 
 /**
- * POST /api/v1/generate-password
+ * POST /api/v1/admin/generate-password
  * Update external password for user
  */
 export const generateExternalPassword = async (req: Request, res: Response) => {
   try {
-    // Method validation
-    if (req.method?.toLowerCase() !== 'post') {
-      return res.status(405).json({ 
-        success: false,
-        message: 'Method not allowed' 
-      });
-    }
-
-    // Extract and validate input
     const { password, userId } = req.body;
 
     if (!password || !userId) {
