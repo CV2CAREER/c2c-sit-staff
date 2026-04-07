@@ -15,5 +15,16 @@ export class Resource extends Model {
   @Column(DataType.UUID)
   id!: string;
 
-  // Add resource fields here
+  @Column({
+    type: DataType.STRING,
+    unique: true,
+    allowNull: false,
+  })
+  name!: string;
+
+  @Column({
+    type: DataType.TEXT,
+    allowNull: false,
+  })
+  value!: string;
 }

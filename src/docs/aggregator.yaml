@@ -1,0 +1,501 @@
+# OpenAPI Specification for Aggregator Management Endpoints
+
+paths:
+  /v1/aggregator:
+    get:
+      tags:
+        - Aggregator
+      summary: Get all aggregators or single by ID
+      description: |
+        Retrieve all aggregators or a specific aggregator by ID.
+        Optional date range filtering available.
+      operationId: getAggregators
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: aid
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional aggregator ID to retrieve single aggregator
+        - in: query
+          name: startDate
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter aggregators created after this date
+        - in: query
+          name: endDate
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter aggregators created before this date
+      responses:
+        "200":
+          description: Aggregators retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "All Aggregators retrieved successfully."
+                  data:
+                    type: array
+                    items:
+                      type: object
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "500":
+          description: Server error while retrieving aggregators
+
+    post:
+      tags:
+        - Aggregator
+      summary: Create new aggregator
+      description: |
+        Create a new aggregator configuration.
+        Only users with ADMIN or ASSISTANT (PC) roles are authorized.
+        Slack notification is sent automatically after creation.
+        Images can be uploaded directly by sending base64 encoded data.
+        The service will automatically upload to Google Firebase Storage
+        and return the complete DocumentFile object with public URL.
+      operationId: createAggregator
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - picture
+              properties:
+                name:
+                  type: string
+                  description: Aggregator name
+                picture:
+                  oneOf:
+                    - type: object
+                      description: Upload base64 encoded image directly
+                      properties:
+                        base64:
+                          type: string
+                          description: Base64 encoded image data (supports data URI format)
+                          example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                        filename:
+                          type: string
+                          description: Original filename (optional)
+                          example: "aggregator-logo.png"
+                    - type: object
+                      description: Already uploaded DocumentFile object
+                      properties:
+                        url:
+                          type: string
+                          description: Public URL of the uploaded file
+                        publicId:
+                          type: string
+                          description: Firebase Storage path
+                        name:
+                          type: string
+                          description: Original filename
+                        size:
+                          type: number
+                          description: File size in bytes
+                        mimeType:
+                          type: string
+                          description: File MIME type
+                      example: {
+                        "url": "https://storage.googleapis.com/cv2career-394713.appspot.com/aggregator-logos/aggregator-logo_1712345678_abc123.png",
+                        "publicId": "aggregator-logos/aggregator-logo_1712345678_abc123.png",
+                        "name": "aggregator-logo.png",
+                        "size": 125430,
+                        "mimeType": "image/png"
+                      }
+                config:
+                  type: object
+                  description: Aggregator configuration settings
+                isEnabled:
+                  type: boolean
+                  description: Whether aggregator is enabled
+      responses:
+        "200":
+          description: Aggregator created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "A new Aggregator has been created."
+                  data:
+                    type: object
+                    description: Created aggregator object
+        "400":
+          description: Invalid request - Missing or invalid parameters
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "403":
+          description: Forbidden - Only admins and assistants can create aggregators
+        "500":
+          description: Server error while creating aggregator
+
+    put:
+      tags:
+        - Aggregator
+      summary: Update aggregator
+      description: |
+        Update an existing aggregator configuration.
+        Only users with ADMIN or ASSISTANT (PC) roles are authorized.
+        Slack notification is sent automatically after update.
+        Images can be uploaded directly by sending base64 encoded data.
+        The service will automatically upload to Google Firebase Storage
+        and return the complete DocumentFile object with public URL.
+      operationId: updateAggregator
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: aid
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Aggregator ID to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Key-value pairs of fields to update
+              properties:
+                name:
+                  type: string
+                  description: Aggregator name
+                picture:
+                  oneOf:
+                    - type: object
+                      description: Upload base64 encoded image directly
+                      properties:
+                        base64:
+                          type: string
+                          description: Base64 encoded image data (supports data URI format)
+                          example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+                        filename:
+                          type: string
+                          description: Original filename (optional)
+                          example: "aggregator-logo-updated.png"
+                    - type: object
+                      description: Already uploaded DocumentFile object
+                      properties:
+                        url:
+                          type: string
+                          description: Public URL of the uploaded file
+                        publicId:
+                          type: string
+                          description: Firebase Storage path
+                        name:
+                          type: string
+                          description: Original filename
+                        size:
+                          type: number
+                          description: File size in bytes
+                        mimeType:
+                          type: string
+                          description: File MIME type
+                isEnabled:
+                  type: boolean
+                  description: Whether aggregator is enabled
+                config:
+                  type: object
+                  description: Aggregator configuration settings
+              example: {
+                "name": "Updated Aggregator Name",
+                "isEnabled": true,
+                "config": { "rateLimit": 100 },
+                "picture": {
+                  "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+                  "filename": "aggregator-logo-updated.png"
+                }
+              }
+      responses:
+        "200":
+          description: Aggregator updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Aggregator updated successfully."
+                  data:
+                    type: object
+                    description: Updated aggregator object
+        "400":
+          description: Invalid request - Missing or invalid parameters
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "403":
+          description: Forbidden - Only admins and assistants can update aggregators
+        "404":
+          description: Aggregator not found
+        "500":
+          description: Server error while updating aggregator
+
+    delete:
+      tags:
+        - Aggregator
+      summary: Delete aggregator(s)
+      description: |
+        Delete single or multiple aggregators.
+        Only users with ADMIN or ASSISTANT (PC) roles are authorized.
+        Slack notification is sent automatically after deletion.
+      operationId: deleteAggregators
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: aid
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional aggregator ID to delete single aggregator
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: uuid
+              description: Array of aggregator IDs to delete multiple
+              example: ["uuid1", "uuid2", "uuid3"]
+      responses:
+        "200":
+          description: Aggregator(s) deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "All selected aggregators are deleted successfully"
+                  data:
+                    type: object
+                    properties:
+                      deletedCount:
+                        type: number
+                        example: 3
+        "400":
+          description: Invalid request - Missing or invalid parameters
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "403":
+          description: Forbidden - Only admins and assistants can delete aggregators
+        "404":
+          description: Aggregator not found
+        "500":
+          description: Server error while deleting aggregator(s)
+
+  /v1/aggregator/slack/queue:
+    get:
+      tags:
+        - Slack Queue
+      summary: Get Slack queue data
+      description: |
+        Retrieve current queue and processing status for Slack operations.
+      operationId: getSlackQueue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: queue
+          required: true
+          schema:
+            type: string
+          description: Queue name to retrieve
+      responses:
+        "200":
+          description: Queue data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Queue data retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      result:
+                        type: array
+                        items:
+                          type: string
+                        description: List of emails in queue
+                      current:
+                        type: string
+                        description: Currently processing item
+        "400":
+          description: Queue parameter is required
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error while fetching queue data
+
+    post:
+      tags:
+        - Slack Queue
+      summary: Add user to Slack queue
+      description: |
+        Add a user to a Slack queue. Validates user exists in Slack using email lookup.
+      operationId: addToSlackQueue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - queue
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email to add to queue
+                queue:
+                  type: string
+                  description: Queue name to add user to
+              example: {
+                "email": "user@example.com",
+                "queue": "PROCESSING_QUEUE"
+              }
+      responses:
+        "200":
+          description: User added to queue successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User added to queue successfully"
+                  data:
+                    type: object
+                    properties:
+                      saved:
+                        type: boolean
+                        example: true
+                      queue:
+                        type: array
+                        items:
+                          type: string
+                        description: Updated queue state
+        "400":
+          description: Invalid request or email validation failed
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error while adding to queue
+
+    delete:
+      tags:
+        - Slack Queue
+      summary: Remove user from Slack queue
+      description: |
+        Remove a user from a Slack queue.
+      operationId: removeFromSlackQueue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - queue
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email to remove from queue
+                queue:
+                  type: string
+                  description: Queue name to remove user from
+              example: {
+                "email": "user@example.com",
+                "queue": "PROCESSING_QUEUE"
+              }
+      responses:
+        "200":
+          description: User removed from queue successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Deleted 1 occurrence(s) of user@example.com from PROCESSING_QUEUE"
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: number
+                        example: 1
+                        description: Number of occurrences removed
+        "400":
+          description: Invalid request
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found in queue
+        "500":
+          description: Server error while removing from queue

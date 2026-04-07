@@ -1,0 +1,142 @@
+# OpenAPI Specification for Feature Management Endpoints
+
+paths:
+  /v1/feature:
+    get:
+      tags:
+        - Feature
+      summary: Get all features
+      description: |
+        Retrieve all feature/subscription plans from the system.
+      operationId: getAllFeatures
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Features retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Features retrieved successfully"
+                  data:
+                    type: array
+                    items:
+                      type: object
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "500":
+          description: Server error while retrieving features
+
+  /v1/feature/{id}:
+    get:
+      tags:
+        - Feature
+      summary: Get feature by ID
+      description: |
+        Retrieve a specific feature/subscription plan by its ID.
+      operationId: getFeatureById
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Feature ID (subscription plan ID)
+      responses:
+        "200":
+          description: Feature retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Feature retrieved successfully"
+                  data:
+                    type: object
+                    description: Feature object
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "404":
+          description: Feature not found
+        "500":
+          description: Server error while retrieving feature
+
+  /v1/feature/update:
+    patch:
+      tags:
+        - Feature
+      summary: Update feature settings
+      description: |
+        Update feature/subscription plan settings and send Slack notification to VA channel.
+        Only users with ADMIN or ASSISTANT (PC) roles are authorized to use this endpoint.
+      operationId: updateFeature
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - updates
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: Feature ID (subscription plan ID)
+                updates:
+                  type: object
+                  description: Key-value pairs of fields to update
+                  example: {
+                    "price": 199.99,
+                    "jobApplications": 50,
+                    "cvResumeRequests": 10,
+                    "isActive": true
+                  }
+      responses:
+        "200":
+          description: Feature updated successfully and Slack notification sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Feature updated successfully and Slack notification sent"
+                  data:
+                    type: object
+                    description: Updated feature object
+        "400":
+          description: Invalid request - Missing or invalid parameters
+        "401":
+          description: Unauthorized - Invalid or missing authentication
+        "403":
+          description: Forbidden - Only admins and assistants (PC) can update features
+        "404":
+          description: Feature not found
+        "500":
+          description: Server error while updating feature

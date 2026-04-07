@@ -1,0 +1,237 @@
+# OpenAPI Specification for Promotion Management Endpoints
+
+paths:
+  /v1/promotions:
+    get:
+      summary: Get promotions
+      tags:
+        - Promotions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: variant
+          schema:
+            type: string
+            enum: [BUSINESS_PARTNER, length]
+          description: Variant to fetch (BUSINESS_PARTNER for user's promotions, length for promotion durations)
+      responses:
+        200:
+          description: Promotions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Promotions retrieved successfully
+                  data:
+                    oneOf:
+                      - type: array
+                        items:
+                          $ref: '#/components/schemas/Promotion'
+                      - type: object
+                        properties:
+                          activePromotion:
+                            $ref: '#/components/schemas/Promotion'
+                          totalPromsCount:
+                            type: number
+                            example: 5
+    post:
+      summary: Create promotion or promotion length
+      tags:
+        - Promotions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: variant
+          schema:
+            type: string
+            enum: [length]
+          description: Set to 'length' to create promotion length
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/CreatePromotion'
+                - $ref: '#/components/schemas/CreatePromotionLength'
+      responses:
+        201:
+          description: Promotion created successfully
+    patch:
+      summary: Update promotion length
+      tags:
+        - Promotions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Promotion Length ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePromotionLength'
+      responses:
+        200:
+          description: Promotion length updated successfully
+    delete:
+      summary: Delete promotion
+      tags:
+        - Promotions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Promotion ID
+      responses:
+        204:
+          description: Promotion deleted successfully
+
+  /v1/promotions/public:
+    get:
+      summary: Get promotion by code (public endpoint)
+      tags:
+        - Promotions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: promotionCode
+          required: true
+          schema:
+            type: string
+          description: Promotion code to lookup
+      responses:
+        200:
+          description: Promotion retrieved successfully
+        404:
+          description: Promotion not found
+
+components:
+  schemas:
+    Promotion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        country:
+          type: string
+        name:
+          type: string
+        expiryDate:
+          type: string
+          format: date-time
+        countryCode:
+          type: string
+        promotionCode:
+          type: string
+        isActive:
+          type: boolean
+        type:
+          type: string
+          enum: [CODE, COUNTRY]
+        discountPercentage:
+          type: number
+        maxUsage:
+          type: number
+        usageCount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PromotionLength:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        duration:
+          type: number
+          description: Duration in days
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePromotion:
+      type: object
+      required:
+        - promotionCode
+      properties:
+        country:
+          type: string
+        name:
+          type: string
+        expiryDate:
+          type: string
+          format: date-time
+        countryCode:
+          type: string
+        promotionCode:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+        discountPercentage:
+          type: number
+        maxUsage:
+          type: number
+          default: 0
+
+    CreatePromotionLength:
+      type: object
+      required:
+        - duration
+        - name
+      properties:
+        duration:
+          type: number
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+
+    UpdatePromotionLength:
+      type: object
+      properties:
+        duration:
+          type: number
+        name:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
