@@ -6,6 +6,10 @@
     "module": "commonjs",
     "rootDir": "./src",
     "outDir": "./build",
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

@@ -19,6 +19,14 @@ export function trimString(word: string): string {
   return word.trim();
 }
 
+export function toTitleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function createVerificationToken(user: Partial<IUserRegistration>) {
   const otp = Math.floor(100000 + Math.random() * 900000).toString(); // generates random 6 digit code
 
