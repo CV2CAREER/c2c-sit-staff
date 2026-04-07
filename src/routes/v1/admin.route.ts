@@ -20,10 +20,26 @@ import {
   unassignPlacementController,
   deleteSchemaColumn,
 } from "../../controllers/v1/admin.controller";
+
+import { generateExternalPassword } from "../../controllers/v1/generate-password.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { campaignCalculatorMiddleware } from "../../middlewares/campaign.middleware";
+import {
+  countApplications,
+  toggleAggregatorStatus,
+} from "../../controllers/v1/count-applications.controller";
+
+import { getAllCredentials } from "../../controllers/v1/get_clients.controller";
 
 const adminRouterV1 = Router();
+
+adminRouterV1.get(
+  "/credentials",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAllCredentials,
+);
 
 adminRouterV1.get(
   "/analytics",
@@ -31,6 +47,31 @@ adminRouterV1.get(
   isUserAuthenticated,
   getAdminAnalytics,
 );
+
+adminRouterV1.post(
+  "/campaign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  campaignCalculatorMiddleware,
+  async (req, res) => {
+    res.json(req.body);
+  },
+);
+
+adminRouterV1.post(
+  "/campaign/sheet/count-applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  countApplications,
+);
+
+adminRouterV1.put(
+  "/campaign/sheet/count-applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  toggleAggregatorStatus,
+);
+
 adminRouterV1.get(
   "/status",
   checkBlacklistedTokens,
@@ -138,6 +179,13 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   unassignPlacementController,
+);
+
+adminRouterV1.post(
+  "/generate-password",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  generateExternalPassword,
 );
 
 export default adminRouterV1;
