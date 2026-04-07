@@ -17,6 +17,11 @@ class DatabaseAdapter {
             return (target as any).findAll(options);
           };
         }
+        if (prop === "findUnique") {
+          return async (options: any) => {
+            return (target as any).findOne(options);
+          };
+        }
         if (prop === "deleteMany") {
           return async (options: any) => {
             return (target as any).destroy(options);
@@ -28,6 +33,33 @@ class DatabaseAdapter {
               ignoreDuplicates: options.skipDuplicates,
             });
           };
+        }
+        if (prop === "create") {
+          return async (options: any) => {
+            return (target as any).create(options.data || options, {
+              raw: false,
+            });
+          };
+        }
+        if (prop === "updateMany") {
+          return async (options: any) => {
+            return (target as any).update(options.data, options);
+          };
+        }
+        if (prop === "update") {
+          return async (options: any) => {
+            const { where, data } = options;
+            return (target as any).update(data, { where });
+          };
+        }
+        if (prop === "count") {
+          return async (options: any) => {
+            return (target as any).count(options);
+          };
+        }
+        if (prop === "_name") {
+          // Support accessing the table name
+          return (target as any).tableName;
         }
         return (target as any)[prop];
       },

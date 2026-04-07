@@ -6,14 +6,18 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: "C2C Staff Backend API",
       version: "1.0.0",
-      description: "API documentation for C2C (CV2CAREER) Staff Backend Server.",
+      description:
+        "API documentation for C2C (CV2CAREER) Staff Backend Server.",
       contact: {
         name: "C2C Support",
         email: "support@c2c.com",
       },
     },
     servers: [
-      { url: "https://rat.staff.cvtocareer.com/api", description: "Current server" },
+      {
+        url: "https://rat.staff.cvtocareer.com/api",
+        description: "Current server",
+      },
       { url: "http://localhost:51001/api", description: "Local development" },
     ],
     components: {
@@ -64,7 +68,10 @@ const options: swaggerJsdoc.Options = {
             repository: {
               type: "object",
               properties: {
-                name: { type: "string", description: "The name of the repository" },
+                name: {
+                  type: "string",
+                  description: "The name of the repository",
+                },
               },
               required: ["name"],
             },
@@ -92,10 +99,7 @@ const options: swaggerJsdoc.Options = {
       },
     },
   },
-  apis: [
-    "./src/docs/*.yaml",
-    "./src/routes/v1/*.ts",
-  ],
+  apis: ["./src/docs/*.yaml", "./src/routes/v1/*.ts"],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
