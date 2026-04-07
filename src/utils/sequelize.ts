@@ -114,7 +114,7 @@ export const resetSequelize = async () => {
       try {
         // @ts-ignore
         if (sequelize.connectionManager?.pool) {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+           
           // @ts-ignore
           sequelize.connectionManager.pool.destroyAllNow();
           logger.info(" Force-destroyed all pooled connections");
