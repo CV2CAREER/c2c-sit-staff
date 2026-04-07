@@ -29,6 +29,8 @@ import { SubscriptionAllocation } from "../models/v1/subscription-allocation.mod
 import { AdminControl } from "../models/v1/admin-control.model";
 import { SystemConfig } from "../models/v1/system-config.model";
 import { AuditTrail } from "../models/v1/audit-trail.model";
+import { UnsubscribedUser } from "../models/v1/unsubscribed-user.model";
+import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 
 
 export const modelList = [
@@ -63,4 +65,7 @@ export const modelList = [
   AdminControl,
   SystemConfig,
   AuditTrail,
+  UnsubscribedUser,
+  Promotion,
+  PromotionLength,
 ];

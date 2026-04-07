@@ -23,6 +23,12 @@ import { swaggerSpec } from "./config/swagger";
 import swaggerUi from "swagger-ui-express";
 import adminRouterV1 from "./routes/v1/admin.route";
 import documentRouterV1 from "./routes/v1/document.route";
+import featureRouterV1 from "./routes/v1/feature.route";
+import aggregatorRouterV1 from "./routes/v1/aggregator.route";
+import resourcesRouterV1 from "./routes/v1/resources.route";
+import unsubscribedUserRouterV1 from "./routes/v1/unsubscribed-user.route";
+import referralRouterV1 from "./routes/v1/referral.route";
+import promotionRouterV1 from "./routes/v1/promotion.route";
 
 export const app = express();
 
@@ -130,6 +136,12 @@ app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
 app.use("/api/v1/document", documentRouterV1);
+app.use("/api/v1/feature", featureRouterV1);
+app.use("/api/v1/aggregator", aggregatorRouterV1);
+app.use("/api/v1/resources", resourcesRouterV1);
+app.use("/api/v1/unsubscribed-users", unsubscribedUserRouterV1);
+app.use("/api/v1/referrals", referralRouterV1);
+app.use("/api/v1/promotions", promotionRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -1,0 +1,185 @@
+# OpenAPI Specification for Unsubscribed Users Endpoints
+
+paths:
+  /v1/unsubscribed-users:
+    get:
+      tags:
+        - Unsubscribed Users
+      summary: Get all unsubscribed users
+      description: Retrieve list of all users who have unsubscribed from mailing list
+      operationId: getUnsubscribedUsers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Unsubscribed users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Unsubscribed users retrieved successfully"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Unsubscribe record ID
+                        userId:
+                          type: string
+                          format: uuid
+                          description: User ID
+                        reason:
+                          type: string
+                          description: Unsubscribe reason
+                        date:
+                          type: string
+                          example: "2026-04-06"
+                          description: Date user unsubscribed
+                        time:
+                          type: string
+                          example: "14:30:00"
+                          description: Time user unsubscribed
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                        user:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            firstName:
+                              type: string
+                            lastName:
+                              type: string
+                            email:
+                              type: string
+                              format: email
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error while retrieving unsubscribed users
+
+    post:
+      tags:
+        - Unsubscribed Users
+      summary: Unsubscribe any user (Admin only)
+      description: |
+        Mark any user as unsubscribed by their user ID.
+        Automatically adds user to Redis unsubscribed list.
+        Sends Slack notification to admin channel.
+      operationId: unsubscribeUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  description: ID of the user to unsubscribe
+                  example: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+                reason:
+                  type: string
+                  description: Reason for unsubscribing (optional)
+                  example: "Too many emails"
+      responses:
+        "200":
+          description: User unsubscribed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Unsubscribed successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      alreadyUnsubscribed:
+                        type: boolean
+                        example: false
+                      record:
+                        type: object
+                        description: Created unsubscribe record
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error while processing unsubscribe
+
+    delete:
+      tags:
+        - Unsubscribed Users
+      summary: Remove user from unsubscribed list
+      description: |
+        Remove a user from the unsubscribed list.
+        Automatically removes from both database and Redis cache.
+      operationId: removeUnsubscribedUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the user to remove from unsubscribe list
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User removed from unsubscribed list successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User removed from unsubscribed list successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      deleted:
+                        type: boolean
+                        example: true
+                        description: Whether user was found and deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: User not found in unsubscribed list
+        "500":
+          description: Server error while removing user from unsubscribed list

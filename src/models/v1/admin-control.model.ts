@@ -19,9 +19,9 @@ export type QuestionAnswerMode = "db" | "ai";
 })
 export class AdminControl extends Model {
   @PrimaryKey
-  @AutoIncrement
-  @Column(DataType.INTEGER)
-  id!: number;
+  @Default(DataType.UUIDV4)
+  @Column(DataType.UUID)
+  id!: string;
 
   @AllowNull(false)
   @Default(true)
