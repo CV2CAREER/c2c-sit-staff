@@ -31,8 +31,66 @@ import {
 } from "../../controllers/v1/count-applications.controller";
 
 import { getAllCredentials } from "../../controllers/v1/get_clients.controller";
+import {
+  getCampaignSheet,
+  patchCampaignSheet,
+  putCampaignSheet,
+} from "../../controllers/v1/campaign-sheets.controller";
+import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
+import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
+
+import { getSamplesController } from "../../controllers/v1/samples.controller";
+import { getCredentialAliasesController } from "../../controllers/v1/credential-alias.controller";
 
 const adminRouterV1 = Router();
+
+adminRouterV1.get(
+  "/credential-alias",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getCredentialAliasesController,
+);
+
+adminRouterV1.get(
+  "/samples",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getSamplesController,
+);
+
+adminRouterV1.get(
+  "/discovery-queue",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  discoveryQueueController,
+);
+adminRouterV1.post(
+  "/keywords/update",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  updateKeywordsController,
+);
+
+adminRouterV1.get(
+  "/campaign/sheet",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getCampaignSheet,
+);
+
+adminRouterV1.patch(
+  "/campaign/sheet",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchCampaignSheet,
+);
+
+adminRouterV1.put(
+  "/campaign/sheet",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  putCampaignSheet,
+);
 
 adminRouterV1.get(
   "/credentials",
