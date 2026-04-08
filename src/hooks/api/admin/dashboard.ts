@@ -3,6 +3,36 @@ import { useFetchData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions, VaAllocationsResponse } from "./types";
 
+const normalizeApplicationCounts = (payload: any) => {
+  const source = payload?.data ?? payload;
+
+  const summary =
+    source?.metrics ??
+    source?.summary ??
+    source?.counts ??
+    source?.totals ??
+    source;
+
+  const successCount =
+    summary?.successful ??
+    summary?.success ??
+    summary?.successCount ??
+    summary?.completed ??
+    0;
+
+  const failedCount =
+    summary?.failed ??
+    summary?.failure ??
+    summary?.failedCount ??
+    summary?.rejected ??
+    0;
+
+  return {
+    successCount,
+    failedCount,
+  };
+};
+
 export const useDashboardQueries = (options: AdminQueriesOptions) => {
   const {
     fetchVaAllocations = false,
@@ -103,12 +133,7 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
   });
 
   const mappedApplicationsCount = useMemo(() => {
-    if (!applicationsCount.data?.data?.metrics) return null;
-    const metrics = applicationsCount.data.data.metrics;
-    return {
-      successCount: metrics.successful,
-      failedCount: metrics.failed,
-    };
+    return normalizeApplicationCounts(applicationsCount.data?.data);
   }, [applicationsCount.data]);
 
   const mappedChartData = useMemo(() => {
@@ -211,15 +236,15 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     },
     totalApplicationsCard: {
       title: "Total Applications",
-      data: (applicationsCount.data?.data?.metrics?.successful || 0) + (applicationsCount.data?.data?.metrics?.failed || 0),
+      data: (mappedApplicationsCount?.successCount || 0) + (mappedApplicationsCount?.failedCount || 0),
     },
     successfulApplicationsCard: {
       title: "Successful Applications",
-      data: applicationsCount.data?.data?.metrics?.successful || 0,
+      data: mappedApplicationsCount?.successCount || 0,
     },
     failedApplicationsCard: {
       title: "Failed Applications",
-      data: applicationsCount.data?.data?.metrics?.failed || 0,
+      data: mappedApplicationsCount?.failedCount || 0,
     },
   }), [
     vaAllocations, milestoneStats, onboardedClients, jobsiteStats, inflightClients,

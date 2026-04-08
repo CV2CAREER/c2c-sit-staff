@@ -6,6 +6,18 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { SlackQueueResponse, ResourceMode, UpdateResourcePayload } from "@/types/admin.types";
 
+const normalizeJobPreferencesOptions = (payload: any) => {
+  const source = payload?.data ?? payload;
+
+  if (Array.isArray(source)) return source;
+  if (Array.isArray(source?.items)) return source.items;
+  if (Array.isArray(source?.categories)) return source.categories;
+  if (Array.isArray(source?.options)) return source.options;
+  if (Array.isArray(source?.result)) return source.result;
+
+  return [];
+};
+
 export const useJobsiteQueries = (options: AdminQueriesOptions) => {
   const {
     fetchAggregators = false,
@@ -104,7 +116,7 @@ export const useJobsiteQueries = (options: AdminQueriesOptions) => {
       error: aggregatorsCount.error,
     },
     jobPreferencesOptionsDomain: {
-      data: jobPreferencesOptions.data?.data,
+      data: normalizeJobPreferencesOptions(jobPreferencesOptions.data?.data),
       isLoading: jobPreferencesOptions.isLoading,
       isSuccess: jobPreferencesOptions.isSuccess,
       isError: jobPreferencesOptions.isError,
