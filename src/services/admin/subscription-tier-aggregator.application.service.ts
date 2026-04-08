@@ -122,7 +122,7 @@ class SubscriptionTierAggregatorApplicationService {
             COUNT(*)::bigint AS "userCount"
           FROM latest_plan_by_user lpu
           INNER JOIN features f
-            ON f.id = lpu."featureId"
+            ON f.id = lpu."featureId"::uuid
           WHERE LOWER(
             COALESCE(
               NULLIF(TRIM(CAST(f.tier AS TEXT)), ''),
