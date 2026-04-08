@@ -5,7 +5,6 @@ import { getServiceLogger } from "../utils/createLogger";
 import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
-import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -38,8 +37,8 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        await Promotion.sync({ force: false });        // new table
-        await PromotionLength.sync({ force: false });
+        // await Blog.sync({ force: false });        // new table
+
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();

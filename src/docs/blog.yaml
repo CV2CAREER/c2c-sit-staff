@@ -1,0 +1,161 @@
+# OpenAPI Specification for Blog Management Endpoints
+
+paths:
+  /v1/blog:
+    get:
+      tags:
+        - Blog
+      summary: Get all blog posts
+      description: Retrieve all blog posts with optional filter for recycled posts
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: recycled
+          schema:
+            type: string
+            enum: [true, false]
+          description: Filter for recycled posts
+      responses:
+        "200":
+          description: Blog posts retrieved successfully
+
+    post:
+      tags:
+        - Blog
+      summary: Create new blog post
+      description: Create a new blog post and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                  example: "10 Best Resume Tips for 2026"
+                excerpt:
+                  type: string
+                  example: "Learn the top resume writing tips that will help you stand out to recruiters this year"
+                content:
+                  type: string
+                  example: "Full article content here..."
+                featuredImage:
+                  type: string
+                  description: "Can be direct URL OR base64 encoded image (auto uploaded to Firebase Storage)"
+                  example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+                category:
+                  type: string
+                  example: "Career Advice"
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  example: ["resume", "job-search", "tips"]
+                isPublished:
+                  type: boolean
+                  example: false
+      responses:
+        "201":
+          description: Blog post created successfully
+
+    patch:
+      tags:
+        - Blog
+      summary: Update blog post
+      description: Update existing blog post and send Slack notification with changes
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Blog Post ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Updated Resume Tips for 2026"
+                excerpt:
+                  type: string
+                  example: "Updated resume writing tips for modern job applications"
+                content:
+                  type: string
+                featuredImage:
+                  type: string
+                  description: "Can be direct URL OR base64 encoded image (auto uploaded to Firebase Storage)"
+                  example: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+                category:
+                  type: string
+                  example: "Career Advice"
+                tags:
+                  type: array
+                  items:
+                    type: string
+                isPublished:
+                  type: boolean
+                  example: true
+                recycled:
+                  type: boolean
+                  example: false
+      responses:
+        "200":
+          description: Blog post updated successfully
+
+    delete:
+      tags:
+        - Blog
+      summary: Delete blog post
+      description: Delete blog post and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Blog Post ID
+      responses:
+        "204":
+          description: Blog post deleted successfully
+
+  /v1/blog/id:
+    get:
+      tags:
+        - Blog
+      summary: Get blog post by ID
+      description: Retrieve a single blog post by ID (auto increments view count)
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Blog Post ID
+      responses:
+        "200":
+          description: Blog post retrieved successfully

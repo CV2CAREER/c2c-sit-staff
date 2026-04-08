@@ -31,6 +31,7 @@ import { SystemConfig } from "../models/v1/system-config.model";
 import { AuditTrail } from "../models/v1/audit-trail.model";
 import { UnsubscribedUser } from "../models/v1/unsubscribed-user.model";
 import { Promotion, PromotionLength } from "../models/v1/promotion.model";
+import { Blog } from "../models/v1/blog.model";
 
 
 export const modelList = [
@@ -68,4 +69,5 @@ export const modelList = [
   UnsubscribedUser,
   Promotion,
   PromotionLength,
+  Blog,
 ];
