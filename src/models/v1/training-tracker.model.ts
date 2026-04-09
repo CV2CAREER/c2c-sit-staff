@@ -49,11 +49,12 @@ export class TrainingTracker extends Model {
   user!: User;
 
   @ForeignKey(() => Session)
+  @AllowNull
   @Column(DataType.UUID)
-  sessionId!: string;
-
+  sessionId?: string;
+  
   @BelongsTo(() => Session, { foreignKey: "sessionId", targetKey: "id" })
-  session!: Session;
+  session?: Session;
 
   @ForeignKey(() => User)
   @AllowNull

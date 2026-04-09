@@ -168,3 +168,51 @@ export const deleteTrainingTracker = catchAsyncError(async (req: any, res: Respo
     return res.apiError(new ErrorHandler(error.message || "Failed to delete training tracker", 500));
   }
 });
+
+/**
+ * Get all sessions with client and coach details
+ */
+export const getAllSessions = catchAsyncError(async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      coachId: req.query.coachId as string,
+      clientId: req.query.clientId as string,
+      sessionStatus: req.query.sessionStatus as string
+    };
+
+    const sessions = await TrainingTrackerService.getAllSessions(filters);
+
+    return res.apiSuccess(sessions, "Sessions retrieved successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to get sessions: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message || "Failed to retrieve sessions", 500));
+  }
+});
+
+/**
+ * Export Training Tracker data as CSV
+ */
+export const exportTrainingTrackerCSV = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const filters = {
+      sessionId: req.query.sessionId as string,
+      trackerId: req.query.trackerId as string
+    };
+
+    if (!filters.sessionId && !filters.trackerId) {
+      logger.warn("Export request without sessionId or trackerId");
+      return res.apiError(new ErrorHandler("At least one filter (sessionId or trackerId) is required for export", 400));
+    }
+
+    const csv = await TrainingTrackerService.exportToCSV(req, filters, req.user);
+
+    // Set CSV headers
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=training-trackers-${new Date().toISOString().split('T')[0]}.csv`);
+
+    return res.send(csv);
+  } catch (error: any) {
+    logger.error(`❌ Failed to export training trackers: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message || "Failed to export training trackers", 500));
+  }
+});

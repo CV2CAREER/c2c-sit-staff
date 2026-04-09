@@ -31,6 +31,8 @@ import referralRouterV1 from "./routes/v1/referral.route";
 import promotionRouterV1 from "./routes/v1/promotion.route";
 import blogRouterV1 from "./routes/v1/blog.route";
 import trainingTrackerRouterV1 from "./routes/v1/training-tracker.route";
+import salesOperationRouterV1 from "./routes/v1/sales-operation.route";
+import crTrackingRouterV1 from "./routes/v1/cr-tracking.route";
 
 export const app = express();
 
@@ -146,6 +148,8 @@ app.use("/api/v1/referrals", referralRouterV1);
 app.use("/api/v1/promotions", promotionRouterV1);
 app.use("/api/v1/blog", blogRouterV1);
 app.use("/api/v1/training-tracker", trainingTrackerRouterV1);
+app.use("/api/v1/sales-operation", salesOperationRouterV1);
+app.use("/api/v1/cr-tracking", crTrackingRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -1,6 +1,70 @@
 # OpenAPI Specification for Training Tracker Endpoints
 
 paths:
+  /v1/training-tracker/export:
+    get:
+      tags:
+        - Training Tracker
+      summary: Export Training Tracker data as CSV
+      description: Export training tracker entries as CSV file. Can be filtered by sessionId or trackerId. Automatically sends Slack notification. Only accessible by Admin and PC/Assistant roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: sessionId
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by Session ID
+        - in: query
+          name: trackerId
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by single Training Tracker ID
+      responses:
+        "200":
+          description: CSV file downloaded successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "500":
+          description: Export failed
+
+  /v1/training-tracker/sessions:
+    get:
+      tags:
+        - Training Tracker
+      summary: Get all sessions
+      description: Retrieve all sessions with client, coach and schedule details
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: coachId
+          schema:
+            type: string
+            format: uuid
+          description: Filter sessions by coach ID
+        - in: query
+          name: clientId
+          schema:
+            type: string
+            format: uuid
+          description: Filter sessions by client ID
+        - in: query
+          name: sessionStatus
+          schema:
+            type: string
+          description: Filter sessions by status
+      responses:
+        "200":
+          description: Sessions retrieved successfully
+
   /v1/training-tracker:
     get:
       tags:
