@@ -16,7 +16,7 @@ export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) =>
 
   const postById = useFetchData<IBlogPost>({
     method: "GET",
-    url: endpoints.ADMIN_BLOG,
+    url: endpoints.ADMIN_BLOG_DETAILS,
     params: { id: options?.id },
     queryKey: ["admin-blog-post", options?.id],
     enabled: !!options?.id,

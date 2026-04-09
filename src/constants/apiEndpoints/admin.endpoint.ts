@@ -79,10 +79,34 @@ export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
 export const COUNTRY_INFO = "/api/v1/country-info";
 export const ADMIN_SLACK_QUEUE = "/api/v1/admin/slack";
 export const ADMIN_RESOURCES = "/api/v1/admin/resources";
-export const ADMIN_PROMOTION = "/api/promotion";
-export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/promotion/${id}`;
+export const ADMIN_PROMOTION = "/api/v1/promotions";
+export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/promotions?id=${id}`;
 
 // Blog Endpoints
-export const ADMIN_BLOG = "/api/admin/blog";
-export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/admin/blog?id=${id}`;
-export const ADMIN_BLOG_DETAILS = (id: string) => `/api/admin/blog?id=${id}`;
+export const ADMIN_BLOG = "/api/v1/blog";
+export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/blog?id=${id}`;
+export const ADMIN_BLOG_DETAILS = "/api/v1/blog/id";
+
+// Admin Prompts Endpoints
+export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/admin/${basePath}`;
+export const ADMIN_PROMPTS_SIMULATION = (basePath: string) => `/api/admin/${basePath}/simulation`;
+export const ADMIN_PROMPTS_QUEUE = (basePath: string) => `/api/admin/${basePath}/queue`;
+export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/admin/${basePath}/vcs`;
+export const ADMIN_PROMPTS_CV_STYLE = `/api/admin/prompts/cv-ai/style`;
+
+// Admin Training Tracker Endpoints
+export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
+export const ADMIN_TRAINING_TRACKER_SESSION = "/api/training-tracker-session";
+export const ADMIN_COACHES_VARIANT = "/api/coach";
+
+// Admin CR Tracking Endpoints
+export const ADMIN_CR_TRACKING = "/api/admin/cr-tracking";
+export const ADMIN_CR_TRACKING_EOT = "/api/admin/cr-tracking/eot";
+export const ADMIN_CR_TRACKING_OPTIONS = "/api/admin/cr-tracking/options";
+export const ADMIN_CR_TRACKING_HISTORY = "/api/admin/cr-tracking/history";
+export const ADMIN_CR_TRACKING_MODIFY = "/api/admin/cr-tracking/modify";
+export const ADMIN_CR_TRACKING_RESTORE = "/api/admin/cr-tracking/restore";
+export const ADMIN_CR_TRACKING_DELETE = "/api/admin/cr-tracking/delete";
+export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/admin/cr-tracking/notify-nil";
+export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/admin/documents/upload";
+export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and-upload-url";

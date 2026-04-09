@@ -150,13 +150,11 @@ export const moveTo = (tableName: string, field: string, target: number) => {
  * );
  */
 export const StyledDataGridPro = styled(DataGridPro)(() => ({
-  "& .MuiDataGrid-root": {
-    border: "none",
-    backgroundColor: "#fefefe",
-    boxShadow:
-      "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    borderRadius: "8px",
-  },
+  border: "none",
+  backgroundColor: "#fefefe",
+  boxShadow:
+    "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+  borderRadius: "8px",
   "& .MuiDataGrid-cell": {
     borderBottom: "1px solid #f0f0f0",
   },

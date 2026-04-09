@@ -40,10 +40,9 @@ export const useReferralQueries = (options: ReferralQueriesOptions) => {
 
   const userReferrals = useFetchData<IReferralSummary>({
     method: "GET",
-    url: endpoints.ADMIN_REFERRAL,
-    params: { email },
-    queryKey: ["admin-user-referrals", email],
-    enabled: fetchUserReferrals && !!email,
+    url: `${endpoints.ADMIN_REFERRAL}/user/${referrerId || email}`,
+    queryKey: ["admin-user-referrals", referrerId || email],
+    enabled: fetchUserReferrals && !!(referrerId || email),
   });
 
   const referredUsersDetails = useFetchData<{ status: string; data: IReferredUser[] }>({
@@ -110,7 +109,7 @@ export const useReferralMutations = () => {
   const approveClaim = useMutation({
     mutationKey: ["admin-approve-claim"],
     mutationFn: async (id: string) => {
-      const response = await axiosInstance.put(`${endpoints.ADMIN_REFERRAL}?id=${id}&action=APPROVE_CLAIM`);
+      const response = await axiosInstance.post(`${endpoints.ADMIN_REFERRAL}/approve`, { referralId: id });
       return response.data;
     },
   });
@@ -118,7 +117,8 @@ export const useReferralMutations = () => {
   const declineClaim = useMutation({
     mutationKey: ["admin-decline-claim"],
     mutationFn: async (payload: { id: string; reason: string }) => {
-      const response = await axiosInstance.put(`${endpoints.ADMIN_REFERRAL}?id=${payload.id}&action=DECLINE_CLAIM`, {
+      const response = await axiosInstance.post(`${endpoints.ADMIN_REFERRAL}/decline`, {
+        referralId: payload.id,
         reason: payload.reason,
       });
       return response.data;

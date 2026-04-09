@@ -125,4 +125,20 @@ export interface AdminQueriesOptions {
   slackQueue?: string;
   fetchResources?: boolean;
   resourceType?: string;
+  fetchTrainingSessions?: boolean;
+  fetchTrainingTracker?: boolean;
+  trainingSessionNumber?: number;
+  trainingIsDeleted?: boolean;
+
+  // CR Tracking
+  fetchCRTrackingData?: boolean;
+  crTrackingDataState?: string;
+  fetchEOTData?: boolean;
+  fetchCRTrackingOptions?: boolean;
+  fetchCRHistory?: boolean;
+  crHistoryCustomId?: string;
+  crHistoryId?: string;
+  crHistoryPage?: number;
+  fetchEOTCRs?: boolean;
+  fetchEOTOwners?: boolean;
 }
