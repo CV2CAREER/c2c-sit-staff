@@ -1,0 +1,52 @@
+paths:
+  /v1/admin/ai-prompt-vcs:
+    get:
+      tags:
+        - Admin AI Prompt VCS
+      summary: Get prompt VCS versions
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: VCS retrieved
+
+    post:
+      tags:
+        - Admin AI Prompt VCS
+      summary: Create new prompt version
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+      responses:
+        "201":
+          description: Version created
+
+    put:
+      tags:
+        - Admin AI Prompt VCS
+      summary: Set active prompt version
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                promptId:
+                  type: string
+      responses:
+        "200":
+          description: Active version updated

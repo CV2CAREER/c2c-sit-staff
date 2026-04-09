@@ -1,0 +1,49 @@
+paths:
+  /v1/admin/ai-simulation:
+    get:
+      tags:
+        - Admin AI Simulation
+      summary: Get AI simulations
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Simulations retrieved
+
+    post:
+      tags:
+        - Admin AI Simulation
+      summary: Run AI simulation
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+      responses:
+        "200":
+          description: Simulation completed
+
+    delete:
+      tags:
+        - Admin AI Simulation
+      summary: Delete simulation
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Simulation deleted

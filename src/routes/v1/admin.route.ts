@@ -41,9 +41,40 @@ import { discoveryQueueController } from "../../controllers/v1/loadbalancer.cont
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
 import { getCredentialAliasesController } from "../../controllers/v1/credential-alias.controller";
+import { aiPromptController } from "@/controllers/v1/ai-prompt.controller";
+import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.controller";
+
+import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
+import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
 
 const adminRouterV1 = Router();
 
+adminRouterV1.all(
+  "/ai-prompt-vcs",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  aiPromptVcsController,
+);
+
+adminRouterV1.all(
+  "/ai-simulation",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  aiSimulationController,
+);
+
+adminRouterV1.all(
+  "/ai-prompt-queue",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  aiPromptQueueController,
+);
+adminRouterV1.all(
+  "/ai-prompts",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  aiPromptController,
+);
 adminRouterV1.get(
   "/credential-alias",
   checkBlacklistedTokens,

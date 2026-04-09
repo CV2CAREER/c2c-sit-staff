@@ -1,0 +1,43 @@
+paths:
+  /v1/admin/generate-password:
+    get:
+      tags:
+        - Get Sample queue
+      summary: Get sample queue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: string
+      responses:
+        "200":
+          description: Sample queue retrieved
+
+    delete:
+      tags:
+        - Delete sample queue
+      summary: Delete sample queue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Sample queue deleted
+
+    post:
+      tags:
+        - generate sample queue
+      summary: generate sample queue
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Sample queue generated
