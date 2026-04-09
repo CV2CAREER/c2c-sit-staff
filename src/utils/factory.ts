@@ -5,7 +5,6 @@ import path from "path";
 import { getTextExtractor } from "office-text-extractor";
 import { gotScraping } from "got-scraping";
 import { htmlToText } from "html-to-text";
-import { fileTypeFromBuffer } from "file-type";
 
 // Query the configured LLM endpoint. This project previously used
 // Google's Gemini API; we now call a DigitalOcean Gradient agent endpoint.
@@ -103,8 +102,6 @@ export const isStage = (host: string) => {
   ];
   return stageDomain.includes(host);
 };
-
-import { uploadFileToFirebase as uploadToFirebase } from "@/utils/firebaseStorage";
 
 export const uploadLog = async (
   filePath: string,
@@ -209,7 +206,14 @@ export const extractResume = async (url: string) => {
   const response = await axios.get(url, { responseType: "arraybuffer" });
 
   const buffer = Buffer.from(response.data);
-  const fileType = await fileTypeFromBuffer(buffer);
+
+  let fileType;
+  try {
+    const { fileTypeFromBuffer } = await import("file-type");
+    fileType = await fileTypeFromBuffer(buffer);
+  } catch (error) {
+    console.log("Could not detect file type:", error);
+  }
 
   let resumeText;
 

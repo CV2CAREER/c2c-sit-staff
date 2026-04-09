@@ -1,0 +1,16 @@
+declare module "file-type" {
+  export interface FileTypeResult {
+    mime: string;
+    ext: string;
+  }
+
+  export function fileTypeFromBuffer(
+    buffer: Buffer,
+  ): Promise<FileTypeResult | undefined>;
+  export function fileTypeFromStream(
+    stream: any,
+  ): Promise<FileTypeResult | undefined>;
+  export function fileTypeFromFile(
+    filename: string,
+  ): Promise<FileTypeResult | undefined>;
+}
