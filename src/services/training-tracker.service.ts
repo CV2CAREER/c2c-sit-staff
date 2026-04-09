@@ -1,8 +1,10 @@
 import { TrainingTracker } from "../models/v1/training-tracker.model";
+import { Session } from "../models/v1/session.model";
 import { getServiceLogger } from "../utils/createLogger";
 import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
+import { Parser } from 'json2csv';
 
 const logger = getServiceLogger("training-tracker-service");
 
@@ -342,6 +344,140 @@ export class TrainingTrackerService {
       return true;
     } catch (error: any) {
       logger.error(`❌ Failed to delete training tracker: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all sessions with client and coach details
+   */
+  static async getAllSessions(filters: { coachId?: string; clientId?: string; sessionStatus?: string } = {}) {
+    try {
+      const whereClause: any = {};
+
+      if (filters.coachId) {
+        whereClause.coachId = filters.coachId;
+      }
+
+      if (filters.clientId) {
+        whereClause.clientId = filters.clientId;
+      }
+
+      if (filters.sessionStatus) {
+        whereClause.sessionStatus = filters.sessionStatus;
+      }
+
+      const sessions = await Session.findAll({
+        where: whereClause,
+        include: [
+          { association: "client", attributes: ["id", "email", "firstName", "lastName", "country"] },
+          { association: "coach", attributes: ["id", "email", "firstName", "lastName"] }
+        ],
+        order: [["createdAt", "DESC"]]
+      });
+
+      logger.info(`✅ Retrieved ${sessions.length} sessions`);
+      return sessions;
+    } catch (error: any) {
+      logger.error(`❌ Failed to get sessions: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Export Training Tracker data as CSV
+   * Can filter by sessionId or trackerId
+   */
+  static async exportToCSV(req: any, filters: { sessionId?: string; trackerId?: string } = {}, user: any): Promise<string> {
+    try {
+      const host = req.headers.host || req.headers.origin || "localhost";
+      
+      const whereClause: any = { isDeleted: false };
+
+      if (filters.trackerId) {
+        whereClause.id = filters.trackerId;
+      }
+      if (filters.sessionId) {
+        whereClause.sessionId = filters.sessionId;
+      }
+
+      const trackers = await TrainingTracker.findAll({
+        where: whereClause,
+        include: [
+          { association: "user", attributes: ["email", "firstName", "lastName"] },
+          { association: "session", attributes: ["id", "number", "name"] },
+          { association: "pc", attributes: ["email", "firstName", "lastName"] }
+        ],
+        order: [["createdAt", "DESC"]],
+        raw: true,
+        nest: true
+      });
+
+      // Flatten nested objects for CSV
+      const flatData = trackers.map(tracker => ({
+        id: tracker.id,
+        fullName: tracker.fullName,
+        userEmail: tracker.user?.email,
+        userFirstName: tracker.user?.firstName,
+        userLastName: tracker.user?.lastName,
+        sessionId: tracker.session?.id,
+        sessionNumber: (tracker.session as any)?.number,
+        sessionName: (tracker.session as any)?.name,
+        pcEmail: tracker.pc?.email,
+        pcFirstName: tracker.pc?.firstName,
+        pcLastName: tracker.pc?.lastName,
+        wmtycDecomposition: tracker.wmtycDecomposition,
+        smeTechnicalDepth: tracker.smeTechnicalDepth,
+        deliverablesQuantification: tracker.deliverablesQuantification,
+        locationYearroleInTimeExample: tracker.locationYearroleInTimeExample,
+        selfPronounUsage: tracker.selfPronounUsage,
+        businessDeliverables: tracker.businessDeliverables,
+        grammardictioncommunication: tracker.grammardictioncommunication,
+        personabilitylikeabilityhumor: tracker.personabilitylikeabilityhumor,
+        respectcurtesy: tracker.respectcurtesy,
+        appearance: tracker.appearance,
+        assessment: tracker.assessment,
+        pleasantriessmallTalk: tracker.pleasantriessmallTalk,
+        sessionObjectives: tracker.sessionObjectives,
+        professionIntroduction: tracker.professionIntroduction,
+        kpiDescriptionWithExamples: tracker.kpiDescriptionWithExamples,
+        cvresumeRendition: tracker.cvresumeRendition,
+        respectcourtesyempathyhumility: tracker.respectcourtesyempathyhumility,
+        kpiCollaborativeScoring: tracker.kpiCollaborativeScoring,
+        recordingAvailabilitySurvey: tracker.recordingAvailabilitySurvey,
+        maximumNumberOfQuestions: tracker.maximumNumberOfQuestions,
+        complementingpositiveFeedback: tracker.complementingpositiveFeedback,
+        clientMultipleGosOnAllQs: tracker.clientMultipleGosOnAllQs,
+        timeUtilization: tracker.timeUtilization,
+        clientStoryResponses: tracker.clientStoryResponses,
+        partingQuestions: tracker.partingQuestions,
+        timeKeeping: tracker.timeKeeping,
+        fillerPhrases: tracker.fillerPhrases,
+        intermittentClarificationRequest: tracker.intermittentClarificationRequest,
+        perfectAlternateResponses: tracker.perfectAlternateResponses,
+        audiovisualRoomLighteningSetup: tracker.audiovisualRoomLighteningSetup,
+        pcAssessment: tracker.pcAssessment,
+        createdAt: tracker.createdAt,
+        updatedAt: tracker.updatedAt
+      }));
+
+      const json2csvParser = new Parser();
+      const csv = json2csvParser.parse(flatData);
+
+      // Send Slack notification
+      const message = `
+📊 **Training Tracker EXPORTED** 📊
+• Exported by: ${user.email}
+• Number of records: ${trackers.length}
+${filters.sessionId ? `• Filter: Session ID = ${filters.sessionId}` : ''}
+${filters.trackerId ? `• Filter: Tracker ID = ${filters.trackerId}` : ''}
+      `;
+      await this.notifySlack(host, "Exported", message, user);
+
+      logger.info(`✅ Exported ${trackers.length} training trackers to CSV by ${user.email}`);
+      return csv;
+    } catch (error: any) {
+      logger.error(`❌ Failed to export training trackers to CSV: ${error.message}`);
       throw error;
     }
   }

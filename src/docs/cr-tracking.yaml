@@ -1,0 +1,491 @@
+# OpenAPI Specification for CR Tracking Endpoints
+
+paths:
+  /v1/cr-tracking:
+    get:
+      tags:
+        - CR Tracking
+      summary: Get all CR Tracking entries
+      description: Retrieve all CR Tracking entries with optional filters. Only accessible by Admin and PC/Assistant roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: isDeleted
+          schema:
+            type: boolean
+          description: Filter deleted CR entries (recycle bin)
+      responses:
+        "200":
+          description: CR Tracking entries retrieved successfully
+
+    post:
+      tags:
+        - CR Tracking
+      summary: Create new CR Tracking entry
+      description: Create a new CR Tracking entry. Automatically sends Slack notification to CSM team and @mentions nominated developer. Supports base64 image uploads that are automatically stored in Firebase Storage.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: CR Name / Title
+                level:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  default: 1
+                description:
+                  type: string
+                changeRequestId:
+                  type: string
+                status:
+                  type: string
+                priority:
+                  type: string
+                ownerId:
+                  type: string
+                  format: uuid
+                  description: CR Owner ID (reference to CROwner table)
+                ownerEmail:
+                  type: string
+                  format: email
+                crType:
+                  type: string
+                stage:
+                  type: string
+                nilId:
+                  type: string
+                  format: uuid
+                  description: NIL Owner ID (reference to CROwner table)
+                nilEmail:
+                  type: string
+                  format: email
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+                durationInHours:
+                  type: number
+                  minimum: 0.5
+                changeType:
+                  type: string
+                duration:
+                  type: string
+                prevState:
+                  type: string
+                  description: Previous state description
+                currentState:
+                  type: string
+                  description: Current state description
+                futureState:
+                  type: string
+                  description: Future state description
+                context:
+                  type: string
+                  description: Additional context
+                businessImpact:
+                  type: string
+                  description: Business impact analysis
+                note:
+                  type: string
+                meetAfterCompletion:
+                  type: boolean
+                  default: false
+                nominatedDeveloperId:
+                  type: string
+                  format: uuid
+                  description: Nominated Developer ID (reference to CROwner table)
+                nominatedDeveloperEmail:
+                  type: string
+                  format: email
+                currentStateImageURLs:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of base64 encoded images or image URLs. Base64 images are automatically uploaded to Firebase Storage.
+                futureStateImageURLs:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of base64 encoded images or image URLs. Base64 images are automatically uploaded to Firebase Storage.
+                severity:
+                  type: string
+                family:
+                  type: string
+                system:
+                  type: string
+                impactedPersona:
+                  type: array
+                  items:
+                    type: string
+                impactedProvider:
+                  type: array
+                  items:
+                    type: string
+                impactedNode:
+                  type: array
+                  items:
+                    type: string
+                isNILNotified:
+                  type: boolean
+                  default: false
+      responses:
+        "201":
+          description: CR Tracking created successfully
+
+    delete:
+      tags:
+        - CR Tracking
+      summary: Soft delete CR Tracking entry
+      description: Move CR Tracking entry to recycle bin. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: CR Tracking ID
+      responses:
+        "200":
+          description: CR Tracking moved to recycle bin successfully
+
+  /v1/cr-tracking/restore:
+    post:
+      tags:
+        - CR Tracking
+      summary: Restore CR Tracking entry
+      description: Restore CR Tracking entry from recycle bin. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: CR Tracking ID
+      responses:
+        "200":
+          description: CR Tracking restored successfully
+
+  /v1/cr-tracking/delete:
+    delete:
+      tags:
+        - CR Tracking
+      summary: Permanently delete CR Tracking entry
+      description: Permanently delete CR Tracking entry. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: CR Tracking ID
+      responses:
+        "200":
+          description: CR Tracking permanently deleted successfully
+
+  /v1/cr-tracking/modify:
+    put:
+      tags:
+        - CR Tracking
+      summary: Modify CR Tracking level (upgrade/downgrade)
+      description: Upgrade or downgrade CR Tracking priority level. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: CR Tracking ID
+        - in: query
+          name: downgradeOrUpgrade
+          required: true
+          schema:
+            type: string
+            enum: [downgrade, upgrade]
+          description: Action to perform
+      responses:
+        "200":
+          description: CR Tracking modified successfully
+
+  /v1/cr-tracking/options:
+    get:
+      tags:
+        - CR Tracking
+      summary: Get CR Tracking options
+      description: Get all dropdown select options for CR Tracking forms. Returns consolidated list of all options.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [all, owner, change, severity, family, stage, type, persona, provider, node]
+          description: Type of options to fetch
+      responses:
+        "200":
+          description: CR Options retrieved successfully
+
+    post:
+      tags:
+        - CR Tracking
+      summary: Create new CR Option
+      description: Create new CR dropdown option. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [owner, change, severity, family, stage, type, persona, provider, node]
+          description: Option type to create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: >
+                    Required for: owner, change, severity, family, stage, type, provider, node
+                label:
+                  type: string
+                  description: >
+                    Required for: persona only (instead of name)
+                email:
+                  type: string
+                  description: >
+                    Optional for: owner
+                slackId:
+                  type: string
+                  description: >
+                    Optional for: owner
+                role:
+                  type: string
+                  description: >
+                    Optional for: owner
+            examples:
+              owner:
+                summary: CROwner Model
+                value:
+                  name: "John Doe"
+                  email: "john@company.com"
+                  slackId: "U78945"
+                  role: "Technical Lead"
+              change:
+                summary: CRChange Model
+                value:
+                  name: "System Migration"
+              severity:
+                summary: CRSeverity Model
+                value:
+                  name: "Critical"
+              family:
+                summary: CRFamily Model
+                value:
+                  name: "Billing System"
+              stage:
+                summary: CRStage Model
+                value:
+                  name: "In Progress"
+              type:
+                summary: CRType Model
+                value:
+                  name: "Bug Fix"
+              persona:
+                summary: CRPersona Model
+                value:
+                  label: "VIP Enterprise Client"
+              provider:
+                summary: CRProvider Model
+                value:
+                  name: "Payment Gateway"
+      responses:
+        "201":
+          description: CR Option created successfully
+
+    put:
+      tags:
+        - CR Tracking
+      summary: Update CR Option
+      description: Update existing CR dropdown option. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [owner, change, severity, family, stage, type, persona, provider, node]
+          description: Option type to update
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Option ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                label:
+                  type: string
+                email:
+                  type: string
+                slackId:
+                  type: string
+                role:
+                  type: string
+      responses:
+        "200":
+          description: CR Option updated successfully
+
+    delete:
+      tags:
+        - CR Tracking
+      summary: Delete CR Option
+      description: Delete existing CR dropdown option. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [owner, change, severity, family, stage, type, persona, provider, node]
+          description: Option type to delete
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Option ID
+      responses:
+        "200":
+          description: CR Option deleted successfully
+
+  /v1/cr-eot:
+      get:
+        tags:
+          - CR Tracking
+        summary: Get EOT Request options
+        description: Get dropdown options for EOT Request form (CRs or Owners)
+        security:
+          - bearerAuth: []
+          - cookieAuth: []
+        parameters:
+          - in: query
+            name: variance
+            required: true
+            schema:
+              type: string
+              enum: [CRs, owners]
+            description: Type of options to fetch
+        responses:
+          "200":
+            description: EOT options retrieved successfully
+
+      post:
+        tags:
+          - CR Tracking
+        summary: Create new EOT Request
+        description: Create Extension of Time Request for CR. Automatically sends Slack notification to CSM team. Accessible only by Admin and Assistance roles.
+        security:
+          - bearerAuth: []
+          - cookieAuth: []
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - CR
+                  - developer
+                  - numberOfHours
+                  - NIL
+                  - duration
+                properties:
+                  CR:
+                    type: string
+                    format: uuid
+                    description: CR Tracking ID
+                  developer:
+                    type: string
+                    format: uuid
+                    description: Developer Owner ID
+                  numberOfHours:
+                    type: number
+                    minimum: 0.5
+                    description: Number of hours requested
+                  NIL:
+                    type: string
+                    format: uuid
+                    description: NIL Owner ID
+                  duration:
+                    type: object
+                    required:
+                      - start
+                      - end
+                    properties:
+                      start:
+                        type: string
+                        format: date-time
+                        description: Period start datetime
+                      end:
+                        type: string
+                        format: date-time
+                        description: Period end datetime
+                  note:
+                    type: string
+                    description: Optional notes about the EOT request
+        responses:
+          "201":
+            description: EOT Request created successfully

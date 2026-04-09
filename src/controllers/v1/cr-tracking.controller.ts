@@ -1,0 +1,148 @@
+import { Request, Response } from "express";
+import catchAsyncError from "../../utils/catchAsyncError";
+import ErrorHandler from "../../utils/errorHandler";
+import { CRTrackingService } from "../../services/admin/cr-tracking.service";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("cr-tracking-controller");
+
+/**
+ * Get all CR Tracking entries
+ */
+export const getCRTrackingEntries = catchAsyncError(async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      isDeleted: req.query.isDeleted === "true"
+    };
+
+    const entries = await CRTrackingService.getAll(filters);
+
+    return res.apiSuccess(entries, "CR Tracking entries retrieved successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to get CR tracking entries: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message || "Failed to retrieve CR tracking entries", 500));
+  }
+});
+
+/**
+ * Create new CR Tracking entry
+ */
+export const createCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const entry = await CRTrackingService.create(req, req.body, req.user);
+
+    return res.apiSuccess(entry, "CR Tracking created successfully", 201);
+  } catch (error: any) {
+    logger.error(`❌ Failed to create CR tracking: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message || "Failed to create CR tracking", 500));
+  }
+});
+
+/**
+ * Soft delete CR Tracking entry (move to recycle bin)
+ */
+export const softDeleteCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { id } = req.query as { id: string };
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    await CRTrackingService.softDelete(req, id, req.user);
+
+    return res.apiSuccess({}, "CR Tracking moved to recycle bin successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to soft delete CR tracking: ${error.message}`);
+
+    if (error.message === "CR Tracking entry not found" || error.message === "CR Tracking entry is already deleted") {
+      return res.apiError(new ErrorHandler(error.message, 400));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to delete CR tracking", 500));
+  }
+});
+
+/**
+ * Restore CR Tracking entry from recycle bin
+ */
+export const restoreCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { id } = req.query as { id: string };
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    const entry = await CRTrackingService.restore(req, id, req.user);
+
+    return res.apiSuccess(entry, "CR Tracking restored successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to restore CR tracking: ${error.message}`);
+
+    if (error.message === "Deleted CR Tracking entry not found") {
+      return res.apiError(new ErrorHandler(error.message, 404));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to restore CR tracking", 500));
+  }
+});
+
+/**
+ * Permanently delete CR Tracking entry
+ */
+export const permanentDeleteCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { id } = req.query as { id: string };
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    await CRTrackingService.permanentDelete(req, id, req.user);
+
+    return res.apiSuccess({}, "CR Tracking permanently deleted successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to permanently delete CR tracking: ${error.message}`);
+
+    if (error.message === "CR Tracking entry not found") {
+      return res.apiError(new ErrorHandler(error.message, 404));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to permanently delete CR tracking", 500));
+  }
+});
+
+/**
+ * Modify CR Tracking (upgrade/downgrade)
+ */
+export const modifyCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { id, downgradeOrUpgrade } = req.query as { id: string; downgradeOrUpgrade: string };
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    if (!downgradeOrUpgrade || !['downgrade', 'upgrade'].includes(downgradeOrUpgrade)) {
+      return res.apiError(new ErrorHandler("Valid downgradeOrUpgrade parameter is required (downgrade/upgrade)", 400));
+    }
+
+    let entry;
+    if (downgradeOrUpgrade === 'downgrade') {
+      entry = await CRTrackingService.downgrade(req, id, req.user);
+    } else {
+      entry = await CRTrackingService.upgrade(req, id, req.user);
+    }
+
+    return res.apiSuccess(entry, `CR Tracking ${downgradeOrUpgrade}d successfully`, 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to modify CR tracking: ${error.message}`);
+
+    if (error.message === "CR Tracking entry not found") {
+      return res.apiError(new ErrorHandler(error.message, 404));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to modify CR tracking", 500));
+  }
+});

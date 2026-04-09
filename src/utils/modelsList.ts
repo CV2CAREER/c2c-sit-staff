@@ -32,6 +32,19 @@ import { AuditTrail } from "../models/v1/audit-trail.model";
 import { UnsubscribedUser } from "../models/v1/unsubscribed-user.model";
 import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 import { Blog } from "../models/v1/blog.model";
+import { TrainingTracker } from "../models/v1/training-tracker.model";
+import { SalesOperation } from "../models/v1/sales-operation.model";
+import { CRTracking } from "@/models/v1/cr-tracking.model";
+import { CROwner } from "../models/v1/cr/owner.model";
+import { CRChange } from "@/models/v1/cr/change.model";
+import { CRSeverity } from "@/models/v1/cr/severity.model";
+import { CRFamily } from "@/models/v1/cr/family.model";
+import { CRStage } from "@/models/v1/cr/stage.model";
+import { CRType } from "@/models/v1/cr/type.model";
+import { CRPersona } from "@/models/v1/cr/persona.model";
+import { CRProvider } from "@/models/v1/cr/provider.model";
+import { CRNode } from "@/models/v1/cr/node.model";
+import { CREOT } from "../models/v1/cr-eot.model";
 
 
 export const modelList = [
@@ -70,4 +83,17 @@ export const modelList = [
   Promotion,
   PromotionLength,
   Blog,
+  TrainingTracker,
+  SalesOperation,
+  CRTracking,
+  CROwner,
+  CRChange,
+  CRSeverity,
+  CRFamily,
+  CRStage,
+  CRType,
+  CRPersona,
+  CRProvider,
+  CRNode,
+  CREOT,
 ];

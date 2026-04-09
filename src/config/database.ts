@@ -37,7 +37,8 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        // await Blog.sync({ force: false });        // new table
+        // await User.sync({ alter: true });                      // example of altering existing table
+        // await CRTracking.sync({ force: false });       // new table
 
 
         // 📸 Snapshot AFTER your targeted syncs
