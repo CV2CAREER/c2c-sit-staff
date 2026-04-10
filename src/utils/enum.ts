@@ -145,6 +145,7 @@ export enum SlackNode {
   MESSAGING = "Messaging",
   USER_MANAGEMENT = "User Management",
   APPLICATION = "Application",
+  BACKGROUND_JOB = "Background Job",
 }
 
 /**
@@ -248,6 +249,8 @@ export enum SlackEventType {
   ERROR_ALERT = "ERROR_ALERT",
   SYSTEM_NOTIFICATION = "SYSTEM_NOTIFICATION",
   USER_TRIGGERED = "USER_TRIGGERED",
+  SUPPORT_MESSAGE = "SUPPORT_MESSAGE",
+  SYSTEM_JOB = "SYSTEM_JOB",
 }
 
 export enum SlackChannel {

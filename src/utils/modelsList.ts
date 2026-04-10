@@ -45,6 +45,11 @@ import { CRPersona } from "@/models/v1/cr/persona.model";
 import { CRProvider } from "@/models/v1/cr/provider.model";
 import { CRNode } from "@/models/v1/cr/node.model";
 import { CREOT } from "../models/v1/cr-eot.model";
+import { Setting } from "@/models/v1/settings.model";
+import { Log } from "@/models/v1/log.model";
+import { ViewAsRule } from "../models/v1/view-as-rule.model";
+import { SupportConversation } from "../models/v1/chat-message.model";
+import { SupportSession } from "../models/v1/support-session.model";
 
 
 export const modelList = [
@@ -96,4 +101,9 @@ export const modelList = [
   CRProvider,
   CRNode,
   CREOT,
+  Setting,
+  Log, 
+  ViewAsRule, 
+  SupportConversation,
+  SupportSession,
 ];
