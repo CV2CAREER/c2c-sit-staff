@@ -1,0 +1,321 @@
+# OpenAPI Specification for Training Tracker Endpoints
+
+paths:
+  /v1/training-tracker/export:
+    get:
+      tags:
+        - Training Tracker
+      summary: Export Training Tracker data as CSV
+      description: Export training tracker entries as CSV file. Can be filtered by sessionId or trackerId. Automatically sends Slack notification. Only accessible by Admin and PC/Assistant roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: sessionId
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by Session ID
+        - in: query
+          name: trackerId
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by single Training Tracker ID
+      responses:
+        "200":
+          description: CSV file downloaded successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "500":
+          description: Export failed
+
+  /v1/training-tracker/sessions:
+    get:
+      tags:
+        - Training Tracker
+      summary: Get all sessions
+      description: Retrieve all sessions with client, coach and schedule details
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: coachId
+          schema:
+            type: string
+            format: uuid
+          description: Filter sessions by coach ID
+        - in: query
+          name: clientId
+          schema:
+            type: string
+            format: uuid
+          description: Filter sessions by client ID
+        - in: query
+          name: sessionStatus
+          schema:
+            type: string
+          description: Filter sessions by status
+      responses:
+        "200":
+          description: Sessions retrieved successfully
+
+  /v1/training-tracker:
+    get:
+      tags:
+        - Training Tracker
+      summary: Get all training trackers
+      description: Retrieve all training trackers with optional filters
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: sessionId
+          schema:
+            type: string
+            format: uuid
+          description: Filter by session ID
+        - in: query
+          name: isDeleted
+          schema:
+            type: boolean
+          description: Filter deleted trackers
+      responses:
+        "200":
+          description: Training trackers retrieved successfully
+
+    post:
+      tags:
+        - Training Tracker
+      summary: Create new training tracker
+      description: Create new training tracker and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - sessionId
+                - fullName
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                sessionId:
+                  type: string
+                  format: uuid
+                pcId:
+                  type: string
+                  format: uuid
+                fullName:
+                  type: string
+                wmtycDecomposition:
+                  type: integer
+                  example: 5
+                smeTechnicalDepth:
+                  type: integer
+                  example: 5
+                deliverablesQuantification:
+                  type: integer
+                  example: 5
+                locationYearroleInTimeExample:
+                  type: integer
+                  example: 5
+                selfPronounUsage:
+                  type: integer
+                  example: 5
+                businessDeliverables:
+                  type: integer
+                  example: 5
+                grammardictioncommunication:
+                  type: integer
+                  example: 5
+                personabilitylikeabilityhumor:
+                  type: integer
+                  example: 5
+                respectcurtesy:
+                  type: integer
+                  example: 5
+                appearance:
+                  type: integer
+                  example: 5
+                pleasantriessmallTalk:
+                  type: integer
+                  example: 5
+                sessionObjectives:
+                  type: integer
+                  example: 5
+                professionIntroduction:
+                  type: integer
+                  example: 5
+                kpiDescriptionWithExamples:
+                  type: integer
+                  example: 5
+                cvresumeRendition:
+                  type: integer
+                  example: 5
+                respectcourtesyempathyhumility:
+                  type: integer
+                  example: 5
+                kpiCollaborativeScoring:
+                  type: integer
+                  example: 5
+                recordingAvailabilitySurvey:
+                  type: integer
+                  example: 5
+                maximumNumberOfQuestions:
+                  type: integer
+                  example: 5
+                complementingpositiveFeedback:
+                  type: integer
+                  example: 5
+                clientMultipleGosOnAllQs:
+                  type: integer
+                  example: 5
+                timeUtilization:
+                  type: integer
+                  example: 5
+                clientStoryResponses:
+                  type: integer
+                  example: 5
+                partingQuestions:
+                  type: integer
+                  example: 5
+                timeKeeping:
+                  type: integer
+                  example: 5
+                fillerPhrases:
+                  type: integer
+                  example: 5
+                intermittentClarificationRequest:
+                  type: integer
+                  example: 5
+                perfectAlternateResponses:
+                  type: integer
+                  example: 5
+                audiovisualRoomLighteningSetup:
+                  type: integer
+                  example: 5
+      responses:
+        "201":
+          description: Training tracker created successfully
+
+    patch:
+      tags:
+        - Training Tracker
+      summary: Update training tracker
+      description: Update training tracker and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Training Tracker ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Training tracker updated successfully
+
+    delete:
+      tags:
+        - Training Tracker
+      summary: Permanently delete training tracker
+      description: Hard delete training tracker and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Training Tracker ID
+      responses:
+        "204":
+          description: Training tracker permanently deleted
+
+  /v1/training-tracker/id:
+    get:
+      tags:
+        - Training Tracker
+      summary: Get single training tracker by ID
+      description: Retrieve single training tracker with all relationships
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Training Tracker ID
+      responses:
+        "200":
+          description: Training tracker retrieved successfully
+
+  /v1/training-tracker/soft:
+    delete:
+      tags:
+        - Training Tracker
+      summary: Soft delete training tracker
+      description: Soft delete training tracker and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Training Tracker ID
+      responses:
+        "200":
+          description: Training tracker soft deleted successfully
+
+  /v1/training-tracker/restore:
+    patch:
+      tags:
+        - Training Tracker
+      summary: Restore soft deleted training tracker
+      description: Restore deleted training tracker and send Slack notification
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Training Tracker ID
+      responses:
+        "200":
+          description: Training tracker restored successfully

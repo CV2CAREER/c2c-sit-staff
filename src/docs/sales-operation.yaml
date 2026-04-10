@@ -1,0 +1,163 @@
+# OpenAPI Specification for Sales Operation Endpoints
+
+paths:
+  /v1/sales-operation/export:
+    get:
+      tags:
+        - Sales Operation
+      summary: Export Sales Operation data as CSV
+      description: Export sales operation entries as CSV file. Can filter by single ID. Automatically sends Slack notification. Only accessible by Admin and PC/Assistant roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by single Sales Operation ID
+      responses:
+        "200":
+          description: CSV file downloaded successfully
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        "500":
+          description: Export failed
+
+  /v1/sales-operation:
+    get:
+      tags:
+        - Sales Operation
+      summary: Get all sales operations
+      description: Retrieve all sales operations with optional filters. Only accessible by Admin and PC/Assistant roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: isDeleted
+          schema:
+            type: boolean
+          description: Filter deleted sales operations
+      responses:
+        "200":
+          description: Sales operations retrieved successfully
+
+    post:
+      tags:
+        - Sales Operation
+      summary: Create new sales operation
+      description: Create a new sales operation entry. Automatically sends Slack notification to CSM team.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - salesExecutive
+                - australiaTerritory
+                - partnerType
+                - name
+                - primaryContactEmail
+                - adoptionStatus
+              properties:
+                salesExecutive:
+                  type: string
+                commsDispatchDate:
+                  type: string
+                  format: date-time
+                australiaTerritory:
+                  type: string
+                entryCreationDate:
+                  type: string
+                  format: date-time
+                partnerType:
+                  type: string
+                name:
+                  type: string
+                webPage:
+                  type: string
+                  format: uri
+                secondaryContactFullName:
+                  type: string
+                lastContactDate:
+                  type: string
+                  format: date-time
+                followUpCallStatus:
+                  type: string
+                secondaryPhoneNumber:
+                  type: string
+                primaryContactEmail:
+                  type: string
+                  format: email
+                secondaryContactEmail:
+                  type: string
+                  format: email
+                adoptionStatus:
+                  type: string
+                notes:
+                  type: string
+                verifiedEmail:
+                  type: boolean
+                linkedinPage:
+                  type: string
+                  format: uri
+                entryReviewStatus:
+                  type: string
+      responses:
+        "201":
+          description: Sales operation created successfully
+
+    patch:
+      tags:
+        - Sales Operation
+      summary: Update sales operation
+      description: Update existing sales operation. Automatically sends Slack notification with changes.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Sales Operation ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Sales operation updated successfully
+
+    delete:
+      tags:
+        - Sales Operation
+      summary: Delete sales operation
+      description: Soft delete sales operation. Automatically sends Slack notification.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Sales Operation ID
+      responses:
+        "200":
+          description: Sales operation deleted successfully
