@@ -114,6 +114,51 @@ export const permanentDeleteCRTracking = catchAsyncError(async (req: any, res: R
 });
 
 /**
+ * Get CR Tracking History logs
+ */
+export const getCRTrackingHistory = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const filters = {
+      id: req.query.id as string,
+      customId: req.query.customId as string,
+      page: parseInt(req.query.page as string) || 1
+    };
+
+    const history = await CRTrackingService.getHistory(filters);
+
+    return res.apiSuccess(history, "CR Tracking history retrieved successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to get CR tracking history: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message || "Failed to retrieve CR tracking history", 500));
+  }
+});
+
+/**
+ * Notify NIL for CR Tracking
+ */
+export const notifyCRNIL = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { id } = req.query as { id: string };
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    await CRTrackingService.notifyNIL(req, id, req.user);
+
+    return res.apiSuccess({}, "CR NIL Notification sent successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to send NIL notification: ${error.message}`);
+
+    if (["CR Tracking entry not found", "CR Owner not found", "CR Owner has no Slack ID configured"].includes(error.message)) {
+      return res.apiError(new ErrorHandler(error.message, 404));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to send NIL notification", 500));
+  }
+});
+
+/**
  * Modify CR Tracking (upgrade/downgrade)
  */
 export const modifyCRTracking = catchAsyncError(async (req: any, res: Response) => {

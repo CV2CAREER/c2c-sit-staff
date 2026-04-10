@@ -1,0 +1,196 @@
+# OpenAPI Specification for Support System Endpoints
+
+paths:
+  /v1/support:
+    post:
+      tags:
+        - Support System
+      summary: Create new support session
+      description: Creates a new support conversation session between customer and staff
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: string
+                  example: "Need help with application"
+                  description: Session subject
+                customerId:
+                  type: string
+                  format: uuid
+                  description: Customer ID (staff only)
+      responses:
+        "201":
+          description: Support session created successfully
+
+    get:
+      tags:
+        - Support System
+      summary: Get all support sessions
+      description: Retrieves paginated list of all support sessions
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Support sessions retrieved successfully
+
+  /v1/support/{sessionId}/messages:
+    post:
+      tags:
+        - Support System
+      summary: Send message in support session
+      description: Send a new message. Automatically sends Slack notification to CSM team.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+                - senderType
+              properties:
+                message:
+                  type: string
+                  example: "Hello, I need assistance"
+                senderType:
+                  type: string
+                  enum: ["customer", "staff"]
+                feedback:
+                  type: string
+                  enum: ["satisfied", "not_satisfied", "neutral"]
+                  description: Optional customer feedback with message
+      responses:
+        "201":
+          description: Message sent successfully
+
+    get:
+      tags:
+        - Support System
+      summary: Get all messages for session
+      description: Retrieves full message history for a support session
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Messages retrieved successfully
+
+  /v1/support/{sessionId}/feedback:
+    post:
+      tags:
+        - Support System
+      summary: Submit customer feedback
+      description: Submit satisfaction feedback and close support session
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - feedback
+              properties:
+                feedback:
+                  type: string
+                  enum: ["satisfied", "not_satisfied", "neutral"]
+                comment:
+                  type: string
+                  example: "Great support experience"
+      responses:
+        "200":
+          description: Feedback submitted successfully
+
+  /v1/support/assign:
+    put:
+      tags:
+        - Support System
+      summary: Assign staff to support session
+      description: Assign a staff member to handle the support session
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionId
+                - staffId
+              properties:
+                sessionId:
+                  type: string
+                  format: uuid
+                staffId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Staff assigned successfully
+
+  /v1/support/{sessionId}/end:
+    put:
+      tags:
+        - Support System
+      summary: End/Close support session
+      description: Manually close and end an active support session. Sends Slack notification to CSM team.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Support session closed successfully
