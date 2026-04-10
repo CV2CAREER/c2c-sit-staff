@@ -471,8 +471,9 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             toast.loading('Recycling all data...');
             
             const response = await deleteCampaignSheetMutation.mutateAsync({
-                table: table,
-                clientId: clientId
+                entity: table,
+                id: clientId,
+                action: "soft-delete"
             });
             
             toast.success(response.message || 'Data recycled successfully');

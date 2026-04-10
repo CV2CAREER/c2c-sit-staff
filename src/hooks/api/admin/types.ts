@@ -47,6 +47,8 @@ export interface AdminQueriesOptions {
   fetchApplicationsCount?: boolean;
   fetchFollowersCount?: boolean;
   fetchInflightClientsList?: boolean;
+  fetchTotalUsersCount?: boolean;
+  fetchTotalGuestsCount?: boolean;
   fetchAdminStatus?: boolean; 
   fetchBotStatus?: boolean;
   botName?: string;

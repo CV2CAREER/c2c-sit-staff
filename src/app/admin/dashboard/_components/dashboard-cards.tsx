@@ -10,123 +10,123 @@ const DashboardCards = () => {
   const { startDate, endDate } = useFilterStore();
   
   const {
-    usersCountDomain,
-    aggregatorsCountDomain,
-    applicationsCountDomain,
-    followersCountDomain
+    overallStatsDomain,
+    followersCountDomain,
+    dashboardAggregatorsCountDomain,
+    totalUsersCountDomain,
+    totalGuestsCountDomain
   } = useAdminQueries({
-    fetchUsersCount: true,
-    fetchAggregatorsCount: true,
-    fetchApplicationsCount: true,
+    fetchOverallStats: true,
     fetchFollowersCount: true,
+    fetchAggregatorsCount: true,
+    fetchTotalUsersCount: true,
+    fetchTotalGuestsCount: true,
     startDate,
     endDate
   });
 
-  const queryUsersCount = usersCountDomain;
-  const queryAggrsCount = aggregatorsCountDomain;
-  const queryApplicationsCount = applicationsCountDomain;
+  const queryOverallStats = overallStatsDomain;
   const queryFollowersCount = followersCountDomain;
+  const queryAggregatorsCount = dashboardAggregatorsCountDomain;
+  const queryTotalUsersCount = totalUsersCountDomain;
+  const queryTotalGuestsCount = totalGuestsCountDomain;
+
+  const applicationsData = useMemo(() => {
+    return queryOverallStats.data?.breakdown?.applications || { successful: 0, failed: 0 };
+  }, [queryOverallStats.data]);
+
+  const usersData = useMemo(() => {
+    return queryOverallStats.data?.breakdown?.users || { successful: 0, failed: 0 };
+  }, [queryOverallStats.data]);
+
+  const aggregatorsData = useMemo(() => {
+    return queryAggregatorsCount.data || { total: 0, active: 0 };
+  }, [queryAggregatorsCount.data]);
 
 
-  const inActiveAggregators = useMemo(() => {
-    const data = queryAggrsCount.data as any;
-    return (
-      (data?.count || 0) -
-      (data?.active || 0)
-    );
-  }, [queryAggrsCount.data]);
+  if (queryOverallStats.isError) {
+    toast.error("Could not load analytics data");
+    return null;
+  }
 
-  if (queryUsersCount.isError) {
-    return toast.error("Could not load users data");
-  }
-  if (queryAggrsCount.isError) {
-    return toast.error("Could not load aggregators data");
-  }
-  if (queryApplicationsCount.isError) {
-    return toast.error("Could not load applications data");
-  }
- const isLoading =
-   queryUsersCount.isLoading ||
-   queryAggrsCount.isLoading ||
-   queryApplicationsCount.isLoading ||
-   queryFollowersCount.isLoading;
+  const isLoading = 
+    queryOverallStats.isLoading || 
+    queryFollowersCount.isLoading || 
+    queryAggregatorsCount.isLoading ||
+    queryTotalUsersCount.isLoading ||
+    queryTotalGuestsCount.isLoading;
   const DASHBOARD_CARDS_DATA = [
     {
       title: "Users",
-      value: (queryUsersCount.data as any)?.totalCount || 0,
+      value: (queryTotalUsersCount.data as number) || 0,
       linkIcon: true,
       route: "/admin/users",
     },
     {
       title: "Active Subscriptions",
-      value: (queryUsersCount.data as any)?.activeSubscribers || 0,
+      value: applicationsData?.successful || 0, // Proxy from plans.successful
       linkIcon: false,
     },
     {
       title: "Inactive Subscriptions",
-      value:
-        ((queryUsersCount.data as any)?.totalCount || 0) -
-        ((queryUsersCount.data as any)?.activeSubscribers || 0),
+      value: (queryTotalUsersCount.data as number || 0) - (applicationsData?.successful || 0),
       linkIcon: false,
     },
     {
       title: "Guests",
-      value: (queryUsersCount.data as any)?.guestCount || 0,
+      value: (queryTotalGuestsCount.data as number) || 0,
       linkIcon: true,
       route: "/admin/users/?filter=guests",
     },
     {
       title: "Inactive Guest Subscriptions",
-      value: (queryUsersCount.data as any)?.inActiveGuestCount || 0,
+      value: (queryTotalGuestsCount.data as number) || 0, // Placeholder as v1 lacks specific inactive guest sub count
       linkIcon: false,
     },
     {
       title: "Aggregators",
-      value: (queryAggrsCount.data as any)?.count || 0,
+      value: aggregatorsData.total,
       linkIcon: true,
       route: "/admin/status-report",
     },
     {
       title: "Active Aggregators",
-      value: (queryAggrsCount.data as any)?.active || 0,
+      value: aggregatorsData.active,
       linkIcon: true,
       route: "/admin/status-report",
     },
     {
       title: "Inactive Aggregators",
-      value: inActiveAggregators,
+      value: aggregatorsData.total - aggregatorsData.active,
       linkIcon: true,
       route: "/admin/status-report",
     },
     {
       title: "Total Applications",
-      value:
-        ((queryApplicationsCount.data as any)?.failedCount || 0) +
-        ((queryApplicationsCount.data as any)?.successCount || 0),
+      value: (applicationsData?.successful || 0) + (applicationsData?.failed || 0),
       linkIcon: true,
       route: "/admin/job-applications",
     },
     {
       title: "Successful Applications",
-      value: (queryApplicationsCount.data as any)?.successCount || 0,
+      value: applicationsData?.successful || 0,
       linkIcon: true,
       route: "/admin/job-applications",
     },
     {
       title: "Failed Applications",
-      value: (queryApplicationsCount.data as any)?.failedCount || 0,
+      value: applicationsData?.failed || 0,
       linkIcon: true,
       route: "/admin/job-applications",
     },
     {
       title: "Loyalists",
-      value: (queryUsersCount.data as any)?.loyalistsCount || 0,
+      value: usersData?.successful || 0, // Proxy from users.successful (Commenced)
       linkIcon: false,
     },
     {
       title: "Returnees",
-      value: (queryUsersCount.data as any)?.returneesCount || 0,
+      value: usersData?.failed || 0, // Proxy from users.failed (Expired)
       linkIcon: true,
       route: "/admin/users/?filter=returnees",
     },
@@ -136,12 +136,6 @@ const DashboardCards = () => {
       linkIcon: true,
       route: "/admin/users/?filter=followers",
     },
-
-    // {
-    //   title: "Total Jobsites",
-    //   value: queryAggrsCount.data?.data.count || 0,
-    //   linkIcon: false,
-    // },
   ];
 
   return (

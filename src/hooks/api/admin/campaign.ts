@@ -110,9 +110,9 @@ export const useCampaignMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    deleteCampaignSheetMutation: useMutateData<any, { table: string; clientId: string | number }>({
-      method: "GET", // Note: legacy used GET for delete?
-      url: endpoints.ADMIN_CAMPAIGN_SHEET_DELETE,
+    deleteCampaignSheetMutation: useMutateData<any, { id: string | number; entity: string; action: "soft-delete" }>({
+      method: "PATCH",
+      url: endpoints.ADMIN_CAMPAIGN_SHEET,
       mutationKey: ["admin-delete-campaign-sheet"],
       onSuccess: () => {},
       onError: () => {},

@@ -7,9 +7,9 @@ export const ADMIN_JOBSITE_STATS = "/api/v1/admin/analytics/jobsites"; // Note: 
 export const ADMIN_INFLIGHT_CLIENTS = "/api/v1/admin/in-flight";
 export const ADMIN_APPLICATION_SERIES = "/api/v1/admin/analytics/series";
 export const ADMIN_APPLICATION_CHART_DATA = "/api/v1/admin/analytics/series";
-export const ADMIN_USERS = "/api/v1/admin/analytics/users";
+export const ADMIN_USERS = "/api/v1/admin/users";
 export const ADMIN_USERS_FULL_NAME = "/api/v1/admin/users/full-name";
-export const ADMIN_AGGREGATORS = "/api/v1/admin/analytics/aggregators";
+export const ADMIN_AGGREGATORS = "/api/v1/aggregator";
 export const ADMIN_APPLICATIONS = "/api/v1/admin/applications";
 export const ADMIN_FOLLOWERS = "/api/v1/admin/analytics/followers";
 export const ADMIN_BOT_CONTROL = "/api/v1/admin/bot-toggle";
@@ -26,8 +26,8 @@ export const ADMIN_CAMPAIGN_SHEET = "/api/v1/admin/campaign/sheet";
 export const ADMIN_CAMPAIGN_SHEET_UPDATE = "/api/v1/admin/campaign/sheet/update";
 export const ADMIN_CAMPAIGN_SHEET_UPDATE_SINGLE = "/api/v1/admin/campaign/sheet/update-single";
 export const ADMIN_CAMPAIGN_SHEET_DELETE = "/api/v1/admin/campaign/sheet/delete";
-export const ADMIN_CAMPAIGN_SHEET_UPDATE_KEYWORDS = "/api/v1/admin/campaign/sheet/update-keywords";
-export const ADMIN_CLIENT_SAMPLE = "/api/v1/admin/client-sample";
+export const ADMIN_CAMPAIGN_SHEET_UPDATE_KEYWORDS = "/api/v1/admin/keywords/update";
+export const ADMIN_CLIENT_SAMPLE = "/api/v1/admin/samples";
 export const ADMIN_CLIENT_SAMPLE_USERS = "/api/v1/admin/client-sample/users";
 export const ADMIN_CLIENT_SAMPLE_TABLE = "/api/v1/admin/client-sample/table";
 export const ADMIN_DISPATCH_SAMPLE = "/api/v1/admin/users/dispatch-sample";
@@ -36,12 +36,12 @@ export const ADMIN_CAMPAIGN_CLIENT_INSIGHTS = (id: string | number) => `/api/v1/
 export const ADMIN_CAMPAIGN_COUNT_APPLICATIONS = "/api/v1/admin/campaign/sheet/count-applications";
 
 // User specific actions
-export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/admin/users/${id}`;
+export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/user/${id}`;
 export const ADMIN_GENERATE_PASSWORD = "/api/v1/admin/generatePassword";
 export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/admin/dispatchCredentials";
 export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/admin/send-preference-email";
 export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/admin/send-preference-email-userid";
-export const ADMIN_DISPATCH_CLIENT = "/api/v1/admin/dispatch-client";
+export const ADMIN_DISPATCH_CLIENT = "/api/v1/user/dispatch-client";
 export const ADMIN_USER_EXTRACT_CV = "/api/v1/admin/extract-cv-data";
 export const ADMIN_UPDATE_USER_PROGRESS = "/api/v1/admin/user-progress";
 export const ADMIN_ASSIGN_VA = "/api/v1/admin/assign-va";
@@ -55,7 +55,7 @@ export const ADMIN_PLANS = "/api/v1/admin/plans";
 export const ADMIN_ACCOUNT_ACTION = "/api/v1/admin/account-action";
 export const ADMIN_DELETE_USER = "/api/v1/admin/users";
 export const ADMIN_APPLICATION_EMAILS = "/api/v1/admin/applications/emails";
-export const ADMIN_DOCUMENTS = "/api/v1/admin/documents";
+export const ADMIN_DOCUMENTS = "/api/v1/document";
 export const ADMIN_UPLOAD_DOCUMENTS = "/api/v1/admin/documents/upload";
 export const ADMIN_DOCUMENTS_GET_SIGNED_URL = "/api/v1/admin/documents/get-signed-url";
 export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/document-review";
@@ -102,13 +102,14 @@ export const ADMIN_TRAINING_TRACKER_SESSION = "/api/training-tracker-session";
 export const ADMIN_COACHES_VARIANT = "/api/coach";
 
 // Admin CR Tracking Endpoints
-export const ADMIN_CR_TRACKING = "/api/admin/cr-tracking";
-export const ADMIN_CR_TRACKING_EOT = "/api/admin/cr-tracking/eot";
-export const ADMIN_CR_TRACKING_OPTIONS = "/api/admin/cr-tracking/options";
-export const ADMIN_CR_TRACKING_HISTORY = "/api/admin/cr-tracking/history";
-export const ADMIN_CR_TRACKING_MODIFY = "/api/admin/cr-tracking/modify";
-export const ADMIN_CR_TRACKING_RESTORE = "/api/admin/cr-tracking/restore";
-export const ADMIN_CR_TRACKING_DELETE = "/api/admin/cr-tracking/delete";
-export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/admin/cr-tracking/notify-nil";
+export const ADMIN_CR_TRACKING = "/api/v1/cr-tracking";
+export const ADMIN_CR_TRACKING_OPTIONS = "/api/v1/cr-tracking/options";
+export const ADMIN_CR_TRACKING_MODIFY = "/api/v1/cr-tracking/modify";
+export const ADMIN_CR_TRACKING_RESTORE = "/api/v1/cr-tracking/restore";
+export const ADMIN_CR_TRACKING_DELETE = "/api/v1/cr-tracking/delete";
+// Note: EOT, History, and Notify-Nil currently have no backend routes mounted in v1
+export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
+export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/cr-tracking/history";
+export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
 export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/admin/documents/upload";
 export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and-upload-url";

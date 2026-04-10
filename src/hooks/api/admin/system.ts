@@ -354,7 +354,7 @@ export const useSystemMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    dispatchClientMutation: useMutateData<any, { vaId: string; userIds: string[] }>({
+    dispatchClientMutation: useMutateData<any, { pcId: string; userIds: string[] }>({
       method: "POST",
       url: endpoints.ADMIN_DISPATCH_CLIENT,
       mutationKey: ["admin-dispatch-client"],

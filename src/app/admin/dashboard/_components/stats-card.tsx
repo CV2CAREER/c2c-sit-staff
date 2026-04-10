@@ -37,7 +37,7 @@ const StatCard: React.FC<StatCardProps> = ({
             {icon ? <span className="text-blue">{icon}</span> : null}
           </div>
           <h1 className="text-3xl font-bold text-gray-800">
-            {value.toLocaleString()}
+            {(value ?? 0).toLocaleString()}
           </h1>
         </>
       )}

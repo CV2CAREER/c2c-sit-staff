@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, ComponentType, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { StaffRole } from "@/types/user.types";
+import { getRoleRoute } from "@/hooks/api/auth.api";
 
 /**
  * withPersonaGuard — HOC to protect pages based on staff roles.
@@ -11,14 +12,15 @@ import { StaffRole } from "@/types/user.types";
  * @param Component The page component to wrap.
  * @param allowedRoles A single role or array of roles allowed to access the page.
  */
-const BYPASS_AUTH = false; // TOGGLE THIS TO DISABLE/ENABLE SECURITY IN DEVELOPMENT
+
 
 export function withPersonaGuard<P extends object>(
   Component: ComponentType<P>,
   allowedRoles: StaffRole | StaffRole[]
 ) {
   return function GuardedComponent(props: P) {
-    const { user, isAuthenticated, isLoading } = useAuth();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { user, isAuthenticated, isLoading, isError, error } = useAuth();
     const router = useRouter();
 
     const roles = useMemo(() => 
@@ -26,8 +28,7 @@ export function withPersonaGuard<P extends object>(
     , [allowedRoles]);
 
     useEffect(() => {
-      // 🛡️ Skip redirection if bypass is active in development
-      if (BYPASS_AUTH && process.env.NODE_ENV === "development") return;
+
 
       // 1. Unauthenticated -> Redirect to login
       if (!isLoading && !isAuthenticated) {
@@ -35,17 +36,18 @@ export function withPersonaGuard<P extends object>(
         return;
       }
 
-      // 2. Authenticated but unauthorized role -> Redirect to unauthorized or dashboard
+      // 2. Authenticated but unauthorized role -> Redirect to specific dashboard based on actual role
       if (!isLoading && isAuthenticated && user && !roles.includes(user.role)) {
-        // Redirect to a specific dashboard based on their actual role if they tried to cross-access
-        router.replace("/admin/dashboard"); // Default fallback or a specific 403 page
+        const correctRoute = getRoleRoute(user.role);
+        if (window.location.pathname !== correctRoute) {
+          router.replace(correctRoute);
+        } else {
+          router.replace("/login"); // Fallback if their own role route is somehow unauthorized
+        }
       }
     }, [isAuthenticated, isLoading, user, router, roles]);
 
-    // 🛡️ Bypassing render block for development/debugging purposes
-    if (BYPASS_AUTH && process.env.NODE_ENV === "development") {
-      return <Component {...props} />;
-    }
+
 
     // 🌀 Show loading spinner while validating the session or checking role
     if (isLoading) {
@@ -60,7 +62,13 @@ export function withPersonaGuard<P extends object>(
 
     // 🚫 Block rendering while unauthenticated or unauthorized
     if (!isAuthenticated || (user && !roles.includes(user.role))) {
-      return null; // The useEffect handles the redirect
+      return (
+        <div className="w-screen h-screen flex justify-center items-center">
+          <div className="text-sm text-gray-500 font-medium animate-pulse">
+            Redirecting to secure area...
+          </div>
+        </div>
+      );
     }
 
     // ✅ Authorized — render the wrapped component

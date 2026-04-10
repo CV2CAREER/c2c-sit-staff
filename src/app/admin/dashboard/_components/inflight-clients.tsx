@@ -56,14 +56,14 @@ const modifyArray = () => [
    if (Array.isArray(items)) {
      return items.map((item: any, index: number) => {
        return {
-         id: item.subscription.id || index,
-         Full_Name: `${item.subscriber.firstName} ${item.subscriber.lastName}`,
-         Alias_Email: item.subscriber.email,
-         SeekSubStartDate: new Date(item.subscription.createdAt).toLocaleDateString(),
-         SeekSubEndDate: item.subscription.expiresAt ? new Date(item.subscription.expiresAt).toLocaleDateString() : "N/A",
-         Assurance: item.subscription.title,
-         VaName: item.allocation.placementController ? `${item.allocation.placementController.firstName} ${item.allocation.placementController.lastName}` : "Unassigned",
-         status: item.subscription.paymentStatus,
+         id: item?.id || index,
+         Full_Name: item?.firstName ? `${item.firstName} ${item.lastName}` : "Unknown",
+         Alias_Email: item?.email || "N/A",
+         SeekSubStartDate: item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : "N/A",
+         SeekSubEndDate: "N/A", 
+         Assurance: item?.role || "N/A",
+         VaName: "Unassigned", 
+         status: item?.isActive !== undefined ? (item.isActive ? "Active" : "Inactive") : "Unknown",
        };
      });
    } else {

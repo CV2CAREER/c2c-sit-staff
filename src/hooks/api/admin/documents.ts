@@ -14,7 +14,7 @@ export const useDocumentsQueries = (options: AdminQueriesOptions) => {
 
   const documents = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_DOCUMENTS,
+    url: userId ? `${endpoints.ADMIN_DOCUMENTS}/user/${userId}` : `${endpoints.ADMIN_DOCUMENTS}/all`,
     queryKey: ["admin-documents", userId],
     params: { id: userId, fields: "all" },
     enabled: fetchDocuments && !!userId,

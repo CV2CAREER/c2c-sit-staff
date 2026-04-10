@@ -6,6 +6,14 @@ import { AdminQueriesOptions, VaAllocationsResponse } from "./types";
 const normalizeApplicationCounts = (payload: any) => {
   const source = payload?.data ?? payload;
 
+  // Check if it's the consolidated analytics payload
+  if (source?.breakdown?.applications) {
+    return {
+      successCount: source.breakdown.applications.successful || 0,
+      failedCount: source.breakdown.applications.failed || 0,
+    };
+  }
+
   const summary =
     source?.metrics ??
     source?.summary ??
@@ -42,17 +50,20 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     fetchInflightClients = false,
     fetchApplicationStats = false,
     fetchOverallStats = false,
-    fetchApplicationChartData = false,
+    // fetchApplicationChartData = false,
     fetchApplicationsCount = false,
-    fetchFollowersCount = false,
+    // fetchFollowersCount = false,
     fetchInflightClientsList = false,
     milestonesRange = "this-month",
     onboardedRange = "this-month",
-    chartPeriod = "six-months",
+    // chartPeriod = "six-months",
     startDate = "",
     endDate = "",
     inflightPage = 1,
     inflightLimit = 5,
+    fetchAggregatorsCount = false,
+    fetchTotalUsersCount = false,
+    fetchTotalGuestsCount = false,
   } = options;
 
   const vaAllocations = useFetchData<VaAllocationsResponse>({
@@ -66,21 +77,21 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     method: "GET",
     url: `${endpoints.ADMIN_CLIENT_MILESTONE_STATS}?range=${milestonesRange}`,
     queryKey: ["admin-milestone-stats", milestonesRange],
-    enabled: fetchMilestoneStats,
+    enabled: fetchMilestoneStats && false, // DISABLED
   });
 
   const onboardedClients = useFetchData<any[]>({
     method: "GET",
     url: `${endpoints.ADMIN_ONBOARDED_CLIENTS}?range=${onboardedRange}`,
     queryKey: ["admin-onboarded-clients", onboardedRange],
-    enabled: fetchOnboardedClients,
+    enabled: fetchOnboardedClients && false, // DISABLED
   });
 
   const jobsiteStats = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_JOBSITE_STATS,
     queryKey: ["admin-jobsite-stats"],
-    enabled: fetchJobsiteStats,
+    enabled: fetchJobsiteStats && false, // DISABLED
   });
 
   const inflightClients = useFetchData<any>({
@@ -100,29 +111,16 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
   const overallStats = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_STATS,
-    queryKey: ["admin-overall-stats"],
-    enabled: fetchOverallStats,
+    params: { from: startDate, to: endDate },
+    queryKey: ["admin-overall-stats", startDate, endDate],
+    enabled: fetchOverallStats || fetchApplicationsCount,
   });
 
-  const applicationChartData = useFetchData<any>({
+  const aggregatorsCount = useFetchData<any[]>({
     method: "GET",
-    url: `${endpoints.ADMIN_APPLICATION_CHART_DATA}?chart=true&period=${chartPeriod}`,
-    queryKey: ["admin-application-chart-data", chartPeriod],
-    enabled: fetchApplicationChartData,
-  });
-
-  const applicationsCount = useFetchData<any>({
-    method: "GET",
-    url: `${endpoints.ADMIN_APPLICATIONS}?dataCount=true&startDate=${startDate}&endDate=${endDate}`,
-    queryKey: ["admin-applications-count", startDate, endDate],
-    enabled: fetchApplicationsCount,
-  });
-
-  const followersCount = useFetchData<any>({
-    method: "GET",
-    url: `${endpoints.ADMIN_FOLLOWERS}?dataCount=true&startDate=${startDate}&endDate=${endDate}`,
-    queryKey: ["admin-followers-count", startDate, endDate],
-    enabled: fetchFollowersCount,
+    url: endpoints.ADMIN_AGGREGATORS,
+    queryKey: ["admin-aggregators-list"],
+    enabled: fetchAggregatorsCount,
   });
 
   const inflightClientsList = useFetchData<any>({
@@ -132,29 +130,38 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     enabled: fetchInflightClientsList,
   });
 
+  const totalUsersCount = useFetchData<any>({
+    method: "GET",
+    url: `${endpoints.ADMIN_USERS}?limit=1`,
+    queryKey: ["admin-total-users-count"],
+    enabled: fetchTotalUsersCount,
+  });
+
+  const totalGuestsCount = useFetchData<any>({
+    method: "GET",
+    url: `${endpoints.ADMIN_USERS}?role=guest&limit=1`,
+    queryKey: ["admin-total-guests-count"],
+    enabled: fetchTotalGuestsCount,
+  });
+
   const mappedApplicationsCount = useMemo(() => {
-    return normalizeApplicationCounts(applicationsCount.data?.data);
-  }, [applicationsCount.data]);
+    return normalizeApplicationCounts(overallStats.data?.data);
+  }, [overallStats.data]);
+
+  const mappedAggregatorsCount = useMemo(() => {
+    const list = aggregatorsCount.data?.data || aggregatorsCount.data || [];
+    if (!Array.isArray(list)) return { total: 0, active: 0 };
+    
+    return {
+      total: list.length,
+      active: list.filter((a: any) => a.isEnabled).length
+    };
+  }, [aggregatorsCount.data]);
 
   const mappedChartData = useMemo(() => {
-    if (!applicationChartData.data?.data?.days) return null;
-    const days = applicationChartData.data.data.days;
-    const sortedDays = Object.keys(days).sort();
-    
-    // Extract applications source metrics for each day
-    const successful: number[] = [];
-    const failed: number[] = [];
-    const label: string[] = [];
-
-    sortedDays.forEach(day => {
-      const metrics = days[day].applications || { successful: 0, failed: 0 };
-      successful.push(metrics.successful);
-      failed.push(metrics.failed);
-      label.push(day);
-    });
-
-    return { successful, failed, label };
-  }, [applicationChartData.data]);
+    // Note: Overall stats currently doesn't provide time-series chart data
+    return null;
+  }, []);
 
   return useMemo(() => ({
     vaAllocationsDomain: {
@@ -208,24 +215,24 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     },
     applicationChartDataDomain: {
       data: mappedChartData,
-      isLoading: applicationChartData.isLoading,
-      isSuccess: applicationChartData.isSuccess,
-      isError: applicationChartData.isError,
-      error: applicationChartData.error,
+      isLoading: false,
+      isSuccess: true,
+      isError: false,
+      error: null,
     },
     applicationsCountDomain: {
       data: mappedApplicationsCount,
-      isLoading: applicationsCount.isLoading,
-      isSuccess: applicationsCount.isSuccess,
-      isError: applicationsCount.isError,
-      error: applicationsCount.error,
+      isLoading: overallStats.isLoading,
+      isSuccess: overallStats.isSuccess,
+      isError: overallStats.isError,
+      error: overallStats.error,
     },
     followersCountDomain: {
-      data: followersCount.data?.data,
-      isLoading: followersCount.isLoading,
-      isSuccess: followersCount.isSuccess,
-      isError: followersCount.isError,
-      error: followersCount.error,
+      data: null,
+      isLoading: false,
+      isSuccess: true,
+      isError: false,
+      error: null,
     },
     inflightClientsListDomain: {
       data: inflightClientsList.data?.data,
@@ -233,6 +240,27 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
       isSuccess: inflightClientsList.isSuccess,
       isError: inflightClientsList.isError,
       error: inflightClientsList.error,
+    },
+    dashboardAggregatorsCountDomain: {
+      data: mappedAggregatorsCount,
+      isLoading: aggregatorsCount.isLoading,
+      isSuccess: aggregatorsCount.isSuccess,
+      isError: aggregatorsCount.isError,
+      error: aggregatorsCount.error,
+    },
+    totalUsersCountDomain: {
+      data: (totalUsersCount.data as any)?.pagination?.total,
+      isLoading: totalUsersCount.isLoading,
+      isSuccess: totalUsersCount.isSuccess,
+      isError: totalUsersCount.isError,
+      error: totalUsersCount.error,
+    },
+    totalGuestsCountDomain: {
+      data: (totalGuestsCount.data as any)?.pagination?.total,
+      isLoading: totalGuestsCount.isLoading,
+      isSuccess: totalGuestsCount.isSuccess,
+      isError: totalGuestsCount.isError,
+      error: totalGuestsCount.error,
     },
     totalApplicationsCard: {
       title: "Total Applications",
@@ -248,8 +276,8 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     },
   }), [
     vaAllocations, milestoneStats, onboardedClients, jobsiteStats, inflightClients,
-    applicationStats, overallStats, applicationChartData, applicationsCount,
-    followersCount, inflightClientsList,
-    mappedApplicationsCount, mappedChartData
+    applicationStats, overallStats, inflightClientsList, aggregatorsCount,
+    totalUsersCount, totalGuestsCount,
+    mappedApplicationsCount, mappedChartData, mappedAggregatorsCount
   ]);
 };

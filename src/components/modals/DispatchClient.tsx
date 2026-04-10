@@ -52,7 +52,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
 
     dispatchClientMutation.mutate(
       {
-        vaId: selectedVa._id,
+        pcId: selectedVa._id,
         userIds: selectedClients.map((c) => c._id),
       },
       {
