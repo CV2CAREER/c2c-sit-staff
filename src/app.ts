@@ -14,6 +14,8 @@ import {
   UAT_FRONTEND_URL,
 } from "./config/env";
 import cookieParser from "cookie-parser";
+
+import { requestLogger } from './middlewares/requestLogger.middleware';
 import userRouterV1 from "./routes/v1/user.route";
 import { getServiceLogger } from "./utils/createLogger";
 import centralAppErrors from "./middlewares/centralAppErrors";
@@ -33,6 +35,11 @@ import blogRouterV1 from "./routes/v1/blog.route";
 import trainingTrackerRouterV1 from "./routes/v1/training-tracker.route";
 import salesOperationRouterV1 from "./routes/v1/sales-operation.route";
 import crTrackingRouterV1 from "./routes/v1/cr-tracking.route";
+import logsRouterV1 from "./routes/v1/logs.route";
+import settingsRouterV1 from "./routes/v1/settings.route";
+import viewAsRulesRouterV1 from "./routes/v1/view-as-rules.route";
+import chatRouterV1 from "./routes/v1/chat.route";
+import supportRouterV1 from "./routes/v1/support.route";
 
 export const app = express();
 
@@ -136,6 +143,7 @@ app.get("/api/ping", async (req, res) => {
 // 🟡 11.  DB readiness middleware here
 
 // 12. API Routes
+app.use('/api/v1', requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
@@ -150,6 +158,11 @@ app.use("/api/v1/blog", blogRouterV1);
 app.use("/api/v1/training-tracker", trainingTrackerRouterV1);
 app.use("/api/v1/sales-operation", salesOperationRouterV1);
 app.use("/api/v1/cr-tracking", crTrackingRouterV1);
+app.use("/api/v1/settings", settingsRouterV1);
+app.use("/api/v1/logs", logsRouterV1);
+app.use("/api/v1/view-as-rules", viewAsRulesRouterV1);
+app.use("/api/v1/chats", chatRouterV1);
+app.use("/api/v1/support", supportRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

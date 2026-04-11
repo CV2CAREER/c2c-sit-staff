@@ -38,7 +38,8 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await User.sync({ alter: true });                      // example of altering existing table
-        // await CRTracking.sync({ force: false });       // new table
+        // await SupportSession.sync({ force: false });         // new table
+        // await SupportConversation.sync({ force: false });    // new table
 
 
         // 📸 Snapshot AFTER your targeted syncs

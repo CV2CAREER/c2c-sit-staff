@@ -1,0 +1,107 @@
+# OpenAPI Specification for Settings Endpoints
+
+paths:
+  /v1/settings/masterpass:
+    get:
+      tags:
+        - Settings
+      summary: Get Master Password status
+      description: Retrieve master password metadata (without revealing the actual password hash). Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Master password status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: number
+                        example: 1
+                      key:
+                        type: string
+                        example: masterpass
+                      updatedBy:
+                        type: string
+                        example: admin@dygold.com
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-04-09T18:00:00.000Z"
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "500":
+          description: Internal server error
+
+    post:
+      tags:
+        - Settings
+      summary: Update Master Password
+      description: Change or initialize the system master password. Requires existing password when updating. Automatically sends Slack notification to CSM team. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                  description: Current master password (required for existing records)
+                  example: OldPassword123!
+                newPassword:
+                  type: string
+                  description: New master password (minimum 8 characters)
+                  example: NewSecurePass456!
+              required:
+                - newPassword
+      responses:
+        "200":
+          description: Master password updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Master password updated successfully
+        "400":
+          description: Bad request - Validation errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    examples:
+                      - "New password must be at least 8 characters long"
+                      - "Invalid old password. Try again!"
+                      - "New password cannot be the same as the old password"
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "500":
+          description: Internal server error

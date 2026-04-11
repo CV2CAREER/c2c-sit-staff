@@ -5,7 +5,9 @@ import {
   softDeleteCRTracking,
   restoreCRTracking,
   permanentDeleteCRTracking,
-  modifyCRTracking
+  modifyCRTracking,
+  getCRTrackingHistory,
+  notifyCRNIL
 } from "../../controllers/v1/cr-tracking.controller";
 import {
   getCROptions,
@@ -31,5 +33,7 @@ crTrackingRouterV1.delete("/", softDeleteCRTracking);
 crTrackingRouterV1.post("/restore", restoreCRTracking);
 crTrackingRouterV1.delete("/delete", permanentDeleteCRTracking);
 crTrackingRouterV1.put("/modify", modifyCRTracking);
+crTrackingRouterV1.get("/history", getCRTrackingHistory);
+crTrackingRouterV1.post("/notify-nil", notifyCRNIL);
 
 export default crTrackingRouterV1;

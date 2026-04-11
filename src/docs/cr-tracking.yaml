@@ -1,6 +1,73 @@
 # OpenAPI Specification for CR Tracking Endpoints
 
 paths:
+  /v1/cr-tracking/history:
+    get:
+      tags:
+        - CR Tracking
+      summary: Get CR Tracking History logs
+      description: Retrieve paginated audit history logs for CR Tracking entries. Supports filtering by specific CR ID.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+            format: uuid
+          description: Optional filter by specific CR Tracking ID
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+      responses:
+        "200":
+          description: CR Tracking history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    description: History log entries
+                  hasNextPage:
+                    type: boolean
+                  hasPrevPage:
+                    type: boolean
+                  totalCrHistoryLog:
+                    type: integer
+                    description: Total number of history logs
+                  totalPages:
+                    type: integer
+                    description: Total number of pages
+
+  /v1/cr-tracking/notify-nil:
+    post:
+      tags:
+        - CR Tracking
+      summary: Send NIL Notification
+      description: Trigger NIL notification for CR Tracking entry. Automatically sends formatted Slack message with @mentions to Owner and Assignee, updates CR status and creates audit log. All notifications run asynchronously.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: CR Tracking ID
+      responses:
+        "200":
+          description: CR NIL Notification sent successfully
+        "404":
+          description: CR not found / CR Owner not found / Owner has no Slack ID
+
   /v1/cr-tracking:
     get:
       tags:

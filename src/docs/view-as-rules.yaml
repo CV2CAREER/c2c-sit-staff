@@ -1,0 +1,303 @@
+# OpenAPI Specification for View As Rules Endpoints
+
+paths:
+  /v1/view-as-rules/me:
+    get:
+      tags:
+        - View As Rules
+      summary: Get view as rule for authenticated user
+      description: Retrieves view as permission rule for the currently logged in user.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: User view as rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User view as rule retrieved successfully
+                  data:
+                    $ref: '#/components/schemas/ViewAsRule'
+        "400":
+          description: Bad request - User persona not found
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "500":
+          description: Internal server error
+
+  /v1/view-as-rules:
+    get:
+      tags:
+        - View As Rules
+      summary: Get all view as rules
+      description: Retrieves all view as permissions rules. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: View as rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: View as rules retrieved successfully
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ViewAsRule'
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "500":
+          description: Internal server error
+
+    post:
+      tags:
+        - View As Rules
+      summary: Create new view as rule
+      description: Creates a new view as permission rule. Automatically sends Slack notification to CSM team. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - persona
+                - allowedTargets
+              properties:
+                persona:
+                  type: string
+                  description: Staff persona/role
+                  example: "admin"
+                allowedTargets:
+                  type: array
+                  items:
+                    type: string
+                  description: List of target roles that can be viewed
+                  example: ["customer", "agent", "manager"]
+      responses:
+        "201":
+          description: View as rule created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: View as rule created successfully
+                  data:
+                    $ref: '#/components/schemas/ViewAsRule'
+        "400":
+          description: Bad request - Validation errors
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "409":
+          description: Conflict - Rule already exists for this persona
+        "500":
+          description: Internal server error
+
+  /v1/view-as-rules/{persona}:
+    get:
+      tags:
+        - View As Rules
+      summary: Get view as rule by persona
+      description: Retrieves a specific view as rule by persona. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: persona
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "admin"
+      responses:
+        "200":
+          description: View as rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: View as rule retrieved successfully
+                  data:
+                    $ref: '#/components/schemas/ViewAsRule'
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "404":
+          description: Not found - Rule not found
+        "500":
+          description: Internal server error
+
+  /v1/view-as-rules/{id}:
+    put:
+      tags:
+        - View As Rules
+      summary: Update view as rule
+      description: Updates an existing view as permission rule. Automatically sends Slack notification to CSM team. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                persona:
+                  type: string
+                  description: Staff persona/role
+                  example: "admin"
+                allowedTargets:
+                  type: array
+                  items:
+                    type: string
+                  description: List of target roles that can be viewed
+                  example: ["customer", "agent", "manager", "supervisor"]
+      responses:
+        "200":
+          description: View as rule updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: View as rule updated successfully
+                  data:
+                    $ref: '#/components/schemas/ViewAsRule'
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "404":
+          description: Not found - Rule not found
+        "500":
+          description: Internal server error
+
+  /v1/view-as-rules/check:
+    post:
+      tags:
+        - View As Rules
+      summary: Check view as permission
+      description: Check if a staff persona can view as target role. Only accessible by Admin roles.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - staffPersona
+                - targetRole
+              properties:
+                staffPersona:
+                  type: string
+                  description: Staff persona/role
+                  example: "admin"
+                targetRole:
+                  type: string
+                  description: Target role to view as
+                  example: "customer"
+      responses:
+        "200":
+          description: Permission checked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Permission checked successfully
+                  data:
+                    type: object
+                    properties:
+                      allowed:
+                        type: boolean
+                        example: true
+        "401":
+          description: Unauthorized - Invalid or missing authentication token
+        "403":
+          description: Forbidden - User does not have admin privileges
+        "500":
+          description: Internal server error
+
+components:
+  schemas:
+    ViewAsRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        persona:
+          type: string
+          example: "admin"
+        allowedTargets:
+          type: array
+          items:
+            type: string
+          example: ["customer", "agent", "manager"]
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-04-09T18:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-04-09T18:00:00.000Z"
