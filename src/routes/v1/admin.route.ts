@@ -299,4 +299,18 @@ adminRouterV1.post(
   generateExternalPassword,
 );
 
+adminRouterV1.get(
+  "/client-sample/loadBalancer",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  async (req, res) => {
+    res.json({
+      success: true,
+      data: {
+        loadBalancers: [],
+        message: "Load balancer endpoint placeholder",
+      },
+    });
+  },
+);
 export default adminRouterV1;
