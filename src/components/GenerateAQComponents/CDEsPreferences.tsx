@@ -1,7 +1,8 @@
 "use client";
 import { Chip } from "@material-tailwind/react";
 import { useState } from "react";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import CreatableSelect from "react-select/creatable";
 import toast from "react-hot-toast";
 import { disabliltyStatusOptions, maritalStatusOptions } from "@/data/options";
@@ -89,7 +90,7 @@ export default function CDEsPreferences({
       event.preventDefault();
       setIsLoading(true);
 
-      await axios.put(`/api/admin/jobPreference?uid=${id}`, editedFormData);
+      await axiosInstance.put(`${SERVER_URI}/api/v1/admin/job-preferences?uid=${id}`, editedFormData);
       toast.success(
         "User preference updated successfully. Kindly refresh this page!",
       );

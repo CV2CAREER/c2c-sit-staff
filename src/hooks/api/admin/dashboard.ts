@@ -249,14 +249,14 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
       error: aggregatorsCount.error,
     },
     totalUsersCountDomain: {
-      data: (totalUsersCount.data as any)?.pagination?.total,
+      data: (totalUsersCount.data as any)?.data?.pagination?.total,
       isLoading: totalUsersCount.isLoading,
       isSuccess: totalUsersCount.isSuccess,
       isError: totalUsersCount.isError,
       error: totalUsersCount.error,
     },
     totalGuestsCountDomain: {
-      data: (totalGuestsCount.data as any)?.pagination?.total,
+      data: (totalGuestsCount.data as any)?.data?.pagination?.total,
       isLoading: totalGuestsCount.isLoading,
       isSuccess: totalGuestsCount.isSuccess,
       isError: totalGuestsCount.isError,

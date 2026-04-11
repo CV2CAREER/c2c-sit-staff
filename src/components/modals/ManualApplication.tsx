@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import axiosInstance from '@/services/api-client';
+import { SERVER_URI } from '@/constants/env';
 
 interface EditRoleModalProps {
   visible: boolean;
@@ -65,7 +66,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
         pageContent: pageContent
       };
 
-      const response = await axios.post('/api/admin/pushLink', data);
+      const response = await axiosInstance.post(`${SERVER_URI}/api/v1/admin/pushLink`, data);
       if (response.data.status.toLowerCase() === "success"){
         toast.success(response.data.message);
         setPageContent('');

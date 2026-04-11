@@ -22,7 +22,8 @@ import { useMutation, UseMutationResult, useQueryClient } from "@tanstack/react-
 import EditTableModal from "./EditActionModal";
 import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import { IoDocument } from "react-icons/io5";
 import { ImProfile } from "react-icons/im";
 import { EmojiTransportationOutlined } from "@mui/icons-material";
@@ -57,7 +58,7 @@ export default function UsersTableActions({
       updatedData: Partial<UsersTableColType>;
     }) => {
       toast.loading("Editing user...");
-      return axios.patch(`/api/admin/users?id=${userId}`, updatedData);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, updatedData);
     },
     onSuccess: () => {
       toast.success("User has been edited successfully");
@@ -71,7 +72,7 @@ export default function UsersTableActions({
   const approveUserDocumentAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Approving document...");
-      return axios.patch(`/api/admin/users/approve-document?id=${userId}`);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/approve-document?id=${userId}`);
     },
     onSuccess: (data) => {
       const successMessage = data.data.message || "Document approved for user";
@@ -87,7 +88,7 @@ export default function UsersTableActions({
   const approveAccountAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Approving account...");
-      return axios.patch(`/api/admin/users/approve-account?id=${userId}`);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/approve-account?id=${userId}`);
     },
     onSuccess: (data) => {
       const successMessage = data.data.message || "Account approved for user";
@@ -103,7 +104,7 @@ export default function UsersTableActions({
   const rejectUserDocumentAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Rejecting document...");
-      return axios.patch(`/api/admin/users/reject-document?id=${userId}`);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/reject-document?id=${userId}`);
     },
     onSuccess: (data) => {
       const successMessage = data.data.message || "Document rejected for user";
@@ -119,7 +120,7 @@ export default function UsersTableActions({
   const dispatchUserSampleAction = useMutation({
     mutationFn: (userId: string) => {
       toastIdRef.current = toast.loading("Dispatching Samples");
-      return axios.patch(`/api/admin/users/dispatch-sample?id=${userId}`);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/dispatch-sample?id=${userId}`);
     },
     onSuccess: (data) => {
       const successMessage = data.data.message || "Samples dispatched for user";
@@ -140,7 +141,7 @@ export default function UsersTableActions({
   const softDeleteUserAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Moving to the Recycle bin...");
-      return axios.patch(`/api/admin/users?id=${userId}`, {
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, {
         isDeleted: true,
       });
     },
@@ -156,7 +157,7 @@ export default function UsersTableActions({
   const restoreUserAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Restoring user...");
-      return axios.patch(`/api/admin/users?id=${userId}`, {
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, {
         isDeleted: false,
       });
     },
@@ -173,7 +174,7 @@ export default function UsersTableActions({
   const deleteUserAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Deleting user permanently...");
-      return axios.delete(`/api/admin/users?id=${userId}`);
+      return axiosInstance.delete(`${SERVER_URI}/api/v1/admin/users?id=${userId}`);
     },
     onSuccess: () => {
       toast.success("User has been delete permanently.");

@@ -1,7 +1,8 @@
 'use client';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Transition } from '@headlessui/react';
-import axios from 'axios';
+import axiosInstance from '@/services/api-client';
+import { SERVER_URI } from '@/constants/env';
 import { ClipLoader } from 'react-spinners';
 
 interface IUserData {
@@ -65,8 +66,8 @@ const DropDownFilter = ({ updateUser, activeUser, isUser }: { updateUser: (fullN
     if (queryString) {
       setisLoading(true);
       timer = setTimeout(() => {
-        axios
-          .get(`/api/admin/user?search=${queryString}`)
+        axiosInstance
+          .get(`${SERVER_URI}/api/v1/admin/users?q=${queryString}`)
           .then((res) => {
             const data = res.data.filteredData.map((el:any) => ({
               id: el._id,

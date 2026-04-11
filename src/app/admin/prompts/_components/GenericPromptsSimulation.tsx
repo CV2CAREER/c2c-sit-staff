@@ -8,6 +8,8 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import NothingFound from "../../../../../public/svg/nothing-found.svg";
 import toast from "react-hot-toast";
 import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import { ImSpinner2 } from "react-icons/im"; // Assuming react-icons is installed
 import moment from "moment"; // Ensure moment.js is installed
 import Image from "next/image";
@@ -100,8 +102,8 @@ const PromptsSimulation = <
 
     try {
       // Use dynamic apiBasePath for the simulation endpoint
-      const runProcess = await axios.post(
-        `/api/admin/${apiBasePath}/simulation`,
+      const runProcess = await axiosInstance.post(
+        `${SERVER_URI}/api/v1/admin/${apiBasePath}/simulation`,
         {
           prompt: promptString,
         }
@@ -143,7 +145,7 @@ const PromptsSimulation = <
       setDeletingSim(id);
 
       // Use dynamic apiBasePath for the delete endpoint
-      await axios.delete(`/api/admin/${apiBasePath}/simulation?id=${id}`);
+      await axiosInstance.delete(`${SERVER_URI}/api/v1/admin/${apiBasePath}/simulation?id=${id}`);
 
       setSimulations((sims) => {
         return sims?.filter((s) => s._id !== id) || null;
@@ -172,8 +174,8 @@ const PromptsSimulation = <
       // This endpoint and data structure are very specific to AQ AI.
       // If other AI modules have different question data sources, this needs further generalization
       // (e.g., by passing a 'fetchQuestionData' prop function).
-      const getRecord = await axios(
-        `/api/admin/applications/questions?justId=${true}&question_id=${questionID}`
+      const getRecord = await axiosInstance(
+        `${SERVER_URI}/api/v1/admin/applications/questions?justId=${true}&question_id=${questionID}`
       );
       toast.success("Fetched question!");
 

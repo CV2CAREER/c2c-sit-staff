@@ -1,5 +1,6 @@
 "use client";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import { useReferralQueries, useReferralMutations } from "@/hooks/api/admin/referral";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -197,8 +198,8 @@ const ReferralComponent = () => {
     if (queryString) {
       setIsLoading(true);
       timer = setTimeout(() => {
-        axios
-          .get(`/api/admin/user?search=${queryString}`)
+        axiosInstance
+          .get(`${SERVER_URI}/api/v1/admin/users?q=${queryString}`)
           .then((res) => {
             const data = res.data.filteredData.map((el: any) => ({
               id: el._id,

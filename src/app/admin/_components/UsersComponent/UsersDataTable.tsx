@@ -101,8 +101,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
   const { updateUserProgressMutation } = useAdminMutations();
 
   const rows: GridRowsProp<UsersTableColType> = React.useMemo(() => {
-    return queryUsers.data?.usersData || [];
-  }, [queryUsers.data?.usersData]);
+    return queryUsers.data?.items || [];
+  }, [queryUsers.data?.items]);
 
   const handleRowClick = (params: any) => {
     if (editMode) {
@@ -347,7 +347,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 }}
                 slots={{ toolbar: GridToolbar, loadingOverlay: LoadingSpinner, }}
                 rows={tableData}
-                getRowId={(row) => row._id}
+                getRowId={(row) => row.id}
                 rowHeight={38}
                 rowReordering
                 disableRowSelectionOnClick
@@ -399,13 +399,13 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
   useEffect(() => {
     if (selectedUser && rows.length > 0) {
-      const filteredRows = rows.filter((row: any) => row._id === selectedUser.value);
+      const filteredRows = rows.filter((row: any) => row.id === selectedUser.value);
       
       // Only update if different to prevent re-renders
       setTableData(prev => {
         const isSame =
           prev.length === filteredRows.length &&
-          prev.every((row, i) => row._id === filteredRows[i]._id);
+          prev.every((row, i) => row.id === filteredRows[i].id);
           
         return isSame ? prev : filteredRows;
       });
@@ -419,7 +419,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
         <Combobox
           list={rows
             .map((user: any) => ({
-            value: user._id,
+            value: user.id,
             label: `${user.firstName} ${user.middleName} ${user.lastName}`,
           }))
             .sort((a, b) => a.label.localeCompare(b.label)) // <- alphabetical magic

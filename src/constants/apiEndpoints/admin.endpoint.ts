@@ -15,6 +15,9 @@ export const ADMIN_FOLLOWERS = "/api/v1/admin/analytics/followers";
 export const ADMIN_BOT_CONTROL = "/api/v1/admin/bot-toggle";
 export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
+export const ADMIN_SCHEMA_EXPAND = "/api/v1/admin/schema/expand";
+export const ADMIN_SCHEMA_COLUMNS = (tableName: string) => `/api/v1/admin/schema/${tableName}/columns`;
+export const ADMIN_SCHEMA_DELETE_COLUMN = (tableName: string, columnName: string) => `/api/v1/admin/schema/${tableName}/columns/${columnName}`;
 export const ADMIN_THROTTLE = "/api/v1/admin/throttle";
 export const ADMIN_STATUS = "/api/v1/admin/status";
 export const ADMIN_JOBSITES = "/api/v1/admin/jobsites";

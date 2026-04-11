@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import toast from "react-hot-toast";
 import AppModal from "./AppModal";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ const JobMatchTriggerModal: React.FC<JobMatchTriggerModalProps> = ({
           break;
       }
 
-      const response = await axios.post("/api/admin/matchJobs", payload);
+      const response = await axiosInstance.post(`${SERVER_URI}/api/v1/admin/matchJobs`, payload);
       if (response.status >= 200 && response.status < 300) {
         toast.success("Job match submitted for processing");
         onTrigger(payload);

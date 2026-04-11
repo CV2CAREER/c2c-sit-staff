@@ -3,6 +3,15 @@ import { useFetchData, useMutateData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 
+/**
+ * Roles that make up the "PCs" group.
+ * The V1 backend only supports single-role filtering, so we fire one
+ * request per role and merge client-side.
+ * "assistant" is a valid V1 Role; "coach" is the closest V1 equivalent
+ * for the old "tpc" concept. Adjust if the backend team adds a "tpc" role.
+ */
+const PC_ROLES = ["assistant", "coach"] as const;
+
 export const useUsersQueries = (options: AdminQueriesOptions) => {
   const {
     fetchUsersCount = false,
@@ -24,7 +33,8 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
 
   const usersCount = useFetchData<any>({
     method: "GET",
-    url: `${endpoints.ADMIN_USERS}?dataCount=true&startDate=${startDate}&endDate=${endDate}`,
+    url: endpoints.ADMIN_USERS,
+    params: { dataCount: "true", startDate, endDate },
     queryKey: ["admin-users-count", startDate, endDate],
     enabled: fetchUsersCount,
   });
@@ -48,20 +58,19 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     method: "GET",
     url: endpoints.ADMIN_USERS,
     params: (() => {
-      const p = new URLSearchParams();
-      if (usersFilter.active) p.append("active", "true");
-      if (usersFilter.recycle) p.append("recycle", "true");
-      if (usersFilter.q) p.append("q", usersFilter.q);
-      if (usersFilter.userType) p.append("userType", usersFilter.userType);
-      if (usersFilter.plan) p.append("plan", usersFilter.plan);
-      if (usersFilter.page) p.append("page", String(usersFilter.page));
-      if (usersFilter.limit) p.append("limit", String(usersFilter.limit));
+      const p: Record<string, string> = {};
+      if (usersFilter.active) p.active = "true";
+      if (usersFilter.recycle) p.recycle = "true";
+      if (usersFilter.q) p.search = usersFilter.q;
+      if (usersFilter.userType) p.userType = usersFilter.userType;
+      if (usersFilter.plan) p.plan = usersFilter.plan;
+      if (usersFilter.page) p.page = String(usersFilter.page);
+      if (usersFilter.limit) p.limit = String(usersFilter.limit);
       
       const hasFilter = usersFilter.q || usersFilter.userType || usersFilter.plan;
-      if (!hasFilter) p.append("variant", "all");
+      if (!hasFilter) p.variant = "all";
       
-      const qs = p.toString();
-      return qs ? `?${qs}` : "";
+      return p;
     })(),
     queryKey: ["admin-users-list", usersFilter],
     enabled: fetchUsersList,
@@ -90,13 +99,43 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchClients,
   });
 
-  const pcs = useFetchData<any>({
+  // --- Parallel single-role requests for PCs ---
+  const pcsAssistant = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_USERS,
-    params: { role: "assistant,tpc", variant: "all" },
-    queryKey: ["admin-pcs"],
+    params: { role: PC_ROLES[0], variant: "all" },
+    queryKey: ["admin-pcs", PC_ROLES[0]],
     enabled: fetchPCs,
   });
+
+  const pcsCoach = useFetchData<any>({
+    method: "GET",
+    url: endpoints.ADMIN_USERS,
+    params: { role: PC_ROLES[1], variant: "all" },
+    queryKey: ["admin-pcs", PC_ROLES[1]],
+    enabled: fetchPCs,
+  });
+
+  // Merge the two PC role results into a single domain
+  const pcsMerged = useMemo(() => {
+    const assistantItems = pcsAssistant.data?.data?.items ?? pcsAssistant.data?.data ?? [];
+    const coachItems = pcsCoach.data?.data?.items ?? pcsCoach.data?.data ?? [];
+
+    const mergedItems = [...(Array.isArray(assistantItems) ? assistantItems : []), ...(Array.isArray(coachItems) ? coachItems : [])];
+
+    // Preserve pagination-style wrapper if the original response uses one
+    const mergedData = pcsAssistant.data?.data?.items
+      ? { items: mergedItems, pagination: { total: mergedItems.length } }
+      : mergedItems;
+
+    return {
+      data: mergedData,
+      isLoading: pcsAssistant.isLoading || pcsCoach.isLoading,
+      isSuccess: pcsAssistant.isSuccess && pcsCoach.isSuccess,
+      isError: pcsAssistant.isError || pcsCoach.isError,
+      error: pcsAssistant.error || pcsCoach.error,
+    };
+  }, [pcsAssistant, pcsCoach]);
 
   const plans = useFetchData<any>({
     method: "GET",
@@ -163,13 +202,7 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       isError: clients.isError,
       error: clients.error,
     },
-    pcsDomain: {
-      data: pcs.data?.data,
-      isLoading: pcs.isLoading,
-      isSuccess: pcs.isSuccess,
-      isError: pcs.isError,
-      error: pcs.error,
-    },
+    pcsDomain: pcsMerged,
     plansDomain: {
       data: plans.data?.data,
       isLoading: plans.isLoading,
@@ -186,7 +219,7 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     },
   }), [
     usersCount, usersPersonaCount, userDetail, usersList, userInfo, usersFullName,
-    clients, pcs, plans, userPreferences
+    clients, pcsMerged, plans, userPreferences
   ]);
 };
 

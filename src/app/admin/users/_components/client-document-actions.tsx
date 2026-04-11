@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Download } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 
 
 interface DocumentActionsProps {
@@ -75,7 +76,7 @@ export default function DocumentTableActions({
     const filePath = cloudFilename;
 
     try {
-        const res = await axios.get(`/api/admin/documents/getSignedUrl?filePath=${filePath}&filename=${encodeURIComponent(name)}`);
+        const res = await axiosInstance.get(`${SERVER_URI}/api/v1/admin/documents/get-signed-url?filePath=${filePath}&filename=${encodeURIComponent(name)}`);
         
         if (!res?.data?.url) {
             throw new Error("No download URL received from server");
@@ -106,7 +107,7 @@ export default function DocumentTableActions({
   const approveUserDocumentAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Approving document...");
-      return axios.patch(`/api/admin/users/approve-document?id=${userId}`);
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/approve-document?id=${userId}`);
     },
     onSuccess: (data) => {
       const successMessage = data.data.message || "Document approved for user";
@@ -137,7 +138,7 @@ export default function DocumentTableActions({
   const restoreUserAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Restoring user...");
-      return axios.patch(`/api/admin/users?id=${userId}`, {
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, {
         isDeleted: false,
       });
     },
@@ -155,7 +156,7 @@ export default function DocumentTableActions({
   const deleteUserAction = useMutation({
     mutationFn: (userId: string) => {
       toast.loading("Deleting user permanently...");
-      return axios.delete(`/api/admin/users?id=${userId}`);
+      return axiosInstance.delete(`${SERVER_URI}/api/v1/admin/users?id=${userId}`);
     },
     onSuccess: () => {
       toast.success("User has been delete permanently.");

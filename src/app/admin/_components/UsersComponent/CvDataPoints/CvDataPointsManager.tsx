@@ -4,7 +4,9 @@ import CvDataPointsTable from './CvDataPointsTable';
 import { CvDataPointModal } from './CvDataPointModal';
 import { CvJobTitlesModal } from './CvJobTitlesModal';
 import { CvDataPoint } from './types';
-import axios from 'axios';
+import axiosInstance from '@/services/api-client';
+import { SERVER_URI } from '@/constants/env';
+import { ADMIN_EXTRACT_CV_DATA_POINTS } from '@/constants/apiEndpoints/admin.endpoint';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
@@ -29,14 +31,11 @@ const [pageSize, setPageSize] = useState(20);
 });
 
 
-
-
-
 const handleExtractData = async (id: string) => {
     try {
       toast.loading('Extracting CV Data Points...');
 
-      await axios.post('/api/admin/extractCVDataPoints', { id });
+      await axiosInstance.post(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}`, { id });
       toast.success('CV Data Points extracted successfully');
       refetch(); // Refresh the data after extraction
     } catch{
@@ -49,7 +48,7 @@ const handleExtractData = async (id: string) => {
     try {
       if (keywords.length > 0) {
         toast.loading('Populating Keywords...');
-        await axios.post('/api/admin/extractCVDataPoints', {
+        await axiosInstance.post(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}`, {
           id,
           keywords,
         });
@@ -141,6 +140,6 @@ const fetchDataPoints = async (customerId?: string, page = 0, pageSize = 20): Pr
   params.append("skip", String(page * pageSize));
   params.append("limit", String(pageSize));
 
-  const response = await axios.get(`/api/admin/extractCVDataPoints?${params.toString()}`);
+  const response = await axiosInstance.get(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}?${params.toString()}`);
   return response.data;
 };

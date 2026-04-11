@@ -25,7 +25,7 @@ interface Props {
 }
 
 type User = {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   middleName: string;
@@ -42,8 +42,11 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
 
   const { dispatchClientMutation } = useAdminMutations();
 
-  const users = clientsDomain.data?.usersData ?? [];
-  const vas = pcsDomain.data?.usersData ?? [];
+  const clientsData = clientsDomain.data;
+  const users = Array.isArray(clientsData) ? clientsData : (clientsData?.items ?? []);
+
+  const pcsData = pcsDomain.data;
+  const vas = Array.isArray(pcsData) ? pcsData : (pcsData?.items ?? []);
 
   const handleDispatch = () => {
     if (!selectedVa) return toast.error("Select a PC");
@@ -52,8 +55,8 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
 
     dispatchClientMutation.mutate(
       {
-        pcId: selectedVa._id,
-        userIds: selectedClients.map((c) => c._id),
+        pcId: selectedVa.id,
+        userIds: selectedClients.map((c) => c.id),
       },
       {
         onSuccess: (data: any) => {
@@ -68,9 +71,9 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
   };
 
   const toggleClient = (client: User) => {
-    const exists = selectedClients.find((c) => c._id === client._id);
+    const exists = selectedClients.find((c) => c.id === client.id);
     if (exists) {
-      setSelectedClients((prev) => prev.filter((c) => c._id !== client._id));
+      setSelectedClients((prev) => prev.filter((c) => c.id !== client.id));
     } else {
       setSelectedClients((prev) => [...prev, client]);
     }
@@ -111,17 +114,17 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
                   <PopoverContent className="max-h-60 overflow-y-auto w-[300px]">
                     {(users ?? []).map((user: any) => (
                       <div
-                        key={user._id}
+                        key={user.id}
                         className="flex items-center space-x-2 py-1"
                       >
                         <Checkbox
-                          id={user._id}
+                          id={user.id}
                           checked={selectedClients.some(
-                            (c) => c._id === user._id,
+                            (c) => c.id === user.id,
                           )}
                           onCheckedChange={() => toggleClient(user)}
                         />
-                        <label htmlFor={user._id} className="text-sm">
+                        <label htmlFor={user.id} className="text-sm">
                           {user.firstName} {user.lastName}
                         </label>
                       </div>
@@ -136,9 +139,9 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
                   Select PC to dispatch to
                 </label>
                 <Select
-                  value={selectedVa?._id}
+                  value={selectedVa?.id}
                   onValueChange={(val) => {
-                    const found = vas?.find((va: any) => va._id === val);
+                    const found = vas?.find((va: any) => va.id === val);
                     setSelectedVa(found);
                   }}
                 >
@@ -147,7 +150,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
                   </SelectTrigger>
                   <SelectContent>
                     {vas?.map((va: any) => (
-                      <SelectItem key={va._id} value={va._id}>
+                      <SelectItem key={va.id} value={va.id}>
                         {va.firstName} {va.lastName}
                       </SelectItem>
                     ))}

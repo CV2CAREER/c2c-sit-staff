@@ -8,7 +8,8 @@ import { FiMoreVertical } from "react-icons/fi";
 import { Autocomplete, Checkbox, ListItemText, Select, MenuItem as MuiMenuItem, TextField } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
 import { toast } from "react-hot-toast";
 import { useGridApiContext } from "@mui/x-data-grid-pro";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
@@ -551,9 +552,9 @@ export const applyUserTableColumn = (el: any, actions?: any, mutate?: any) => {
                   params?.row.isDocumentUploaded && (
                     <MenuItem
                       onClick={() => {
-                        axios
+                        axiosInstance
                           .get(
-                            `/api/admin/userdrivefolder?firstname=${params?.row.firstName}&lastname=${params?.row.lastName}&isusersubscribed=${params?.row.isUserSubscribed}`
+                            `${SERVER_URI}/api/v1/admin/userdrivefolder?firstname=${params?.row.firstName}&lastname=${params?.row.lastName}&isusersubscribed=${params?.row.isUserSubscribed}`
                           )
                           .then((res) => {
                             window.open(res.data.data.driveUrl, "_blank");

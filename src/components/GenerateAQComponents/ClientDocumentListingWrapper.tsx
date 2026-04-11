@@ -2,7 +2,9 @@
 import React, { useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import axiosInstance from '@/services/api-client';
+import { SERVER_URI } from '@/constants/env';
+import { ADMIN_EXTRACT_CV_DATA_POINTS } from '@/constants/apiEndpoints/admin.endpoint';
 // import { Button as AntButton } from 'antd';
 import { Button as AntButton } from 'antd';
 import Icon from '../../../public/icons';
@@ -247,7 +249,7 @@ const ClientDocumentListingWrapper: React.FC<ClientDocumentListingWrapperProps> 
 
       if (_data.length > 0) {
         toast.loading('Populating Keywords...');
-        await axios.post('/api/admin/extractCVDataPoints', {
+        await axiosInstance.post(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}`, {
           id: row._id,
           populateKeywords: _data.join('; '),
         });

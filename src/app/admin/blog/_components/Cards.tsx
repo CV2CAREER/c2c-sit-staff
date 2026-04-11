@@ -1,6 +1,8 @@
 "use client"
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "@/services/api-client";
+import { SERVER_URI } from "@/constants/env";
+import { ADMIN_BLOG } from "@/constants/apiEndpoints/admin.endpoint";
 import { useRouter } from "next/navigation"; 
 import CircularProgress from "@mui/material/CircularProgress";
 
@@ -86,7 +88,7 @@ const CardLayout = () => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('/api/admin/blog');
+        const response = await axiosInstance.get(`${SERVER_URI}${ADMIN_BLOG}`);
         
 const filteredPosts = response.data.allPosts
   .filter((post: BlogPost) => post.recycled === false)

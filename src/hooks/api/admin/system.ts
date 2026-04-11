@@ -81,7 +81,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
 
   const tables = useFetchData<any>({
     method: "GET",
-    url: tableName ? `${endpoints.ADMIN_TABLE_MANAGER}/${tableName}` : endpoints.ADMIN_TABLE_MANAGER,
+    url: tableName ? endpoints.ADMIN_SCHEMA_COLUMNS(tableName.toLowerCase()) : endpoints.ADMIN_TABLE_MANAGER,
     queryKey: ["admin-schema", tableName || "all"],
     enabled: fetchTables && !!tableName,
   });
@@ -262,8 +262,8 @@ export const useSystemMutations = () => {
       onError: () => {},
     }),
     updateTableMutation: useMutateData<any, any>({
-      method: "POST", // v1 uses POST /schema for expandColumn
-      url: endpoints.ADMIN_TABLE_MANAGER,
+      method: "POST", // v1 uses POST /schema/expand for expandColumn
+      url: endpoints.ADMIN_SCHEMA_EXPAND,
       mutationKey: ["admin-update-table"],
       onSuccess: () => {},
       onError: () => {},
@@ -278,7 +278,9 @@ export const useSystemMutations = () => {
     deleteColumnMutation: useMutation({
       mutationKey: ["admin-delete-column"],
       mutationFn: async ({ tableName, columnName }: { tableName: string; columnName: string }) => {
-        const response = await axiosInstance.delete(`${endpoints.ADMIN_TABLE_MANAGER}/${tableName}/${columnName}`);
+        const response = await axiosInstance.delete(
+          endpoints.ADMIN_SCHEMA_DELETE_COLUMN(tableName.toLowerCase(), columnName)
+        );
         return response.data;
       },
     }),
