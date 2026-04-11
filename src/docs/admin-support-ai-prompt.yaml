@@ -1,0 +1,54 @@
+paths:
+  /v1/admin/support-ai-prompt:
+    get:
+      tags:
+        - Admin Support AI
+      summary: Get support AI prompt
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Prompt retrieved
+
+    post:
+      tags:
+        - Admin Support AI
+      summary: Add question answer pair
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question:
+                  type: string
+                response:
+                  type: string
+      responses:
+        "201":
+          description: QA pair added
+
+    delete:
+      tags:
+        - Admin Support AI
+      summary: Delete question from prompt
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                question:
+                  type: string
+      responses:
+        "200":
+          description: Question deleted

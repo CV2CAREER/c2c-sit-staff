@@ -46,8 +46,16 @@ import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.contro
 
 import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
 import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
+import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 
 const adminRouterV1 = Router();
+
+adminRouterV1.all(
+  "/support-ai-prompt",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  supportAiPromptController,
+);
 
 adminRouterV1.all(
   "/ai-prompt-vcs",
@@ -136,7 +144,21 @@ adminRouterV1.get(
   isUserAuthenticated,
   getAdminAnalytics,
 );
-
+adminRouterV1.get(
+  "/campaign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  async (req, res) => {
+    // Return empty campaigns array or fetch from database
+    res.json({
+      success: true,
+      data: {
+        campaigns: [],
+        total: 0,
+      },
+    });
+  },
+);
 adminRouterV1.post(
   "/campaign",
   checkBlacklistedTokens,

@@ -1,0 +1,25 @@
+paths:
+  /v1/admin/chatbot-logs:
+    get:
+      tags:
+        - Admin Chatbot
+      summary: Get chatbot logs by date
+      description: Returns chatbot logs filtered by date. Defaults to today.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            example: 2026-01-15
+          description: Date in YYYY-MM-DD format
+      responses:
+        "200":
+          description: Logs retrieved successfully
+        "403":
+          description: Admin only
+        "500":
+          description: Server error
