@@ -34,18 +34,17 @@ import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 import { Blog } from "../models/v1/blog.model";
 import { TrainingTracker } from "../models/v1/training-tracker.model";
 import { SalesOperation } from "../models/v1/sales-operation.model";
-import { CRTracking } from "@/models/v1/cr-tracking.model";
+import { CRTracking } from "../models/v1/cr-tracking.model";
 import { CROwner } from "../models/v1/cr/owner.model";
-import { CRChange } from "@/models/v1/cr/change.model";
-import { CRSeverity } from "@/models/v1/cr/severity.model";
-import { CRFamily } from "@/models/v1/cr/family.model";
-import { CRStage } from "@/models/v1/cr/stage.model";
-import { CRType } from "@/models/v1/cr/type.model";
-import { CRPersona } from "@/models/v1/cr/persona.model";
-import { CRProvider } from "@/models/v1/cr/provider.model";
-import { CRNode } from "@/models/v1/cr/node.model";
+import { CRChange } from "../models/v1/cr/change.model";
+import { CRSeverity } from "../models/v1/cr/severity.model";
+import { CRFamily } from "../models/v1/cr/family.model";
+import { CRStage } from "../models/v1/cr/stage.model";
+import { CRType } from "../models/v1/cr/type.model";
+import { CRPersona } from "../models/v1/cr/persona.model";
+import { CRProvider } from "../models/v1/cr/provider.model";
+import { CRNode } from "../models/v1/cr/node.model";
 import { CREOT } from "../models/v1/cr-eot.model";
-
 
 export const modelList = [
   User,

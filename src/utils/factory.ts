@@ -3,7 +3,6 @@ import bucket from "@/config/firebase";
 import fs from "fs";
 import path from "path";
 import { getTextExtractor } from "office-text-extractor";
-import { gotScraping } from "got-scraping";
 import { htmlToText } from "html-to-text";
 
 // Query the configured LLM endpoint. This project previously used
@@ -235,6 +234,9 @@ export const extractResume = async (url: string) => {
 export const extractPageContent = async (url: string): Promise<string> => {
   try {
     console.log(`Attempting to scrape URL: ${url}`);
+
+    // Dynamic import to handle ESM module in CommonJS project
+    const { gotScraping } = await import("got-scraping");
 
     const response = await gotScraping({
       url: url,

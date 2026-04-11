@@ -1,3 +1,9 @@
+import path from "path";
+
+// Register module aliases for @/ paths (must be before other imports)
+const moduleAlias = require("module-alias");
+moduleAlias.addAlias("@", path.join(__dirname));
+
 import http from "http";
 import { app } from "./app";
 import dotenv from "dotenv";
@@ -56,7 +62,9 @@ const startServer = async () => {
 
     server.listen(PORT, async () => {
       logger.info(`SERVER IS RUNNING ON PORT ${PORT}`);
-      logger.info(`📚 Swagger documentation available at: http://localhost:${PORT}/api-docs`);
+      logger.info(
+        `📚 Swagger documentation available at: http://localhost:${PORT}/api-docs`,
+      );
 
       // connected redis
       await connectRedis();
