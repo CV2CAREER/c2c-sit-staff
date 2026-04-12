@@ -1,5 +1,4 @@
 export const ADMIN_STATS = "/api/v1/admin/analytics";
-export const ADMIN_APPLICATIONS = "/api/v1/admin/applications";
 export const ADMIN_APPLICATION_STATS = "/api/v1/admin/analytics"; // Both maps to analytics in v1
 export const ADMIN_CLIENT_ALLOCATION = "/api/v1/admin/in-flight/staff"; // Closest match for staff list
 export const ADMIN_CLIENT_MILESTONE_STATS = "/api/v1/admin/analytics/milestones"; // Note: Might need backend update
