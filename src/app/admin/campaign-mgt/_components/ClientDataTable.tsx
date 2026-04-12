@@ -190,11 +190,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
 
     const queryClient = useQueryClient();
 
-    const {
-        userInfoDomain,
-        campaignSheetDomain,
-        aggregatorsDomain,
-    } = useAdminQueries({
+    const adminQueriesOptions = React.useMemo(() => ({
         userId: clientId.toString(),
         fetchUserInfo: true,
         fetchAggregators: true,
@@ -208,7 +204,13 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             limit: paginationModel.pageSize,
             skip: paginationModel.page,
         }
-    });
+    }), [clientId, tableDisplay, aggregatorDataState, selectedAggregator, dataOption, jobApplicationsStatusFilter, paginationModel.pageSize, paginationModel.page]);
+
+    const {
+        userInfoDomain,
+        campaignSheetDomain,
+        aggregatorsDomain,
+    } = useAdminQueries(adminQueriesOptions);
 
     const {
         updateCampaignKeywordsMutation,
@@ -472,6 +474,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             
             const response = await deleteCampaignSheetMutation.mutateAsync({
                 entity: table,
+                table: table,
                 id: clientId,
                 action: "soft-delete"
             });
@@ -778,7 +781,6 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                             disableRowSelectionOnClick
                             checkboxSelection={isEditable}
                             rowBufferPx={100}
-                            rowCount={totalTableCount}
                             columns={columns}
                             onPaginationModelChange={(pgntnModel) => {
                                 setPaginationModel(pgntnModel)

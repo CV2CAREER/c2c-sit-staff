@@ -32,10 +32,7 @@ import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 
-/*---- Data / Interfaces ----*/
-interface UsersData {
-  usersData: any[]; // @TODO: UsersQueriedDataType[];
-}
+
 
 /**
  * @title Users Management Data Table
@@ -223,7 +220,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
     if (progress === currentProgress) {
       if (progress === 'Email Verified') {
-        runProgressAPIDefault(progress, user._id, user);
+        runProgressAPIDefault(progress, user.id, user);
       } else return false;
     } else {
       if (highProgresses.includes(progress) || highProgresses.includes(currentProgress)) {
@@ -318,7 +315,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
               break;
 
             default:
-              await runProgressAPIDefault(path, user._id, user);
+              await runProgressAPIDefault(path, user.id, user);
           }
         }
       } else runProgressAPIDefault(progress, user._id, user);
@@ -371,6 +368,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 checkboxSelection={editMode}
                 loading={queryUsers.isLoading}
                 pagination
+                pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}
               />
             </div>
@@ -577,7 +575,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 });
                 const runAPI = await runProgressAPIDefault(
                   'Plan Selected',
-                  userToUpdate?._id,
+                  userToUpdate?.id,
                   userToUpdate,
                   planOverrideMetadata.data,
                 );
@@ -675,7 +673,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 });
                 const runAPI = await runProgressAPIDefault(
                   'Payment Confirmed',
-                  userToUpdate?._id,
+                  userToUpdate?.id,
                   userToUpdate,
                   planOverrideMetadata.data,
                 );

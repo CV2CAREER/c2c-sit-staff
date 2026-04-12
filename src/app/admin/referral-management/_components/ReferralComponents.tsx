@@ -1,6 +1,5 @@
 "use client";
 import axiosInstance from "@/services/api-client";
-import { SERVER_URI } from "@/constants/env";
 import { useReferralQueries, useReferralMutations } from "@/hooks/api/admin/referral";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -199,10 +198,10 @@ const ReferralComponent = () => {
       setIsLoading(true);
       timer = setTimeout(() => {
         axiosInstance
-          .get(`${SERVER_URI}/api/v1/admin/users?q=${queryString}`)
+          .get(`/api/v1/admin/users?q=${queryString}`)
           .then((res) => {
             const data = res.data.filteredData.map((el: any) => ({
-              id: el._id,
+              id: el.id,
               role: el.role,
               fullName: `${el.firstName} ${el.middleName} ${el.lastName}`,
               email: el.email,
@@ -281,7 +280,7 @@ const ReferralComponent = () => {
 
           // Fallback to _id if userId doesn't exist
           if (!linkId) {
-            linkId = props.row._id;
+            linkId = props.row.id;
           }
 
           /*
@@ -289,7 +288,7 @@ const ReferralComponent = () => {
             name,
             linkId,
             rawUserId: props.row.userId,
-            rowId: props.row._id
+            rowId: props.row.id
           });
           */
 
@@ -518,7 +517,7 @@ const ReferralComponent = () => {
                     setClickedUserRefs("");
                     setDetailedReferredUsers([]);
                   } else {
-                    setClickedUserRefs(props.row._id);
+                    setClickedUserRefs(props.row.id);
                     // Fetch detailed information when modal opens
                     if (userId) {
                       fetchReferredUsersDetails(userId);
@@ -601,9 +600,9 @@ const ReferralComponent = () => {
                               </div>
 
                               {/* User Link */}
-                              {user._id && (
+                              {user.id && (
                                 <Link
-                                  href={`/admin/users/${user._id}`}
+                                  href={`/admin/users/${user.id}`}
                                   className="ml-4 text-blue-600 hover:text-blue-800 text-sm font-medium"
                                 >
                                   View Profile →

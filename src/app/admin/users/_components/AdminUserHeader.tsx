@@ -30,15 +30,14 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
 
   useEffect(() => {
     if (allUserData?.data) {
-      const processedData = allUserData.data.usersData
-        ? allUserData?.data?.usersData
+      const users = Array.isArray(allUserData.data) ? allUserData.data : (allUserData.data.items ?? []);
+      const processedData = users
             ?.map((data: any) => ({
               Full_Name: `${data.firstName} ${data.lastName}`,
               email: data.email,
-              id: data._id,
+              id: data.id,
             }))
-            .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name))
-        : [];
+            .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name));
       setAllData(processedData);
     }
   }, [allUserData]);

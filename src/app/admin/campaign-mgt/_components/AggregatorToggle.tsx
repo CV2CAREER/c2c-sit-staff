@@ -5,10 +5,10 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 interface AggregatorProps {
-    MySQLClientId: number;
+    clientId: number;
 }
 
-const AggregatorToggle = ({ MySQLClientId } : AggregatorProps) => {
+const AggregatorToggle = ({ clientId } : AggregatorProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isApplicationsLoading, setIsApplicationsLoading] = useState(true);
     const [internalJobSites, setInternalJobSites] = useState<any[]>([]);
@@ -134,7 +134,7 @@ const AggregatorToggle = ({ MySQLClientId } : AggregatorProps) => {
         try {
         setIsApplicationsLoading(true);
         const result = await campaignApplicationsCountMutation.mutateAsync({
-            MySQLClientId,
+            clientId,
             internalJobSites_,
             externalJobSites_,
         });
@@ -166,7 +166,7 @@ const AggregatorToggle = ({ MySQLClientId } : AggregatorProps) => {
 
         try {
             const result = await toggleCampaignAggregatorMutation.mutateAsync({
-                MySQLClientId: MySQLClientId,
+                clientId: clientId,
                 jobSite: siteName.toLowerCase(),
             });
 
@@ -195,10 +195,10 @@ const AggregatorToggle = ({ MySQLClientId } : AggregatorProps) => {
     };
 
     useEffect(() => {
-        if (MySQLClientId) {
+        if (clientId) {
             fetchApplicationCounts();
         }
-    }, [MySQLClientId]);
+    }, [clientId]);
 
     // Render a single job site item within the dropdown
     const renderJobSiteItem = (site: any, type: string) => (

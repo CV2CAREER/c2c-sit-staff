@@ -4,6 +4,7 @@
  */
 export type UsersQueriedDataType = {
   _id: string;
+  id: string;
   uniqueId: string;
   zohoId: string;
   firstName: string;

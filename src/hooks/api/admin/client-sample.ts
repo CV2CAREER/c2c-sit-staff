@@ -30,7 +30,7 @@ export const useClientSampleQueries = (options: AdminQueriesOptions) => {
 
   const clientSampleTable = useFetchData<ClientSampleRow[]>({
     method: "GET",
-    url: endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
+    url: sampleTableVariance === "completed" ? endpoints.ADMIN_CLIENT_SAMPLE : endpoints.ADMIN_CLIENT_SAMPLE_TABLE,
     params: { 
       variance: sampleTableVariance, 
       environment: selectedEnv, 

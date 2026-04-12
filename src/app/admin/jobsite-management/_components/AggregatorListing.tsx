@@ -49,7 +49,7 @@ const AggregatorListing: React.FC<AggregatorListingProps> = ({ data }) => {
               alt=""
               width={48}
               height={18}
-              className="!rounded-full w-[20px] h-[20px]"
+              className="!rounded-full w-[20px] h-auto"
             />
           </div>
           <p className="text-career-gray-200 text-14">{agg.name}</p>

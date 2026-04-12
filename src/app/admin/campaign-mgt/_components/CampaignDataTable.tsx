@@ -1,6 +1,6 @@
 /* eslint-disable */
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   GridRowsProp,
   GridColDef,
@@ -119,6 +119,8 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
   const [selectedTemplate, setSelectedTemplate] = useState<{label: string; value: string | number;} | null>(null);
   const [selectedAggregator, setSelectedAggregator] = useState<{label: string; value: string;} | null>(null);
   const [tableData, setTableData] = useState<any[any]>([]);
+  const tableDataRef = useRef(tableData);
+  useEffect(() => { tableDataRef.current = tableData; }, [tableData]);
   const [ searchQuery, setSearchQuery ] = useState<string>("");
   const [saveMultiple, setSaveMultiple] = useState(false);
   const [table, setTable] = useState(TableInformationEnum.ClientInformation);
@@ -137,13 +139,7 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
     pageSize: 20,
   });
 const queryClient = useQueryClient();
-  const {
-    usersFullNameDomain,
-    campaignsDomain,
-    sheetsTemplatesDomain,
-    jobPreferencesOptionsDomain,
-    userDocsAndPreferencesDomain,
-  } = useAdminQueries({
+  const adminQueriesOptions = React.useMemo(() => ({
     fetchUsersFullName: true,
     usersFullNameSkip: usersSkip,
     fetchCampaigns: true,
@@ -153,7 +149,15 @@ const queryClient = useQueryClient();
     fetchJobPreferences: true,
     fetchUserDocsAndPreferences: !!usersId,
     userId: usersId || "",
-  });
+  }), [usersSkip, clientDataState, searchQuery, usersId]);
+
+  const {
+    usersFullNameDomain,
+    campaignsDomain,
+    sheetsTemplatesDomain,
+    jobPreferencesOptionsDomain,
+    userDocsAndPreferencesDomain,
+  } = useAdminQueries(adminQueriesOptions);
 
   const {
     updateCampaignSheetBulkMutation,
@@ -193,7 +197,10 @@ const queryClient = useQueryClient();
 
   useEffect(() => {
     if (templatesData) {
-      setTemplateNamesList(templatesData)
+      setTemplateNamesList((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(templatesData)) return prev;
+        return templatesData;
+      });
     }
   }, [templatesData])
 
@@ -203,28 +210,32 @@ const queryClient = useQueryClient();
       : (jobPreferencesOptionsData as any)?.data || [];
 
     if (preferencesArray && Array.isArray(preferencesArray)) {
-      setJobType(preferencesArray.find((opt: any) => opt.category === "Job Type")?.options || []);
-      setWorkingRights(preferencesArray.find((opt: any) => opt.category === "Working Rights")?.options || []);
+      const newJobType = preferencesArray.find((opt: any) => opt.category === "Job Type")?.options || [];
+      const newWorkingRights = preferencesArray.find((opt: any) => opt.category === "Working Rights")?.options || [];
+      setJobType((prev: any) => JSON.stringify(prev) === JSON.stringify(newJobType) ? prev : newJobType);
+      setWorkingRights((prev: any) => JSON.stringify(prev) === JSON.stringify(newWorkingRights) ? prev : newWorkingRights);
     }
   }, [jobPreferencesOptionsData])
 
-  // Handle different possible response structures
-  const apiResponse = campaignsDomain.data;
-  console.log('API Response:', apiResponse?.length);
   const rows: GridRowsProp<CampaignTableColType> = React.useMemo(() => {
+    const apiResponse = campaignsDomain.data;
+    if (!apiResponse) return [];
     return Array.isArray(apiResponse)
       ? apiResponse
       : (apiResponse?.campaigns || []);
-  }, [apiResponse]);
+  }, [campaignsDomain.data]);
 
   useEffect(() => {
-    console.log('Rows length:', rows.length);
-    console.log('Table data before update:', tableData.length);
-    if (JSON.stringify(tableData) !== JSON.stringify(rows)) {
-      setTableData(rows);
-      console.log('Table data updated to:', rows.length);
+    if (rows && rows.length > 0) {
+      setTableData((prev: any) => {
+        // Simple check to avoid setting state if data hasn't changed its length or identity
+        if (prev === rows || (prev.length === rows.length && JSON.stringify(prev) === JSON.stringify(rows))) {
+          return prev;
+        }
+        return rows;
+      });
     }
-  }, [rows, apiResponse]);
+  }, [rows]);
 
 
 
@@ -271,7 +282,7 @@ const queryClient = useQueryClient();
     setSaveMultiple(true);
   };
 
-  const generateAQFn = async (clientId: number) => {
+  const generateAQFn = useCallback(async (clientId: number) => {
     setCredentialsId(clientId);
     setKwrtIsOpen(true);
 
@@ -290,7 +301,7 @@ const queryClient = useQueryClient();
         }
       );
     }
-  };
+  }, [reverseUserIdMutation]);
 
   useEffect(() => {
     if (userDocsAndPreferencesDomain.data) {
@@ -313,7 +324,7 @@ const queryClient = useQueryClient();
     setRefetch(false);
   };
 
-  const handleFlight = (clientId: string) => {
+  const handleFlight = useCallback((clientId: string) => {
     toast.loading("Processing flight action...");
     flightCampaignMutation.mutate(
       { clientId },
@@ -329,13 +340,27 @@ const queryClient = useQueryClient();
         },
       }
     );
-  };
+  }, [flightCampaignMutation, queryClient]);
 
   useEffect(() => {
     if(usersId){
       fetchClientDocuments();
     }
   }, [usersId]);
+
+  const memoizedColumns = useMemo(() => modifyCampaignActionsColAndRows(
+    columnHeaders,
+    clientDataState,
+    isEditable,
+    route,
+    table,
+    "campaign",
+    tableDataRef.current,
+    setTableData,
+    generateAQFn,
+    handleFlight
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [columnHeaders, clientDataState, isEditable, route, table, generateAQFn, handleFlight]);
 
 
   return (
@@ -479,25 +504,13 @@ const queryClient = useQueryClient();
               }
             }
             rows={tableData}
-            rowCount={tableData.length}
             loading={isLoading}
             getRowId={(row) => row.id}
             rowHeight={38}
             rowReordering
             disableRowSelectionOnClick
             rowBufferPx={100}
-            columns={modifyCampaignActionsColAndRows(
-              columnHeaders,
-              clientDataState,
-              isEditable,
-              route,
-              table, // table
-              "campaign", // tablePage
-              tableData,
-              setTableData,
-              generateAQFn,
-              handleFlight
-            )}
+            columns={memoizedColumns}
             columnBufferPx={5}
             checkboxSelection={isEditable}
             pagination

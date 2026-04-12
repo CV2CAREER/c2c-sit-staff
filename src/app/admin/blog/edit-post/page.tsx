@@ -14,6 +14,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 const TiptapEditor = dynamic(() => import("../_components/TiptapEditor"), { ssr: false });
+import FeaturedImagePicker from "../_components/FeaturedImagePicker";
 
 const EditPostPage = () => {
   const [showDate, setShowDate] = useState(false);
@@ -26,6 +27,8 @@ const EditPostPage = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [description, setDescription] = useState("");
   const [selectedOption, setSelectedOption] = useState("");
+  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
+  const [initialFeaturedImage, setInitialFeaturedImage] = useState<string | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -54,6 +57,9 @@ const EditPostPage = () => {
       if (post.scheduledDate) {
         setSelectedDate(post.scheduledDate);
       }
+      if (post.featuredImage) {
+        setInitialFeaturedImage(post.featuredImage);
+      }
     }
   }, [blogPostByIdDomain.data]);
 
@@ -69,6 +75,10 @@ const EditPostPage = () => {
       description,
       category: selectedCategory,
       option: selectedOption,
+      // If user selected a new image, use the new Base64.
+      // If not (featuredImage is null), fall back to the existing URL
+      // so we don't accidentally erase the stored image on the backend.
+      featuredImage: featuredImage ?? initialFeaturedImage ?? undefined,
       scheduledDate: selectedDate || undefined,
       status: (selectedDate && new Date(selectedDate) > new Date() ? 'Scheduled' : 'Published') as any,
     };
@@ -303,6 +313,11 @@ const EditPostPage = () => {
               />
             </div>
           )}
+          <hr className="border-0 h-[1px] bg-gray-400 mb-2 mt-4" />
+          <FeaturedImagePicker 
+            onImageChange={(base64) => setFeaturedImage(base64)} 
+            initialImage={initialFeaturedImage}
+          />
         </div>
       </div>
     </div>

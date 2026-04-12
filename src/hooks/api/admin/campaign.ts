@@ -90,7 +90,11 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
       error: sheetsTemplates.error,
     },
   }), [
-    campaignSheet, campaignClients, clientCampaignInsights, campaigns, sheetsTemplates
+    campaignSheet.data, campaignSheet.isLoading, campaignSheet.isSuccess, campaignSheet.isError, campaignSheet.error,
+    campaignClients.data, campaignClients.isLoading, campaignClients.isSuccess, campaignClients.isError, campaignClients.error,
+    clientCampaignInsights.data, clientCampaignInsights.isLoading, clientCampaignInsights.isSuccess, clientCampaignInsights.isError, clientCampaignInsights.error,
+    campaigns.data, campaigns.isLoading, campaigns.isSuccess, campaigns.isError, campaigns.error,
+    sheetsTemplates.data, sheetsTemplates.isLoading, sheetsTemplates.isSuccess, sheetsTemplates.isError, sheetsTemplates.error,
   ]);
 };
 
@@ -110,7 +114,7 @@ export const useCampaignMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    deleteCampaignSheetMutation: useMutateData<any, { id: string | number; entity: string; action: "soft-delete" }>({
+    deleteCampaignSheetMutation: useMutateData<any, { id: string | number; entity: string; table: string; action: "soft-delete" }>({
       method: "PATCH",
       url: endpoints.ADMIN_CAMPAIGN_SHEET,
       mutationKey: ["admin-delete-campaign-sheet"],
@@ -131,7 +135,7 @@ export const useCampaignMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    toggleCampaignAggregatorMutation: useMutateData<any, { MySQLClientId: number; jobSite: string }>({
+    toggleCampaignAggregatorMutation: useMutateData<any, { clientId: number; jobSite: string }>({
       method: "PUT",
       url: endpoints.ADMIN_CAMPAIGN_COUNT_APPLICATIONS,
       mutationKey: ["admin-toggle-campaign-aggregator"],

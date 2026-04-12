@@ -160,7 +160,11 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
 
   const mappedChartData = useMemo(() => {
     // Note: Overall stats currently doesn't provide time-series chart data
-    return null;
+    return {
+      successful: [],
+      failed: [],
+      label: []
+    };
   }, []);
 
   return useMemo(() => ({

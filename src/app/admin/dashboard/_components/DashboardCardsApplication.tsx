@@ -75,10 +75,10 @@ const DashboardCardsApplication: React.FC = () => {
           selectedKey={selected}
           onSelectionChange={(key) => setSelected(key.toString())}
         >
-          <Tab key="last-24-hrs" title="Last 24hrs" />
-          <Tab key="last-week" title="Last Week" />
-          <Tab key="last-month" title="Last Month" />
-          <Tab key="six-months" title="Six Months" />
+          <Tab key="last-24-hrs" title="Last 24hrs" textValue="Last 24hrs" />
+          <Tab key="last-week" title="Last Week" textValue="Last Week" />
+          <Tab key="last-month" title="Last Month" textValue="Last Month" />
+          <Tab key="six-months" title="Six Months" textValue="Six Months" />
         </Tabs>
       </div>
 

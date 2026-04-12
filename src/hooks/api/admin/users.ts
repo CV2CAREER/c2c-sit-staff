@@ -218,8 +218,16 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       error: userPreferences.error,
     },
   }), [
-    usersCount, usersPersonaCount, userDetail, usersList, userInfo, usersFullName,
-    clients, pcsMerged, plans, userPreferences
+    usersCount.data, usersCount.isLoading, usersCount.isSuccess, usersCount.isError, usersCount.error,
+    usersPersonaCount.data, usersPersonaCount.isLoading, usersPersonaCount.isSuccess, usersPersonaCount.isError, usersPersonaCount.error,
+    userDetail.data, userDetail.isLoading, userDetail.isSuccess, userDetail.isError, userDetail.error,
+    usersList.data, usersList.isLoading, usersList.isSuccess, usersList.isError, usersList.error,
+    userInfo.data, userInfo.isLoading, userInfo.isSuccess, userInfo.isError, userInfo.error,
+    usersFullName.data, usersFullName.isLoading, usersFullName.isSuccess, usersFullName.isError, usersFullName.error,
+    clients.data, clients.isLoading, clients.isSuccess, clients.isError, clients.error,
+    pcsMerged,
+    plans.data, plans.isLoading, plans.isSuccess, plans.isError, plans.error,
+    userPreferences.data, userPreferences.isLoading, userPreferences.isSuccess, userPreferences.isError, userPreferences.error,
   ]);
 };
 

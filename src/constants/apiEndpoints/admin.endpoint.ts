@@ -11,7 +11,7 @@ export const ADMIN_USERS = "/api/v1/admin/users";
 export const ADMIN_USERS_FULL_NAME = "/api/v1/admin/users/full-name";
 export const ADMIN_AGGREGATORS = "/api/v1/aggregator";
 export const ADMIN_APPLICATIONS = "/api/v1/admin/applications";
-export const ADMIN_FOLLOWERS = "/api/v1/admin/analytics/followers";
+export const ADMIN_FOLLOWERS = "/api/v1/analytics/followers";
 export const ADMIN_BOT_CONTROL = "/api/v1/admin/bot-toggle";
 export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
@@ -20,7 +20,7 @@ export const ADMIN_SCHEMA_COLUMNS = (tableName: string) => `/api/v1/admin/schema
 export const ADMIN_SCHEMA_DELETE_COLUMN = (tableName: string, columnName: string) => `/api/v1/admin/schema/${tableName}/columns/${columnName}`;
 export const ADMIN_THROTTLE = "/api/v1/admin/throttle";
 export const ADMIN_STATUS = "/api/v1/admin/status";
-export const ADMIN_JOBSITES = "/api/v1/admin/jobsites";
+export const ADMIN_JOBSITES = "/api/v1/aggregator";
 export const ADMIN_LOCATIONS = "/api/v1/admin/locations";
 export const ADMIN_PRICING_PLANS = "/api/v1/admin/pricing-plans";
 export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info/${id}`;
@@ -40,7 +40,7 @@ export const ADMIN_CAMPAIGN_COUNT_APPLICATIONS = "/api/v1/admin/campaign/sheet/c
 
 // User specific actions
 export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/user/${id}`;
-export const ADMIN_GENERATE_PASSWORD = "/api/v1/admin/generatePassword";
+export const ADMIN_GENERATE_PASSWORD = "/api/v1/admin/generate-password";
 export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/admin/dispatchCredentials";
 export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/admin/send-preference-email";
 export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/admin/send-preference-email-userid";
@@ -83,7 +83,7 @@ export const SHEETS_API = "/api/v1/sheets";
 export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
 export const COUNTRY_INFO = "/api/v1/country-info";
 export const ADMIN_SLACK_QUEUE = "/api/v1/admin/slack";
-export const ADMIN_RESOURCES = "/api/v1/admin/resources";
+export const ADMIN_RESOURCES = "/api/v1/resources";
 export const ADMIN_PROMOTION = "/api/v1/promotions";
 export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/promotions?id=${id}`;
 
@@ -101,8 +101,8 @@ export const ADMIN_PROMPTS_CV_STYLE = `/api/admin/prompts/cv-ai/style`;
 
 // Admin Training Tracker Endpoints
 export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
-export const ADMIN_TRAINING_TRACKER_SESSION = "/api/training-tracker-session";
-export const ADMIN_COACHES_VARIANT = "/api/coach";
+export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/training-tracker/sessions";
+export const ADMIN_COACHES_VARIANT = "/api/v1/coach";
 
 // Admin CR Tracking Endpoints
 export const ADMIN_CR_TRACKING = "/api/v1/cr-tracking";

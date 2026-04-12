@@ -76,12 +76,13 @@ export default function SampleForm({
   };
 
   useEffect(() => {
-    if (data?.environment) {
+    const currentEnv = searchParams?.get("environment");
+    if (data?.environment && data.environment !== currentEnv) {
       const params = new URLSearchParams(searchParams?.toString());
       params.set("environment", data.environment);
       router.push(`?${params.toString()}`, { scroll: false });
     }
-  }, [data, searchParams, router]);
+  }, [data.environment, searchParams, router]);
 
   return (
     <div className="flex flex-col md:flex-row md:items-center gap-4">

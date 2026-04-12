@@ -35,10 +35,10 @@ const ApplicationPerformanceChart = () =>  {
             selectedKey={selected}
             onSelectionChange={(key: any) => setSelected(key.toString())}
           >
-            <Tab key="last-24-hrs" title="Last 24hrs" />
-            <Tab key="last-week" title="Last Week" />
-            <Tab key="last-month" title="Last Month" />
-            <Tab key="six-months" title="Six Months" />
+            <Tab key="last-24-hrs" title="Last 24hrs" textValue="Last 24hrs" />
+            <Tab key="last-week" title="Last Week" textValue="Last Week" />
+            <Tab key="last-month" title="Last Month" textValue="Last Month" />
+            <Tab key="six-months" title="Six Months" textValue="Six Months" />
           </Tabs>
         </div>
 
@@ -55,9 +55,9 @@ const ApplicationPerformanceChart = () =>  {
     );
   }
   
-  const pData = data?.successful || [];
-  const uData = data?.failed || [];
-  const xLabels = data?.label || [];
+  const pData = (data as any)?.successful || [];
+  const uData = (data as any)?.failed || [];
+  const xLabels = (data as any)?.label || [];
 
   return (
     <div className="w-full bg-white rounded-md p-4 flex flex-col gap-4 justify-between shadow">
@@ -70,10 +70,10 @@ const ApplicationPerformanceChart = () =>  {
           selectedKey={selected}
           onSelectionChange={(key) => setSelected(key.toString())}
         >
-          <Tab key="last-24-hrs" title="Last 24hrs" />
-          <Tab key="last-week" title="Last Week" />
-          <Tab key="last-month" title="Last Month" />
-          <Tab key="six-months" title="Six Months" />
+          <Tab key="last-24-hrs" title="Last 24hrs" textValue="Last 24hrs" />
+          <Tab key="last-week" title="Last Week" textValue="Last Week" />
+          <Tab key="last-month" title="Last Month" textValue="Last Month" />
+          <Tab key="six-months" title="Six Months" textValue="Six Months" />
         </Tabs>
       </div>
 

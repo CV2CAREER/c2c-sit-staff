@@ -12,6 +12,7 @@ import { useBlogMutations } from "@/hooks/api/admin/blog";
 import { toast } from "react-hot-toast";
 import TiptapEditor from "../_components/TiptapEditor";
 import { useRouter } from "next/navigation";
+import FeaturedImagePicker from "../_components/FeaturedImagePicker";
 
 const CreateBlogPostPage = () => {
   const [showDate, setShowDate] = useState(false);
@@ -24,6 +25,7 @@ const CreateBlogPostPage = () => {
   const [isOpenOption, setIsOpenOption] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [description, setDescription] = useState("");
+  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
 
   const { createPost } = useBlogMutations();
   const router = useRouter();
@@ -64,6 +66,7 @@ const CreateBlogPostPage = () => {
       option: selectedOption,
       category: selectedCategory,
       description,
+      featuredImage: featuredImage || undefined,
       status: (selectedDate && new Date(selectedDate) > new Date() ? 'Scheduled' : 'Published') as any,
       scheduledDate: selectedDate || undefined,
     };
@@ -218,6 +221,8 @@ const CreateBlogPostPage = () => {
               />
             </div>
           )}
+          <hr className="border-0 h-[1px] bg-gray-400 mb-2 mt-4" />
+          <FeaturedImagePicker onImageChange={(base64) => setFeaturedImage(base64)} />
         </div>
       </div>
     </div>
