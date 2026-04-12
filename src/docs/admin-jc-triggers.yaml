@@ -1,0 +1,39 @@
+# src/docs/admin-jc-triggers.yaml
+paths:
+  /v1/admin/jc-triggers:
+    get:
+      tags:
+        - JustCall Triggers
+      summary: Get all JustCall triggers
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: List of triggers
+
+    put:
+      tags:
+        - JustCall Triggers
+      summary: Update trigger status or process template
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: integer
+                status:
+                  type: boolean
+                template:
+                  type: string
+      responses:
+        "200":
+          description: Trigger updated or template queued

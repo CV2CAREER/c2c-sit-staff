@@ -1,0 +1,42 @@
+paths:
+  /v1/admin/applications:
+    get:
+      tags:
+        - Admin Applications
+      summary: Get applications
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: active
+          schema:
+            type: boolean
+        - in: query
+          name: client
+          schema:
+            type: integer
+        - in: query
+          name: userId
+          schema:
+            type: integer
+        - in: query
+          name: aggregator
+          schema:
+            type: string
+        - in: query
+          name: dataOption
+          schema:
+            type: string
+            enum: [sample_results, questions]
+      responses:
+        "200":
+          description: Applications fetched
