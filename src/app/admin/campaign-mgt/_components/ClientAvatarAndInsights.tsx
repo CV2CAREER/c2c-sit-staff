@@ -270,7 +270,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
               }
             >Generate Password</Button>
 
-            <AggregatorToggle MySQLClientId={Number(clientId as string)}/>
+            <AggregatorToggle clientId={Number(clientId as string)}/>
           </div>
         </section>
       </section>
