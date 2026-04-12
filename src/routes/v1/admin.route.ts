@@ -49,10 +49,7 @@ import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 import { applicationsController } from "@/controllers/v1/applications.controller";
 import { jcTriggerController } from "@/controllers/v1/jc-trigger.controller";
-import { viewAsController } from "@/controllers/v1/view-as.controller";
-
 const adminRouterV1 = Router();
-
 
 adminRouterV1.get(
   "/jc-triggers",
