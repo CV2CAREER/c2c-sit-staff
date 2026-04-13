@@ -40,6 +40,10 @@ import settingsRouterV1 from "./routes/v1/settings.route";
 import viewAsRulesRouterV1 from "./routes/v1/view-as-rules.route";
 import chatRouterV1 from "./routes/v1/chat.route";
 import supportRouterV1 from "./routes/v1/support.route";
+import slackManageRouterV1 from "./routes/v1/slack-manage.route";
+import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
+// Assistant routes
+import assistantRouterV1 from "./routes/v1/assistant.route";
 
 export const app = express();
 
@@ -147,6 +151,8 @@ app.use('/api/v1', requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
+app.use("/api/v1/slack-manage", slackManageRouterV1);
+app.use("/api/v1/audit-trail", auditTrailRouterV1);
 app.use("/api/v1/document", documentRouterV1);
 app.use("/api/v1/feature", featureRouterV1);
 app.use("/api/v1/aggregator", aggregatorRouterV1);
@@ -163,6 +169,9 @@ app.use("/api/v1/logs", logsRouterV1);
 app.use("/api/v1/view-as-rules", viewAsRulesRouterV1);
 app.use("/api/v1/chats", chatRouterV1);
 app.use("/api/v1/support", supportRouterV1);
+app.use("/api/v1/slack-manage", slackManageRouterV1);
+// Assistant routes (must be after auth middleware to get user info)
+app.use("/api/v1/assistant", assistantRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

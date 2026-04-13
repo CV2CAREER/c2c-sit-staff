@@ -50,6 +50,9 @@ import { Log } from "@/models/v1/log.model";
 import { ViewAsRule } from "../models/v1/view-as-rule.model";
 import { SupportConversation } from "../models/v1/chat-message.model";
 import { SupportSession } from "../models/v1/support-session.model";
+import { SlackMessage } from "../models/v1/slack-message.model";
+import AuditLog from "@/models/v1/audit-log.model";
+import PassKeyVault from "@/models/v1/passkey-vault.model";
 
 export const modelList = [
   User,
@@ -98,6 +101,7 @@ export const modelList = [
   CRType,
   CRPersona,
   CRProvider,
+  SlackMessage,
   CRNode,
   CREOT,
   Setting,
@@ -105,4 +109,6 @@ export const modelList = [
   ViewAsRule, 
   SupportConversation,
   SupportSession,
+  AuditLog,
+  PassKeyVault,
 ];
