@@ -1,0 +1,108 @@
+# OpenAPI Specification for Slack Manage API
+
+paths:
+  /v1/slack-manage:
+    get:
+      tags:
+        - Admin
+        - Slack Manage
+      summary: Get all Slack messages
+      responses:
+        200:
+          description: List of all Slack messages
+        401:
+          description: Unauthorized
+
+    post:
+      tags:
+        - Admin
+        - Slack Manage
+      summary: Create new Slack message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                variables:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                category:
+                  type: string
+                attachments:
+                  type: object
+                isActive:
+                  type: boolean
+      responses:
+        201:
+          description: Slack message created
+        400:
+          description: Invalid request
+        401:
+          description: Unauthorized
+
+  /v1/slack-manage/{id}:
+    get:
+      tags:
+        - Admin
+        - Slack Manage
+      summary: Get single Slack message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Slack message details
+        404:
+          description: Message not found
+
+    put:
+      tags:
+        - Admin
+        - Slack Manage
+      summary: Update Slack message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                variables:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                category:
+                  type: string
+                attachments:
+                  type: object
+                isActive:
+                  type: boolean
+      responses:
+        200:
+          description: Slack message updated
+        404:
+          description: Message not found

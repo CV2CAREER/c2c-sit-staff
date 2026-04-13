@@ -1,0 +1,73 @@
+paths:
+  /v1/audit-trail:
+    get:
+      tags:
+        - Admin
+        - Audit Trail
+      summary: Get paginated audit trails
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of audit trails
+        401:
+          description: Unauthorized
+
+  /v1/audit-trail/passkey:
+    post:
+      tags:
+        - Admin
+        - Audit Trail
+      summary: Set or update audit trail passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - passKey
+              properties:
+                passKey:
+                  type: string
+      responses:
+        200:
+          description: Passkey updated
+        201:
+          description: Passkey created
+        400:
+          description: Invalid request
+
+  /v1/audit-trail/passkey/verify:
+    post:
+      tags:
+        - Admin
+        - Audit Trail
+      summary: Verify audit trail passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - passKey
+              properties:
+                passKey:
+                  type: string
+      responses:
+        200:
+          description: Passkey verification result
