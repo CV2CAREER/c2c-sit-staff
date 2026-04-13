@@ -93,11 +93,11 @@ export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/blog?id=${id}`;
 export const ADMIN_BLOG_DETAILS = "/api/v1/blog/id";
 
 // Admin Prompts Endpoints
-export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/admin/${basePath}`;
-export const ADMIN_PROMPTS_SIMULATION = (basePath: string) => `/api/admin/${basePath}/simulation`;
-export const ADMIN_PROMPTS_QUEUE = (basePath: string) => `/api/admin/${basePath}/queue`;
-export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/admin/${basePath}/vcs`;
-export const ADMIN_PROMPTS_CV_STYLE = `/api/admin/prompts/cv-ai/style`;
+export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/v1/admin/${basePath}`;
+export const ADMIN_PROMPTS_SIMULATION = (basePath: string) => `/api/v1/admin/${basePath}/simulation`;
+export const ADMIN_PROMPTS_QUEUE = (basePath: string) => `/api/v1/admin/${basePath}/queue`;
+export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/v1/admin/${basePath}/vcs`;
+export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/prompts/cv-ai/style`;
 
 // Admin Training Tracker Endpoints
 export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
