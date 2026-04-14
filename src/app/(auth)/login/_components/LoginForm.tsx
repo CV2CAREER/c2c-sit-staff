@@ -119,9 +119,17 @@ export default function LoginForm() {
   return (
     <Form {...form}>
       <form
-        className="bg-white flex flex-col gap-9 rounded-lg px-4 md:px-12 py-2 md:py-7 shadow-xl w-full"
+        className={`bg-white flex flex-col gap-9 rounded-lg px-4 md:px-12 py-2 md:py-7 shadow-xl w-full relative ${loginUserLoading || form.formState.isSubmitting ? 'opacity-75 pointer-events-none' : ''}`}
         onSubmit={form.handleSubmit(onSubmit)}
       >
+        {/* Login Loading Overlay */}
+        {(loginUserLoading || form.formState.isSubmitting) && (
+          <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center z-10 rounded-lg">
+            <FiLoader className="h-10 w-10 animate-spin text-primary mb-3" />
+            <p className="text-sm font-medium text-gray-700">Logging in...</p>
+            <p className="text-xs text-gray-500 mt-1">Please wait while we verify your credentials</p>
+          </div>
+        )}
         <FormField
           control={form.control}
           name="email"
