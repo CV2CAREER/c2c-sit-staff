@@ -143,4 +143,9 @@ export interface AdminQueriesOptions {
   crHistoryPage?: number;
   fetchEOTCRs?: boolean;
   fetchEOTOwners?: boolean;
+  fetchSystemLogs?: boolean;
+  logsPage?: number;
+  logsLimit?: number;
+  logsSearch?: string;
+  logsType?: string;
 }

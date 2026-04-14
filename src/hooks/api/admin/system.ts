@@ -24,10 +24,17 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
     fetchProfileHistory = false,
     fetchReferralHistory = false,
     fetchRegexQueue = false,
+    fetchSystemLogs = false,
+    logsPage = 1,
+    logsLimit = 100,
+    logsSearch = "",
+    logsType = "",
     tableName = "",
     userId = "",
     profileHistorySkip = 0,
     referralEmail = "",
+    startDate = "",
+    endDate = "",
   } = options;
 
   const adminStatus = useFetchData<any>({
@@ -167,6 +174,14 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
     enabled: fetchRegexQueue,
   });
 
+  const systemLogs = useFetchData<any>({
+    method: "GET",
+    url: endpoints.ADMIN_SYSTEM_LOGS,
+    queryKey: ["admin-system-logs", logsPage, logsLimit, logsSearch, logsType, startDate, endDate],
+    params: { page: logsPage, limit: logsLimit, search: logsSearch, type: logsType, startDate, endDate },
+    enabled: fetchSystemLogs,
+  });
+
   return useMemo(() => ({
     adminStatusDomain: {
       data: adminStatus.data?.data,
@@ -231,14 +246,22 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isError: regexQueue.isError,
       error: regexQueue.error,
     },
+    systemLogsDomain: {
+      data: systemLogs.data?.data,
+      isLoading: systemLogs.isLoading,
+      isSuccess: systemLogs.isSuccess,
+      isError: systemLogs.isError,
+      error: systemLogs.error,
+    },
   }), [
     adminStatus, mappedBotStatus, mappedAnswerMode, tables, mappedTables, 
     throttles, mappedThrottles, adminDropdowns, profileHistory, 
-    referralHistory, regexQueue
+    referralHistory, regexQueue, systemLogs
   ]);
 };
 
 export const useSystemMutations = () => {
+  const queryClient = useQueryClient();
   return {
     toggleBotMutation: useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
       method: "PATCH",
@@ -247,12 +270,30 @@ export const useSystemMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    updateAnswerModeMutation: useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
-      method: "PATCH",
+    updateAnswerModeMutation: useMutateData<any, { mode: string }>({
+      method: "PUT",
       url: endpoints.ADMIN_ANSWER_MODE,
       mutationKey: ["admin-update-answer-mode"],
-      onSuccess: () => {},
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-answer-mode"] });
+      },
       onError: () => {},
+    }),
+    exportSystemLogsMutation: useMutation({
+      mutationKey: ["admin-export-system-logs"],
+      mutationFn: async (params: { type?: string; search?: string }) => {
+        const res = await axiosInstance.get(endpoints.ADMIN_SYSTEM_LOGS_EXPORT, {
+          params,
+          responseType: "blob",
+        });
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `system-logs-${new Date().toISOString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      },
     }),
     createTableMutation: useMutateData<ApiTable, CreateTablePayload>({
       method: "POST",

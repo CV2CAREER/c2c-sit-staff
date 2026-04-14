@@ -111,6 +111,9 @@ export const ADMIN_CR_TRACKING_MODIFY = "/api/v1/cr-tracking/modify";
 export const ADMIN_CR_TRACKING_RESTORE = "/api/v1/cr-tracking/restore";
 export const ADMIN_CR_TRACKING_DELETE = "/api/v1/cr-tracking/delete";
 // Note: EOT, History, and Notify-Nil currently have no backend routes mounted in v1
+export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/cr-tracking/history";
+export const ADMIN_SYSTEM_LOGS = "/v1/logs";
+export const ADMIN_SYSTEM_LOGS_EXPORT = "/v1/logs/export/csv";
 export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
 export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/cr-tracking/history";
 export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
