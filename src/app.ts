@@ -15,7 +15,7 @@ import {
 } from "./config/env";
 import cookieParser from "cookie-parser";
 
-import { requestLogger } from './middlewares/requestLogger.middleware';
+import { requestLogger } from "./middlewares/requestLogger.middleware";
 import userRouterV1 from "./routes/v1/user.route";
 import { getServiceLogger } from "./utils/createLogger";
 import centralAppErrors from "./middlewares/centralAppErrors";
@@ -40,6 +40,10 @@ import settingsRouterV1 from "./routes/v1/settings.route";
 import viewAsRulesRouterV1 from "./routes/v1/view-as-rules.route";
 import chatRouterV1 from "./routes/v1/chat.route";
 import supportRouterV1 from "./routes/v1/support.route";
+import coachRouterV1 from "./routes/v1/coach.route";
+import scheduleRouterV1 from "./routes/v1/schedule.route";
+import availabilityRouterV1 from "./routes/v1/availability.route";
+import sessionsRouterV1 from "./routes/v1/sessions.route";
 
 export const app = express();
 
@@ -143,7 +147,7 @@ app.get("/api/ping", async (req, res) => {
 // 🟡 11.  DB readiness middleware here
 
 // 12. API Routes
-app.use('/api/v1', requestLogger);
+app.use("/api/v1", requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
@@ -163,6 +167,10 @@ app.use("/api/v1/logs", logsRouterV1);
 app.use("/api/v1/view-as-rules", viewAsRulesRouterV1);
 app.use("/api/v1/chats", chatRouterV1);
 app.use("/api/v1/support", supportRouterV1);
+app.use("/api/v1/coaches", coachRouterV1);
+app.use("/api/v1/schedules", scheduleRouterV1);
+app.use("/api/v1/availabilities", availabilityRouterV1);
+app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

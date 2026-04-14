@@ -1,18 +1,23 @@
 // controllers/v1/discovery-queue.controller.ts
 import { Request, Response } from "express";
-import Redis from "ioredis";
 import db from "@/database/postgres";
+import { getConnectedRedis } from "@/config/redis";
+import catchAsyncError from "@/utils/catchAsyncError";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
 
-export const discoveryQueueController = async (req: Request, res: Response) => {
-  const redisClient = new Redis({
-    host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-    password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-    db: 1,
-  });
+const logger = getServiceLogger("discovery-queue-controller");
 
-  try {
+export const discoveryQueueController = catchAsyncError(
+  async (req: Request, res: Response) => {
     if (req.method?.toLowerCase() !== "get") {
-      return res.status(400).json({ message: "Invalid method" });
+      throw new ErrorHandler("Invalid method", 400);
+    }
+
+    const redisClient = await getConnectedRedis();
+
+    if (!redisClient) {
+      throw new ErrorHandler("Redis unavailable", 503);
     }
 
     const queueName = req.query.jobsite as string | undefined;
@@ -21,6 +26,8 @@ export const discoveryQueueController = async (req: Request, res: Response) => {
     /* ALL QUEUES                                                                 */
     /* -------------------------------------------------------------------------- */
     if (!queueName) {
+      logger.info("Fetching all discovery queues");
+
       const aggregators = await db.aggregators.findMany({
         select: { name: true },
       });
@@ -72,11 +79,8 @@ export const discoveryQueueController = async (req: Request, res: Response) => {
         }
       }
 
-      return res.status(200).json({
-        success: true,
-        data: queueitems,
-        message: "Queues fetched successfully",
-      });
+      res.apiSuccess(queueitems, "Queues fetched successfully");
+      return;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -84,14 +88,13 @@ export const discoveryQueueController = async (req: Request, res: Response) => {
     /* -------------------------------------------------------------------------- */
     const queueKey = `${queueName.toUpperCase().trim()}_DISCOVERY_QUEUE`;
 
+    logger.info(`Fetching discovery queue: ${queueKey}`);
+
     const queueLength = await redisClient.llen(queueKey);
 
     if (!queueLength) {
-      return res.status(200).json({
-        success: false,
-        data: [],
-        message: `Queue ${queueKey} is empty`,
-      });
+      res.apiSuccess([], `Queue ${queueKey} is empty`);
+      return;
     }
 
     const queueData = await redisClient.lrange(queueKey, 0, -1);
@@ -133,17 +136,8 @@ export const discoveryQueueController = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: queueitems,
-      message: "Queue fetched successfully",
-    });
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  } finally {
-    redisClient.quit();
-  }
-};
+    logger.info(`Queue fetched: ${queueKey} with ${queueitems.length} items`);
+
+    res.apiSuccess(queueitems, "Queue fetched successfully");
+  },
+);

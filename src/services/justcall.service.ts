@@ -1,22 +1,18 @@
 // services/justcall.service.ts
-import Redis from "ioredis";
 import crypto from "crypto";
 import db from "@/database/postgres";
+import { getConnectedRedis } from "@/config/redis";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
+
+const logger = getServiceLogger("JustCallService");
 
 type TriggerInput = {
   action: string;
   payload: Record<string, any>;
 };
 
-/* ---------------- REDIS CLIENT (REUSED) ---------------- */
-const redisClient = new Redis({
-  host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-  password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-  maxRetriesPerRequest: 1,
-  enableAutoPipelining: true,
-});
-
-/* ---------------- QUEUES ---------------- */
+/* ---------------- QUEUE NAMES (CONFIG) ---------------- */
 const TEMPLATE_QUEUE = "JC_QUEUE";
 const MESSAGE_QUEUE = "JUSTCALL_MESSAGE_QUEUE";
 
@@ -30,20 +26,35 @@ export class JustCallTriggerService {
     _id: string;
   }): Promise<string> {
     try {
+      const redisClient = await getConnectedRedis();
+
+      if (!redisClient) {
+        throw new ErrorHandler("Redis connection unavailable", 503);
+      }
+
       const jobData = JSON.stringify({ template, triggerId: _id });
 
       await redisClient.rpush(TEMPLATE_QUEUE, jobData);
 
+      logger.info(`Template queued for processing: ${_id}`);
       return `Queued template for processing`;
-    } catch (error) {
-      console.error("verifyTemplate error:", error);
-      throw error;
+    } catch (error: any) {
+      logger.error("verifyTemplate error:", error);
+      if (error instanceof ErrorHandler) throw error;
+      throw new ErrorHandler("Failed to queue template verification", 500);
     }
   }
 
   /* ---------------- SEND MESSAGE ---------------- */
   static async sendMsg({ action, payload }: TriggerInput): Promise<void> {
     try {
+      const redisClient = await getConnectedRedis();
+
+      if (!redisClient) {
+        logger.warn("Redis unavailable - message queuing skipped");
+        return;
+      }
+
       /* -------- FETCH TRIGGER FROM POSTGRES -------- */
       const trigger = await db.jc_triggers.findOne({
         where: {
@@ -54,7 +65,7 @@ export class JustCallTriggerService {
       });
 
       if (!trigger) {
-        console.warn(`No active trigger for action: ${action}`);
+        logger.warn(`No active trigger for action: ${action}`);
         return;
       }
 
@@ -82,14 +93,16 @@ export class JustCallTriggerService {
       );
 
       if (!isNew) {
-        console.log("Duplicate skipped:", message);
+        logger.info("Duplicate message skipped:", message);
         return;
       }
 
       /* -------- PUSH TO QUEUE -------- */
       await redisClient.rpush(MESSAGE_QUEUE, JSON.stringify(message));
-    } catch (error) {
-      console.error("sendMsg error:", error);
+
+      logger.info(`Message queued for action: ${action}`);
+    } catch (error: any) {
+      logger.error("sendMsg error:", error);
     }
   }
 }

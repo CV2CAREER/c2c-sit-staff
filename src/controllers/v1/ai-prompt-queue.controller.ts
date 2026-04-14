@@ -1,74 +1,78 @@
 // controllers/v1/ai-prompt-queue.controller.ts
 import { Request, Response } from "express";
-import Redis from "ioredis";
+import { getConnectedRedis } from "@/config/redis";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
+import catchAsyncError from "@/utils/catchAsyncError";
 
-const rdClient = new Redis({
-  host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-  password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-});
+const logger = getServiceLogger("ai-prompt-queue");
 
 const QUEUE = "ANSWERED_QUESTION_AI_PROMPT_QUEUE";
 
-export const aiPromptQueueController = async (req: Request, res: Response) => {
-  const method = req.method.toLowerCase();
+export const aiPromptQueueController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const method = req.method.toLowerCase();
+    const rdClient = await getConnectedRedis();
 
-  try {
+    if (!rdClient) {
+      throw new ErrorHandler("Redis unavailable", 503);
+    }
+
     /* ---------------- GET ---------------- */
     if (method === "get") {
+      logger.info("Retrieving AI prompt queue");
       let result = await rdClient.lrange(QUEUE, 0, -1);
       result = result.map((e) => e.split(":;")[0]);
 
-      return res.status(200).json({ result });
+      return res.apiSuccess({ result }, "Queue retrieved");
     }
 
     /* ---------------- DELETE ---------------- */
     if (method === "delete") {
+      logger.info("Clearing AI prompt queue");
       const values = await rdClient.lrange(QUEUE, 0, -1);
 
       if (!values.length) {
-        return res.status(401).json({
-          deleted: 0,
-          message: "Queue empty",
-        });
+        throw new ErrorHandler("Queue empty", 400);
       }
 
       for (const value of values) {
         await rdClient.lrem(QUEUE, 1, value);
       }
 
-      return res.status(200).json({
-        message: "deleted values from ANSWERED_QUESTION_AI_PROMPT_QUEUE",
-      });
+      return res.apiSuccess(
+        { count: values.length },
+        "Cleared values from ANSWERED_QUESTION_AI_PROMPT_QUEUE",
+      );
     }
 
     /* ---------------- POST ---------------- */
     if (method === "post") {
       const input: string = req.body.input;
 
+      if (!input) {
+        throw new ErrorHandler("Input is required", 400);
+      }
+
+      logger.info(`Adding to AI prompt queue: ${input}`);
       const values = await rdClient.lrange(QUEUE, 0, -1);
 
       if (values.includes(input)) {
-        return res.status(200).json({
-          saved: false,
-          queue: values,
-        });
+        logger.info("Input already in queue");
+        return res.apiSuccess(
+          { saved: false, queue: values },
+          "Input already in queue",
+        );
       }
 
       await rdClient.lpush(QUEUE, input);
 
-      return res.status(200).json({
-        saved: true,
-        queue: values,
-      });
+      return res.apiSuccess(
+        { saved: true, queue: [...values, input] },
+        "Input added to queue",
+      );
     }
 
-    return res.status(405).json({
-      message: `Method ${method.toUpperCase()} not allowed`,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
+    throw new ErrorHandler(`Method ${method.toUpperCase()} not allowed`, 405);
+  },
+);

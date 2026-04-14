@@ -1,34 +1,27 @@
 // controllers/v1/applications.controller.ts
 import { Request, Response } from "express";
-import Redis from "ioredis";
 import db from "@/database/postgres";
 import { Op } from "sequelize";
+import { getConnectedRedis } from "@/config/redis";
+import catchAsyncError from "@/utils/catchAsyncError";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
 
-const redisClient = new Redis({
-  host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-  password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-  maxRetriesPerRequest: 1,
-  enableAutoPipelining: true,
-});
+const logger = getServiceLogger("applications-controller");
 
-export const applicationsController = async (req: Request, res: Response) => {
-  try {
+export const applicationsController = catchAsyncError(
+  async (req: Request, res: Response) => {
     if (req.method === "GET") {
       return handleGetApplications(req, res);
     }
 
-    return res.status(405).json({
-      message: "Method not allowed",
-    });
-  } catch (error) {
-    console.error("Applications error:", error);
-    return res.status(500).json({
-      message: "Server error",
-    });
-  }
-};
+    throw new ErrorHandler("Method not allowed", 405);
+  },
+);
 
 async function handleGetApplications(req: Request, res: Response) {
+  const redisClient = await getConnectedRedis();
+
   try {
     const skip = Number(req.query.skip) || 0;
     const limit = Math.min(Number(req.query.limit) || 50, 100); // cap for performance
@@ -38,12 +31,18 @@ async function handleGetApplications(req: Request, res: Response) {
 
     const where: any = {};
 
-    /* ---------------- Redis cached unique count ---------------- */
-    const redisData = await redisClient.get("uniqueJobIdCounts");
+    /* ---------------- Redis cached unique count (optional) ---------------- */
     let uniqueCount = 0;
 
-    if (redisData) {
-      uniqueCount = JSON.parse(redisData).uniqueCount;
+    if (redisClient) {
+      try {
+        const redisData = await redisClient.get("uniqueJobIdCounts");
+        if (redisData) {
+          uniqueCount = JSON.parse(redisData).uniqueCount;
+        }
+      } catch (err) {
+        logger.warn("Redis unavailable, skipping cache lookup");
+      }
     }
 
     /* ---------------- filters ---------------- */
@@ -102,16 +101,16 @@ async function handleGetApplications(req: Request, res: Response) {
       db.applications.count({ where }),
     ]);
 
-    return res.status(200).json({
-      message: "Applications fetched",
-      data: rows,
-      totalCount: total,
-      uniqueCount,
-    });
-  } catch (error) {
-    console.error("GET applications error:", error);
-    return res.status(500).json({
-      message: "Server error",
-    });
+    logger.info(
+      `Applications fetched: ${total} total, ${rows.length} in this page`,
+    );
+
+    res.apiSuccess(
+      { applications: rows, totalCount: total, uniqueCount },
+      "Applications fetched successfully",
+    );
+  } catch (error: any) {
+    logger.error("GET applications error:", error);
+    throw new ErrorHandler("Failed to fetch applications", 500);
   }
 }
