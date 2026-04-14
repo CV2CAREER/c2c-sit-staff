@@ -6,6 +6,7 @@ import {
   logoutUser as logoutUserService,
   getClients as getClientsService,
   getAssistants as getAssistantsService,
+  getUsersByRoles as getUsersByRolesService,
   getAllUsers as getAllUsersService
 } from "../../services/user.service";
 import catchAsyncError from "../../utils/catchAsyncError";
@@ -167,6 +168,25 @@ export const getAssistants = catchAsyncError(
         count: pcUsers.length
       },
       "Placement Control (PC) retrieved successfully",
+    );
+  },
+);
+
+// Get all staff users with roles assistant, admin, coach, technology
+export const getUsersByRoles = catchAsyncError(
+  async (req: Request, res: Response) => {
+    logger.info(`Processing request to get users by staff roles`);
+
+    const users = await getUsersByRolesService();
+
+    logger.info(`Retrieved ${users.length} staff users`);
+
+    res.apiSuccess(
+      {
+        users,
+        count: users.length
+      },
+      "Staff users retrieved successfully",
     );
   },
 );

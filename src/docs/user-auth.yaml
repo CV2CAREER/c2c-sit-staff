@@ -157,6 +157,60 @@ paths:
                 statusCode: 403
                 data: null
 
+  /v1/user/staff:
+    get:
+      tags:
+        - User Authentication
+      summary: Get staff users for audit trail filtering
+      description: |
+        Retrieves active users with staff-level roles for use in user filters.
+        This endpoint returns users with the following roles: assistant, admin, coach, and technology.
+      operationId: getUsersByRoles
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Staff users retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  statusCode:
+                    type: number
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            firstName:
+                              type: string
+                            lastName:
+                              type: string
+                            email:
+                              type: string
+                              format: email
+                            role:
+                              type: string
+                            isActive:
+                              type: boolean
+                      count:
+                        type: number
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin or assistant role required
+
   /v1/user/promote/{userId}:
     patch:
       tags:
