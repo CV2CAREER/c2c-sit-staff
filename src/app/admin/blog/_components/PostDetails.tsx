@@ -24,7 +24,7 @@ const ContentDisplay = () => {
     const fetchPost = async () => {
       if (id) {
         try {
-          const response = await fetch(`/api/blog/${id}`);
+          const response = await fetch(`/api/v1/blog/${id}`);
           const data = await response.json();
 
           setPost(data);

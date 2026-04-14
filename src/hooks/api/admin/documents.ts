@@ -118,7 +118,7 @@ export const useDocumentsMutations = () => {
     }),
     fileUploadMutation: useMutateData<any, FormData>({
       method: "POST",
-      url: "/api/fileupload",
+      url: "/api/v1/fileupload",
       mutationKey: ["admin-file-upload"],
       onSuccess: () => {},
       onError: () => {},

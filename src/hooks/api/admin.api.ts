@@ -8,6 +8,7 @@ import { usePricingQueries, usePricingMutations } from "./admin/pricing";
 import { useClientSampleQueries, useClientSampleMutations } from "./admin/client-sample";
 import { useDocumentsQueries, useDocumentsMutations } from "./admin/documents";
 import { useSystemQueries, useSystemMutations } from "./admin/system";
+import { useChatbotQueries, useChatbotMutations } from "./admin/chatbot";
 
 export * from "./admin/types";
 
@@ -20,6 +21,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
   const clientSample = useClientSampleQueries(options);
   const documents = useDocumentsQueries(options);
   const system = useSystemQueries(options);
+  const chatbot = useChatbotQueries(options);
 
   return useMemo(() => ({
     ...dashboard,
@@ -30,7 +32,8 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     ...clientSample,
     ...documents,
     ...system,
-  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system]);
+    ...chatbot,
+  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot]);
 };
 
 export const useAdminMutations = () => {
@@ -41,6 +44,7 @@ export const useAdminMutations = () => {
   const clientSample = useClientSampleMutations();
   const documents = useDocumentsMutations();
   const system = useSystemMutations();
+  const chatbot = useChatbotMutations();
 
   return {
     ...users,
@@ -50,5 +54,6 @@ export const useAdminMutations = () => {
     ...clientSample,
     ...documents,
     ...system,
+    ...chatbot,
   };
 };
