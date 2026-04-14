@@ -76,6 +76,8 @@
     "react": "^18",
     "react-chartjs-2": "^5.3.1",
     "react-day-picker": "^9.14.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18",
     "react-dropzone": "^15.0.0",
     "react-google-drive-picker": "^1.2.2",

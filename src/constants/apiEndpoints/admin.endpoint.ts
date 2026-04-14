@@ -21,9 +21,17 @@ export const ADMIN_SCHEMA_DELETE_COLUMN = (tableName: string, columnName: string
 export const ADMIN_THROTTLE = "/api/v1/admin/throttle";
 export const ADMIN_STATUS = "/api/v1/admin/status";
 export const ADMIN_JOBSITES = "/api/v1/aggregator";
+
+export const ADMIN_AUDIT_TRAIL = "/api/v1/audit-trail";
+export const ADMIN_AUDIT_TRAIL_PASSKEY = "/api/v1/audit-trail/passkey";
+export const ADMIN_AUDIT_TRAIL_PASSKEY_VERIFY = "/api/v1/audit-trail/passkey/verify";
+
 export const ADMIN_LOCATIONS = "/api/v1/admin/locations";
 export const ADMIN_PRICING_PLANS = "/api/v1/admin/pricing-plans";
 export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info/${id}`;
+
+export const USER_STAFF = "/api/v1/user/staff";
+
 export const ADMIN_CAMPAIGN = "/api/v1/admin/campaign";
 export const ADMIN_CAMPAIGN_SHEET = "/api/v1/admin/campaign/sheet";
 export const ADMIN_CAMPAIGN_SHEET_UPDATE = "/api/v1/admin/campaign/sheet/update";
@@ -116,6 +124,12 @@ export const ADMIN_SYSTEM_LOGS = "/api/v1/logs";
 export const ADMIN_SYSTEM_LOGS_EXPORT = "/api/v1/logs/export/csv";
 export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
 export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
+export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/admin/documents/upload";
+export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and-upload-url";
+
+// slack management
+export const ADMIN_SLACK_MANAGE = "/api/v1/slack-manage";
+export const ADMIN_SLACK_MANAGE_WITH_ID = (id: string) => `/api/v1/slack-manage/${id}`;
 export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/v1/admin/documents/upload";
 export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/v1/admin/documents/validate-and-upload-url";
 export const ADMIN_CHATBOT_TRAIN = "/api/v1/admin/support-ai-prompt";
