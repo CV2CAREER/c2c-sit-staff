@@ -130,7 +130,7 @@ app.get("/api", async (_, res: Response) => {
 });
 
 // Testing endpoint
-app.get("/api/health", (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/v1/health", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
     success: true,
     message: "API is healthy",
