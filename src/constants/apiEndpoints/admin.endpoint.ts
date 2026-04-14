@@ -56,7 +56,7 @@ export const ADMIN_DISPATCH_CLIENT = "/api/v1/user/dispatch-client";
 export const ADMIN_USER_EXTRACT_CV = "/api/v1/admin/extract-cv-data";
 export const ADMIN_UPDATE_USER_PROGRESS = "/api/v1/admin/user-progress";
 export const ADMIN_ASSIGN_VA = "/api/v1/admin/assign-va";
-export const SHORTEN_WORDS = "/api/shortenWords";
+export const SHORTEN_WORDS = "/api/v1/shortenWords";
 
 // Dropdown/Schema management
 export const ADMIN_DROPDOWN = "/api/v1/admin/dropdown";
@@ -119,8 +119,10 @@ export const ADMIN_CR_TRACKING_MODIFY = "/api/v1/cr-tracking/modify";
 export const ADMIN_CR_TRACKING_RESTORE = "/api/v1/cr-tracking/restore";
 export const ADMIN_CR_TRACKING_DELETE = "/api/v1/cr-tracking/delete";
 // Note: EOT, History, and Notify-Nil currently have no backend routes mounted in v1
-export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
 export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/cr-tracking/history";
+export const ADMIN_SYSTEM_LOGS = "/api/v1/logs";
+export const ADMIN_SYSTEM_LOGS_EXPORT = "/api/v1/logs/export/csv";
+export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
 export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
 export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/admin/documents/upload";
 export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and-upload-url";
@@ -128,3 +130,6 @@ export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and
 // slack management
 export const ADMIN_SLACK_MANAGE = "/api/v1/slack-manage";
 export const ADMIN_SLACK_MANAGE_WITH_ID = (id: string) => `/api/v1/slack-manage/${id}`;
+export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/v1/admin/documents/upload";
+export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/v1/admin/documents/validate-and-upload-url";
+export const ADMIN_CHATBOT_TRAIN = "/api/v1/admin/support-ai-prompt";

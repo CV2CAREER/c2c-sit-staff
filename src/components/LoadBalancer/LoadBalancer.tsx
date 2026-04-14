@@ -132,7 +132,7 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       setIsLoading(true);
       // Fetch queues based on the selected jobsite
       setDiscoveryQueue([]); // Reset discoveryQueue before fetching new data
-      const url = selectedJobsite === 'All' ? '/api/admin/client-sample/loadBalancer' : `/api/admin/client-sample/loadBalancer?jobsite=${selectedJobsite}`;
+      const url = selectedJobsite === 'All' ? '/api/v1/admin/client-sample/loadBalancer' : `/api/v1/admin/client-sample/loadBalancer?jobsite=${selectedJobsite}`;
       const res = await fetch(url);
       const result = await res.json();
       if (result.success) {
