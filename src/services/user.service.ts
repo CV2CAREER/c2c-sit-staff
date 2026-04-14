@@ -100,45 +100,45 @@ Next steps: User should verify email or contact support for assistance.`,
 };
 
 // Promote User to Admin
-export const promoteUserToAdmin = async (userId: string, newRole: string, requestingUserId: string) => {
+export const promoteUserToAdmin = async (userId: string, newRole: string) => {
   logger.info(`Attempting to promote user ID: ${userId} to role: ${newRole}`);
-  
+
   // Check if the requesting user is an admin
-  const requestingUser = await User.findByPk(requestingUserId);
-  if (!requestingUser) {
-    logger.warn(`Promotion failed: Requesting user not found: ${requestingUserId}`);
-    throw new ErrorHandler("Requesting user not found", 404);
-  }
+  //   const requestingUser = await User.findByPk(requestingUserId);
+  //   if (!requestingUser) {
+  //     logger.warn(`Promotion failed: Requesting user not found: ${requestingUserId}`);
+  //     throw new ErrorHandler("Requesting user not found", 404);
+  //   }
 
-  if (requestingUser.role !== "admin") {
-    logger.warn(`Promotion failed: User ${requestingUserId} (${requestingUser.email}) is not an admin`);
-    
-    // Send Slack notification for unauthorized promotion attempt
-    setImmediate(async () => {
-      try {
-        await SlackService.notify({
-          node: SlackNode.USER_MANAGEMENT,
-          provider: SlackProvider.SYSTEM,
-          severity: SlackSeverity.INFO,
-          trigger: "Unauthorized promotion attempt",
-          type: SlackEventType.USER_TRIGGERED,
-          channel: SlackChannel.TOWN_CRIER,
-          body: `Unauthorized promotion attempt detected.
-What happened: ${requestingUser.firstName} ${requestingUser.lastName} (${requestingUser.email}) attempted to promote user ${userId} to ${newRole}.
-Immediate impact: Promotion blocked - user is not an admin.
-Next steps: Only admin users can perform promotions. Consider escalating if this was an authorized request.`,
-        });
-        logger.info(`✅ Slack notified of unauthorized promotion attempt: ${requestingUser.email}`);
-      } catch (err) {
-        logger.error(`❌ Slack notification failed: ${err}`);
-      }
-    });
+  //   if (requestingUser.role !== "admin") {
+  //     logger.warn(`Promotion failed: User ${requestingUserId} (${requestingUser.email}) is not an admin`);
 
-    throw new ErrorHandler("Only admin users can promote users to admin roles", 403);
-  }
+  //     // Send Slack notification for unauthorized promotion attempt
+  //     setImmediate(async () => {
+  //       try {
+  //         await SlackService.notify({
+  //           node: SlackNode.USER_MANAGEMENT,
+  //           provider: SlackProvider.SYSTEM,
+  //           severity: SlackSeverity.INFO,
+  //           trigger: "Unauthorized promotion attempt",
+  //           type: SlackEventType.USER_TRIGGERED,
+  //           channel: SlackChannel.TOWN_CRIER,
+  //           body: `Unauthorized promotion attempt detected.
+  // What happened: ${requestingUser.firstName} ${requestingUser.lastName} (${requestingUser.email}) attempted to promote user ${userId} to ${newRole}.
+  // Immediate impact: Promotion blocked - user is not an admin.
+  // Next steps: Only admin users can perform promotions. Consider escalating if this was an authorized request.`,
+  //         });
+  //         logger.info(`✅ Slack notified of unauthorized promotion attempt: ${requestingUser.email}`);
+  //       } catch (err) {
+  //         logger.error(`❌ Slack notification failed: ${err}`);
+  //       }
+  //     });
+
+  //     throw new ErrorHandler("Only admin users can promote users to admin roles", 403);
+  //   }
 
   const user = await User.findByPk(userId);
-  
+
   if (!user) {
     logger.warn(`Promotion failed: User not found for ID: ${userId}`);
     throw new ErrorHandler("User not found", 404);
@@ -179,7 +179,7 @@ Next steps: Only admin users can perform promotions. Consider escalating if this
 // Logout User
 export const logoutUser = async (token: string, userId: string) => {
   logger.info(`Processing logout request for user ID: ${userId}`);
-  
+
   try {
     // Decode the token to get expiration time
     const decoded = jwt.decode(token) as any;
@@ -204,7 +204,7 @@ export const logoutUser = async (token: string, userId: string) => {
 // Get all users with role 'client'
 export const getClients = async () => {
   logger.info(`Retrieving all clients from database`);
-  
+
   const clients = await User.findAll({
     where: {
       role: 'client',
@@ -224,7 +224,7 @@ export const getClients = async () => {
 // Get all users with role 'assistant' (returned as PC - Placement Control)
 export const getAssistants = async () => {
   logger.info(`Retrieving all assistants from database`);
-  
+
   const assistants = await User.findAll({
     where: {
       role: 'assistant',
@@ -247,10 +247,30 @@ export const getAssistants = async () => {
   return pcUsers;
 };
 
+// Get all users with selected staff roles
+export const getUsersByRoles = async (roles: string[] = ['assistant', 'admin', 'coach', 'technology']) => {
+  logger.info(`Retrieving all users with roles: ${roles.join(', ')}`);
+
+  const users = await User.findAll({
+    where: {
+      role: roles,
+      isActive: true,
+      deletedAt: null
+    },
+    attributes: {
+      exclude: ['password', 'accessToken', 'adminPassword']
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  logger.info(`Retrieved ${users.length} users with staff roles from database`);
+  return users;
+};
+
 // Get all users (for admin and assistant roles)
 export const getAllUsers = async () => {
   logger.info(`Retrieving all users from database`);
-  
+
   const users = await User.findAll({
     where: {
       isActive: true,

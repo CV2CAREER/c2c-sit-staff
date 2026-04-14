@@ -1,0 +1,72 @@
+# OpenAPI specification for Assistant API endpoints
+
+paths:
+  /v1/assistant/clients-assigned:
+    get:
+      tags:
+        - Assistant
+      summary: Get assigned clients and statistics
+      description: Returns all clients assigned to the authenticated assistant along with dashboard statistics
+      operationId: getClientsAssigned
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved assigned clients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      clients:
+                        type: array
+                        items:
+                          type: string
+                        description: Formatted client names for dropdown selection
+                        example: ["John Doe - CLIENT-001", "Jane Smith - jane@example.com"]
+                      clientsApplication:
+                        type: array
+                        items:
+                          type: object
+                        description: Full application records for assigned clients
+                      totalApplications:
+                        type: number
+                        description: Total number of applications for all assigned clients
+                        example: 127
+                      totalUnattended:
+                        type: number
+                        description: Count of pending/new/unattended applications
+                        example: 23
+        '401':
+          description: Unauthorized - User not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Unauthorized - User not authenticated"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Failed to fetch assigned clients"

@@ -44,6 +44,10 @@ import coachRouterV1 from "./routes/v1/coach.route";
 import scheduleRouterV1 from "./routes/v1/schedule.route";
 import availabilityRouterV1 from "./routes/v1/availability.route";
 import sessionsRouterV1 from "./routes/v1/sessions.route";
+import slackManageRouterV1 from "./routes/v1/slack-manage.route";
+import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
+// Assistant routes
+import assistantRouterV1 from "./routes/v1/assistant.route";
 
 export const app = express();
 
@@ -130,7 +134,7 @@ app.get("/api", async (_, res: Response) => {
 });
 
 // Testing endpoint
-app.get("/api/health", (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/v1/health", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
     success: true,
     message: "API is healthy",
@@ -151,6 +155,8 @@ app.use("/api/v1", requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
+app.use("/api/v1/slack-manage", slackManageRouterV1);
+app.use("/api/v1/audit-trail", auditTrailRouterV1);
 app.use("/api/v1/document", documentRouterV1);
 app.use("/api/v1/feature", featureRouterV1);
 app.use("/api/v1/aggregator", aggregatorRouterV1);
@@ -171,6 +177,8 @@ app.use("/api/v1/coaches", coachRouterV1);
 app.use("/api/v1/schedules", scheduleRouterV1);
 app.use("/api/v1/availabilities", availabilityRouterV1);
 app.use("/api/v1/sessions", sessionsRouterV1);
+// Assistant routes (must be after auth middleware to get user info)
+app.use("/api/v1/assistant", assistantRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
