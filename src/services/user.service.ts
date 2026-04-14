@@ -247,6 +247,26 @@ export const getAssistants = async () => {
   return pcUsers;
 };
 
+// Get all users with selected staff roles
+export const getUsersByRoles = async (roles: string[] = ['assistant', 'admin', 'coach', 'technology']) => {
+  logger.info(`Retrieving all users with roles: ${roles.join(', ')}`);
+
+  const users = await User.findAll({
+    where: {
+      role: roles,
+      isActive: true,
+      deletedAt: null
+    },
+    attributes: {
+      exclude: ['password', 'accessToken', 'adminPassword']
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  logger.info(`Retrieved ${users.length} users with staff roles from database`);
+  return users;
+};
+
 // Get all users (for admin and assistant roles)
 export const getAllUsers = async () => {
   logger.info(`Retrieving all users from database`);
