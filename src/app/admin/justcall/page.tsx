@@ -3,7 +3,6 @@ import { useState, useMemo, useCallback } from "react";
 import { RefreshCcwIcon } from "lucide-react";
 import { GridColDef } from "@mui/x-data-grid";
 import toast from "react-hot-toast";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Switch } from "antd";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,13 +44,13 @@ export default function TemplateManager() {
   });
 
   const updateTriggerMutation = useMutation({
-    mutationFn: (updatedTrigger: {
+    mutationFn: (_updatedTrigger: {
       id: number;
       template?: string;
       status?: "active" | "inactive";
     }) => {
       // Endpoint will be provided later - placeholder for now
-      // return axios.put("/api/admin/justcall", updatedTrigger);
+      // return axios.put("/api/admin/justcall", _updatedTrigger);
       return Promise.resolve();
     },
     onMutate: async (updatedTrigger) => {
@@ -73,8 +72,7 @@ export default function TemplateManager() {
     onSuccess: () => {
       toast.success("Trigger updated successfully");
     },
-    onError: (err, updatedTrigger, context) => {
-      console.error("Error updating trigger:", err);
+    onError: (_err, _updatedTrigger, context) => {
       toast.error("Failed to update trigger");
       if (context?.previousTriggers) {
         queryClient.setQueryData(
@@ -161,8 +159,7 @@ export default function TemplateManager() {
       <div className="w-full h-[500px] mt-8">
         <TableWithHeaderClass
           rows={triggers || []}
-          // @ts-ignore
-          columns={columns}
+            columns={columns}
           loading={isTriggersLoading || updateTriggerMutation.isPending}
           getRowId={(row) => row._id}
           disableRowSelectionOnClick

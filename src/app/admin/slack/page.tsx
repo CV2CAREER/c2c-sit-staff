@@ -408,8 +408,7 @@ export default function SlackMessagesCRUD() {
       form.resetFields();
       setIsDrawerOpen(false);
       setEditingMsg(null);
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error('Failed to save message');
     }
   };

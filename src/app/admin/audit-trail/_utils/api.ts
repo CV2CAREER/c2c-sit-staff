@@ -3,7 +3,6 @@ import {
   ADMIN_AUDIT_TRAIL,
   ADMIN_AUDIT_TRAIL_PASSKEY,
   ADMIN_AUDIT_TRAIL_PASSKEY_VERIFY,
-  ADMIN_USERS,
   USER_STAFF,
 } from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
@@ -61,8 +60,8 @@ export const setDbPassKey = async (passKey: string): Promise<{ message: string }
 };
 
 export const updateUserDetails = async (
-  payload: any,
-  id: string,
+  _payload?: any,
+  _id?: string
 ): Promise<{ message: string }> => {
   // Keep placeholder until a dedicated audit trail edit API is available.
   return Promise.resolve({ message: "Changes saved successfully (stub)" });

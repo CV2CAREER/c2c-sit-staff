@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { IColumnValues, PaginationData } from "./types";
 import { modifyHeader, modifyRowData, reOrderKeys } from "@/utils/newTableFunc";
-import { moveTo, orderTable, toURLParams } from "@/utils/table";
+import { moveTo, orderTable } from "@/utils/table";
 import { applyDateSort } from "@/utils/dateSort";
 import { camelCaseToSentenceCase, addDescription } from "@/utils/table";
 import { updateUserDetails } from "../_utils/api";
@@ -48,9 +48,8 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
       toast.success("Changes saved successfully");
       queryClient.invalidateQueries({ queryKey: ["auditTrails"] });
     },
-    onError: (error) => {
+    onError: () => {
       toast.error("Failed to save changes.");
-      console.error("Update user details error:", error);
     },
   });
 
@@ -75,13 +74,13 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
         payload: newModel,
         id: newModel._id,
       });
-    } catch (error) {
-      console.error("Error during row update:", error);
+    } catch {
+      toast.error("An error occurred while updating the row.");
     }
   };
 
-  const handleProcessRowUpdateError = (error: any) => {
-    console.error(error);
+  const handleProcessRowUpdateError = () => {
+    toast.error("An error occurred while processing the row update.");
   };
 
   useEffect(() => {
@@ -144,8 +143,8 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
     }
   }, [auditTrailsData, editMode, queryClient]);
 
-  const handleSelectionChange = (newSelection: any) => {
-    console.log("Selected rows:", newSelection);
+  const handleSelectionChange = (_newSelection: any) => {
+    // selection change currently unused
   };
 
   return (

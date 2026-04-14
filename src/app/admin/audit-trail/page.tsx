@@ -30,7 +30,7 @@ const AuditTrailPageContent = () => {
   const searchParams = useSearchParams();
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [selectedUserEmail, setSelectedUserEmail] = useState<string>("");
-  const [editMode, setEditMode] = useState(false);
+  const editMode = false;
   const scrollPositionRef = useRef<number | null>(null);
   const [showAuthorizationPrompt, setShowAuthorizationPrompt] =
     useState<boolean>(true);

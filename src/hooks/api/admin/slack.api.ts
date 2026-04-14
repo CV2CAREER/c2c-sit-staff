@@ -33,8 +33,7 @@ export const useSlackMutations = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-slack-messages"] });
       toast.success('Message created successfully');
     },
-    onError: (error) => {
-      console.error('Failed to create slack message:', error);
+    onError: () => {
       toast.error('Failed to create message');
     }
   });
@@ -49,8 +48,7 @@ export const useSlackMutations = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-slack-messages"] });
       toast.success('Message updated successfully');
     },
-    onError: (error) => {
-      console.error('Failed to update slack message:', error);
+    onError: () => {
       toast.error('Failed to update message');
     }
   });
@@ -65,8 +63,7 @@ export const useSlackMutations = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-slack-messages"] });
       toast.success('Message deleted successfully');
     },
-    onError: (error) => {
-      console.error('Failed to delete slack message:', error);
+    onError: () => {
       toast.error('Failed to delete message');
     }
   });
