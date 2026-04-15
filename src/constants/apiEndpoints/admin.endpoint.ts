@@ -124,8 +124,6 @@ export const ADMIN_SYSTEM_LOGS = "/api/v1/logs";
 export const ADMIN_SYSTEM_LOGS_EXPORT = "/api/v1/logs/export/csv";
 export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
 export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
-export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/admin/documents/upload";
-export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/admin/documents/validate-and-upload-url";
 
 // slack management
 export const ADMIN_SLACK_MANAGE = "/api/v1/slack-manage";
@@ -133,3 +131,10 @@ export const ADMIN_SLACK_MANAGE_WITH_ID = (id: string) => `/api/v1/slack-manage/
 export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD = "/api/v1/admin/documents/upload";
 export const ADMIN_CR_TRACKING_VALIDATE_URL = "/api/v1/admin/documents/validate-and-upload-url";
 export const ADMIN_CHATBOT_TRAIN = "/api/v1/admin/support-ai-prompt";
+export const ADMIN_CHATBOT_LOGS = "/api/v1/admin/chatbot-logs";
+export const ADMIN_SUPPORT_DESK = "/api/v1/support";
+export const ADMIN_SUPPORT_DESK_MESSAGES = (sessionId: string) =>
+  `/api/v1/support/${sessionId}/messages`;
+export const ADMIN_SUPPORT_DESK_ASSIGN = "/api/v1/support/assign";
+export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
+  `/api/v1/support/${sessionId}/end`;
