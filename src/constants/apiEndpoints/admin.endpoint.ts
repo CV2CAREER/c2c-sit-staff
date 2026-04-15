@@ -138,3 +138,4 @@ export const ADMIN_SUPPORT_DESK_MESSAGES = (sessionId: string) =>
 export const ADMIN_SUPPORT_DESK_ASSIGN = "/api/v1/support/assign";
 export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
   `/api/v1/support/${sessionId}/end`;
+export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";

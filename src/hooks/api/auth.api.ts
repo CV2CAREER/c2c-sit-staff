@@ -15,12 +15,12 @@ export const ROLE_ROUTES: Record<string, string> = {
   sales: "/sales/dashboard",
   coach: "/coach/dashboard",
   customer: "/cse/dashboard",
-  assistant: "/admin/dashboard", // Shared admin area
-  tpc: "/admin/dashboard",       // Shared admin area
+  assistant: "/assistant/dashboard",
+  tpc: "/assistant/dashboard",
   client: "/login",              // Fallback for client (no client dashboard yet)
   guest: "/login",
-  test: "/admin/dashboard",
-  pc: "/admin/dashboard",        // Map pc to admin area
+  test: "/assistant/dashboard",
+  pc: "/assistant/dashboard",
 };
 
 export function getRoleRoute(role: StaffRole | string): string {
