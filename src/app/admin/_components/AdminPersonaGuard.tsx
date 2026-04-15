@@ -8,4 +8,4 @@ function Guard({ children }: { children: ReactNode }) {
 }
 
 // Wrap the simple Guard component with the existing persona guard HOC
-export default withPersonaGuard(Guard, "admin");
+export default withPersonaGuard(Guard, ["admin", "assistant", "tpc", "pc", "test"]);

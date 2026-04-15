@@ -197,17 +197,20 @@ export function camelCaseToSentenceCase(str: string) {
 export const getRedirectPathBasedonUserRole = (userRole: UserRoles): string => {
   switch (userRole) {
     case UserRoles.ADMIN:
+    case UserRoles.ASSISTANT:
+    case UserRoles.TPC:
+    case UserRoles.PC:
       return "/admin/dashboard";
     case UserRoles.PARTNER:
-      return "/partner-dashboard/home";
+      return "/partner/dashboard";
     case UserRoles.SALES:
-      return "/sales-dashboard/home";
+      return "/sales/dashboard";
     case UserRoles.COACH:
       return "/coach/dashboard";
     case UserRoles.CSE:
-      return "/cse-dashboard";
+      return "/cse/dashboard";
     default:
-      return "/dashboard";
+      return "/login";
   }
 };
 

@@ -10,13 +10,24 @@ import { useQueryClient } from "@tanstack/react-query";
  */
 
 export const useChatbotQueries = (options: AdminQueriesOptions) => {
-  const { fetchChatbotTrainer = false } = options;
+  const { 
+    fetchChatbotTrainer = false,
+    fetchChatbotLogs = false,
+    chatbotLogsDate = "",
+  } = options;
 
   const supportAiPrompt = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_CHATBOT_TRAIN,
     queryKey: ["admin-support-ai-prompt"],
     enabled: fetchChatbotTrainer,
+  });
+
+  const chatbotLogs = useFetchData<any>({
+    method: "GET",
+    url: `${endpoints.ADMIN_CHATBOT_LOGS}?date=${chatbotLogsDate}`,
+    queryKey: ["admin-chatbot-logs", chatbotLogsDate],
+    enabled: fetchChatbotLogs && !!chatbotLogsDate,
   });
 
   return useMemo(() => ({
@@ -28,7 +39,15 @@ export const useChatbotQueries = (options: AdminQueriesOptions) => {
       error: supportAiPrompt.error,
       refetch: supportAiPrompt.refetch,
     },
-  }), [supportAiPrompt]);
+    chatbotLogsDomain: {
+      data: chatbotLogs.data?.data || chatbotLogs.data, // Handle both {data: [...]} and direct array
+      isLoading: chatbotLogs.isLoading,
+      isSuccess: chatbotLogs.isSuccess,
+      isError: chatbotLogs.isError,
+      error: chatbotLogs.error,
+      refetch: chatbotLogs.refetch,
+    },
+  }), [supportAiPrompt, chatbotLogs]);
 };
 
 export const useChatbotMutations = () => {

@@ -127,9 +127,9 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     groupId: 8,
     access: ["admin", "assistant"],
     children: [
-      { name: "Train Chatbot", href: "/admin/chat-bot/train-chatbot", icon: Bot },
-      { name: "Chatbot Logs", href: "/admin/chat-bot/chatbot-logs", icon: Bot },
-      { name: "Human Support", href: "/admin/chat-bot/human-support", icon: User },
+      { name: "Train Chatbot", href: "/admin/communication/chatbot-trainer", icon: Bot },
+      { name: "Chatbot Logs", href: "/admin/communication/chatbot-logs", icon: Bot },
+      { name: "Human Support", href: "/admin/communication/human-support", icon: User },
       { name: "Emails", href: "/admin/communication-templates", icon: Mail },
       { name: "JustCall", href: "/admin/justcall", icon: Layers },
       { name: "Slack", href: "/admin/slack", icon: SiSlack },

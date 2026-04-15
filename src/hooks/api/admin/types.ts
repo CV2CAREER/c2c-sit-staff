@@ -149,4 +149,6 @@ export interface AdminQueriesOptions {
   logsSearch?: string;
   logsType?: string;
   fetchChatbotTrainer?: boolean;
+  fetchChatbotLogs?: boolean;
+  chatbotLogsDate?: string;
 }

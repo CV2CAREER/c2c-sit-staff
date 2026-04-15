@@ -9,22 +9,23 @@ import { StaffRole } from "@/types/user.types";
 
 // --------------- Role-based dashboard routing (functional parity with staff-v2) ---------------
 
-export const ROLE_ROUTES: Record<StaffRole, string> = {
+export const ROLE_ROUTES: Record<string, string> = {
   admin: "/admin/dashboard",
   partner: "/partner/dashboard",
   sales: "/sales/dashboard",
   coach: "/coach/dashboard",
-  customer: "/cse/dashboard", // CSE role
-  assistant: "/assistant/dashboard",
-  tpc: "/assistant/dashboard",
-  client: "/dashboard",
+  customer: "/cse/dashboard",
+  assistant: "/admin/dashboard", // Shared admin area
+  tpc: "/admin/dashboard",       // Shared admin area
+  client: "/login",              // Fallback for client (no client dashboard yet)
   guest: "/login",
-  test: "/dashboard",
-  pc: "/dashboard",
+  test: "/admin/dashboard",
+  pc: "/admin/dashboard",        // Map pc to admin area
 };
 
-export function getRoleRoute(role: StaffRole): string {
-  return ROLE_ROUTES[role] ?? "/dashboard";
+export function getRoleRoute(role: StaffRole | string): string {
+  const normalizedRole = (role || "").toLowerCase();
+  return ROLE_ROUTES[normalizedRole] ?? "/login";
 }
 
 // --------------- Auth Mutations Hook ---------------

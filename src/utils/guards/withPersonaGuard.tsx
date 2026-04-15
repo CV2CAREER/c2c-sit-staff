@@ -27,9 +27,12 @@ export function withPersonaGuard<P extends object>(
       Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]
     , [allowedRoles]);
 
+    const lowerCaseUserRole = useMemo(() => (user?.role || "").toLowerCase(), [user?.role]);
+    const isAuthorized = useMemo(() => 
+      roles.some(role => role.toLowerCase() === lowerCaseUserRole)
+    , [roles, lowerCaseUserRole]);
+
     useEffect(() => {
-
-
       // 1. Unauthenticated -> Redirect to login
       if (!isLoading && !isAuthenticated) {
         router.replace("/login");
@@ -37,7 +40,7 @@ export function withPersonaGuard<P extends object>(
       }
 
       // 2. Authenticated but unauthorized role -> Redirect to specific dashboard based on actual role
-      if (!isLoading && isAuthenticated && user && !roles.includes(user.role)) {
+      if (!isLoading && isAuthenticated && user && !isAuthorized) {
         const correctRoute = getRoleRoute(user.role);
         if (window.location.pathname !== correctRoute) {
           router.replace(correctRoute);
@@ -45,7 +48,7 @@ export function withPersonaGuard<P extends object>(
           router.replace("/login"); // Fallback if their own role route is somehow unauthorized
         }
       }
-    }, [isAuthenticated, isLoading, user, router, roles]);
+    }, [isAuthenticated, isLoading, user, router, isAuthorized]);
 
 
 
@@ -61,7 +64,7 @@ export function withPersonaGuard<P extends object>(
     }
 
     // 🚫 Block rendering while unauthenticated or unauthorized
-    if (!isAuthenticated || (user && !roles.includes(user.role))) {
+    if (!isAuthenticated || (user && !isAuthorized)) {
       return (
         <div className="w-screen h-screen flex justify-center items-center">
           <div className="text-sm text-gray-500 font-medium animate-pulse">
