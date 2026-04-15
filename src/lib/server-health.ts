@@ -5,7 +5,7 @@ export const isServerOnline = async (): Promise<{
   message: string;
 }> => {
   try {
-    const res = await fetch(`${SERVER_URI}/api/v1/health`);
+    const res = await fetch(`${SERVER_URI}/api/health`);
     return { online: res.ok, message: "Server is alive" };
   } catch (error) {
     // Here we "use" the error by capturing its message
