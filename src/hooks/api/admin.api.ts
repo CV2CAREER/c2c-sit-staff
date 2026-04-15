@@ -8,6 +8,7 @@ import { usePricingQueries, usePricingMutations } from "./admin/pricing";
 import { useClientSampleQueries, useClientSampleMutations } from "./admin/client-sample";
 import { useDocumentsQueries, useDocumentsMutations } from "./admin/documents";
 import { useSystemQueries, useSystemMutations } from "./admin/system";
+import { useUnsubscribedUsersQueries, useUnsubscribedUsersMutations } from "./admin/unsubscribed-users";
 import { useChatbotQueries, useChatbotMutations } from "./admin/chatbot";
 
 export * from "./admin/types";
@@ -21,6 +22,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
   const clientSample = useClientSampleQueries(options);
   const documents = useDocumentsQueries(options);
   const system = useSystemQueries(options);
+  const unsubscribedUsers = useUnsubscribedUsersQueries(options);
   const chatbot = useChatbotQueries(options);
 
   return useMemo(() => ({
@@ -33,7 +35,8 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     ...documents,
     ...system,
     ...chatbot,
-  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot]);
+    ...unsubscribedUsers,
+  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot, unsubscribedUsers]);
 };
 
 export const useAdminMutations = () => {
@@ -54,6 +57,7 @@ export const useAdminMutations = () => {
     ...clientSample,
     ...documents,
     ...system,
+    ...useUnsubscribedUsersMutations(),
     ...chatbot,
   };
 };

@@ -143,6 +143,7 @@ export interface AdminQueriesOptions {
   crHistoryPage?: number;
   fetchEOTCRs?: boolean;
   fetchEOTOwners?: boolean;
+  fetchUnsubscribedUsers?: boolean;
   fetchSystemLogs?: boolean;
   logsPage?: number;
   logsLimit?: number;
