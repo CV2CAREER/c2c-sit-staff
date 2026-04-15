@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 
 interface PageHeaderProps {
   title: string;
+  description?: string;
   renderJSX?: React.ReactNode;
 }
 
 const PageHeader = ({
   title,
+  description,
   renderJSX,
 }: PageHeaderProps) => {
   const router = useRouter();
@@ -23,7 +25,12 @@ const PageHeader = ({
         >
           <ArrowLeft />
         </div>
-        <h2 className="text-sm md:text-xl font-bold">{title}</h2>
+        <div className="flex flex-col">
+          <h2 className="text-sm md:text-xl font-bold">{title}</h2>
+          {description && (
+            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+          )}
+        </div>
       </div>
 
       {renderJSX ? renderJSX : null}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../../useApi";
-import { useMutation} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
@@ -189,6 +189,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: adminStatus.isSuccess,
       isError: adminStatus.isError,
       error: adminStatus.error,
+      refetch: adminStatus.refetch,
     },
     botStatusDomain: {
       data: mappedBotStatus,
@@ -196,6 +197,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: adminStatus.isSuccess,
       isError: adminStatus.isError,
       error: adminStatus.error,
+      refetch: adminStatus.refetch,
     },
     answerModeDomain: {
       data: mappedAnswerMode,
@@ -203,6 +205,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: adminStatus.isSuccess,
       isError: adminStatus.isError,
       error: adminStatus.error,
+      refetch: adminStatus.refetch,
     },
     tablesDomain: {
       data: mappedTables,
@@ -210,6 +213,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: tables.isSuccess,
       isError: tables.isError,
       error: tables.error,
+      refetch: tables.refetch,
     },
     throttlesDomain: {
       data: mappedThrottles,
@@ -217,6 +221,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: throttles.isSuccess,
       isError: throttles.isError,
       error: throttles.error,
+      refetch: throttles.refetch,
     },
     adminDropdownsDomain: {
       data: adminDropdowns.data?.data,
@@ -224,6 +229,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: adminDropdowns.isSuccess,
       isError: adminDropdowns.isError,
       error: adminDropdowns.error,
+      refetch: adminDropdowns.refetch,
     },
     profileHistoryDomain: {
       data: profileHistory.data?.data,
@@ -231,6 +237,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: profileHistory.isSuccess,
       isError: profileHistory.isError,
       error: profileHistory.error,
+      refetch: profileHistory.refetch,
     },
     referralHistoryDomain: {
       data: referralHistory.data?.data,
@@ -238,6 +245,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: referralHistory.isSuccess,
       isError: referralHistory.isError,
       error: referralHistory.error,
+      refetch: referralHistory.refetch,
     },
     regexQueueDomain: {
       data: regexQueue.data?.data,
@@ -245,6 +253,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: regexQueue.isSuccess,
       isError: regexQueue.isError,
       error: regexQueue.error,
+      refetch: regexQueue.refetch,
     },
     systemLogsDomain: {
       data: systemLogs.data?.data,
@@ -252,6 +261,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       isSuccess: systemLogs.isSuccess,
       isError: systemLogs.isError,
       error: systemLogs.error,
+      refetch: systemLogs.refetch,
     },
   }), [
     adminStatus, mappedBotStatus, mappedAnswerMode, tables, mappedTables, 
@@ -270,7 +280,7 @@ export const useSystemMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    updateAnswerModeMutation: useMutateData<any, { mode: string }>({
+    updateAnswerModeMutation: useMutateData<any, { mode?: string; questionAnswerMode?: string }>({
       method: "PUT",
       url: endpoints.ADMIN_ANSWER_MODE,
       mutationKey: ["admin-update-answer-mode"],

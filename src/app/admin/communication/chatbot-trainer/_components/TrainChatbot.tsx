@@ -21,7 +21,7 @@ interface TrainingEntry {
 const promptToQA = (prompt: string): TrainingEntry[] => {
   if (!prompt) return [];
   const entries: TrainingEntry[] = [];
-  const regex = /QUESTION:\s*(.*?)\s*ANSWER:\s*(.*?)(?=\s*QUESTION:|$)/gs;
+  const regex = /QUESTION:\s*([\s\S]*?)\s*ANSWER:\s*([\s\S]*?)(?=\s*QUESTION:|$)/g;
   let match;
 
   while ((match = regex.exec(prompt)) !== null) {

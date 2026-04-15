@@ -99,7 +99,7 @@ const ChatBotLog = () => {
           <CalendarIcon className="text-blue-500" size={20} />
           <ShadcnDatePicker
             value={selectedDate}
-            onChange={(date) => {
+            onChange={(date: Date | null) => {
               if (date) {
                 setSelectedDate(date);
                 setSelectedSessionId("");
