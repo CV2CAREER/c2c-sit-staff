@@ -3,13 +3,6 @@ import { useFetchData, useMutateData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 
-/**
- * Roles that make up the "PCs" group.
- * The V1 backend only supports single-role filtering, so we fire one
- * request per role and merge client-side.
- * "assistant" is a valid V1 Role; "coach" is the closest V1 equivalent
- * for the old "tpc" concept. Adjust if the backend team adds a "tpc" role.
- */
 const PC_ROLES = ["assistant", "coach"] as const;
 
 export const useUsersQueries = (options: AdminQueriesOptions) => {
@@ -39,10 +32,11 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchUsersCount,
   });
   
+  // FIXED: Use ADMIN_STATS endpoint for analytics/persona counts
   const usersPersonaCount = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_USERS,
-    params: { activePersonnaCount: "true", startDate, endDate },
+    url: endpoints.ADMIN_STATS,
+    params: { startDate, endDate },
     queryKey: ["admin-users-persona-count", startDate, endDate],
     enabled: fetchUsersPersonaCount,
   });
@@ -99,7 +93,6 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchClients,
   });
 
-  // --- Parallel single-role requests for PCs ---
   const pcsAssistant = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_USERS,
@@ -116,14 +109,12 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchPCs,
   });
 
-  // Merge the two PC role results into a single domain
   const pcsMerged = useMemo(() => {
     const assistantItems = pcsAssistant.data?.data?.items ?? pcsAssistant.data?.data ?? [];
     const coachItems = pcsCoach.data?.data?.items ?? pcsCoach.data?.data ?? [];
 
     const mergedItems = [...(Array.isArray(assistantItems) ? assistantItems : []), ...(Array.isArray(coachItems) ? coachItems : [])];
 
-    // Preserve pagination-style wrapper if the original response uses one
     const mergedData = pcsAssistant.data?.data?.items
       ? { items: mergedItems, pagination: { total: mergedItems.length } }
       : mergedItems;
@@ -152,6 +143,55 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchUserPreferences && !!userId,
   });
 
+  // Transform the analytics data into the expected persona count format
+  const transformedPersonaData = useMemo(() => {
+    const analyticsData = usersPersonaCount.data?.data;
+    
+    if (!analyticsData) {
+      return {
+        adminPersonnaCount: 0,
+        guestPersonnaCount: 0,
+        clientPersonnaCount: 0,
+        coachesPersonnaCount: 0,
+        partnersPersonnaCount: 0,
+        salesPersonnaCount: 0,
+        csePersonnaCount: 0,
+        testPersonnaCount: 0,
+        loyalistsPersonnaCount: 0,
+        totalActiveUsersCount: 0,
+        bronzePlanCount: 0,
+        emeraldPlanCount: 0,
+        coralPlanCount: 0,
+        silverPlanCount: 0,
+        platinumPlanCount: 0,
+        goldPlanCount: 0,
+        totalPlanCount: 0,
+      };
+    }
+
+    // Map the analytics response to the expected format
+    // Adjust these mappings based on your actual API response structure
+    return {
+      adminPersonnaCount: analyticsData.adminCount || analyticsData.adminPersonnaCount || 0,
+      guestPersonnaCount: analyticsData.guestCount || analyticsData.guestPersonnaCount || 0,
+      clientPersonnaCount: analyticsData.clientCount || analyticsData.clientPersonnaCount || 0,
+      coachesPersonnaCount: analyticsData.coachCount || analyticsData.coachesPersonnaCount || 0,
+      partnersPersonnaCount: analyticsData.partnerCount || analyticsData.partnersPersonnaCount || 0,
+      salesPersonnaCount: analyticsData.salesCount || analyticsData.salesPersonnaCount || 0,
+      csePersonnaCount: analyticsData.cseCount || analyticsData.csePersonnaCount || 0,
+      testPersonnaCount: analyticsData.testCount || analyticsData.testPersonnaCount || 0,
+      loyalistsPersonnaCount: analyticsData.loyalistCount || analyticsData.loyalistsPersonnaCount || 0,
+      totalActiveUsersCount: analyticsData.totalUsers || analyticsData.totalActiveUsersCount || 0,
+      bronzePlanCount: analyticsData.bronzePlanCount || analyticsData.bronzeCount || 0,
+      emeraldPlanCount: analyticsData.emeraldPlanCount || analyticsData.emeraldCount || 0,
+      coralPlanCount: analyticsData.coralPlanCount || analyticsData.coralCount || 0,
+      silverPlanCount: analyticsData.silverPlanCount || analyticsData.silverCount || 0,
+      platinumPlanCount: analyticsData.platinumPlanCount || analyticsData.platinumCount || 0,
+      goldPlanCount: analyticsData.goldPlanCount || analyticsData.goldCount || 0,
+      totalPlanCount: analyticsData.totalPlanCount || analyticsData.totalPlans || 0,
+    };
+  }, [usersPersonaCount.data]);
+
   return useMemo(() => ({
     usersCountDomain: {
       data: usersCount.data?.data,
@@ -161,11 +201,12 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       error: usersCount.error,
     },
     usersPersonaCountDomain: {
-      data: usersPersonaCount.data?.data,
+      data: transformedPersonaData,
       isLoading: usersPersonaCount.isLoading,
       isSuccess: usersPersonaCount.isSuccess,
       isError: usersPersonaCount.isError,
       error: usersPersonaCount.error,
+      refetch: usersPersonaCount.refetch,
     },
     userDetailDomain: {
       data: userDetail.data?.data,
@@ -219,7 +260,7 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     },
   }), [
     usersCount.data, usersCount.isLoading, usersCount.isSuccess, usersCount.isError, usersCount.error,
-    usersPersonaCount.data, usersPersonaCount.isLoading, usersPersonaCount.isSuccess, usersPersonaCount.isError, usersPersonaCount.error,
+    transformedPersonaData, usersPersonaCount.isLoading, usersPersonaCount.isSuccess, usersPersonaCount.isError, usersPersonaCount.error, usersPersonaCount.refetch,
     userDetail.data, userDetail.isLoading, userDetail.isSuccess, userDetail.isError, userDetail.error,
     usersList.data, usersList.isLoading, usersList.isSuccess, usersList.isError, usersList.error,
     userInfo.data, userInfo.isLoading, userInfo.isSuccess, userInfo.isError, userInfo.error,
