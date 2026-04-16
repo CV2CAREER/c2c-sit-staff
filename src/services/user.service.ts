@@ -55,7 +55,7 @@ export const loginUser = async (req: any, body: { email: string; password: strin
   }
 
   // Check if user has a valid staff role
-  const validStaffRoles = ["coach", "admin", "assistant"];
+  const validStaffRoles = ["coach", "admin", "assistant", "technology", "cse", "partner", "sales"];
   if (!validStaffRoles.includes(user.role)) {
     throw new ErrorHandler("Access denied. This account does not have the required permissions to access this system.", 403);
   }
