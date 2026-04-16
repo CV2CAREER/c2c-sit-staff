@@ -49,7 +49,16 @@ import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 import { applicationsController } from "@/controllers/v1/applications.controller";
 import { jcTriggerController } from "@/controllers/v1/jc-trigger.controller";
+import {
+  getJobPreferencesController,
+  putJobPreferencesController,
+  getSheetTemplatesController,
+  getUsersFullNameController,
+} from "@/controllers/v1/job-preferences.controller";
+import clientSampleRouterV1 from "./client-sample.route";
 const adminRouterV1 = Router();
+
+adminRouterV1.use("/client-sample", clientSampleRouterV1);
 
 adminRouterV1.get(
   "/jc-triggers",
@@ -124,6 +133,35 @@ adminRouterV1.get(
   isUserAuthenticated,
   discoveryQueueController,
 );
+
+adminRouterV1.get(
+  "/job-preferences",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getJobPreferencesController,
+);
+
+adminRouterV1.put(
+  "/job-preferences",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  putJobPreferencesController,
+);
+
+adminRouterV1.get(
+  "/sheets/templates",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getSheetTemplatesController,
+);
+
+adminRouterV1.get(
+  "/users/full-name",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getUsersFullNameController,
+);
+
 adminRouterV1.post(
   "/keywords/update",
   checkBlacklistedTokens,
@@ -320,18 +358,4 @@ adminRouterV1.post(
   generateExternalPassword,
 );
 
-adminRouterV1.get(
-  "/client-sample/loadBalancer",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  async (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        loadBalancers: [],
-        message: "Load balancer endpoint placeholder",
-      },
-    });
-  },
-);
 export default adminRouterV1;
