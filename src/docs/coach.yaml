@@ -1,0 +1,135 @@
+# OpenAPI Specification for Coach Endpoints
+
+paths:
+  /v1/coach/sessions:
+    get:
+      tags:
+        - Coach
+      summary: Get Coach Sessions
+      description: |
+        Retrieves all session data for the authenticated coach.
+        Returns completed sessions, pending sessions, and all active bookings.
+        Results are cached for 5 minutes in Redis for performance.
+        
+        **Required Role:** COACH
+      operationId: getCoachSessions
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: bypassCache
+          in: query
+          description: Force fresh data from database bypassing cache
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Coach sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Coach sessions retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      statistics:
+                        type: object
+                        properties:
+                          completedCount:
+                            type: integer
+                            description: Number of completed sessions
+                            example: 45
+                          pendingCount:
+                            type: integer
+                            description: Number of pending sessions
+                            example: 12
+                          activeBookingsCount:
+                            type: integer
+                            description: Number of all non-completed sessions
+                            example: 18
+                          totalSessions:
+                            type: integer
+                            description: Total sessions for this coach
+                            example: 63
+                      completedSessions:
+                        type: array
+                        description: List of completed sessions
+                        items:
+                          $ref: '#/components/schemas/Session'
+                      pendingSessions:
+                        type: array
+                        description: List of pending sessions
+                        items:
+                          $ref: '#/components/schemas/Session'
+                      activeBookings:
+                        type: array
+                        description: List of all sessions that are not completed
+                        items:
+                          $ref: '#/components/schemas/Session'
+        '401':
+          description: Authentication required
+        '403':
+          description: Access denied - COACH role required
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Session unique identifier
+        sessionType:
+          type: string
+          enum: [screening_preparation, interview_panel, career_consultation]
+          description: Type of session
+        sessionStatus:
+          type: string
+          enum: [pending, completed, scheduled, canceled, uncompleted]
+          description: Current status of the session
+        duration:
+          type: integer
+          description: Session duration in minutes
+          example: 30
+        description:
+          type: string
+          description: Session description
+        meetingLink:
+          type: string
+          description: Video conference link for the session
+        clientId:
+          type: string
+          format: uuid
+          description: Client assigned to this session
+        coachId:
+          type: string
+          format: uuid
+          description: Coach assigned to this session
+        time:
+          type: object
+          description: Session start and end time
+          properties:
+            startTime:
+              type: string
+              format: date-time
+            endTime:
+              type: string
+              format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
