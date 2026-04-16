@@ -64,8 +64,17 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     endDate: dateFilterData.endDate || undefined,
   });
 
-  // Transform API response to match expected structure
+  // Log the raw API response to see what we're actually getting
+  useEffect(() => {
+    console.log("RAW API RESPONSE:", usersPersonaCountDomain.data);
+    console.log("IS LOADING:", usersPersonaCountDomain.isLoading);
+    console.log("IS ERROR:", usersPersonaCountDomain.isError);
+  }, [usersPersonaCountDomain.data, usersPersonaCountDomain.isLoading, usersPersonaCountDomain.isError]);
+
+  // Transform API response - ADAPT THIS BASED ON YOUR ACTUAL API RESPONSE
   const transformApiData = (apiData: any): UsersCountData => {
+    console.log("Transforming data:", apiData);
+    
     // Default empty structure
     const defaultData: UsersCountData = {
       adminPersonnaCount: 0,
@@ -89,34 +98,58 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
 
     if (!apiData) return defaultData;
 
-    // Map subscription tiers to plan counts
-    const tiers = apiData.subscriptionTiers?.tiers || [];
-    const bronzeTier = tiers.find((t: any) => t.key === "bronze");
-    const silverTier = tiers.find((t: any) => t.key === "silver");
-    const goldTier = tiers.find((t: any) => t.key === "gold");
-    const platinumTier = tiers.find((t: any) => t.key === "platinum");
-    const coralTier = tiers.find((t: any) => t.key === "coral");
-    const emeraldTier = tiers.find((t: any) => t.key === "emerald");
-
-    return {
-      adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
-      guestPersonnaCount: 0, // Map from your API if available
-      clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
-      coachesPersonnaCount: 0, // Map from your API if available
-      partnersPersonnaCount: 0, // Map from your API if available
-      salesPersonnaCount: 0, // Map from your API if available
-      csePersonnaCount: 0, // Map from your API if available
-      testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
-      loyalistsPersonnaCount: 0, // Map from your API if available
-      totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
-      bronzePlanCount: bronzeTier?.users || 0,
-      emeraldPlanCount: emeraldTier?.users || 0,
-      coralPlanCount: coralTier?.users || 0,
-      silverPlanCount: silverTier?.users || 0,
-      platinumPlanCount: platinumTier?.users || 0,
-      goldPlanCount: goldTier?.users || 0,
-      totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
-    };
+    // TRY DIFFERENT POSSIBLE DATA STRUCTURES BASED ON YOUR API
+    // Option 1: If data is directly in the response
+    if (apiData.adminPersonnaCount !== undefined) {
+      console.log("Using direct data structure");
+      return apiData;
+    }
+    
+    // Option 2: If data is nested in data property
+    if (apiData.data && apiData.data.adminPersonnaCount !== undefined) {
+      console.log("Using apiData.data structure");
+      return apiData.data;
+    }
+    
+    // Option 3: If data is from your analytics endpoint
+    if (apiData.subscriptionTiers) {
+      console.log("Using subscription tiers structure");
+      const tiers = apiData.subscriptionTiers?.tiers || [];
+      const bronzeTier = tiers.find((t: any) => t.key === "bronze");
+      const silverTier = tiers.find((t: any) => t.key === "silver");
+      const goldTier = tiers.find((t: any) => t.key === "gold");
+      const platinumTier = tiers.find((t: any) => t.key === "platinum");
+      const coralTier = tiers.find((t: any) => t.key === "coral");
+      
+      return {
+        adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
+        guestPersonnaCount: 0,
+        clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
+        coachesPersonnaCount: 0,
+        partnersPersonnaCount: 0,
+        salesPersonnaCount: 0,
+        csePersonnaCount: 0,
+        testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
+        loyalistsPersonnaCount: 0,
+        totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
+        bronzePlanCount: bronzeTier?.users || 0,
+        emeraldPlanCount: 0,
+        coralPlanCount: coralTier?.users || 0,
+        silverPlanCount: silverTier?.users || 0,
+        platinumPlanCount: platinumTier?.users || 0,
+        goldPlanCount: goldTier?.users || 0,
+        totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
+      };
+    }
+    
+    // Option 4: If response is an array
+    if (Array.isArray(apiData)) {
+      console.log("Data is an array, length:", apiData.length);
+      return defaultData;
+    }
+    
+    console.log("No matching structure found, using defaults");
+    return defaultData;
   };
 
   const personas: UsersCountData | undefined = usersPersonaCountDomain.data 
@@ -126,17 +159,6 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
   const isLoading = usersPersonaCountDomain.isLoading;
   const isError = usersPersonaCountDomain.isError;
   const error = usersPersonaCountDomain.error;
-
-  // Debug logging
-  useEffect(() => {
-    if (usersPersonaCountDomain.data) {
-      console.log("Original API Data:", usersPersonaCountDomain.data);
-      console.log("Transformed Persona Data:", personas);
-    }
-    if (isError) {
-      console.error("Error fetching persona data:", error);
-    }
-  }, [usersPersonaCountDomain.data, isError, error, personas]);
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
@@ -303,6 +325,7 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
           <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
           <p className="text-red-600">Failed to load user counts. Please try again.</p>
+          <p className="text-red-500 text-sm mt-1">Error: {error?.message || "Unknown error"}</p>
           <button 
             onClick={() => usersPersonaCountDomain.refetch?.()}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
