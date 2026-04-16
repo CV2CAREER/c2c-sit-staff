@@ -1,52 +1,60 @@
 // controllers/v1/sample-queue.controller.ts
 import { Request, Response } from "express";
-import Redis from "ioredis";
 import db from "@/database/postgres";
+import { getConnectedRedis } from "@/config/redis";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
+import catchAsyncError from "@/utils/catchAsyncError";
 
-const redisClient = new Redis({
-  host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-  password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-});
+const logger = getServiceLogger("sample-queue");
 
-const ENVIRONMENT =
-  process.env.NEXTAUTH_URL === "https://cvtocareer.com" ? "" : "_TEST";
+export const sampleQueueController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const redisClient = await getConnectedRedis();
+    if (!redisClient) {
+      throw new ErrorHandler("Redis unavailable", 503);
+    }
 
-export const sampleQueueController = async (req: Request, res: Response) => {
-  try {
-    if (req.method === "GET") return handleGetRequest(req, res);
-    if (req.method === "POST") return handlePostRequest(req, res);
-    if (req.method === "DELETE") return handleDeleteRequest(req, res);
+    if (req.method === "GET") return handleGetRequest(req, res, redisClient);
+    if (req.method === "POST") return handlePostRequest(req, res, redisClient);
+    if (req.method === "DELETE")
+      return handleDeleteRequest(req, res, redisClient);
 
-    return res.status(405).json({
-      error: `Method ${req.method} is not allowed`,
-    });
-  } catch (error: any) {
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-};
+    throw new ErrorHandler(`Method ${req.method} is not allowed`, 405);
+  },
+);
 
-const handleGetRequest = async (req: Request, res: Response) => {
+const handleGetRequest = async (
+  req: Request,
+  res: Response,
+  redisClient: any,
+) => {
   const { variance, jobsite } = req.query as any;
 
-  if (!variance)
-    return res.status(400).json({ message: "Request variance not found!" });
+  if (!variance) {
+    throw new ErrorHandler("Request variance not found!", 400);
+  }
 
-  if (variance === "queue") return getQueueData(req, res);
+  if (variance === "queue") return getQueueData(req, res, redisClient);
   if (variance === "processing")
     return getProcessingOrCompleted(req, res, false, jobsite);
   if (variance === "completed")
     return getProcessingOrCompleted(req, res, true, jobsite);
 
-  return res.status(200).json([]);
+  return res.apiSuccess([], "Request processed");
 };
 
-const handlePostRequest = async (req: Request, res: Response) => {
+const handlePostRequest = async (
+  req: Request,
+  res: Response,
+  redisClient: any,
+) => {
   const { queue, email, environment } = req.body;
-  if (!queue || !email)
-    return res.status(400).json({ message: "Queue, Email required!" });
+  if (!queue || !email) {
+    throw new ErrorHandler("Queue, Email required!", 400);
+  }
+
+  logger.info(`Adding ${email} to queue: ${queue}`);
 
   const input_object = {
     email,
@@ -55,13 +63,13 @@ const handlePostRequest = async (req: Request, res: Response) => {
 
   const sanitizedQueue = queue.replace(/_STAGE/gi, "");
   const key = `${sanitizedQueue.toUpperCase()}_CLIENT_SAMPLE_QUEUE${
-    environment || ENVIRONMENT
+    environment || ""
   }`;
 
   const values = await redisClient.lrange(key, 0, -1);
 
   if (
-    values.some((item) => {
+    values.some((item: any) => {
       try {
         return JSON.parse(item).email === email;
       } catch {
@@ -69,25 +77,33 @@ const handlePostRequest = async (req: Request, res: Response) => {
       }
     })
   ) {
-    return res.status(200).send({ saved: false, queue: values });
+    return res.apiSuccess(
+      { saved: false, queue: values },
+      "Email already in queue",
+    );
   }
 
   await redisClient.lpush(key, JSON.stringify(input_object));
-  return res.status(200).send({ saved: true, queue: values });
+  return res.apiSuccess({ saved: true, queue: values }, "Email added to queue");
 };
 
-const handleDeleteRequest = async (req: Request, res: Response) => {
+const handleDeleteRequest = async (
+  req: Request,
+  res: Response,
+  redisClient: any,
+) => {
   const { queue, email, environment } = req.body;
 
-  if (!queue || !email || !environment)
-    return res.status(400).json({
-      message: "Queue, Email, Environment required!",
-    });
+  if (!queue || !email || !environment) {
+    throw new ErrorHandler("Queue, Email, Environment required!", 400);
+  }
+
+  logger.info(`Removing ${email} from queue: ${queue}`);
 
   const key = `${queue.toUpperCase()}_CLIENT_SAMPLE_QUEUE${environment}`;
   const values = await redisClient.lrange(key, 0, -1);
 
-  const value = values.find((e) => {
+  const value = values.find((e: any) => {
     try {
       return JSON.parse(e).email === email;
     } catch {
@@ -95,18 +111,16 @@ const handleDeleteRequest = async (req: Request, res: Response) => {
     }
   });
 
-  if (!value)
-    return res.status(401).send({ deleted: 0, message: "Not in queue" });
+  if (!value) {
+    throw new ErrorHandler("Not in queue", 401);
+  }
 
   const result = await redisClient.lrem(key, 1, value);
 
-  return res.status(200).send({
-    deleted: result,
-    message: `deleted ${email}`,
-  });
+  return res.apiSuccess({ deleted: result }, `Deleted ${email} from queue`);
 };
 
-const getQueueData = async (req: Request, res: Response) => {
+const getQueueData = async (req: Request, res: Response, redisClient: any) => {
   const { environment, jobsite } = req.query as any;
 
   const jobsites = [
@@ -138,6 +152,8 @@ const getQueueData = async (req: Request, res: Response) => {
     }
   }
 
+  logger.info("Fetching queue data for all jobsites");
+
   const redisResults = await Promise.all(
     processQueue.map((q) => redisClient.lrange(q.redisKey, 0, -1)),
   );
@@ -145,7 +161,7 @@ const getQueueData = async (req: Request, res: Response) => {
   const emailEntries: any[] = [];
 
   redisResults.forEach((list, i) => {
-    list.forEach((item) => {
+    list.forEach((item: any) => {
       const parsed = JSON.parse(item);
       emailEntries.push({
         email: parsed.email,
@@ -190,8 +206,9 @@ const getQueueData = async (req: Request, res: Response) => {
     });
   }
 
-  return res.status(200).json(result);
+  return res.apiSuccess(result, "Queue data retrieved");
 };
+
 const getProcessingOrCompleted = async (
   req: Request,
   res: Response,

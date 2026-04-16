@@ -36,6 +36,8 @@
     "express-rate-limit": "^8.0.1",
     "firebase-admin": "^13.7.0",
     "formidable": "^3.5.4",
+    "google-auth-library": "^10.6.2",
+    "googleapis": "^171.4.0",
     "got-scraping": "^4.2.1",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",

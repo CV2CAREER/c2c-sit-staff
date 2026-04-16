@@ -15,7 +15,7 @@ import {
 } from "./config/env";
 import cookieParser from "cookie-parser";
 
-import { requestLogger } from './middlewares/requestLogger.middleware';
+import { requestLogger } from "./middlewares/requestLogger.middleware";
 import userRouterV1 from "./routes/v1/user.route";
 import { getServiceLogger } from "./utils/createLogger";
 import centralAppErrors from "./middlewares/centralAppErrors";
@@ -40,6 +40,10 @@ import settingsRouterV1 from "./routes/v1/settings.route";
 import viewAsRulesRouterV1 from "./routes/v1/view-as-rules.route";
 import chatRouterV1 from "./routes/v1/chat.route";
 import supportRouterV1 from "./routes/v1/support.route";
+import coachRouterV1 from "./routes/v1/coach.route";
+import scheduleRouterV1 from "./routes/v1/schedule.route";
+import availabilityRouterV1 from "./routes/v1/availability.route";
+import sessionsRouterV1 from "./routes/v1/sessions.route";
 import slackManageRouterV1 from "./routes/v1/slack-manage.route";
 import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
 
@@ -134,7 +138,7 @@ app.get("/api", async (_, res: Response) => {
 });
 
 // Testing endpoint
-app.get("/api/health", (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/v1/health", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
     success: true,
     message: "API is healthy",
@@ -151,7 +155,7 @@ app.get("/api/ping", async (req, res) => {
 // 🟡 11.  DB readiness middleware here
 
 // 12. API Routes
-app.use('/api/v1', requestLogger);
+app.use("/api/v1", requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
@@ -180,6 +184,10 @@ app.use("/api/v1/assistant", assistantRouterV1);
 
 // Coach routes (must be under this section)
 app.use("/api/v1/coach", coachRouterV1);
+app.use("/api/v1/coaches", coachRouterV1);
+app.use("/api/v1/schedules", scheduleRouterV1);
+app.use("/api/v1/availabilities", availabilityRouterV1);
+app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

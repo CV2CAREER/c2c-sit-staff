@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import { 
-  loginUser as loginUserService, 
-  promoteUserToAdmin, 
-  handleGetUserInfo, 
-  logoutUser as logoutUserService, 
-  getClients as getClientsService, 
+import {
+  loginUser as loginUserService,
+  promoteUserToAdmin,
+  handleGetUserInfo,
+  logoutUser as logoutUserService,
+  getClients as getClientsService,
   getAssistants as getAssistantsService,
   getUsersByRoles as getUsersByRolesService,
   getAllUsers as getAllUsersService
@@ -45,11 +45,11 @@ export const promoteToAdmin = catchAsyncError(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { role } = req.body;
-    const { user } = req; // Authenticated user from middleware
+    // const { user } = req; // Authenticated user from middleware
 
     logger.info(`Processing promotion request for user ID: ${userId} to role: ${role}`);
 
-    const promotedUser = await promoteUserToAdmin(userId, role, user.id);
+    const promotedUser = await promoteUserToAdmin(userId, role);
 
     logger.info(`User ${promotedUser.firstName} ${promotedUser.lastName} (${promotedUser.email}) promoted to ${promotedUser.role}`);
 
@@ -120,7 +120,7 @@ export const logoutUser = catchAsyncError(
     logger.info(`Processing logout request for user: ${user.email}`);
 
     // Blacklist the token
-    await logoutUserService(token, user.id); 
+    await logoutUserService(token, user.id);
 
     // Clear the cookie
     res.clearCookie(ACCESS_TOKEN_COOKIE_NAME, accessTokenOptions);

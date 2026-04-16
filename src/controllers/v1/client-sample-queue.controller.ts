@@ -1,7 +1,12 @@
 // controllers/v1/client-sample-queue.controller.ts
 import { Request, Response } from "express";
-import Redis from "ioredis";
 import db from "@/database/postgres";
+import { getConnectedRedis } from "@/config/redis";
+import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
+import catchAsyncError from "@/utils/catchAsyncError";
+
+const logger = getServiceLogger("client-sample-queue");
 
 /* -------------------------------------------------------------------------- */
 /* Redis Keys                                                                 */
@@ -19,38 +24,27 @@ const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (
     ? `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING_TEST`
     : `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING`;
 
-/* -------------------------------------------------------------------------- */
-/* Redis Client                                                               */
-/* -------------------------------------------------------------------------- */
-const getRedisClient = () =>
-  new Redis({
-    host: process.env.CLIENT_SAMPLE_REDIS_HOST,
-    password: process.env.CLIENT_SAMPLE_REDIS_PASSWORD,
-  });
-
 const extractValueFromQueueElement = (element: string) =>
   element.split(":;")[0];
 
 /* -------------------------------------------------------------------------- */
 /* GET                                                                        */
 /* -------------------------------------------------------------------------- */
-const handleGetRequest = async (
-  req: Request,
-  res: Response,
-  rdClient: Redis,
-) => {
+const handleGetRequest = async (req: Request, res: Response, rdClient: any) => {
   const agg = req.query.agg as string;
   const environment = (req.query.environment as string) || "";
 
   const currentKey = CLIENT_SAMPLE_CURRENT_PROCESSING_KEY(agg, environment);
   const queueKey = CLIENT_SAMPLE_QUEUE_KEY(agg, environment);
 
+  logger.info(`Getting queue data for agg: ${agg}`);
+
   const current = await rdClient.get(currentKey);
   let result = await rdClient.lrange(queueKey, 0, -1);
 
   result = result.map(extractValueFromQueueElement);
 
-  return res.status(200).json({ result, current });
+  return res.apiSuccess({ result, current }, "Queue data retrieved");
 };
 
 /* -------------------------------------------------------------------------- */
@@ -59,7 +53,7 @@ const handleGetRequest = async (
 const handleDeleteRequest = async (
   req: Request,
   res: Response,
-  rdClient: Redis,
+  rdClient: any,
 ) => {
   const queue = req.query.queue as string;
   const input = req.query.value as string;
@@ -76,21 +70,17 @@ const handleDeleteRequest = async (
 
   const values = await rdClient.lrange(queueKey, 0, -1);
 
-  const value = values.find((e) => e.includes(input));
+  const value = values.find((e: string) => e.includes(input));
 
   if (!value) {
-    return res.status(404).json({
-      deleted: 0,
-      message: "Element not found in queue",
-    });
+    throw new ErrorHandler("Element not found in queue", 404);
   }
+
+  logger.info(`Deleting element from queue: ${queue}`);
 
   const result = await rdClient.lrem(queueKey, 1, value);
 
-  return res.status(200).json({
-    deleted: result,
-    message: "Deleted from queue",
-  });
+  return res.apiSuccess({ deleted: result }, "Deleted from queue");
 };
 
 /* -------------------------------------------------------------------------- */
@@ -99,7 +89,7 @@ const handleDeleteRequest = async (
 const handlePostRequest = async (
   req: Request,
   res: Response,
-  rdClient: Redis,
+  rdClient: any,
 ) => {
   try {
     const { environment, aggregator, clientId } = req.body;
@@ -137,37 +127,37 @@ const handlePostRequest = async (
     const values = await rdClient.lrange(queueKey, 0, -1);
 
     if (values.includes(input)) {
-      return res.status(200).json({
-        saved: false,
-        queue: values,
-      });
+      logger.info("Element already in queue");
+      return res.apiSuccess(
+        { saved: false, queue: values },
+        "Element already in queue",
+      );
     }
 
+    logger.info(`Adding element to queue: ${queue}`);
     await rdClient.lpush(queueKey, input);
 
-    return res.status(200).json({
-      saved: true,
-      queue: [...values, input],
-    });
+    return res.apiSuccess(
+      { saved: true, queue: [...values, input] },
+      "Element added to queue",
+    );
   } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({
-      message: "Failed to add element",
-      error: error.message,
-    });
+    logger.error("Error in POST handler", error);
+    throw new ErrorHandler("Failed to add element", 500);
   }
 };
 
 /* -------------------------------------------------------------------------- */
 /* MAIN CONTROLLER                                                            */
 /* -------------------------------------------------------------------------- */
-export const clientSampleQueueController = async (
-  req: Request,
-  res: Response,
-) => {
-  const rdClient = getRedisClient();
+export const clientSampleQueueController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const rdClient = await getConnectedRedis();
 
-  try {
+    if (!rdClient) {
+      throw new ErrorHandler("Redis unavailable", 503);
+    }
+
     switch (req.method?.toLowerCase()) {
       case "get":
         return await handleGetRequest(req, res, rdClient);
@@ -179,16 +169,7 @@ export const clientSampleQueueController = async (
         return await handlePostRequest(req, res, rdClient);
 
       default:
-        return res.status(405).json({
-          message: "Method not allowed",
-        });
+        throw new ErrorHandler("Method not allowed", 405);
     }
-  } catch (error: any) {
-    console.error(error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  } finally {
-    rdClient.quit();
-  }
-};
+  },
+);

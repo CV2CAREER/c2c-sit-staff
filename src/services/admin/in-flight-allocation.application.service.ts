@@ -252,14 +252,14 @@ class InFlightAllocationApplicationService {
               st.role AS "staffRole"
             FROM active_subscriptions a
             INNER JOIN users su
-              ON su.id = a."subscriberUserId"
+              ON su.id::text = a."subscriberUserId"::text
               AND su."deletedAt" IS NULL
             LEFT JOIN subscription_allocations sa
-              ON sa."planId" = a."planId"
+              ON sa."planId" = a."planId"::text
               AND sa."isActive" IS TRUE
               AND sa."deletedAt" IS NULL
             LEFT JOIN users st
-              ON st.id = sa."staffUserId"
+              ON st.id::text = sa."staffUserId"
               AND st."deletedAt" IS NULL
             WHERE (
               :search::text IS NULL
@@ -268,7 +268,7 @@ class InFlightAllocationApplicationService {
               OR su."lastName" ILIKE :search
               OR a."subscriptionTitle" ILIKE :search
             )
-            AND (:staffUserId::text IS NULL OR sa."staffUserId" = :staffUserId)
+            AND (:staffUserId::text IS NULL OR sa."staffUserId" = :staffUserId::text)
             AND (
               :assigned::boolean IS NULL
               OR (:assigned::boolean IS TRUE AND sa.id IS NOT NULL)
@@ -377,7 +377,7 @@ class InFlightAllocationApplicationService {
             COUNT(sa.id)::bigint AS "activeAllocations"
           FROM users u
           LEFT JOIN subscription_allocations sa
-            ON sa."staffUserId" = u.id
+            ON sa."staffUserId" = u.id::text
             AND sa."isActive" IS TRUE
             AND sa."deletedAt" IS NULL
           WHERE u."deletedAt" IS NULL
