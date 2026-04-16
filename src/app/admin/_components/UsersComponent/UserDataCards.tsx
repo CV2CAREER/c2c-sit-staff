@@ -1,6 +1,5 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import { useAdminQueries } from "@/hooks/api/admin.api";
 import {
   LucideIcon,
   ShieldUser,
@@ -57,108 +56,76 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     startDate: null,
     endDate: null,
   });
+  const [personas, setPersonas] = useState<UsersCountData | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<any>(null);
 
-  const { usersPersonaCountDomain } = useAdminQueries({
-    fetchUsersPersonaCount: true,
-    startDate: dateFilterData.startDate || undefined,
-    endDate: dateFilterData.endDate || undefined,
-  });
-
-  // Log the raw API response to see what we're actually getting
+  // Fetch analytics data directly
   useEffect(() => {
-    console.log("RAW API RESPONSE:", usersPersonaCountDomain.data);
-    console.log("IS LOADING:", usersPersonaCountDomain.isLoading);
-    console.log("IS ERROR:", usersPersonaCountDomain.isError);
-  }, [usersPersonaCountDomain.data, usersPersonaCountDomain.isLoading, usersPersonaCountDomain.isError]);
-
-  // Transform API response - ADAPT THIS BASED ON YOUR ACTUAL API RESPONSE
-  const transformApiData = (apiData: any): UsersCountData => {
-    console.log("Transforming data:", apiData);
-    
-    // Default empty structure
-    const defaultData: UsersCountData = {
-      adminPersonnaCount: 0,
-      guestPersonnaCount: 0,
-      clientPersonnaCount: 0,
-      coachesPersonnaCount: 0,
-      partnersPersonnaCount: 0,
-      salesPersonnaCount: 0,
-      csePersonnaCount: 0,
-      testPersonnaCount: 0,
-      loyalistsPersonnaCount: 0,
-      totalActiveUsersCount: 0,
-      bronzePlanCount: 0,
-      emeraldPlanCount: 0,
-      coralPlanCount: 0,
-      silverPlanCount: 0,
-      platinumPlanCount: 0,
-      goldPlanCount: 0,
-      totalPlanCount: 0,
-    };
-
-    if (!apiData) return defaultData;
-
-    // TRY DIFFERENT POSSIBLE DATA STRUCTURES BASED ON YOUR API
-    // Option 1: If data is directly in the response
-    if (apiData.adminPersonnaCount !== undefined) {
-      console.log("Using direct data structure");
-      return apiData;
-    }
-    
-    // Option 2: If data is nested in data property
-    if (apiData.data && apiData.data.adminPersonnaCount !== undefined) {
-      console.log("Using apiData.data structure");
-      return apiData.data;
-    }
-    
-    // Option 3: If data is from your analytics endpoint
-    if (apiData.subscriptionTiers) {
-      console.log("Using subscription tiers structure");
-      const tiers = apiData.subscriptionTiers?.tiers || [];
-      const bronzeTier = tiers.find((t: any) => t.key === "bronze");
-      const silverTier = tiers.find((t: any) => t.key === "silver");
-      const goldTier = tiers.find((t: any) => t.key === "gold");
-      const platinumTier = tiers.find((t: any) => t.key === "platinum");
-      const coralTier = tiers.find((t: any) => t.key === "coral");
+    const fetchAnalytics = async () => {
+      setIsLoading(true);
+      setIsError(false);
       
-      return {
-        adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
-        guestPersonnaCount: 0,
-        clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
-        coachesPersonnaCount: 0,
-        partnersPersonnaCount: 0,
-        salesPersonnaCount: 0,
-        csePersonnaCount: 0,
-        testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
-        loyalistsPersonnaCount: 0,
-        totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
-        bronzePlanCount: bronzeTier?.users || 0,
-        emeraldPlanCount: 0,
-        coralPlanCount: coralTier?.users || 0,
-        silverPlanCount: silverTier?.users || 0,
-        platinumPlanCount: platinumTier?.users || 0,
-        goldPlanCount: goldTier?.users || 0,
-        totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
-      };
-    }
+      try {
+        const url = `/api/admin/analytics?startDate=${dateFilterData.startDate || ''}&endDate=${dateFilterData.endDate || ''}`;
+        console.log("Fetching from URL:", url);
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        console.log("Analytics API Response:", result);
+        
+        if (result.success && result.data) {
+          const apiData = result.data;
+          
+          // Extract subscription tiers data
+          const tiers = apiData.subscriptionTiers?.tiers || [];
+          const bronzeTier = tiers.find((t: any) => t.key === "bronze");
+          const silverTier = tiers.find((t: any) => t.key === "silver");
+          const goldTier = tiers.find((t: any) => t.key === "gold");
+          const platinumTier = tiers.find((t: any) => t.key === "platinum");
+          const coralTier = tiers.find((t: any) => t.key === "coral");
+          const emeraldTier = tiers.find((t: any) => t.key === "emerald");
+          
+          // Transform to your component's expected format
+          const transformedData: UsersCountData = {
+            adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
+            guestPersonnaCount: 0,
+            clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
+            coachesPersonnaCount: 0,
+            partnersPersonnaCount: 0,
+            salesPersonnaCount: 0,
+            csePersonnaCount: 0,
+            testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
+            loyalistsPersonnaCount: 0,
+            totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
+            bronzePlanCount: bronzeTier?.users || 0,
+            emeraldPlanCount: emeraldTier?.users || 0,
+            coralPlanCount: coralTier?.users || 0,
+            silverPlanCount: silverTier?.users || 0,
+            platinumPlanCount: platinumTier?.users || 0,
+            goldPlanCount: goldTier?.users || 0,
+            totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
+          };
+          
+          console.log("Transformed Data:", transformedData);
+          setPersonas(transformedData);
+        } else {
+          console.error("API returned unsuccessful:", result);
+          setIsError(true);
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setIsError(true);
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Option 4: If response is an array
-    if (Array.isArray(apiData)) {
-      console.log("Data is an array, length:", apiData.length);
-      return defaultData;
-    }
-    
-    console.log("No matching structure found, using defaults");
-    return defaultData;
-  };
-
-  const personas: UsersCountData | undefined = usersPersonaCountDomain.data 
-    ? transformApiData(usersPersonaCountDomain.data) 
-    : undefined;
-    
-  const isLoading = usersPersonaCountDomain.isLoading;
-  const isError = usersPersonaCountDomain.isError;
-  const error = usersPersonaCountDomain.error;
+    fetchAnalytics();
+  }, [dateFilterData.startDate, dateFilterData.endDate]);
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
@@ -325,9 +292,8 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
           <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
           <p className="text-red-600">Failed to load user counts. Please try again.</p>
-          <p className="text-red-500 text-sm mt-1">Error: {error?.message || "Unknown error"}</p>
           <button 
-            onClick={() => usersPersonaCountDomain.refetch?.()}
+            onClick={() => window.location.reload()}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
             Retry
