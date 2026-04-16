@@ -31,6 +31,7 @@ export const ADMIN_PRICING_PLANS = "/api/v1/admin/pricing-plans";
 export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info/${id}`;
 
 export const USER_STAFF = "/api/v1/user/staff";
+export const USER_ALL = "/api/v1/user/all";
 
 export const ADMIN_CAMPAIGN = "/api/v1/admin/campaign";
 export const ADMIN_CAMPAIGN_SHEET = "/api/v1/admin/campaign/sheet";
