@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 import {
   LucideIcon,
@@ -31,6 +31,7 @@ interface UsersCountData {
   goldPlanCount: number;
   totalPlanCount: number;
 }
+
 interface cardsDataProps {
   title: string,
   value: number,
@@ -40,6 +41,7 @@ interface cardsDataProps {
     color: string,
   },
 }
+
 interface UserDataCardsProps {
   setUserType: (data: any) => void;
   userType: {
@@ -51,7 +53,6 @@ interface UserDataCardsProps {
 }
 
 const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProps) => {
-
   const [dateFilterData, setDateFilterData] = useState<{ startDate: string | null; endDate: string | null }>({
     startDate: null,
     endDate: null,
@@ -63,8 +64,20 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     endDate: dateFilterData.endDate || undefined,
   });
 
-  const personas: UsersCountData | undefined = usersPersonaCountDomain.data?.data;
+  const personas: UsersCountData | undefined = usersPersonaCountDomain.data;
   const isLoading = usersPersonaCountDomain.isLoading;
+  const isError = usersPersonaCountDomain.isError;
+  const error = usersPersonaCountDomain.error;
+
+  // Debug logging
+  useEffect(() => {
+    if (usersPersonaCountDomain.data) {
+      console.log("Persona Data Received:", usersPersonaCountDomain.data);
+    }
+    if (isError) {
+      console.error("Error fetching persona data:", error);
+    }
+  }, [usersPersonaCountDomain.data, isError, error]);
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
@@ -224,67 +237,81 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
       },
     },
   ];
- 
 
+  if (isError) {
+    return (
+      <div className="p-4">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+          <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
+          <p className="text-red-600">Failed to load user counts. Please try again.</p>
+          <button 
+            onClick={() => usersPersonaCountDomain.refetch?.()}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
-     <div>
+      <div>
         <h3 className="text-xl font-semibold mb-3">Date Filter</h3>
         <div className="flex flex-col lg:flex-row items-center mt-4 lg:mt-0 w-full lg:w-auto">
           <DateFilter onFilterDataChange={setDateFilterData} />
         </div>
       </div>
-    <section className="flex flex-row flex-wrap justify-between lg:justify-start gap-4 *:w-[45%] lg:*:w-[18%]">
-     {isLoading
-  ? Array(17).fill(0).map((_, idx) => (
-      <div
-        key={idx}
-        className="flex items-center h-24 gap-3 bg-white p-4 rounded-md shadow-md animate-pulse"
-      >
-        <div className="bg-gray-300 w-10 h-10 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3 w-24 bg-gray-300 rounded" />
-          <div className="h-5 w-32 bg-gray-400 rounded" />
-        </div>
-      </div>
-    ))
-  : cardsData.map((card, idx) => {
-      const LIcon = card.icon.name;
-      return (
-        <div
-          key={idx}
-          className="flex items-center gap-3 bg-white p-4 rounded-md shadow-md hover:cursor-pointer hover:ring-blue"
-          onClick={() => {
-
-            if(userTypes.includes(card.title)){
-              setUserType({
-                ...userType,
-                user: card.title === "Total Users"? "all" : card.title === "Test Users"? "test" : card.title.toLowerCase()
-              })
-            }
-
-            if(userPlans.includes(card.title)){
-              setUserType({
-                ...userType,
-                plan: card.title.toLowerCase()
-              })
-            }
-            scrollTotable()
-        }}
-        >
-          <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
-            <LIcon className={card.icon.color} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
-            <h1 className="text-3xl font-bold text-gray-800">{card.value}</h1>
-          </div>
-        </div>
-      );
-    })}
-
-    </section>
+      <section className="flex flex-row flex-wrap justify-between lg:justify-start gap-4 *:w-[45%] lg:*:w-[18%]">
+        {isLoading ? (
+          Array(17).fill(0).map((_, idx) => (
+            <div
+              key={idx}
+              className="flex items-center h-24 gap-3 bg-white p-4 rounded-md shadow-md animate-pulse"
+            >
+              <div className="bg-gray-300 w-10 h-10 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-24 bg-gray-300 rounded" />
+                <div className="h-5 w-32 bg-gray-400 rounded" />
+              </div>
+            </div>
+          ))
+        ) : (
+          cardsData.map((card, idx) => {
+            const LIcon = card.icon.name;
+            return (
+              <div
+                key={idx}
+                className="flex items-center gap-3 bg-white p-4 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+                onClick={() => {
+                  if(userTypes.includes(card.title)){
+                    setUserType({
+                      ...userType,
+                      user: card.title === "Total Users" ? "all" : card.title === "Test Users" ? "test" : card.title.toLowerCase()
+                    })
+                  }
+                  if(userPlans.includes(card.title)){
+                    setUserType({
+                      ...userType,
+                      plan: card.title.toLowerCase()
+                    })
+                  }
+                  scrollTotable()
+                }}
+              >
+                <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
+                  <LIcon className={card.icon.color} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
+                  <h1 className="text-3xl font-bold text-gray-800">{card.value}</h1>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </section>
     </>
   );
 };
