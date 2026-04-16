@@ -64,7 +64,65 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     endDate: dateFilterData.endDate || undefined,
   });
 
-  const personas: UsersCountData | undefined = usersPersonaCountDomain.data;
+  // Transform API response to match expected structure
+  const transformApiData = (apiData: any): UsersCountData => {
+    // Default empty structure
+    const defaultData: UsersCountData = {
+      adminPersonnaCount: 0,
+      guestPersonnaCount: 0,
+      clientPersonnaCount: 0,
+      coachesPersonnaCount: 0,
+      partnersPersonnaCount: 0,
+      salesPersonnaCount: 0,
+      csePersonnaCount: 0,
+      testPersonnaCount: 0,
+      loyalistsPersonnaCount: 0,
+      totalActiveUsersCount: 0,
+      bronzePlanCount: 0,
+      emeraldPlanCount: 0,
+      coralPlanCount: 0,
+      silverPlanCount: 0,
+      platinumPlanCount: 0,
+      goldPlanCount: 0,
+      totalPlanCount: 0,
+    };
+
+    if (!apiData) return defaultData;
+
+    // Map subscription tiers to plan counts
+    const tiers = apiData.subscriptionTiers?.tiers || [];
+    const bronzeTier = tiers.find((t: any) => t.key === "bronze");
+    const silverTier = tiers.find((t: any) => t.key === "silver");
+    const goldTier = tiers.find((t: any) => t.key === "gold");
+    const platinumTier = tiers.find((t: any) => t.key === "platinum");
+    const coralTier = tiers.find((t: any) => t.key === "coral");
+    const emeraldTier = tiers.find((t: any) => t.key === "emerald");
+
+    return {
+      adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
+      guestPersonnaCount: 0, // Map from your API if available
+      clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
+      coachesPersonnaCount: 0, // Map from your API if available
+      partnersPersonnaCount: 0, // Map from your API if available
+      salesPersonnaCount: 0, // Map from your API if available
+      csePersonnaCount: 0, // Map from your API if available
+      testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
+      loyalistsPersonnaCount: 0, // Map from your API if available
+      totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
+      bronzePlanCount: bronzeTier?.users || 0,
+      emeraldPlanCount: emeraldTier?.users || 0,
+      coralPlanCount: coralTier?.users || 0,
+      silverPlanCount: silverTier?.users || 0,
+      platinumPlanCount: platinumTier?.users || 0,
+      goldPlanCount: goldTier?.users || 0,
+      totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
+    };
+  };
+
+  const personas: UsersCountData | undefined = usersPersonaCountDomain.data 
+    ? transformApiData(usersPersonaCountDomain.data) 
+    : undefined;
+    
   const isLoading = usersPersonaCountDomain.isLoading;
   const isError = usersPersonaCountDomain.isError;
   const error = usersPersonaCountDomain.error;
@@ -72,12 +130,13 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
   // Debug logging
   useEffect(() => {
     if (usersPersonaCountDomain.data) {
-      console.log("Persona Data Received:", usersPersonaCountDomain.data);
+      console.log("Original API Data:", usersPersonaCountDomain.data);
+      console.log("Transformed Persona Data:", personas);
     }
     if (isError) {
       console.error("Error fetching persona data:", error);
     }
-  }, [usersPersonaCountDomain.data, isError, error]);
+  }, [usersPersonaCountDomain.data, isError, error, personas]);
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
