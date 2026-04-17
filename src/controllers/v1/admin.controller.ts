@@ -9,10 +9,13 @@ import { tableMetadataApplicationService } from "../../services/admin/table-meta
 import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
 import { adminUserExportApplicationService } from "../../services/admin/admin-user-export.application.service";
 import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
+import { Location } from "../../models/v1/location.model";
+import { Feature } from "../../models/v1/feature.model";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { Role } from "../../utils/enum";
+import { Op } from "sequelize";
 
 const logger = getServiceLogger("admin-controller");
 
@@ -50,6 +53,91 @@ const toOptionalBoolean = (value: unknown): boolean | undefined => {
 
   return undefined;
 };
+
+const currencySymbolsByCode: Record<string, string> = {
+  USD: "$",
+  AUD: "$",
+  CAD: "$",
+  NZD: "$",
+  SGD: "$",
+  EUR: "EUR",
+  GBP: "GBP",
+  NGN: "NGN",
+  INR: "INR",
+  JPY: "JPY",
+};
+
+export const getAdminLocations = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const locations = await Location.findAll({
+      order: [["createdAt", "DESC"]],
+    });
+
+    const payload = locations.map((location) => {
+      const currencyCode = location.currencyCode ?? null;
+      const mappedSymbol =
+        currencyCode && currencySymbolsByCode[currencyCode]
+          ? currencySymbolsByCode[currencyCode]
+          : null;
+
+      return {
+        _id: location.id,
+        currencyCode,
+        currencySymbol: mappedSymbol,
+        multiplier: location.multiplier ?? null,
+        createdAt: location.createdAt,
+        updatedAt: location.updatedAt,
+      };
+    });
+
+    res.apiSuccess(payload, "Locations fetched successfully");
+  },
+);
+
+export const getAdminPricingPlans = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const locationId =
+      typeof req.query.locationId === "string" ? req.query.locationId.trim() : "";
+
+    if (!locationId) {
+      throw new ErrorHandler("locationId query parameter is required.", 400);
+    }
+
+    const plans = await Feature.findAll({
+      where: {
+        locationIds: {
+          [Op.contains]: [locationId],
+        },
+      } as any,
+      order: [["createdAt", "DESC"]],
+    });
+
+    const payload = plans.map((plan) => ({
+      _id: plan.id,
+      title: plan.title,
+      tier: String(plan.tier).toLowerCase(),
+      price: Number(plan.price),
+      jobApplications: plan.jobApplications,
+      cvResumeRequests: plan.cvResumeRequests,
+      validityPeriod: plan.validityPeriod,
+      subscriptionBreak: plan.subscriptionBreak,
+      profileLimit: plan.profileLimit,
+      isActive: plan.isActive,
+      locationIds: plan.locationIds || [],
+      description: plan.description ?? null,
+      extra: plan.extra ?? null,
+      styleData: null,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+    }));
+
+    res.apiSuccess(payload, "Pricing plans fetched successfully");
+  },
+);
 
 export const getAdminAnalytics = catchAsyncError(
   async (req: Request, res: Response) => {

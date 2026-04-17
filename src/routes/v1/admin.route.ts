@@ -2,9 +2,11 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminLocations,
   getAdminStatus,
   getAdminTableMetadata,
   getAdminThrottle,
+  getAdminPricingPlans,
   getAdminUsers,
   getInFlightSubscriptions,
   getAdminUsersExportStatus,
@@ -195,6 +197,18 @@ adminRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   getAllCredentials,
+);
+adminRouterV1.get(
+  "/locations",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminLocations,
+);
+adminRouterV1.get(
+  "/pricing-plans",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminPricingPlans,
 );
 
 adminRouterV1.get(
