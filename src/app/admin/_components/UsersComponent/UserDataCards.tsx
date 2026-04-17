@@ -168,13 +168,13 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     };
   };
 
-  const personas: UsersCountData | undefined = usersPersonnaCountDomain.data 
-    ? transformApiData(usersPersonnaCountDomain.data) 
+  const personas: UsersCountData | undefined = usersPersonaCountDomain.data
+    ? transformApiData(usersPersonaCountDomain.data)
     : undefined;
-    
-  const isLoading = usersPersonnaCountDomain.isLoading;
-  const isError = usersPersonnaCountDomain.isError;
-  const error = usersPersonnaCountDomain.error;
+
+  const isLoading = usersPersonaCountDomain.isLoading;
+  const isError = usersPersonaCountDomain.isError;
+  const error = usersPersonaCountDomain.error;
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]

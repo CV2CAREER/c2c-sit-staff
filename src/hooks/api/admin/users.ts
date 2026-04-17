@@ -36,7 +36,12 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
   const usersPersonaCount = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_STATS,
-    params: { startDate, endDate },
+    params: {
+      from: startDate || undefined,
+      to: endDate || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    },
     queryKey: ["admin-users-persona-count", startDate, endDate],
     enabled: fetchUsersPersonaCount,
   });
@@ -169,26 +174,101 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       };
     }
 
-    // Map the analytics response to the expected format
-    // Adjust these mappings based on your actual API response structure
+    const tiers = Array.isArray(analyticsData.subscriptionTiers?.tiers)
+      ? analyticsData.subscriptionTiers.tiers
+      : [];
+
+    const getTierUsers = (...keys: string[]) => {
+      for (const key of keys) {
+        const tier = tiers.find((t: any) => t?.key === key);
+        if (typeof tier?.users === "number") return tier.users;
+      }
+      return undefined;
+    };
+
+    // Map consolidated analytics payload (breakdown/subscriptionTiers)
+    // with fallback to legacy flat fields.
     return {
-      adminPersonnaCount: analyticsData.adminCount || analyticsData.adminPersonnaCount || 0,
-      guestPersonnaCount: analyticsData.guestCount || analyticsData.guestPersonnaCount || 0,
-      clientPersonnaCount: analyticsData.clientCount || analyticsData.clientPersonnaCount || 0,
-      coachesPersonnaCount: analyticsData.coachCount || analyticsData.coachesPersonnaCount || 0,
-      partnersPersonnaCount: analyticsData.partnerCount || analyticsData.partnersPersonnaCount || 0,
-      salesPersonnaCount: analyticsData.salesCount || analyticsData.salesPersonnaCount || 0,
-      csePersonnaCount: analyticsData.cseCount || analyticsData.csePersonnaCount || 0,
-      testPersonnaCount: analyticsData.testCount || analyticsData.testPersonnaCount || 0,
-      loyalistsPersonnaCount: analyticsData.loyalistCount || analyticsData.loyalistsPersonnaCount || 0,
-      totalActiveUsersCount: analyticsData.totalUsers || analyticsData.totalActiveUsersCount || 0,
-      bronzePlanCount: analyticsData.bronzePlanCount || analyticsData.bronzeCount || 0,
-      emeraldPlanCount: analyticsData.emeraldPlanCount || analyticsData.emeraldCount || 0,
-      coralPlanCount: analyticsData.coralPlanCount || analyticsData.coralCount || 0,
-      silverPlanCount: analyticsData.silverPlanCount || analyticsData.silverCount || 0,
-      platinumPlanCount: analyticsData.platinumPlanCount || analyticsData.platinumCount || 0,
-      goldPlanCount: analyticsData.goldPlanCount || analyticsData.goldCount || 0,
-      totalPlanCount: analyticsData.totalPlanCount || analyticsData.totalPlans || 0,
+      adminPersonnaCount:
+        analyticsData.adminCount ??
+        analyticsData.adminPersonnaCount ??
+        analyticsData.breakdown?.users?.successful ??
+        0,
+      guestPersonnaCount:
+        analyticsData.guestCount ??
+        analyticsData.guestPersonnaCount ??
+        0,
+      clientPersonnaCount:
+        analyticsData.clientCount ??
+        analyticsData.clientPersonnaCount ??
+        analyticsData.breakdown?.users?.successful ??
+        0,
+      coachesPersonnaCount:
+        analyticsData.coachCount ??
+        analyticsData.coachesPersonnaCount ??
+        0,
+      partnersPersonnaCount:
+        analyticsData.partnerCount ??
+        analyticsData.partnersPersonnaCount ??
+        0,
+      salesPersonnaCount:
+        analyticsData.salesCount ??
+        analyticsData.salesPersonnaCount ??
+        0,
+      csePersonnaCount:
+        analyticsData.cseCount ??
+        analyticsData.csePersonnaCount ??
+        0,
+      testPersonnaCount:
+        analyticsData.testCount ??
+        analyticsData.testPersonnaCount ??
+        analyticsData.breakdown?.applications?.failed ??
+        0,
+      loyalistsPersonnaCount:
+        analyticsData.loyalistCount ??
+        analyticsData.loyalistsPersonnaCount ??
+        0,
+      totalActiveUsersCount:
+        analyticsData.totalUsers ??
+        analyticsData.totalActiveUsersCount ??
+        analyticsData.subscriptionTiers?.totals?.activeSubscribers ??
+        analyticsData.breakdown?.users?.successful ??
+        0,
+      bronzePlanCount:
+        analyticsData.bronzePlanCount ??
+        analyticsData.bronzeCount ??
+        getTierUsers("bronze") ??
+        0,
+      emeraldPlanCount:
+        analyticsData.emeraldPlanCount ??
+        analyticsData.emeraldCount ??
+        getTierUsers("emerald", "copper") ??
+        0,
+      coralPlanCount:
+        analyticsData.coralPlanCount ??
+        analyticsData.coralCount ??
+        getTierUsers("coral") ??
+        0,
+      silverPlanCount:
+        analyticsData.silverPlanCount ??
+        analyticsData.silverCount ??
+        getTierUsers("silver") ??
+        0,
+      platinumPlanCount:
+        analyticsData.platinumPlanCount ??
+        analyticsData.platinumCount ??
+        getTierUsers("platinum") ??
+        0,
+      goldPlanCount:
+        analyticsData.goldPlanCount ??
+        analyticsData.goldCount ??
+        getTierUsers("gold") ??
+        0,
+      totalPlanCount:
+        analyticsData.totalPlanCount ??
+        analyticsData.totalPlans ??
+        analyticsData.subscriptionTiers?.totals?.activeSubscriptions ??
+        0,
     };
   }, [usersPersonaCount.data]);
 
