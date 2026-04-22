@@ -25,6 +25,7 @@ import {
   SessionTime,
 } from "../../types/session.types";
 import { User } from "./user.model";
+import { Schedule } from "./schedule.model";
 
 @Table({
   tableName: "sessions",
@@ -103,9 +104,13 @@ export class Session extends Model {
   meetingLink?: string;
 
   // Reference to Schedule model (if exists)
+  @ForeignKey(() => Schedule)
   @AllowNull(true)
-  @Column(DataType.STRING)
+  @Column(DataType.UUID)
   scheduleId?: string;
+
+  @BelongsTo(() => Schedule, "scheduleId")
+  schedule?: Schedule;
 
   // Grading stored as JSONB
   @AllowNull(true)

@@ -40,7 +40,6 @@ import settingsRouterV1 from "./routes/v1/settings.route";
 import viewAsRulesRouterV1 from "./routes/v1/view-as-rules.route";
 import chatRouterV1 from "./routes/v1/chat.route";
 import supportRouterV1 from "./routes/v1/support.route";
-import coachRouterV1 from "./routes/v1/coach.route";
 import scheduleRouterV1 from "./routes/v1/schedule.route";
 import availabilityRouterV1 from "./routes/v1/availability.route";
 import sessionsRouterV1 from "./routes/v1/sessions.route";
@@ -134,8 +133,16 @@ app.get("/api", async (_, res: Response) => {
   res.status(200).send("Welcome to C2C STAFF SERVER API..");
 });
 
-// Testing endpoint
 app.get("/api/v1/health", (req: Request, res: Response, next: NextFunction) => {
+  res.status(200).json({
+    success: true,
+    message: "API is healthy",
+    statusCode: 200,
+  });
+});
+
+// Also add /api/health for backwards compatibility
+app.get("/api/health", (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json({
     success: true,
     message: "API is healthy",

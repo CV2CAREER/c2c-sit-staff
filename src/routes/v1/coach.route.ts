@@ -5,9 +5,11 @@ import {
   getAllCoaches,
   getMyCoachProfile,
 } from "../../controllers/v1/coach.controller";
+import { getCoachSessions, markSessionCompleted, cancelSessionHandler, getCoachSessionById } from "../../controllers/v1/coach-session.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
+import { Role } from "../../utils/enum";
 
 const coachRouterV1 = Router();
 
@@ -72,6 +74,15 @@ coachRouterV1.get(
   authorizeRoles("admin"),
   getAllCoaches,
 );
+
+/**
+ * Coach protected routes
+ * Only users with COACH role can access these endpoints
+ */
+coachRouterV1.get("/sessions", checkBlacklistedTokens, isUserAuthenticated, getCoachSessions);
+coachRouterV1.get("/sessions/:sessionId", checkBlacklistedTokens, isUserAuthenticated, getCoachSessionById);
+coachRouterV1.patch("/sessions/:sessionId/complete", checkBlacklistedTokens, isUserAuthenticated, markSessionCompleted);
+coachRouterV1.patch("/sessions/:sessionId/cancel", checkBlacklistedTokens, isUserAuthenticated, cancelSessionHandler);
 
 /**
  * @swagger
