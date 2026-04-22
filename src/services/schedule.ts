@@ -1,6 +1,8 @@
-import db from "@/database/postgres";
+import { User } from "@/models/v1/user.model";
+import { Schedule } from "@/models/v1/schedule.model";
 import ErrorHandler from "@/utils/errorHandler";
 import { getServiceLogger } from "@/utils/createLogger";
+import { Role } from "@/utils/enum";
 
 const logger = getServiceLogger("ScheduleService");
 
@@ -12,15 +14,20 @@ export async function getSchedulesByCoach(
   coachId?: string,
 ): Promise<any[]> {
   try {
-    // If coachId is provided as parameter, use it directly
+  // If coachId is provided as parameter, use it directly
     if (coachId) {
-      const coach = await db.coach.findOne({ where: { user: coachId } });
-      if (!coach) {
-        throw new ErrorHandler("Coach data not found", 404);
+      // Verify user exists and is coach
+      const user = await User.findOne({
+        where: { id: coachId },
+        attributes: ['id', 'role']
+      });
+
+      if (!user || user.role !== Role.COACH) {
+        throw new ErrorHandler("Invalid coach ID", 404);
       }
 
-      const schedules = await db.schedule.findAll({
-        where: { coach: coach.id },
+      const schedules = await Schedule.findAll({
+        where: { coachId: coachId },
       });
 
       logger.info("Coach schedules retrieved successfully");
@@ -33,12 +40,9 @@ export async function getSchedulesByCoach(
     }
 
     const authCoachId = await getAuthCoachId(userId);
-    if (!authCoachId) {
-      throw new ErrorHandler("Coach not found", 404);
-    }
 
-    const schedules = await db.schedule.findAll({
-      where: { coach: authCoachId },
+    const schedules = await Schedule.findAll({
+      where: { coachId: authCoachId },
     });
 
     logger.info("Coach schedules retrieved successfully");
@@ -63,11 +67,20 @@ export async function createSchedule(
     }
 
     const authCoachId = await getAuthCoachId(userId);
-    if (!authCoachId) {
-      throw new ErrorHandler("Coach not found", 404);
-    }
+    // ✅ FIX: Database column name is coachId NOT coach
+    payload.coachId = authCoachId;
 
-    payload.coach = authCoachId;
+    // ✅ FIX: Map incoming day date to proper columns
+    if (payload.day) {
+      // Store actual date in date column
+      payload.date = payload.day;
+      
+      // Also calculate weekday name for enum column
+      const date = new Date(payload.day);
+      const dayIndex = date.getDay();
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      payload.day = days[dayIndex];
+    }
 
     // Format time slots from interval format to hourly slots
     const timeSlots: any[] = [];
@@ -93,7 +106,7 @@ export async function createSchedule(
       time: timeSlots,
     };
 
-    const newSchedule = await db.schedule.create(formattedPayload);
+    const newSchedule = await Schedule.create(formattedPayload);
     logger.info(`Schedule created: ${newSchedule.id}`);
     return newSchedule;
   } catch (error: any) {
@@ -120,7 +133,7 @@ export async function updateSchedule(
       throw new ErrorHandler("Schedule ID is required", 400);
     }
 
-    const schedule = await db.schedule.findByPk(scheduleId);
+    const schedule = await Schedule.findByPk(scheduleId);
 
     if (!schedule) {
       throw new ErrorHandler("Schedule not found", 404);
@@ -153,7 +166,7 @@ export async function deleteSchedule(
       throw new ErrorHandler("Schedule ID is required", 400);
     }
 
-    const schedule = await db.schedule.findByPk(scheduleId);
+    const schedule = await Schedule.findByPk(scheduleId);
 
     if (!schedule) {
       throw new ErrorHandler("Schedule not found", 404);
@@ -172,22 +185,37 @@ export async function deleteSchedule(
 /**
  * Get authenticated coach ID from user ID
  */
-async function getAuthCoachId(userId: string): Promise<string | null> {
+async function getAuthCoachId(userId: string): Promise<string> {
   try {
     if (!userId) {
       throw new ErrorHandler("User ID is required", 400);
     }
 
-    const coach = await db.coach.findOne({ where: { user: userId } });
+    // Check user role directly on User model
+    const user = await User.findOne({
+      where: { id: userId },
+      attributes: ['id', 'role']
+    });
 
-    if (!coach) {
-      throw new ErrorHandler("Coach data not found", 404);
+    if (!user) {
+      throw new ErrorHandler("User not found", 404);
     }
 
-    return coach.id.toString();
+    // Validate user is actually a coach
+    if (user.role !== Role.COACH) {
+      throw new ErrorHandler("Only coaches can create schedules", 403);
+    }
+
+    // Return the user ID directly as coach ID
+    // This matches your existing structure where coach accounts are inside user model
+    return userId;
+
   } catch (error: any) {
     logger.error("Error getting auth coach ID:", error);
+    
     if (error instanceof ErrorHandler) throw error;
-    throw new ErrorHandler("Failed to authenticate coach", 500);
+    
+    // Return actual error instead of generic authentication error
+    throw new ErrorHandler(`Server error: ${error.message}`, 500);
   }
 }

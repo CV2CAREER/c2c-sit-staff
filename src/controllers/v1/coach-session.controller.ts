@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
-import { getCoachSessionsData } from "../../services/coach-session.service";
+import { getCoachSessionsData, completeSession, cancelSession, getSessionById } from "../../services/coach-session.service";
 
 const logger = getServiceLogger("coach-session-controller");
 
@@ -24,6 +24,63 @@ export const getCoachSessions = catchAsyncError(
     res.apiSuccess(
       sessionData,
       "Coach sessions retrieved successfully"
+    );
+  }
+);
+
+/**
+ * Get single session by ID
+ */
+export const getCoachSessionById = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const coachId = req.user.id;
+    const { sessionId } = req.params;
+
+    logger.info(`Retrieving session: ${sessionId} | Coach: ${coachId}`);
+
+    const session = await getSessionById(coachId, sessionId);
+
+    res.apiSuccess(
+      session,
+      "Session retrieved successfully"
+    );
+  }
+);
+
+/**
+ * Mark session as completed
+ */
+export const markSessionCompleted = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const coachId = req.user.id;
+    const { sessionId } = req.params;
+
+    logger.info(`Marking session as completed: ${sessionId} | Coach: ${coachId}`);
+
+    const session = await completeSession(coachId, sessionId);
+
+    res.apiSuccess(
+      session,
+      "Session marked as completed successfully"
+    );
+  }
+);
+
+/**
+ * Cancel session
+ */
+export const cancelSessionHandler = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const coachId = req.user.id;
+    const { sessionId } = req.params;
+
+    logger.info(`Cancelling session: ${sessionId} | Coach: ${coachId}`);
+
+    const session = await cancelSession(coachId, sessionId);
+
+    res.apiSuccess(
+      session,
+      "Session cancelled successfully"
     );
   }
 );

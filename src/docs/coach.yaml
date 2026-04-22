@@ -1,6 +1,46 @@
 # OpenAPI Specification for Coach Endpoints
 
 paths:
+  /v1/coach/sessions/{sessionId}:
+    get:
+      tags:
+        - Coach
+      summary: Get Session By ID
+      description: |
+        Retrieves single session details by ID.
+        Only the coach who owns the session can access it.
+        Includes client details and schedule information.
+        
+        **Required Role:** COACH
+      operationId: getCoachSessionById
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          description: ID of the session to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Session'
+        '401':
+          description: Authentication required
+        '403':
+          description: Access denied - COACH role required or not session owner
+        '404':
+          description: Session not found
+        '500':
+          description: Internal server error
+
   /v1/coach/sessions:
     get:
       tags:
@@ -79,6 +119,82 @@ paths:
           description: Authentication required
         '403':
           description: Access denied - COACH role required
+        '500':
+          description: Internal server error
+
+  /v1/coach/sessions/{sessionId}/complete:
+    patch:
+      tags:
+        - Coach
+      summary: Mark Session as Completed
+      description: |
+        Marks a specific session as completed.
+        Only the coach who owns the session can perform this action.
+        Automatically invalidates cache for this coach.
+        Sends Slack notification.
+        
+        **Required Role:** COACH
+      operationId: markSessionCompleted
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          description: ID of the session to mark as completed
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session marked as completed successfully
+        '400':
+          description: Cannot complete a canceled session
+        '401':
+          description: Authentication required
+        '403':
+          description: Access denied - COACH role required or not session owner
+        '404':
+          description: Session not found
+        '500':
+          description: Internal server error
+
+  /v1/coach/sessions/{sessionId}/cancel:
+    patch:
+      tags:
+        - Coach
+      summary: Cancel Session
+      description: |
+        Cancels a specific session.
+        Only the coach who owns the session can perform this action.
+        Automatically invalidates cache for this coach.
+        Sends Slack notification with CSM team mention.
+        
+        **Required Role:** COACH
+      operationId: cancelSession
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          description: ID of the session to cancel
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session canceled successfully
+        '400':
+          description: Cannot cancel a completed session
+        '401':
+          description: Authentication required
+        '403':
+          description: Access denied - COACH role required or not session owner
+        '404':
+          description: Session not found
         '500':
           description: Internal server error
 
