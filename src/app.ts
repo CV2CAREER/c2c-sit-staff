@@ -49,6 +49,9 @@ import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
 
+// Coaches
+import coachRouterV1 from "./routes/v1/coach.route"
+
 export const app = express();
 
 const logger = getServiceLogger("app");
