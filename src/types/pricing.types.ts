@@ -37,5 +37,5 @@ export interface UpdateMultiplierPayload {
 
 export interface UpdatePlanPayload {
   planId: string;
-  feature: Partial<PricingPlan>;
+  updates: Partial<PricingPlan>;
 }

@@ -89,7 +89,7 @@ const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
       return;
     }
 
-    const featurePayload: Partial<PricingPlan> = {
+    const updates: Partial<PricingPlan> = {
       title,
       price: parseInt(price, 10),
       profileLimit: parseInt(profileLimit, 10),
@@ -101,7 +101,7 @@ const PlanEditorModal: React.FC<PlanEditorModalProps> = ({
 
     updatePricingPlanMutation.mutate({
       planId: plan._id,
-      feature: featurePayload,
+      updates,
     }, {
       onSuccess: () => {
         onPlanUpdated();

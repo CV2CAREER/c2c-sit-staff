@@ -19,6 +19,9 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
   multiplier,
 }) => {
   const otherFeatures = pricing.extra ? pricing.extra.split(",").map(f => f.trim()) : [];
+  const numericMultiplier = Number(multiplier);
+  const convertedPrice =
+    pricing.price * (Number.isFinite(numericMultiplier) && numericMultiplier > 0 ? numericMultiplier : 1);
 
   return (
     <div className="bg-sky-50 rounded-2xl overflow-hidden flex flex-col w-[24rem] max-w-[80vw] flex-shrink-0">
@@ -31,7 +34,7 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
         <span className="text-32 flex flex-row justify-end items-end smallLaptop:text-3xl bigLaptop:text-4xl font-medium text-white mix-blend-difference font-sharp-grotesk">
           {currencyFormatterFunc({
             to: symbol?.currencyCode || "AUD",
-            amount: pricing?.price * parseFloat(multiplier),
+            amount: convertedPrice,
           })}{" "}
           <p className=" text-sm ml-1">{symbol?.currencyCode}</p>
         </span>

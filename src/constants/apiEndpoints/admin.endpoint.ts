@@ -27,6 +27,7 @@ export const ADMIN_AUDIT_TRAIL_PASSKEY = "/api/v1/audit-trail/passkey";
 export const ADMIN_AUDIT_TRAIL_PASSKEY_VERIFY = "/api/v1/audit-trail/passkey/verify";
 
 export const ADMIN_LOCATIONS = "/api/v1/admin/locations";
+export const ADMIN_PRICING = "/api/v1/admin/pricing";
 export const ADMIN_PRICING_PLANS = "/api/v1/admin/pricing-plans";
 export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info/${id}`;
 

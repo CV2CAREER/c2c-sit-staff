@@ -1,6 +1,6 @@
 // CV2C-Staff/app/admin/pricing/page.tsx;
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import LocationSelector from "./_components/locationSelector";
 import MultiplierEditor from "./_components/multiplierEditor";
 import PlanEditorModal from "./_components/planEditorModal";
@@ -21,8 +21,25 @@ function PricingAdminPage() {
 
   // --- Data Fetching ---
   const { adminLocationsDomain } = useAdminQueries({ fetchAdminLocations: true });
-  
-  const locations = adminLocationsDomain.data || [];
+  const locations = useMemo(
+    () => adminLocationsDomain.data || [],
+    [adminLocationsDomain.data],
+  );
+
+  useEffect(() => {
+    if (locations.length === 0) {
+      return;
+    }
+
+    const hasSelectedLocation = locations.some(
+      (location) => location.currencyCode === selectedLocationCode,
+    );
+
+    if (!hasSelectedLocation) {
+      setSelectedLocationCode(locations[0].currencyCode);
+    }
+  }, [locations, selectedLocationCode]);
+
   const activeLocation = useMemo(
     () => locations.find(loc => loc.currencyCode === selectedLocationCode),
     [locations, selectedLocationCode]
