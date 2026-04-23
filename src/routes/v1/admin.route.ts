@@ -3,10 +3,12 @@ import {
   assignPlacementController,
   getAdminAnalytics,
   getAdminLocations,
+  patchAdminLocationMultiplier,
   getAdminStatus,
   getAdminTableMetadata,
   getAdminThrottle,
   getAdminPricingPlans,
+  patchAdminPricingPlan,
   getAdminUsers,
   getInFlightSubscriptions,
   getAdminUsersExportStatus,
@@ -203,6 +205,24 @@ adminRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   getAdminLocations,
+);
+adminRouterV1.patch(
+  "/locations",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchAdminLocationMultiplier,
+);
+adminRouterV1.get(
+  "/pricing",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminPricingPlans,
+);
+adminRouterV1.patch(
+  "/pricing",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  patchAdminPricingPlan,
 );
 adminRouterV1.get(
   "/pricing-plans",

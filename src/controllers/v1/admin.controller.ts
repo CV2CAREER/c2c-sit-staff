@@ -9,6 +9,7 @@ import { tableMetadataApplicationService } from "../../services/admin/table-meta
 import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
 import { adminUserExportApplicationService } from "../../services/admin/admin-user-export.application.service";
 import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
+import { FeatureService } from "../../services/feature.service";
 import { Location } from "../../models/v1/location.model";
 import { Feature } from "../../models/v1/feature.model";
 import catchAsyncError from "../../utils/catchAsyncError";
@@ -136,6 +137,104 @@ export const getAdminPricingPlans = catchAsyncError(
     }));
 
     res.apiSuccess(payload, "Pricing plans fetched successfully");
+  },
+);
+
+export const patchAdminLocationMultiplier = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const locationId =
+      typeof req.body?.locationId === "string"
+        ? req.body.locationId.trim()
+        : typeof req.body?.activeLocationID === "string"
+          ? req.body.activeLocationID.trim()
+          : "";
+
+    const multiplierValue = req.body?.multiplier ?? req.body?.payload?.multiplier;
+    const multiplier =
+      typeof multiplierValue === "string"
+        ? multiplierValue.trim()
+        : typeof multiplierValue === "number"
+          ? String(multiplierValue)
+          : "";
+
+    if (!locationId) {
+      throw new ErrorHandler("locationId is required.", 400);
+    }
+
+    if (!multiplier) {
+      throw new ErrorHandler("multiplier is required.", 400);
+    }
+
+    const parsedMultiplier = Number(multiplier);
+    if (!Number.isFinite(parsedMultiplier) || parsedMultiplier <= 0) {
+      throw new ErrorHandler("multiplier must be a valid number greater than 0.", 400);
+    }
+
+    const location = await Location.findByPk(locationId);
+
+    if (!location) {
+      throw new ErrorHandler("Location not found.", 404);
+    }
+
+    await location.update({ multiplier });
+
+    const currencyCode = location.currencyCode ?? null;
+    const mappedSymbol =
+      currencyCode && currencySymbolsByCode[currencyCode]
+        ? currencySymbolsByCode[currencyCode]
+        : null;
+
+    res.apiSuccess(
+      {
+        _id: location.id,
+        currencyCode,
+        currencySymbol: mappedSymbol,
+        multiplier: location.multiplier ?? null,
+        createdAt: location.createdAt,
+        updatedAt: location.updatedAt,
+      },
+      "Location multiplier updated successfully",
+    );
+  },
+);
+
+export const patchAdminPricingPlan = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const planId =
+      typeof req.body?.planId === "string"
+        ? req.body.planId.trim()
+        : typeof req.body?.id === "string"
+          ? req.body.id.trim()
+          : "";
+
+    const updates =
+      typeof req.body?.updates === "object" && req.body.updates
+        ? req.body.updates
+        : typeof req.body?.feature === "object" && req.body.feature
+          ? req.body.feature
+          : null;
+
+    if (!planId) {
+      throw new ErrorHandler("planId is required.", 400);
+    }
+
+    if (!updates || Object.keys(updates).length === 0) {
+      throw new ErrorHandler("updates payload is required.", 400);
+    }
+
+    const updatedFeature = await FeatureService.updateFeature(
+      req,
+      planId,
+      updates,
+      req.user?.id || null,
+      req.user?.email || "System",
+    );
+
+    res.apiSuccess(updatedFeature, "Pricing plan updated successfully");
   },
 );
 

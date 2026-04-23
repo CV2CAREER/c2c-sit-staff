@@ -1,96 +1,344 @@
-import { Feature } from "../models/v1/feature.model";
-import { AdminControl } from "../models/v1/admin-control.model";
+import { Op } from "sequelize";
+import { Feature, SubscriptionTier } from "../models/v1/feature.model";
 import { SlackService } from "./slack.service";
 import { getServiceLogger } from "../utils/createLogger";
-import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
+import {
+  SlackChannel,
+  SlackEventType,
+  SlackNode,
+  SlackProvider,
+  SlackSeverity,
+} from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
+import ErrorHandler from "../utils/errorHandler";
 
 const logger = getServiceLogger("feature-service");
 
+type FeatureQueryOptions = {
+  locationId?: string;
+  tier?: string;
+  isActive?: boolean;
+};
+
+type FeatureUpdateInput = Partial<{
+  title: string;
+  tier: SubscriptionTier;
+  price: number;
+  jobApplications: number;
+  cvResumeRequests: number;
+  screeningPrep: number;
+  interviewPrep: number;
+  resumeDevelopment: number;
+  validityPeriod: string;
+  pauseOptionMonths: number;
+  subscriptionBreak: string;
+  profileLimit: number;
+  isTopUp: boolean;
+  description: string | null;
+  extra: string | null;
+  isActive: boolean;
+  locationIds: string[];
+}>;
+
+const FEATURE_UPDATE_KEYS = new Set<keyof FeatureUpdateInput>([
+  "title",
+  "tier",
+  "price",
+  "jobApplications",
+  "cvResumeRequests",
+  "screeningPrep",
+  "interviewPrep",
+  "resumeDevelopment",
+  "validityPeriod",
+  "pauseOptionMonths",
+  "subscriptionBreak",
+  "profileLimit",
+  "isTopUp",
+  "description",
+  "extra",
+  "isActive",
+  "locationIds",
+]);
+
+const INTEGER_FIELDS: Array<keyof FeatureUpdateInput> = [
+  "jobApplications",
+  "cvResumeRequests",
+  "screeningPrep",
+  "interviewPrep",
+  "resumeDevelopment",
+  "pauseOptionMonths",
+  "profileLimit",
+];
+
+const DECIMAL_FIELDS: Array<keyof FeatureUpdateInput> = ["price"];
+const BOOLEAN_FIELDS: Array<keyof FeatureUpdateInput> = ["isTopUp", "isActive"];
+const NULLABLE_STRING_FIELDS: Array<keyof FeatureUpdateInput> = [
+  "description",
+  "extra",
+];
+
+const serializeFeature = (feature: Feature) => ({
+  id: feature.id,
+  _id: feature.id,
+  title: feature.title,
+  tier: feature.tier,
+  price: Number(feature.price),
+  jobApplications: feature.jobApplications,
+  cvResumeRequests: feature.cvResumeRequests,
+  screeningPrep: feature.screeningPrep ?? 0,
+  interviewPrep: feature.interviewPrep ?? 0,
+  resumeDevelopment: feature.resumeDevelopment ?? 0,
+  validityPeriod: feature.validityPeriod,
+  pauseOptionMonths: feature.pauseOptionMonths,
+  subscriptionBreak: feature.subscriptionBreak,
+  profileLimit: feature.profileLimit,
+  isTopUp: feature.isTopUp,
+  description: feature.description ?? null,
+  extra: feature.extra ?? null,
+  isActive: feature.isActive,
+  locationIds: feature.locationIds || [],
+  createdAt: feature.createdAt,
+  updatedAt: feature.updatedAt,
+});
+
+const toOptionalBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
+
+  return undefined;
+};
+
+const coerceNumber = (
+  value: unknown,
+  fieldName: string,
+  integerOnly = false,
+) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (integerOnly && !Number.isInteger(value)) {
+      throw new ErrorHandler(`${fieldName} must be an integer.`, 400);
+    }
+
+    return value;
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new ErrorHandler(`${fieldName} must be a valid number.`, 400);
+  }
+
+  const parsed = integerOnly ? Number.parseInt(value, 10) : Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new ErrorHandler(`${fieldName} must be a valid number.`, 400);
+  }
+
+  if (integerOnly && !Number.isInteger(parsed)) {
+    throw new ErrorHandler(`${fieldName} must be an integer.`, 400);
+  }
+
+  return parsed;
+};
+
+const normalizeTier = (value: unknown): SubscriptionTier => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new ErrorHandler("tier must be a valid subscription tier.", 400);
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const tier = Object.values(SubscriptionTier).find(
+    (candidate) => candidate.toLowerCase() === normalized,
+  );
+
+  if (!tier) {
+    throw new ErrorHandler("tier must be a valid subscription tier.", 400);
+  }
+
+  return tier;
+};
+
+const sanitizeUpdates = (
+  updates: Record<string, unknown>,
+): FeatureUpdateInput => {
+  const sanitized: FeatureUpdateInput = {};
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (!FEATURE_UPDATE_KEYS.has(key as keyof FeatureUpdateInput)) {
+      continue;
+    }
+
+    const typedKey = key as keyof FeatureUpdateInput;
+
+    if (typedKey === "tier") {
+      sanitized.tier = normalizeTier(value);
+      continue;
+    }
+
+    if (typedKey === "locationIds") {
+      if (
+        !Array.isArray(value) ||
+        value.some(
+          (item) => typeof item !== "string" || item.trim().length === 0,
+        )
+      ) {
+        throw new ErrorHandler(
+          "locationIds must be an array of non-empty strings.",
+          400,
+        );
+      }
+
+      sanitized.locationIds = value.map((item) => item.trim());
+      continue;
+    }
+
+    if (INTEGER_FIELDS.includes(typedKey)) {
+      sanitized[typedKey] = coerceNumber(value, key, true) as never;
+      continue;
+    }
+
+    if (DECIMAL_FIELDS.includes(typedKey)) {
+      sanitized[typedKey] = coerceNumber(value, key, false) as never;
+      continue;
+    }
+
+    if (BOOLEAN_FIELDS.includes(typedKey)) {
+      const parsed = toOptionalBoolean(value);
+      if (typeof parsed !== "boolean") {
+        throw new ErrorHandler(`${key} must be a boolean.`, 400);
+      }
+
+      sanitized[typedKey] = parsed as never;
+      continue;
+    }
+
+    if (NULLABLE_STRING_FIELDS.includes(typedKey)) {
+      if (value == null || value === "") {
+        sanitized[typedKey] = null as never;
+        continue;
+      }
+
+      if (typeof value !== "string") {
+        throw new ErrorHandler(`${key} must be a string.`, 400);
+      }
+
+      sanitized[typedKey] = value.trim() as never;
+      continue;
+    }
+
+    if (typeof value !== "string" || value.trim().length === 0) {
+      throw new ErrorHandler(`${key} must be a non-empty string.`, 400);
+    }
+
+    sanitized[typedKey] = value.trim() as never;
+  }
+
+  if (Object.keys(sanitized).length === 0) {
+    throw new ErrorHandler("No valid feature update fields were provided.", 400);
+  }
+
+  return sanitized;
+};
+
 export class FeatureService {
-  // Get all features
-  static async getAllFeatures() {
+  static async getAllFeatures(options: FeatureQueryOptions = {}) {
     try {
+      const where: Record<string, unknown> = {};
+
+      if (options.locationId) {
+        where.locationIds = {
+          [Op.contains]: [options.locationId],
+        };
+      }
+
+      if (options.tier) {
+        where.tier = normalizeTier(options.tier);
+      }
+
+      if (typeof options.isActive === "boolean") {
+        where.isActive = options.isActive;
+      }
+
       const features = await Feature.findAll({
-        order: [['createdAt', 'DESC']]
+        where,
+        order: [["createdAt", "DESC"]],
       });
-      
+
       logger.info(`Retrieved ${features.length} features from database`);
-      return features;
+      return features.map(serializeFeature);
     } catch (error: any) {
       logger.error(`Failed to retrieve features: ${error.message}`);
       throw error;
     }
   }
 
-  // Get feature by ID
   static async getFeatureById(id: string) {
     try {
       const feature = await Feature.findByPk(id);
 
       if (!feature) {
         logger.warn(`Feature with ID ${id} not found`);
-        throw new Error(`Feature with ID ${id} not found`);
+        throw new ErrorHandler(`Feature with ID ${id} not found`, 404);
       }
 
       logger.info(`Retrieved feature ${id}`);
-      return feature;
+      return serializeFeature(feature);
     } catch (error: any) {
       logger.error(`Failed to retrieve feature ${id}: ${error.message}`);
       throw error;
     }
   }
 
-  // Update feature settings
-  static async updateFeature(req: any, id: string, updates: Partial<any>, userId: string | null, userEmail: string) {
+  static async updateFeature(
+    req: any,
+    id: string,
+    updates: Record<string, unknown>,
+    userId: string | null,
+    userEmail: string,
+  ) {
     const host = req.headers.host || req.headers.origin || "localhost";
     const location = getEnvironmentFromHost(host);
-    
-    // Find the feature by ID
+    const sanitizedUpdates = sanitizeUpdates(updates);
+
     const feature = await Feature.findByPk(id);
 
     if (!feature) {
-      throw new Error(`Feature with ID ${id} not found`);
+      throw new ErrorHandler(`Feature with ID ${id} not found`, 404);
     }
 
-    // Update the feature with provided fields
-    await feature.update(updates);
+    await feature.update(sanitizedUpdates);
 
-  
-    
-    // Get the updated feature record
     const updatedFeature = await Feature.findByPk(id);
 
-    // Also update the admin control record to track who made the change
-    // if (userId) {
-    //   await AdminControl.update(
-    //     { updatedByUserId: userId },
-    //     { where: { id: feature.id } }
-    //   );
-    // }
-    
-    // Send Slack notification asynchronously (non-blocking)
     setImmediate(async () => {
       try {
-
-        const updateSummary = Object.entries(updates)
+        const updateSummary = Object.entries(sanitizedUpdates)
           .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-          .join("\n• ");
+          .join("\n- ");
 
         const message = `
-✅ **Feature Updated** ✅
-• Feature ID: ${id}
-• Updated by: ${userEmail}
-• Changes made:
-• ${updateSummary}
+Feature Updated
+- Feature ID: ${id}
+- Updated by: ${userEmail}
+- Changes made:
+- ${updateSummary}
 
-**Feature Details:**
-• Title: ${feature.title}
-• Tier: ${feature.tier}
-• Price: $${feature.price}
-• Job Applications: ${feature.jobApplications}
-• CV/Resume Requests: ${feature.cvResumeRequests}
-• Validity Period: ${feature.validityPeriod}
+Feature Details:
+- Title: ${feature.title}
+- Tier: ${feature.tier}
+- Price: $${feature.price}
+- Job Applications: ${feature.jobApplications}
+- CV/Resume Requests: ${feature.cvResumeRequests}
+- Validity Period: ${feature.validityPeriod}
         `;
 
         await SlackService.notify({
@@ -105,14 +353,17 @@ export class FeatureService {
           teamMentions: "CSM",
           body: message.trim(),
         });
-        
-        logger.info(`✅ Slack notification sent for feature ${id} update`);
+
+        logger.info(`Slack notification sent for feature ${id} update`);
       } catch (err) {
-        logger.error(`❌ Slack notification failed for feature ${id}: ${err}`);
+        logger.error(`Slack notification failed for feature ${id}: ${err}`);
       }
     });
 
-    logger.info(`Feature ${id} updated successfully by ${userEmail}`);
-    return updatedFeature;
+    logger.info(
+      `Feature ${id} updated successfully by ${userEmail}${userId ? ` (${userId})` : ""}`,
+    );
+
+    return updatedFeature ? serializeFeature(updatedFeature) : null;
   }
 }

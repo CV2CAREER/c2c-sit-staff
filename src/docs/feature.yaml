@@ -12,6 +12,26 @@ paths:
       security:
         - bearerAuth: []
         - cookieAuth: []
+      parameters:
+        - in: query
+          name: locationId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter features by location membership
+        - in: query
+          name: tier
+          required: false
+          schema:
+            type: string
+          description: Filter by subscription tier
+        - in: query
+          name: isActive
+          required: false
+          schema:
+            type: boolean
+          description: Filter active or inactive features
       responses:
         "200":
           description: Features retrieved successfully
@@ -84,8 +104,8 @@ paths:
         - Feature
       summary: Update feature settings
       description: |
-        Update feature/subscription plan settings and send Slack notification to VA channel.
-        Only users with ADMIN or ASSISTANT (PC) roles are authorized to use this endpoint.
+        Update feature/subscription plan settings.
+        Only users with ADMIN or ASSISTANT roles are authorized to use this endpoint.
       operationId: updateFeature
       security:
         - bearerAuth: []
@@ -97,13 +117,20 @@ paths:
             schema:
               type: object
               required:
-                - id
                 - updates
               properties:
                 id:
                   type: string
                   format: uuid
                   description: Feature ID (subscription plan ID)
+                featureId:
+                  type: string
+                  format: uuid
+                  description: Alternate feature ID field
+                planId:
+                  type: string
+                  format: uuid
+                  description: Alternate feature ID field used by pricing callers
                 updates:
                   type: object
                   description: Key-value pairs of fields to update
@@ -113,9 +140,12 @@ paths:
                     "cvResumeRequests": 10,
                     "isActive": true
                   }
+                feature:
+                  type: object
+                  description: Alternate update payload used by some callers
       responses:
         "200":
-          description: Feature updated successfully and Slack notification sent
+          description: Feature updated successfully
           content:
             application/json:
               schema:
@@ -126,7 +156,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: "Feature updated successfully and Slack notification sent"
+                    example: "Feature updated successfully"
                   data:
                     type: object
                     description: Updated feature object
@@ -135,7 +165,7 @@ paths:
         "401":
           description: Unauthorized - Invalid or missing authentication
         "403":
-          description: Forbidden - Only admins and assistants (PC) can update features
+          description: Forbidden - Only admins and assistants can update features
         "404":
           description: Feature not found
         "500":
