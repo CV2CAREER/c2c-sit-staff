@@ -10,7 +10,7 @@ import { PLAN_ORDER } from "@/utils/constants";
 const SUPPORTED_PRICING_CURRENCIES = ["AUD", "GBP", "EUR", "NGN", "CAD", "USD"] as const;
 
 const sortLocations = (locations: PricingLocation[]) => {
-  const supportedOrder = new Map(
+  const supportedOrder = new Map<string, number>(
     SUPPORTED_PRICING_CURRENCIES.map((code, index) => [code, index]),
   );
 
