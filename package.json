@@ -11,6 +11,7 @@
     "lint:fix": "eslint src --fix",
     "audit": "npm audit --omit=dev",
     "benchmark:analytics": "tsx scripts/benchmark-admin-analytics.ts",
+    "backfill:pricing:locations": "tsx scripts/backfill-pricing-feature-locations.ts",
     "check-all": "npm run lint && npm run audit && npm run build",
     "prepare": "node scripts/setup-hooks.js"
   },
