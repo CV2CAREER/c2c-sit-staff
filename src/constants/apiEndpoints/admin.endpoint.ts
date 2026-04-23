@@ -92,7 +92,7 @@ export const ADMIN_SHEETS_TEMPLATES = "/api/v1/admin/sheets/templates";
 export const SHEETS_API = "/api/v1/sheets";
 export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
 export const COUNTRY_INFO = "/api/v1/country-info";
-export const ADMIN_SLACK_QUEUE = "/api/v1/admin/slack";
+export const ADMIN_SLACK_QUEUE = "/api/v1/aggregator/slack/queue";
 export const ADMIN_RESOURCES = "/api/v1/resources";
 export const ADMIN_PROMOTION = "/api/v1/promotions";
 export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/promotions?id=${id}`;

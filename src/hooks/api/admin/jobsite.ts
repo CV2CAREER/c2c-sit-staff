@@ -18,6 +18,18 @@ const normalizeJobPreferencesOptions = (payload: any) => {
   return [];
 };
 
+const normalizeSlackQueuePayload = (payload: any) => {
+  const source = payload?.data ?? payload;
+  if (source?.data?.result) return source;
+  return { data: source };
+};
+
+const normalizeResourcePayload = (payload: any) => {
+  const source = payload?.data ?? payload;
+  if (source?.data?.value !== undefined) return source;
+  return { data: source };
+};
+
 export const useJobsiteQueries = (options: AdminQueriesOptions) => {
   const {
     fetchAggregators = false,
@@ -37,6 +49,7 @@ export const useJobsiteQueries = (options: AdminQueriesOptions) => {
     startDate = "",
     endDate = "",
   } = options;
+  const selectedSlackQueue = slackQueue || resourceType;
 
   const aggregators = useFetchData<any>({
     method: "GET",
@@ -63,9 +76,9 @@ export const useJobsiteQueries = (options: AdminQueriesOptions) => {
   const slackQueueResult = useFetchData<SlackQueueResponse>({
     method: "GET",
     url: endpoints.ADMIN_SLACK_QUEUE,
-    params: { queue: slackQueue },
-    queryKey: ["admin-slack-queue", slackQueue],
-    enabled: fetchSlackQueue && !!slackQueue,
+    params: { queue: selectedSlackQueue },
+    queryKey: ["admin-slack-queue", selectedSlackQueue],
+    enabled: fetchSlackQueue && !!selectedSlackQueue,
   });
 
   const resourcesResult = useFetchData<ResourceMode>({
@@ -123,14 +136,14 @@ export const useJobsiteQueries = (options: AdminQueriesOptions) => {
       error: jobPreferencesOptions.error,
     },
     slackQueueDomain: {
-      data: slackQueueResult.data?.data,
+      data: normalizeSlackQueuePayload(slackQueueResult.data?.data),
       isLoading: slackQueueResult.isLoading,
       isSuccess: slackQueueResult.isSuccess,
       isError: slackQueueResult.isError,
       error: slackQueueResult.error,
     },
     resourcesDomain: {
-      data: resourcesResult.data?.data,
+      data: normalizeResourcePayload(resourcesResult.data?.data),
       isLoading: resourcesResult.isLoading,
       isSuccess: resourcesResult.isSuccess,
       isError: resourcesResult.isError,
@@ -177,14 +190,17 @@ export const useJobsiteMutations = () => {
       },
       onError: () => {},
     }),
-    toggleAggregatorMutation: useMutateData<any, { aid: string; body: { isEnabled: boolean } }>({
-      method: "PUT",
-      url: (params) => `${endpoints.ADMIN_JOBSITES}?aid=${params?.aid}`,
+    toggleAggregatorMutation: useMutation({
       mutationKey: ["admin-toggle-aggregator"],
+      mutationFn: async ({ aid, body }: { aid: string; body: { isEnabled: boolean } }) => {
+        const res = await axiosInstance.put(endpoints.ADMIN_JOBSITES, body, {
+          params: { aid },
+        });
+        return res.data;
+      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["admin-aggregators-list"] });
       },
-      onError: () => {},
     }),
     slackQueueMutation: useMutation({
       mutationKey: ["admin-slack-queue-action"],
@@ -192,10 +208,18 @@ export const useJobsiteMutations = () => {
         const url = endpoints.ADMIN_SLACK_QUEUE;
         if (action === "POST") {
           const res = await axiosInstance.post(url, { email, queue });
-          return res.data;
+          const data = res.data?.data ?? {};
+          return {
+            ...data,
+            message: data.message ?? res.data?.message,
+          };
         } else {
           const res = await axiosInstance.delete(url, { data: { email, queue } });
-          return res.data;
+          const data = res.data?.data ?? {};
+          return {
+            ...data,
+            message: data.message ?? res.data?.message,
+          };
         }
       },
       onSuccess: () => {
