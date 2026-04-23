@@ -5,20 +5,51 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { PricingLocation, PricingPlan, UpdateMultiplierPayload, UpdatePlanPayload } from "@/types/pricing.types";
 import toast from "react-hot-toast";
-import { PLAN_ORDER } from "@/utils/constants";
 
 const SUPPORTED_PRICING_CURRENCIES = ["AUD", "GBP", "EUR", "NGN", "CAD", "USD"] as const;
+type SupportedPricingCurrency = (typeof SUPPORTED_PRICING_CURRENCIES)[number];
+
+const isSupportedPricingCurrency = (code: string): code is SupportedPricingCurrency =>
+  SUPPORTED_PRICING_CURRENCIES.includes(code as SupportedPricingCurrency);
 
 const sortLocations = (locations: PricingLocation[]) => {
-  const supportedOrder = new Map<string, number>(
+  const supportedOrder = new Map<SupportedPricingCurrency, number>(
     SUPPORTED_PRICING_CURRENCIES.map((code, index) => [code, index]),
   );
+  const dedupedByCurrency = new Map<SupportedPricingCurrency, PricingLocation>();
 
-  return [...locations]
-    .filter((location) => Boolean(location.currencyCode))
+  for (const location of locations) {
+    const normalizedCode = String(location.currencyCode || "").trim().toUpperCase();
+
+    if (!isSupportedPricingCurrency(normalizedCode)) {
+      continue;
+    }
+
+    const existing = dedupedByCurrency.get(normalizedCode);
+    if (!existing) {
+      dedupedByCurrency.set(normalizedCode, { ...location, currencyCode: normalizedCode });
+      continue;
+    }
+
+    const existingStamp = Date.parse(existing.updatedAt ?? existing.createdAt ?? "");
+    const nextStamp = Date.parse(location.updatedAt ?? location.createdAt ?? "");
+    const shouldReplace =
+      Number.isFinite(nextStamp) &&
+      (!Number.isFinite(existingStamp) || nextStamp > existingStamp);
+
+    if (shouldReplace) {
+      dedupedByCurrency.set(normalizedCode, { ...location, currencyCode: normalizedCode });
+    }
+  }
+
+  return [...dedupedByCurrency.values()]
     .sort((left, right) => {
-      const leftRank = supportedOrder.get(left.currencyCode) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = supportedOrder.get(right.currencyCode) ?? Number.MAX_SAFE_INTEGER;
+      const leftRank = isSupportedPricingCurrency(left.currencyCode)
+        ? (supportedOrder.get(left.currencyCode) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      const rightRank = isSupportedPricingCurrency(right.currencyCode)
+        ? (supportedOrder.get(right.currencyCode) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
 
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
@@ -29,14 +60,14 @@ const sortLocations = (locations: PricingLocation[]) => {
 };
 
 const sortPricingPlans = (plans: PricingPlan[]) => {
-  const order = new Map(PLAN_ORDER.map((title, index) => [title.toLowerCase(), index]));
-
   return [...plans].sort((left, right) => {
-    const leftRank = order.get(left.title.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
-    const rightRank = order.get(right.title.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+    const leftPrice = Number(left.price);
+    const rightPrice = Number(right.price);
+    const normalizedLeftPrice = Number.isFinite(leftPrice) ? leftPrice : Number.MAX_SAFE_INTEGER;
+    const normalizedRightPrice = Number.isFinite(rightPrice) ? rightPrice : Number.MAX_SAFE_INTEGER;
 
-    if (leftRank !== rightRank) {
-      return leftRank - rightRank;
+    if (normalizedLeftPrice !== normalizedRightPrice) {
+      return normalizedLeftPrice - normalizedRightPrice;
     }
 
     return left.title.localeCompare(right.title);
