@@ -221,16 +221,16 @@ adminRouterV1.get(
   "/campaign",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  async (req, res) => {
-    // Return empty campaigns array or fetch from database
-    res.json({
-      success: true,
-      data: {
-        campaigns: [],
-        total: 0,
-      },
-    });
-  },
+  // async (req, res) => {
+  //   // Return empty campaigns array or fetch from database
+  //   res.json({
+  //     success: true,
+  //     data: {
+  //       campaigns: [],
+  //       total: 0,
+  //     },
+  //   });
+  // },
 );
 adminRouterV1.post(
   "/campaign",

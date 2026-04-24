@@ -1,6 +1,7 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
 import ErrorHandler from "../utils/errorHandler";
+import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
 import { getCachedUser, setCachedUser } from "./cache/user.cache.service";
 import { hopeUserExists, hopeUserIdExists } from "../utils/user-helper";
@@ -209,7 +210,7 @@ export const getClients = async () => {
     where: {
       role: 'client',
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     },
     attributes: {
       exclude: ['password', 'accessToken', 'adminPassword']
@@ -229,7 +230,7 @@ export const getAssistants = async () => {
     where: {
       role: 'assistant',
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     },
     attributes: {
       exclude: ['password', 'accessToken', 'adminPassword']
@@ -255,7 +256,7 @@ export const getUsersByRoles = async (roles: string[] = ['assistant', 'admin', '
     where: {
       role: roles,
       isActive: true,
-      deletedAt: null
+      isDeleted: false
     },
     attributes: {
       exclude: ['password', 'accessToken', 'adminPassword']
@@ -268,19 +269,74 @@ export const getUsersByRoles = async (roles: string[] = ['assistant', 'admin', '
 };
 
 // Get all users (for admin and assistant roles)
-export const getAllUsers = async () => {
-  logger.info(`Retrieving all users from database`);
+export const getAllUsers = async (query: {
+  page?: number | string;
+  limit?: number | string;
+  active?: boolean | string;
+  recycle?: boolean | string;
+  q?: string;
+  userType?: string;
+  plan?: string;
+} = {}) => {
+  logger.info(`Retrieving all users from database with filters`);
 
-  const users = await User.findAll({
-    where: {
-      isActive: true,
-      deletedAt: null
-    },
+  // Parse query parameters (they come as strings from Express)
+  const page = query.page ? parseInt(query.page as string, 10) : undefined;
+  const limit = query.limit ? parseInt(query.limit as string, 10) : undefined;
+  const active = query.active === 'true' ? true : query.active === 'false' ? false : undefined;
+  const recycle = query.recycle === 'true' ? true : query.recycle === 'false' ? false : undefined;
+  const { q, userType, plan } = query;
+  
+  const where: any = {};
+  
+  // Recycle bin filter (show deleted users)
+  if (recycle === true) {
+    where.isDeleted = true;
+    // Don't apply active filter when showing recycled users (deleted users are inactive)
+  } else {
+    where.isDeleted = false;
+    // Active status filter (only for non-recycled users)
+    if (typeof active === 'boolean') {
+      where.isActive = active;
+    } else {
+      where.isActive = true;
+    }
+  }
+  
+  // Search filter
+  if (q) {
+    where[Op.or] = [
+      { email: { [Op.iLike]: `%${q}%` } },
+      { firstName: { [Op.iLike]: `%${q}%` } },
+      { lastName: { [Op.iLike]: `%${q}%` } },
+    ];
+  }
+  
+  // User Type / Role filter
+  if (userType) {
+    where.role = userType;
+  }
+  
+  // Plan filter
+  if (plan) {
+    where.planId = plan;
+  }
+
+  // Pagination handling
+  const options: any = {
+    where,
     attributes: {
       exclude: ['password', 'accessToken', 'adminPassword']
     },
     order: [['createdAt', 'DESC']]
-  });
+  };
+  
+  if (limit && page) {
+    options.limit = limit;
+    options.offset = (page - 1) * limit;
+  }
+
+  const users = await User.findAll(options);
 
   logger.info(`Retrieved ${users.length} users from database`);
   return users;

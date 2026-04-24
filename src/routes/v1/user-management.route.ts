@@ -1,0 +1,68 @@
+import { Router } from "express";
+import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { isUserAuthenticated } from "../../middlewares/auth";
+import { 
+  updateUser, 
+  approveUserDocument, 
+  rejectUserDocument, 
+  deleteUser,
+  restoreUser,
+  purgeUser,
+  getPendingDocumentsByUserId,
+  approveUserAccount,
+  sendUserDetailsToSlack
+} from "../../controllers/v1/user-management.controller";
+
+const userManagementRouterV1 = Router();
+
+/**
+ * User Management Routes (Admin/Assistant Access)
+ */
+userManagementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated)
+
+// Update user details
+userManagementRouterV1.patch(
+  "/users/:userId", updateUser
+);
+
+// Approve user document
+userManagementRouterV1.post(
+  "/users/documents/:documentId/approve", approveUserDocument
+);
+
+// Reject user document
+userManagementRouterV1.post(
+  "/documents/:documentId/reject", rejectUserDocument
+);
+
+// Get pending documents for user
+userManagementRouterV1.get(
+  "/users/:userId/documents/pending", getPendingDocumentsByUserId
+);
+
+// Delete user (soft delete to recycle bin)
+userManagementRouterV1.delete(
+  "/users/:userId", deleteUser
+);
+
+// Restore soft deleted user
+userManagementRouterV1.post(
+  "/users/:userId/restore", restoreUser
+);
+
+// Permanently delete user (irreversible)
+userManagementRouterV1.delete(
+  "/users/:userId/purge", purgeUser
+);
+
+// Approve user account
+userManagementRouterV1.post(
+  "/users/:userId/approve", approveUserAccount
+);
+
+// Send user details sample to Slack
+userManagementRouterV1.post(
+  "/users/:userId/send-slack-sample", sendUserDetailsToSlack
+);
+
+export default userManagementRouterV1;
