@@ -136,7 +136,7 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
         result.push({
           id: idx + 1,
           aggregator: agg,
-          value: settings.maxConcurrentJobs ?? config.maxConcurrentJobs,
+          value: settings?.maxConcurrentJobs ?? config?.maxConcurrentJobs ?? 0,
         });
       });
     }

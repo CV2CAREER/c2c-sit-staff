@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/select";
 import { FiLoader, FiX } from 'react-icons/fi';
 import { modifyTableActionsColAndRows, tableColumns } from "../../users/_components/tableColumns";
+
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
 import { moveTo, StyledDataGridPro } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
 import { Button } from "@/components/ui/button";
@@ -85,21 +87,28 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     data: { plan: string };
   }>({ type: 'plan_selected', data: { plan: '' } });
 
-  const { usersListDomain: queryUsers } = useAdminQueries({
-    fetchUsersList: true,
-    usersFilter: {
-      active: usersDataState === "active",
-      recycle: usersDataState === "recycle",
-      q: searchQuery,
-      userType: userType?.user !== "all" ? userType?.user?.toLowerCase() : undefined,
-      plan: userType?.plan !== "all" ? userType?.plan?.toLowerCase() : undefined,
-    }
+  // New GET /v1/user/all endpoint replacing old API call
+  const allUsers = useGetAllUsers({ 
+    enabled: true,
+    page: 1,
+    limit: 50,
+    active: usersDataState === "active" ? true : undefined,
+    recycle: usersDataState === "recycle" ? true : undefined,
+    q: searchQuery,
+    userType: userType?.user !== "all" ? userType?.user?.toLowerCase() : undefined,
+    plan: userType?.plan !== "all" ? userType?.plan?.toLowerCase() : undefined,
   });
-  const { updateUserProgressMutation } = useAdminMutations();
+
+  // Legacy query removed - all filtering now handled by useGetAllUsers
+  // const { updateUserProgressMutation } = useAdminMutations();
 
   const rows: GridRowsProp<UsersTableColType> = React.useMemo(() => {
-    return queryUsers.data?.items || [];
-  }, [queryUsers.data?.items]);
+    // Use new endpoint data - map id to uniqueId for Customer Id column display
+    return (allUsers.users || []).map((user: any) => ({
+      ...user,
+      uniqueId: user.id
+    }));
+  }, [allUsers.users]);
 
   const handleRowClick = (params: any) => {
     if (editMode) {
@@ -142,32 +151,32 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
           shouldRun = true;
         }
         if (shouldRun) {
-          await toast.promise(
-            updateUserProgressMutation.mutateAsync({
-              uid: userId,
-              progress: value,
-              metadata: metadata,
-            }),
-            {
-              loading: 'Updating progress - ' + value,
-              success: `Progress(${value}) updated!`,
-              error: `Failed to update Progress(${value})!`,
-            },
-          );
+          // await toast.promise(
+          //   updateUserProgressMutation.mutateAsync({
+          //     uid: userId,
+          //     progress: value,
+          //     metadata: metadata,
+          //   }),
+          //   {
+          //     loading: 'Updating progress - ' + value,
+          //     success: `Progress(${value}) updated!`,
+          //     error: `Failed to update Progress(${value})!`,
+          //   },
+          // );
         }
       } else {
-        await toast.promise(
-          updateUserProgressMutation.mutateAsync({
-            uid: userId,
-            progress: value,
-            metadata: metadata,
-          }),
-          {
-            loading: 'Updating progress - ' + value,
-            success: `Progress(${value}) updated!`,
-            error: `Failed to update Progress(${value})!`,
-          },
-        );
+        // await toast.promise(
+          // updateUserProgressMutation.mutateAsync({
+          //   uid: userId,
+          //   progress: value,
+          //   metadata: metadata,
+          // }),
+          // {
+          //   loading: 'Updating progress - ' + value,
+          //   success: `Progress(${value}) updated!`,
+          //   error: `Failed to update Progress(${value})!`,
+          // },
+        // );
       }
       return true;
     } catch (error) {
@@ -366,7 +375,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 }}
                 columnBufferPx={5}
                 checkboxSelection={editMode}
-                loading={queryUsers.isLoading}
+                 loading={allUsers.isLoading}
                 pagination
                 pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}

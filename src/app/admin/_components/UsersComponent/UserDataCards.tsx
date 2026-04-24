@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react";
-import { useAdminQueries } from "@/hooks/api/admin.api";
+import { useAdminAnalytics } from "@/app/admin/users/hooks/analytics-endpoint";
 import {
   LucideIcon,
   ShieldUser,
@@ -21,6 +21,9 @@ interface UsersCountData {
   salesPersonnaCount: number;
   csePersonnaCount: number;
   testPersonnaCount: number;
+  PCPersonaCount: number;
+  businessCount: number;
+  technologyCount: number,
   loyalistsPersonnaCount: number;
   totalActiveUsersCount: number;
   bronzePlanCount: number;
@@ -58,21 +61,11 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     endDate: null,
   });
 
-  const { usersPersonaCountDomain } = useAdminQueries({
-    fetchUsersPersonaCount: true,
+  const analytics = useAdminAnalytics({
+    enabled: true,
     startDate: dateFilterData.startDate || undefined,
     endDate: dateFilterData.endDate || undefined,
   });
-
-  // Debug: Log the actual data from the hook
-  useEffect(() => {
-    console.log("=== HOOK DATA DEBUG ===");
-    console.log("usersPersonaCountDomain.data:", usersPersonaCountDomain.data);
-    console.log("usersPersonaCountDomain.isLoading:", usersPersonaCountDomain.isLoading);
-    console.log("usersPersonaCountDomain.isError:", usersPersonaCountDomain.isError);
-    console.log("usersPersonaCountDomain.error:", usersPersonaCountDomain.error);
-    console.log("Full usersPersonaCountDomain object:", usersPersonaCountDomain);
-  }, [usersPersonaCountDomain.data, usersPersonaCountDomain.isLoading, usersPersonaCountDomain.isError, usersPersonaCountDomain.error]);
 
   // Transform the API data to match your component's expected structure
   const transformApiData = (apiData: any): UsersCountData => {
@@ -89,6 +82,9 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
         salesPersonnaCount: 0,
         csePersonnaCount: 0,
         testPersonnaCount: 0,
+        PCPersonaCount: 0,
+        businessCount: 0, 
+        technologyCount: 0,
         loyalistsPersonnaCount: 0,
         totalActiveUsersCount: 0,
         bronzePlanCount: 0,
@@ -114,8 +110,10 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     }
 
     // Check if data has subscriptionTiers structure (from your analytics)
-    if (apiData.subscriptionTiers) {
-      console.log("Data has subscriptionTiers structure");
+    if (apiData) {
+      console.log("✅ Data has analytics v1 structure");
+      console.log("👉 userRoleCounts values:", apiData.userRoleCounts);
+      
       const tiers = apiData.subscriptionTiers?.tiers || [];
       const bronzeTier = tiers.find((t: any) => t.key === "bronze");
       const silverTier = tiers.find((t: any) => t.key === "silver");
@@ -124,24 +122,30 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
       const coralTier = tiers.find((t: any) => t.key === "coral");
       const emeraldTier = tiers.find((t: any) => t.key === "emerald");
       
+      // ALWAYS use userRoleCounts if available, never fall back only if absolutely needed
+      const useUserRoles = !!apiData.userRoleCounts;
+      
       return {
-        adminPersonnaCount: apiData.breakdown?.users?.successful || 0,
-        guestPersonnaCount: 0,
-        clientPersonnaCount: apiData.breakdown?.users?.successful || 0,
-        coachesPersonnaCount: 0,
-        partnersPersonnaCount: 0,
-        salesPersonnaCount: 0,
-        csePersonnaCount: 0,
-        testPersonnaCount: apiData.breakdown?.applications?.failed || 0,
+        adminPersonnaCount: apiData.userRoleCounts.admin,
+        guestPersonnaCount: useUserRoles ? apiData.userRoleCounts.guest : 0,
+        clientPersonnaCount: useUserRoles ? apiData.userRoleCounts.client : apiData.breakdown?.users?.successful ?? 0,
+        coachesPersonnaCount: useUserRoles ? apiData.userRoleCounts.coach : 0,
+        partnersPersonnaCount: useUserRoles ? apiData.userRoleCounts.partner : 0,
+        salesPersonnaCount: useUserRoles ? apiData.userRoleCounts.sales : 0,
+        csePersonnaCount: useUserRoles ? apiData.userRoleCounts.cse : 0,
+        testPersonnaCount: useUserRoles ? apiData.userRoleCounts.test : apiData.breakdown?.applications?.failed ?? 0,
+        PCPersonaCount: useUserRoles ? apiData.userRoleCounts.assistant : 0,
+        businessCount: useUserRoles ? apiData.userRoleCounts.business : 0, 
+        technologyCount: useUserRoles ? apiData.userRoleCounts.technology : 0,
         loyalistsPersonnaCount: 0,
-        totalActiveUsersCount: apiData.subscriptionTiers?.totals?.activeSubscribers || 0,
-        bronzePlanCount: bronzeTier?.users || 0,
-        emeraldPlanCount: emeraldTier?.users || 0,
-        coralPlanCount: coralTier?.users || 0,
-        silverPlanCount: silverTier?.users || 0,
-        platinumPlanCount: platinumTier?.users || 0,
-        goldPlanCount: goldTier?.users || 0,
-        totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions || 0,
+        totalActiveUsersCount: apiData.breakdown.users.successful  ?? 0,
+        bronzePlanCount: bronzeTier?.users ?? 0,
+        emeraldPlanCount: emeraldTier?.users ?? 0,
+        coralPlanCount: coralTier?.users ?? 0,
+        silverPlanCount: silverTier?.users ?? 0,
+        platinumPlanCount: platinumTier?.users ?? 0,
+        goldPlanCount: goldTier?.users ?? 0,
+        totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions ?? 0,
       };
     }
 
@@ -156,6 +160,9 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
       salesPersonnaCount: 0,
       csePersonnaCount: 0,
       testPersonnaCount: 0,
+      PCPersonaCount: 0,
+      businessCount: 0, 
+      technologyCount: 0,
       loyalistsPersonnaCount: 0,
       totalActiveUsersCount: 0,
       bronzePlanCount: 0,
@@ -168,13 +175,15 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     };
   };
 
-  const personas: UsersCountData | undefined = usersPersonaCountDomain.data
-    ? transformApiData(usersPersonaCountDomain.data)
+  const personas: UsersCountData | undefined = analytics.data
+    ? transformApiData(analytics.data)
     : undefined;
 
-  const isLoading = usersPersonaCountDomain.isLoading;
-  const isError = usersPersonaCountDomain.isError;
-  const error = usersPersonaCountDomain.error;
+  console.log("Actual analytics data", analytics.data)
+
+  const isLoading = analytics.isLoading;
+  const isError = analytics.isError;
+  const error = analytics.error;
 
   const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
@@ -183,6 +192,15 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
     {
       title: "Admins",
       value: personas?.adminPersonnaCount || 0,
+      icon: {
+        name: ShieldUser,
+        bgColor: "bg-lightblue",
+        color: "text-blue",
+      },
+    },
+    {
+      title: "PC",
+      value: personas?.PCPersonaCount || 0,
       icon: {
         name: ShieldUser,
         bgColor: "bg-lightblue",
@@ -244,8 +262,17 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
       },
     },
     {
-      title: "Total Users",
-      value: personas?.totalActiveUsersCount || 0,
+      title: "Total Technology",
+      value: personas?.technologyCount || 0,
+      icon: {
+        name: Users,
+        bgColor: "bg-lightblue",
+        color: "text-blue",
+      },
+    },
+    {
+      title: "Total Business",
+      value: personas?.businessCount || 0,
       icon: {
         name: Users,
         bgColor: "bg-lightblue",
@@ -257,6 +284,15 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
       value: personas?.testPersonnaCount || 0,
       icon: {
         name: TestTubeDiagonal,
+        bgColor: "bg-lightblue",
+        color: "text-blue",
+      },
+    },
+    {
+      title: "Total Users",
+      value: personas?.totalActiveUsersCount || 0,
+      icon: {
+        name: Users,
         bgColor: "bg-lightblue",
         color: "text-blue",
       },
@@ -343,7 +379,7 @@ const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProp
           <p className="text-red-600">Failed to load user counts. Please try again.</p>
           <p className="text-red-500 text-sm mt-1">{error?.message || "Unknown error"}</p>
           <button 
-            onClick={() => usersPersonaCountDomain.refetch?.()}
+            onClick={() => analytics.refetch?.()}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
             Retry

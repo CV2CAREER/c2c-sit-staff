@@ -53,7 +53,6 @@ export default function AuthInitiateContent() {
         if (userSuccess && userData?.user) {
             const user = userData.user;
             setUser(user);
-            toast.success("Login successful!");
             
             // Centralized RFT role-based redirect
             const destination = getRoleRoute(user.role);

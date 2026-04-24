@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
+import { useQueryClient } from "@tanstack/react-query";
 
 const PC_ROLES = ["assistant", "coach"] as const;
 
@@ -32,8 +33,8 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     enabled: fetchUsersCount,
   });
   
-  // FIXED: Use ADMIN_STATS endpoint for analytics/persona counts
-  const usersPersonaCount = useFetchData<any>({
+  // FIXED: Always fetch fresh data directly from endpoint
+  const adminAnalytics = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_STATS,
     params: {
@@ -41,10 +42,14 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       to: endDate || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      _timestamp: Date.now()
     },
-    queryKey: ["admin-users-persona-count", startDate, endDate],
+    queryKey: ["admin-analytics-live", startDate, endDate, Date.now()],
     enabled: fetchUsersPersonaCount,
+    forceRefresh: true,
   });
+
+  const usersPersonaCount = adminAnalytics;
 
   const userDetail = useFetchData<any>({
     method: "GET",
@@ -353,27 +358,44 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
 };
 
 export const useUsersMutations = () => {
+  const queryClient = useQueryClient();
+
+  const invalidateAllUsersQueries = () => {
+    // Invalidate ALL user related cache queries after any mutation
+    queryClient.invalidateQueries({ queryKey: ["admin-users-count"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-users-persona-count"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-user-info"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-users-full-name"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-clients"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-pcs"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-user-preferences"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+  };
+
   return {
     updateUserProgressMutation: useMutateData<any, { progress: string; metadata?: any; uid: string }>({
       method: "PUT",
       url: endpoints.ADMIN_UPDATE_USER_PROGRESS,
       mutationKey: ["admin-update-user-progress"],
       paramKey: "uid",
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     upgradePlanMutation: useMutateData<any, { plan: string; userId: string }>({
       method: "POST",
       url: endpoints.ADMIN_UPGRADE_PLAN,
       mutationKey: ["admin-upgrade-plan"],
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     accountActionMutation: useMutateData<any, { userId: string; action: string }>({
       method: "POST",
       url: endpoints.ADMIN_ACCOUNT_ACTION,
       mutationKey: ["admin-account-action"],
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     deleteUserMutation: useMutateData<any, { userId: string }>({
@@ -381,28 +403,28 @@ export const useUsersMutations = () => {
       url: endpoints.ADMIN_DELETE_USER,
       mutationKey: ["admin-delete-user"],
       paramKey: "userId",
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     assignVaMutation: useMutateData<any, { credId: string; VaEmail: string | null }>({
       method: "POST",
       url: endpoints.ADMIN_ASSIGN_VA,
       mutationKey: ["admin-assign-va"],
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     reverseUserIdMutation: useMutateData<{ _id: string }, { clientId: string | number }>({
       method: "POST",
       url: endpoints.ADMIN_REVERSE_USER_ID,
       mutationKey: ["admin-reverse-user-id"],
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     applicationEmailMutation: useMutateData<any, { type: string; name: string; email: string }>({
       method: "POST",
       url: endpoints.ADMIN_APPLICATION_EMAILS,
       mutationKey: ["admin-application-email"],
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
     dispatchSampleMutation: useMutateData<any, { clientId: string | number }>({
@@ -410,7 +432,7 @@ export const useUsersMutations = () => {
       url: endpoints.ADMIN_DISPATCH_SAMPLE,
       mutationKey: ["admin-dispatch-sample"],
       paramKey: "clientId",
-      onSuccess: () => {},
+      onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
   };
