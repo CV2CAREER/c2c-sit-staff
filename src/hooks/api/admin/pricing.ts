@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 
 const SUPPORTED_PRICING_CURRENCIES = ["AUD", "GBP", "EUR", "NGN", "CAD", "USD"] as const;
 type SupportedPricingCurrency = (typeof SUPPORTED_PRICING_CURRENCIES)[number];
+const PRICING_PLAN_ORDER = ["Emerald", "Bronze", "Silver", "Gold", "Platinum", "Coral"] as const;
+const EXCLUDED_PLAN_TITLES = new Set(["copper"]);
 
 const isSupportedPricingCurrency = (code: string): code is SupportedPricingCurrency =>
   SUPPORTED_PRICING_CURRENCIES.includes(code as SupportedPricingCurrency);
@@ -59,19 +61,53 @@ const sortLocations = (locations: PricingLocation[]) => {
     });
 };
 
-const sortPricingPlans = (plans: PricingPlan[]) => {
-  return [...plans].sort((left, right) => {
+const normalizePricingPlans = (plans: PricingPlan[]) => {
+  const byTitle = new Map<string, PricingPlan>();
+
+  for (const plan of plans) {
+    const normalizedTitle = String(plan.title || "").trim();
+    if (!normalizedTitle) {
+      continue;
+    }
+
+    if (EXCLUDED_PLAN_TITLES.has(normalizedTitle.toLowerCase())) {
+      continue;
+    }
+
+    const existing = byTitle.get(normalizedTitle);
+    if (!existing) {
+      byTitle.set(normalizedTitle, plan);
+      continue;
+    }
+
+    const existingStamp = Date.parse(existing.updatedAt ?? existing.createdAt ?? "");
+    const nextStamp = Date.parse(plan.updatedAt ?? plan.createdAt ?? "");
+    if (Number.isFinite(nextStamp) && (!Number.isFinite(existingStamp) || nextStamp > existingStamp)) {
+      byTitle.set(normalizedTitle, plan);
+    }
+  }
+
+  const orderedPlans: PricingPlan[] = [];
+  for (const title of PRICING_PLAN_ORDER) {
+    const matching = byTitle.get(title);
+    if (matching) {
+      orderedPlans.push(matching);
+      byTitle.delete(title);
+    }
+  }
+
+  const remainingPlans = [...byTitle.values()].sort((left, right) => {
     const leftPrice = Number(left.price);
     const rightPrice = Number(right.price);
     const normalizedLeftPrice = Number.isFinite(leftPrice) ? leftPrice : Number.MAX_SAFE_INTEGER;
     const normalizedRightPrice = Number.isFinite(rightPrice) ? rightPrice : Number.MAX_SAFE_INTEGER;
-
     if (normalizedLeftPrice !== normalizedRightPrice) {
       return normalizedLeftPrice - normalizedRightPrice;
     }
-
     return left.title.localeCompare(right.title);
   });
+
+  return [...orderedPlans, ...remainingPlans];
 };
 
 export const usePricingQueries = (options: AdminQueriesOptions) => {
@@ -105,7 +141,7 @@ export const usePricingQueries = (options: AdminQueriesOptions) => {
       error: adminLocations.error,
     },
     pricingPlansDomain: {
-      data: pricingPlans.data?.data ? sortPricingPlans(pricingPlans.data.data) : [],
+      data: pricingPlans.data?.data ? normalizePricingPlans(pricingPlans.data.data) : [],
       isLoading: pricingPlans.isLoading,
       isSuccess: pricingPlans.isSuccess,
       isError: pricingPlans.isError,
