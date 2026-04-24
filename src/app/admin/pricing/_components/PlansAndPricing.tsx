@@ -28,23 +28,23 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
     pricing.price * (Number.isFinite(numericMultiplier) && numericMultiplier > 0 ? numericMultiplier : 1);
 
   return (
-    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[16rem] min-h-[18rem] max-w-[80vw] flex-shrink-0">
+    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[18rem] min-h-[18rem] max-w-[82vw] flex-shrink-0">
       <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
-        <span className="text-[2.15rem] leading-none flex flex-row justify-end items-end font-semibold text-[#171717] font-sharp-grotesk">
+        <span className="text-[1.1rem] leading-none flex flex-row justify-end items-end font-semibold text-[#171717] font-sharp-grotesk">
           {currencyFormatterFunc({
             to: symbol?.currencyCode || "AUD",
             amount: convertedPrice,
           })}{" "}
-          <p className="text-[0.65rem] ml-1 mb-[0.28rem] font-semibold uppercase tracking-[0.02em]">
+          <p className="text-[0.4rem] ml-1 mb-[0.18rem] font-semibold uppercase tracking-[0.02em]">
             {symbol?.currencyCode}
           </p>
         </span>
-        <span className="inline-flex py-2 px-5 bg-white rounded-full text-[0.85rem] leading-none text-[#171717] shadow-[0_0_0_1px_rgba(23,23,23,0.04)]">
+        <span className="inline-flex py-2 px-5 bg-white rounded-full text-[0.6rem] leading-none text-[#171717] shadow-[0_0_0_1px_rgba(23,23,23,0.04)]">
           {pricing.title}
         </span>
       </div>
       <div className="px-6 pb-5 flex-grow grid grid-rows-[1fr,auto]">
-        <ul className="grid gap-5 h-fit text-[0.97rem] leading-[1.45] text-[#171717]">
+        <ul className="grid gap-5 h-fit text-[0.62rem] leading-[1.45] text-[#171717]">
           {pricing.jobApplications ? (
             <li className="flex gap-4 items-start">
               <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
