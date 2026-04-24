@@ -101,6 +101,51 @@ const serializeFeature = (feature: Feature) => ({
   updatedAt: feature.updatedAt,
 });
 
+const selectPreferredLocationFeatures = (
+  features: Feature[],
+  locationId?: string,
+) => {
+  if (!locationId) {
+    return features;
+  }
+
+  const preferredByTitle = new Map<string, Feature>();
+
+  for (const feature of features) {
+    const titleKey = feature.title.trim().toLowerCase();
+    const existing = preferredByTitle.get(titleKey);
+
+    if (!existing) {
+      preferredByTitle.set(titleKey, feature);
+      continue;
+    }
+
+    const currentExactMatch =
+      Array.isArray(feature.locationIds) &&
+      feature.locationIds.length === 1 &&
+      feature.locationIds[0] === locationId;
+    const existingExactMatch =
+      Array.isArray(existing.locationIds) &&
+      existing.locationIds.length === 1 &&
+      existing.locationIds[0] === locationId;
+
+    if (currentExactMatch && !existingExactMatch) {
+      preferredByTitle.set(titleKey, feature);
+      continue;
+    }
+
+    if (currentExactMatch === existingExactMatch) {
+      const currentStamp = feature.updatedAt?.getTime?.() ?? feature.createdAt?.getTime?.() ?? 0;
+      const existingStamp = existing.updatedAt?.getTime?.() ?? existing.createdAt?.getTime?.() ?? 0;
+      if (currentStamp > existingStamp) {
+        preferredByTitle.set(titleKey, feature);
+      }
+    }
+  }
+
+  return [...preferredByTitle.values()];
+};
+
 const toOptionalBoolean = (value: unknown): boolean | undefined => {
   if (typeof value === "boolean") {
     return value;
@@ -273,8 +318,13 @@ export class FeatureService {
         order: [["createdAt", "DESC"]],
       });
 
-      logger.info(`Retrieved ${features.length} features from database`);
-      return features.map(serializeFeature);
+      const selectedFeatures = selectPreferredLocationFeatures(
+        features,
+        options.locationId,
+      );
+
+      logger.info(`Retrieved ${selectedFeatures.length} features from database`);
+      return selectedFeatures.map(serializeFeature);
     } catch (error: any) {
       logger.error(`Failed to retrieve features: ${error.message}`);
       throw error;

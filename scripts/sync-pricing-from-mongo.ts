@@ -66,10 +66,11 @@ type ExistingFeatureRow = {
   extra: string | null;
   isTopUp: boolean;
   isActive: boolean;
+  locationIds: string[] | null;
   planCount: number;
 };
 
-type AggregatedFeature = {
+type SyncedFeature = {
   title: string;
   tier: FeatureTier;
   price: number;
@@ -86,7 +87,7 @@ type AggregatedFeature = {
   description: string | null;
   isTopUp: boolean;
   isActive: boolean;
-  locationIds: Set<string>;
+  locationIds: string[];
   sourceDocs: number;
   stamp: number;
 };
@@ -270,14 +271,14 @@ const toNonNegativeInteger = (value: unknown, fallback: number) => {
   return fallback;
 };
 
-const toPositiveDecimal = (value: unknown, fallback: number) => {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+const toDecimal = (value: unknown, fallback: number) => {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     return value;
   }
 
   if (typeof value === "string") {
     const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) {
+    if (Number.isFinite(parsed) && parsed >= 0) {
       return parsed;
     }
   }
@@ -380,13 +381,36 @@ const pickFeatureCandidate = (candidates: ExistingFeatureRow[]) =>
     return left.title.localeCompare(right.title);
   })[0];
 
-const buildAggregatedFeatures = (
+const normalizeLocationIds = (locationIds: Array<string | null | undefined>) =>
+  [...new Set(locationIds.filter((locationId): locationId is string => Boolean(locationId)))]
+    .sort((left, right) => left.localeCompare(right));
+
+const buildFeatureScopeKey = (title: string, locationIds: string[]) =>
+  `${title.trim().toLowerCase()}::${normalizeLocationIds(locationIds).join(",")}`;
+
+const getExactFeatureCandidate = (
+  candidates: ExistingFeatureRow[],
+  locationIds: string[],
+) => {
+  const normalizedTarget = normalizeLocationIds(locationIds);
+
+  return candidates.find((candidate) => {
+    const candidateLocationIds = normalizeLocationIds(candidate.locationIds || []);
+    if (candidateLocationIds.length !== normalizedTarget.length) {
+      return false;
+    }
+
+    return candidateLocationIds.every((locationId, index) => locationId === normalizedTarget[index]);
+  });
+};
+
+const buildSyncedFeatures = (
   mongoFeatures: MongoFeatureDoc[],
   mongoLocationIdToPgId: Map<string, string>,
   allSyncedLocationIds: string[],
   existingFeaturesByTitle: Map<string, ExistingFeatureRow[]>,
 ) => {
-  const aggregatedByTitle = new Map<string, AggregatedFeature>();
+  const syncedByScope = new Map<string, SyncedFeature>();
 
   for (const mongoFeature of mongoFeatures) {
     const title = typeof mongoFeature.title === "string" ? mongoFeature.title.trim() : "";
@@ -396,13 +420,23 @@ const buildAggregatedFeatures = (
 
     const titleKey = title.toLowerCase();
     const existingCandidates = existingFeaturesByTitle.get(titleKey) || [];
-    const existingCandidate =
-      existingCandidates.length > 0
-        ? pickFeatureCandidate(existingCandidates)
-        : undefined;
+    const docLocationIds = Array.isArray(mongoFeature.locationId)
+      ? normalizeLocationIds(
+          mongoFeature.locationId
+            .map((value) => String(value))
+            .map((id) => mongoLocationIdToPgId.get(id)),
+        )
+      : [];
+    const targetLocationIds =
+      docLocationIds.length > 0 ? docLocationIds : normalizeLocationIds(allSyncedLocationIds);
+    const scopeKey = buildFeatureScopeKey(title, targetLocationIds);
+    const exactExistingCandidate = getExactFeatureCandidate(existingCandidates, targetLocationIds);
+    const fallbackExistingCandidate =
+      existingCandidates.length > 0 ? pickFeatureCandidate(existingCandidates) : undefined;
+    const existingCandidate = exactExistingCandidate || fallbackExistingCandidate;
 
     const tier = inferTier(title, existingCandidate?.tier);
-    const price = toPositiveDecimal(
+    const price = toDecimal(
       mongoFeature.price,
       Number(existingCandidate?.price ?? 1),
     );
@@ -458,26 +492,14 @@ const buildAggregatedFeatures = (
     const description = existingCandidate?.description ?? null;
     const isTopUp = existingCandidate?.isTopUp ?? false;
     const isActive = existingCandidate?.isActive ?? true;
-
-    const docLocationIds = Array.isArray(mongoFeature.locationId)
-      ? mongoFeature.locationId
-          .map((value) => String(value))
-          .map((id) => mongoLocationIdToPgId.get(id))
-          .filter((id): id is string => Boolean(id))
-      : [];
     const docStamp = Math.max(
       toIsoOrZero(mongoFeature.updatedAt),
       toIsoOrZero(mongoFeature.createdAt),
     );
 
-    const existingAggregate = aggregatedByTitle.get(titleKey);
+    const existingAggregate = syncedByScope.get(scopeKey);
     if (!existingAggregate) {
-      const locationIds =
-        docLocationIds.length > 0
-          ? new Set(docLocationIds)
-          : new Set(allSyncedLocationIds);
-
-      aggregatedByTitle.set(titleKey, {
+      syncedByScope.set(scopeKey, {
         title,
         tier,
         price,
@@ -494,16 +516,13 @@ const buildAggregatedFeatures = (
         description,
         isTopUp,
         isActive,
-        locationIds,
+        locationIds: targetLocationIds,
         sourceDocs: 1,
         stamp: docStamp,
       });
       continue;
     }
 
-    for (const locationId of docLocationIds) {
-      existingAggregate.locationIds.add(locationId);
-    }
     existingAggregate.sourceDocs += 1;
 
     if (docStamp >= existingAggregate.stamp) {
@@ -523,19 +542,18 @@ const buildAggregatedFeatures = (
       existingAggregate.description = description;
       existingAggregate.isTopUp = isTopUp;
       existingAggregate.isActive = isActive;
+      existingAggregate.locationIds = targetLocationIds;
       existingAggregate.stamp = docStamp;
     }
   }
 
-  for (const aggregate of aggregatedByTitle.values()) {
-    if (aggregate.locationIds.size === 0) {
-      for (const locationId of allSyncedLocationIds) {
-        aggregate.locationIds.add(locationId);
-      }
+  for (const aggregate of syncedByScope.values()) {
+    if (aggregate.locationIds.length === 0) {
+      aggregate.locationIds = normalizeLocationIds(allSyncedLocationIds);
     }
   }
 
-  return aggregatedByTitle;
+  return syncedByScope;
 };
 
 const run = async () => {
@@ -683,6 +701,7 @@ const run = async () => {
          f.extra,
          f."isTopUp",
          f."isActive",
+         f."locationIds",
          coalesce(count(p.id), 0)::int as "planCount"
        from features f
        left join plans p
@@ -702,7 +721,8 @@ const run = async () => {
          f.description,
          f.extra,
          f."isTopUp",
-         f."isActive"`,
+         f."isActive",
+         f."locationIds"`,
     );
 
     const existingFeaturesByTitle = new Map<string, ExistingFeatureRow[]>();
@@ -713,7 +733,7 @@ const run = async () => {
       existingFeaturesByTitle.set(key, list);
     }
 
-    const aggregatedFeaturesByTitle = buildAggregatedFeatures(
+    const syncedFeaturesByScope = buildSyncedFeatures(
       mongoFeatures,
       mongoLocationIdToPgId,
       allSyncedLocationIds,
@@ -722,10 +742,11 @@ const run = async () => {
 
     const keptFeatureIds = new Set<string>();
 
-    for (const [titleKey, aggregate] of aggregatedFeaturesByTitle.entries()) {
+    for (const aggregate of syncedFeaturesByScope.values()) {
+      const titleKey = aggregate.title.trim().toLowerCase();
       const candidates = existingFeaturesByTitle.get(titleKey) || [];
-      const candidate = candidates.length > 0 ? pickFeatureCandidate(candidates) : undefined;
-      const locationIds = [...aggregate.locationIds];
+      const candidate = getExactFeatureCandidate(candidates, aggregate.locationIds);
+      const locationIds = normalizeLocationIds(aggregate.locationIds);
 
       if (candidate) {
         await pg.query(
@@ -829,6 +850,15 @@ const run = async () => {
 
     for (const feature of existingFeaturesRes.rows) {
       if (keptFeatureIds.has(feature.id)) {
+        continue;
+      }
+
+      const featureScopeKey = buildFeatureScopeKey(
+        feature.title,
+        feature.locationIds || [],
+      );
+      if (syncedFeaturesByScope.has(featureScopeKey)) {
+        keptFeatureIds.add(feature.id);
         continue;
       }
 

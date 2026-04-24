@@ -68,6 +68,45 @@ const currencySymbolsByCode: Record<string, string> = {
   JPY: "JPY",
 };
 
+const selectPreferredPricingPlans = (plans: Feature[], locationId: string) => {
+  const preferredByTitle = new Map<string, Feature>();
+
+  for (const plan of plans) {
+    const titleKey = plan.title.trim().toLowerCase();
+    const existing = preferredByTitle.get(titleKey);
+
+    if (!existing) {
+      preferredByTitle.set(titleKey, plan);
+      continue;
+    }
+
+    const currentExactMatch =
+      Array.isArray(plan.locationIds) &&
+      plan.locationIds.length === 1 &&
+      plan.locationIds[0] === locationId;
+    const existingExactMatch =
+      Array.isArray(existing.locationIds) &&
+      existing.locationIds.length === 1 &&
+      existing.locationIds[0] === locationId;
+
+    if (currentExactMatch && !existingExactMatch) {
+      preferredByTitle.set(titleKey, plan);
+      continue;
+    }
+
+    if (currentExactMatch === existingExactMatch) {
+      const currentStamp = plan.updatedAt?.getTime?.() ?? plan.createdAt?.getTime?.() ?? 0;
+      const existingStamp =
+        existing.updatedAt?.getTime?.() ?? existing.createdAt?.getTime?.() ?? 0;
+      if (currentStamp > existingStamp) {
+        preferredByTitle.set(titleKey, plan);
+      }
+    }
+  }
+
+  return [...preferredByTitle.values()];
+};
+
 export const getAdminLocations = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
@@ -117,7 +156,9 @@ export const getAdminPricingPlans = catchAsyncError(
       order: [["createdAt", "DESC"]],
     });
 
-    const payload = plans.map((plan) => ({
+    const preferredPlans = selectPreferredPricingPlans(plans, locationId);
+
+    const payload = preferredPlans.map((plan) => ({
       _id: plan.id,
       title: plan.title,
       tier: String(plan.tier).toLowerCase(),
