@@ -28,14 +28,14 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
     pricing.price * (Number.isFinite(numericMultiplier) && numericMultiplier > 0 ? numericMultiplier : 1);
 
   return (
-    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[18rem] min-h-[18rem] max-w-[82vw] flex-shrink-0">
+    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[24rem] max-w-[80vw] flex-shrink-0">
       <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
         <span className="text-32 flex flex-row justify-end items-end smallLaptop:text-3xl bigLaptop:text-4xl font-medium text-white mix-blend-difference font-sharp-grotesk">
           {currencyFormatterFunc({
             to: symbol?.currencyCode || "AUD",
             amount: convertedPrice,
           })}{" "}
-          <p className="text-[0.4rem] ml-1 mb-[0.18rem] font-semibold uppercase tracking-[0.02em]">
+          <p className="text-[13px] ml-1 mb-[0.18rem] font-semibold uppercase tracking-[0.02em]">
             {symbol?.currencyCode}
           </p>
         </span>
