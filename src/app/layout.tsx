@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import AppProvider from "@/providers/app.provider";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import MuiXLicense from "./muiXLicense";
 
@@ -48,6 +49,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <MuiXLicense />
+        <Toaster 
+          position="top-right" 
+          reverseOrder={false}
+          gutter={12}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              marginTop: '64px',
+            },
+          }}
+        />
         <AppProvider>{children}</AppProvider>
       </body>
     </html>
