@@ -18,7 +18,12 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
   symbol,
   multiplier,
 }) => {
-  const otherFeatures = pricing.extra ? pricing.extra.split(",").map(f => f.trim()) : [];
+  const otherFeatures = pricing.extra
+    ? pricing.extra
+      .split(",")
+      .map((feature) => feature.trim())
+      .filter((feature) => feature.length > 0)
+    : [];
   const numericMultiplier = Number(multiplier);
   const convertedPrice =
     pricing.price * (Number.isFinite(numericMultiplier) && numericMultiplier > 0 ? numericMultiplier : 1);
@@ -47,23 +52,23 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
           {pricing.jobApplications ? (
             <li className="flex gap-4 items-start">
               <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
-              <span>{pricing.jobApplications} Job Applications</span>
+              <span>{pricing.jobApplications}</span>
             </li>
           ) : null}
+          {otherFeatures.map((data: string, index: number) => (
+            <li className="flex gap-4 items-start" key={`${data}-${index}`}>
+              <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
+              <span>{data}</span>
+            </li>
+          ))}
           <li className="flex gap-4 items-start">
             <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
-            <span>{`${pricing.validityPeriod} Subscription With ${pricing.subscriptionBreak} Pause Option`}</span>
+            <span>{`${pricing.validityPeriod} Subscription With ${pricing.subscriptionBreak} Pause Option Before Duration Hard End Date`}</span>
           </li>
           <li className="flex gap-4 items-start">
             <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
             <span>{`${pricing.profileLimit} Client Profile Application`}</span>
           </li>
-          {otherFeatures.map((data: string, index: number) => (
-            <li className="flex gap-4 items-start" key={index}>
-              <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
-              <span>{data}</span>
-            </li>
-          ))}
         </ul>
         <div className="flex items-center justify-center mt-auto">
           <button
