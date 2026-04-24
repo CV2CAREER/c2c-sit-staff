@@ -43,7 +43,6 @@ import supportRouterV1 from "./routes/v1/support.route";
 import scheduleRouterV1 from "./routes/v1/schedule.route";
 import availabilityRouterV1 from "./routes/v1/availability.route";
 import sessionsRouterV1 from "./routes/v1/sessions.route";
-import coachRouterV1 from "./routes/v1/coach.route";
 import slackManageRouterV1 from "./routes/v1/slack-manage.route";
 import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
 import userManagementRouterV1 from "./routes/v1/user-management.route"
