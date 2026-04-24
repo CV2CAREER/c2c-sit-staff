@@ -44,7 +44,7 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
         </span>
       </div>
       <div className="p-8 flex-grow grid grid-rows-[1fr,auto]">
-        <ul className="grid gap-5 h-fit text-[16px] font-medium leading-[1.45] text-[#171717]">
+        <ul className="grid gap-5 h-fit text-[16px]  leading-[1.45] text-[#171717]">
           {pricing.jobApplications ? (
             <li className="flex gap-4 items-start"> 
               <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
