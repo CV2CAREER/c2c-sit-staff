@@ -196,7 +196,7 @@ export const getAllUsers = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info(`Processing request to get all users`);
 
-    const users = await getAllUsersService();
+    const users = await getAllUsersService(req.query);
 
     logger.info(`Retrieved ${users.length} users`);
 

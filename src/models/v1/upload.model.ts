@@ -95,6 +95,28 @@ export class Upload extends Model {
   @UpdatedAt
   updatedAt!: Date;
 
+  // Approval fields
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  approvedAt?: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  approvedBy?: string;
+
+  // Rejection fields
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  rejectedAt?: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  rejectedBy?: string;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  rejectionReason?: string;
+
   // Soft delete timestamp
   @Column(DataType.DATE)
   deletedAt?: Date;

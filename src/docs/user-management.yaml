@@ -1,0 +1,465 @@
+# OpenAPI Specification for User Management Endpoints
+
+paths:
+  /v1/user-management/users/{userId}:
+    patch:
+      tags:
+        - User Management
+      summary: Update user details
+      description: |
+        Update any user profile information.
+        
+        Accessible only by Admin and Assistant roles.
+        **Only fields that actually changed will be updated.**
+        Full audit trail is created for all changes.
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  description: User's first name
+                middleName:
+                  type: string
+                  description: User's middle name
+                lastName:
+                  type: string
+                  description: User's last name
+                gender:
+                  type: string
+                  description: User's gender
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                customerClass:
+                  type: string
+                  description: Customer classification tier
+                voiceNumber:
+                  type: string
+                  description: Voice contact phone number
+                whatsappNumber:
+                  type: string
+                  description: WhatsApp contact number
+                country:
+                  type: string
+                  description: User's country
+                heritage:
+                  type: string
+                  description: User's heritage / ethnicity
+                communication:
+                  type: string
+                  description: Preferred communication method
+                role:
+                  type: string
+                  enum: [guest, coach, admin, assistant, technology, cse, partner, sales, client]
+                  description: User system role
+                returnCount:
+                  type: number
+                  description: Total number of returns
+                revenue:
+                  type: number
+                  description: Total revenue generated
+                cl:
+                  type: number
+                  description: C/L performance metric
+                cr:
+                  type: number
+                  description: C/R performance metric
+                socials:
+                  type: object
+                  description: Social media profile links
+                progress:
+                  type: number
+                  description: User progress percentage
+                isActive:
+                  type: boolean
+                  description: Active status
+                isEmailVerified:
+                  type: boolean
+                  description: Email verification status
+                planId:
+                  type: string
+                  description: Subscription plan ID
+                phone:
+                  type: string
+                  description: Primary phone number
+                address:
+                  type: string
+                  description: Physical address
+                city:
+                  type: string
+                  description: City
+                state:
+                  type: string
+                  description: State / Province
+                zipCode:
+                  type: string
+                  description: Postal / Zip code
+                company:
+                  type: string
+                  description: Company name
+                jobTitle:
+                  type: string
+                  description: Job title
+                bio:
+                  type: string
+                  description: User biography
+                website:
+                  type: string
+                  description: Personal website URL
+                linkedinUrl:
+                  type: string
+                  description: LinkedIn profile URL
+              example:
+                firstName: "John"
+                lastName: "Doe"
+                role: "coach"
+                isActive: true
+                customerClass: "Premium"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indicates if the request was successful
+                  message:
+                    type: string
+                    description: Success message
+                  statusCode:
+                    type: number
+                    description: HTTP status code
+                  data:
+                    type: object
+                    description: Updated user object
+              examples:
+                update_success:
+                  summary: Successful user update
+                  value:
+                    success: true
+                    message: "User updated successfully"
+                    statusCode: 200
+                    data:
+                      id: "user-uuid-123"
+                      firstName: "John"
+                      lastName: "Doe"
+                      email: "john.doe@example.com"
+                      role: "coach"
+                      isActive: true
+                      isEmailVerified: true
+                      createdAt: "2026-04-20T12:00:00.000Z"
+                      updatedAt: "2026-04-23T21:00:00.000Z"
+        '400':
+          description: Invalid request or validation error
+        '403':
+          description: Insufficient permissions (only Admin/Assistant allowed)
+        '404':
+          description: User not found
+
+    delete:
+      tags:
+        - User Management
+      summary: Delete user (soft delete)
+      description: |
+        Soft delete a user account (move to recycle bin).
+        
+        Accessible only by Admin and Assistant roles.
+        Cannot delete your own account.
+        Cannot delete last remaining admin user.
+        Creates audit trail entry.
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deleted successfully
+        '400':
+          description: Invalid user ID or cannot delete own account / last admin
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/restore:
+    post:
+      tags:
+        - User Management
+      summary: Restore soft deleted user
+      description: |
+        Restore a user account that was previously soft deleted.
+        
+        Accessible only by Admin and Assistant roles.
+        Restores all user data and associated records.
+        Creates audit trail entry.
+      operationId: restoreUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user to restore
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User restored successfully
+        '400':
+          description: Invalid user ID or user is not deleted
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/purge:
+    delete:
+      tags:
+        - User Management
+      summary: Permanently delete user
+      description: |
+        Permanently delete a user account and all associated data (irreversible).
+        
+        Accessible only by Admin roles.
+        This action cannot be undone.
+        User must be soft deleted first before purging.
+        All user records including audit history will be removed.
+      operationId: purgeUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user to permanently delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User permanently deleted successfully
+        '400':
+          description: Invalid user ID or cannot purge active account
+        '403':
+          description: Insufficient permissions (Admin only)
+        '404':
+          description: User not found
+
+  /v1/user-management/users/documents/{documentId}/approve:
+    post:
+      tags:
+        - User Management
+      summary: Approve user document
+      description: |
+        Approve an uploaded document.
+        
+        Accessible only by Admin and Assistant roles.
+        Updates both Upload model and User document status.
+      operationId: approveUserDocument
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: UUID of document to approve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document approved successfully
+        '400':
+          description: Invalid document ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Document not found
+
+  /v1/user-management/documents/{documentId}/reject:
+    post:
+      tags:
+        - User Management
+      summary: Reject user document
+      description: |
+        Reject an uploaded document with reason.
+        
+        Accessible only by Admin and Assistant roles.
+        Updates both Upload model and User document status.
+      operationId: rejectUserDocument
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          description: UUID of document to reject
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for rejection
+      responses:
+        '200':
+          description: Document rejected successfully
+        '400':
+          description: Invalid request
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Document not found
+
+  /v1/user-management/users/{userId}/documents/pending:
+    get:
+      tags:
+        - User Management
+      summary: Get pending documents for user
+      description: |
+        Get all pending (unreviewed) documents for a specific user.
+        
+        Accessible only by Admin and Assistant roles.
+      operationId: getPendingDocumentsByUserId
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pending documents retrieved successfully
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/approve:
+    post:
+      tags:
+        - User Management
+      summary: Approve user account
+      description: |
+        Approve a user account by setting isDocumentApproved flag.
+        
+        Accessible only by Admin and Assistant roles.
+        Returns indication if account was already approved.
+        Creates audit trail and sends Slack notification.
+      operationId: approveUserAccount
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user to approve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account approved successfully or already approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Always true for successful operations
+                  alreadyApproved:
+                    type: boolean
+                    description: True if account was already approved, false if newly approved
+                  message:
+                    type: string
+                    description: Status message ("Account approved successfully" or "Account already approved")
+                  user:
+                    type: object
+                    description: Updated user object
+              examples:
+                newly_approved:
+                  summary: Account newly approved
+                  value:
+                    success: true
+                    alreadyApproved: false
+                    message: "Account approved successfully"
+                    user: { /* user object */ }
+                already_approved:
+                  summary: Account was already approved
+                  value:
+                    success: true
+                    alreadyApproved: true
+                    message: "Account already approved"
+                    user: { /* user object */ }
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/send-slack-sample:
+    post:
+      tags:
+        - User Management
+      summary: Send user details sample to Slack
+      description: |
+        Send formatted user profile details to Slack channel.
+        
+        Accessible only by Admin and Assistant roles.
+        Sends user's name, email, status, class and other profile details.
+      operationId: sendUserDetailsToSlack
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of user
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User details sent to Slack successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Always true for successful operations
+                  message:
+                    type: string
+                    description: Success message
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found

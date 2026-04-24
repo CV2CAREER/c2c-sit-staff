@@ -14,7 +14,12 @@ export interface GetAdminUsersInput {
   page?: number;
   limit?: number;
   search?: string;
+  q?: string;
   role?: string;
+  userType?: string;
+  active?: boolean;
+  recycle?: boolean;
+  plan?: string;
 }
 
 interface PersonaAssignmentItem {
@@ -168,15 +173,22 @@ const normalizeEmail = (value: unknown): string => sanitizeString(value).toLower
 
 const buildUserWhereClause = (input: {
   search?: string;
+  q?: string;
   role?: string;
+  userType?: string;
+  active?: boolean;
+  recycle?: boolean;
+  plan?: string;
 }) => {
-  const trimmedSearch = sanitizeString(input.search);
-  const roleFilter = normalizeRole(input.role);
+  const trimmedSearch = sanitizeString(input.search || input.q);
+  const roleFilter = normalizeRole(input.role || input.userType);
   if (roleFilter && !Object.values(Role).includes(roleFilter as Role)) {
     throw new ErrorHandler("Invalid role filter.", 400);
   }
 
   const where: any = {};
+  
+  // Search filter (supports both 'search' and 'q' parameters)
   if (trimmedSearch) {
     where[Op.or] = [
       { email: { [Op.iLike]: `%${trimmedSearch}%` } },
@@ -184,8 +196,27 @@ const buildUserWhereClause = (input: {
       { lastName: { [Op.iLike]: `%${trimmedSearch}%` } },
     ];
   }
+  
+  // Role/UserType filter
   if (roleFilter) {
     where.role = roleFilter;
+  }
+  
+  // Active status filter
+  if (typeof input.active === 'boolean') {
+    where.isActive = input.active;
+  }
+  
+  // Recycle bin filter (show deleted users)
+  if (input.recycle === true) {
+    where.deletedAt = { [Op.not]: null };
+  } else {
+    where.deletedAt = null;
+  }
+  
+  // Plan filter
+  if (input.plan) {
+    where.planId = input.plan;
   }
 
   return where;
@@ -270,17 +301,9 @@ class AdminUserApplicationService {
 
     const result = await User.findAndCountAll({
       where,
-      attributes: [
-        "id",
-        "firstName",
-        "lastName",
-        "email",
-        "role",
-        "isActive",
-        "isEmailVerified",
-        "createdAt",
-        "updatedAt",
-      ],
+      attributes: {
+        exclude: ["password"]
+      },
       order: [["createdAt", "DESC"]],
       offset,
       limit,

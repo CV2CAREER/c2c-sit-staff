@@ -28,8 +28,7 @@ export const ADMIN_ANALYTICS_DAILY_LOOKBACK_DAYS = parseInt(
   10,
 );
 
-export const SCHEMA_MANAGED_TABLES = (process.env.SCHEMA_MANAGED_TABLES ||
-  "users,campaigns,applications,partners")
+export const SCHEMA_MANAGED_TABLES = (process.env.SCHEMA_MANAGED_TABLES || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);

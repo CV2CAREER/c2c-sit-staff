@@ -7,6 +7,9 @@ import { isRedisUsable } from "../../utils/helpers";
 import { getSequelize } from "../../utils/sequelize";
 import { enumerateDates, normalizeDateRange } from "../../utils/date-range";
 import { getApplicationsTableShape } from "./analytics.table-shape.service";
+import { Role } from "../../utils/enum";
+
+const logger = getServiceLogger("analytics-application-service");
 
 export interface AnalyticsWindowInput {
   from?: string;
@@ -48,7 +51,6 @@ export const ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY =
   "admin:analytics:dashboard:v1:latest";
 export const ADMIN_ANALYTICS_DAILY_CACHE_KEY = "admin:analytics:daily:v1";
 
-const logger = getServiceLogger("analytics-application-service");
 
 const toNumber = (value: string | number): number => Number(value) || 0;
 
@@ -648,6 +650,39 @@ class AnalyticsApplicationService {
       const firstValue = Object.values(row)[0];
       return String(firstValue);
     });
+  }
+
+  async getUserRoleCounts(): Promise<Record<string, number>> {
+    const sequelize = getSequelize();
+    
+    const roleCounts = await sequelize.query<{ role: string; count: string | number }>(
+      `
+        SELECT 
+          "role", 
+          COUNT(*)::bigint AS count 
+        FROM users 
+        WHERE "deletedAt" IS NULL 
+        GROUP BY "role"
+        ORDER BY count DESC;
+      `,
+      {
+        type: QueryTypes.SELECT,
+      },
+    );
+
+    const result: Record<string, number> = {};
+    
+    // Initialize all roles with 0
+    Object.values(Role).forEach(role => {
+      result[role] = 0;
+    });
+
+    // Populate actual counts
+    roleCounts.forEach(row => {
+      result[row.role] = toNumber(row.count);
+    });
+
+    return result;
   }
 }
 

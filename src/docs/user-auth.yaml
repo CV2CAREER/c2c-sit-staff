@@ -1060,6 +1060,51 @@ paths:
       security:
         - bearerAuth: []
         - cookieAuth: []
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: number
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: number
+            default: 20
+          description: Number of items per page
+        - in: query
+          name: active
+          required: false
+          schema:
+            type: boolean
+          description: Filter by user active status
+        - in: query
+          name: recycle
+          required: false
+          schema:
+            type: boolean
+          description: When true, returns soft deleted users from recycle bin
+        - in: query
+          name: q
+          required: false
+          schema:
+            type: string
+          description: Search query across first name, last name, and email
+        - in: query
+          name: userType
+          required: false
+          schema:
+            type: string
+          description: Filter by user type/role
+        - in: query
+          name: plan
+          required: false
+          schema:
+            type: string
+          description: Filter by user subscription plan ID
       responses:
         '200':
           description: Users retrieved successfully

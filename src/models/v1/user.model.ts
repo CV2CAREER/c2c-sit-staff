@@ -377,6 +377,15 @@ export class User extends Model {
   })
   location?: Location;
 
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  deletedBy?: string;
+
   // Timestamps
   @CreatedAt
   createdAt!: Date;
