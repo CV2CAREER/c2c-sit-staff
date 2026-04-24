@@ -47,22 +47,22 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
         <ul className="grid gap-5 h-fit text-[16px]  leading-[1.45] text-[#171717]">
           {pricing.jobApplications ? (
             <li className="flex gap-4 items-start"> 
-              <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
+              <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
               <span>{pricing.jobApplications}</span>
             </li>
           ) : null}
           {otherFeatures.map((data: string, index: number) => (
             <li className="flex gap-4 items-start" key={`${data}-${index}`}>
-              <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
+              <span className="inline-block w-2 h-2 mt-2 flex-shrink-0 bg-current"></span>
               <span>{data}</span>
             </li>
           ))}
           <li className="flex gap-4 items-start">
-            <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
+            <span className="inline-block w-2 h-2 mt-2  flex-shrink-0 bg-current"></span>
             <span>{`${pricing.validityPeriod} Subscription With ${pricing.subscriptionBreak} Pause Option Before Duration Hard End Date`}</span>
           </li>
           <li className="flex gap-4 items-start">
-            <span className="inline-block w-[0.33rem] h-[0.33rem] mt-[0.5rem] flex-shrink-0 bg-current"></span>
+            <span className="inline-block w-2 h-2 mt-2  flex-shrink-0 bg-current"></span>
             <span>{`${pricing.profileLimit} Client Profile Application`}</span>
           </li>
         </ul>
