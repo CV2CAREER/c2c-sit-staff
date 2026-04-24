@@ -29,6 +29,11 @@ const logger = getServiceLogger("server");
 // create server
 export const server = http.createServer(app);
 
+// Increase server timeout for large file uploads (default is 2 minutes)
+server.timeout = 300000; // 5 minutes
+server.headersTimeout = 310000; // Slightly higher than timeout
+server.keepAliveTimeout = 305000; // Between timeout and headersTimeout
+
 // Graceful shutdown
 const shutdown = async () => {
   logger.warn("Server shutdown initiated...");
