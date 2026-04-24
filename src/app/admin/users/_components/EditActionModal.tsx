@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UsersTableColType } from "@/types/admin";
+import toast from "react-hot-toast";
+import { useUpdateUser } from "../hooks/users-all";
 
 const formSchema = z.object({
   firstName: z.string().min(2).max(50),
@@ -74,17 +76,11 @@ interface EditTableModalProps {
       | null
     >
   ) => void;
-  editUserAction: () => UseMutationResult<
-    any,
-    Error,
-    { userId: string; updatedData: Partial<UsersTableColType> }
-  >;
 }
 
 const EditTableModal: React.FC<EditTableModalProps> = ({
   user,
   setDialog,
-  editUserAction,
 }) => {
   const countries = countryList()
     .getData()
@@ -116,13 +112,21 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
   });
 
   // Submit handler
-  const onSubmit: SubmitHandler<FormValues> = (values) => {
-    editUserAction().mutate({
-      userId: user._id,
-      updatedData: {
+  const { mutateAsync: updateUser } = useUpdateUser();
+
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
+    const loadingToast = toast.loading("Updating user...");
+    
+    try {
+      await updateUser({
+        id: user.id,
         ...values,
-      },
-    });
+      });
+      toast.success("User updated successfully", { id: loadingToast });
+    } catch {
+      toast.error("Failed to update user", { id: loadingToast });
+    }
+    
     setDialog(null);
   };
 
@@ -179,33 +183,35 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gender</FormLabel>
-                      <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              className="mr-3"
-                              placeholder="Select Gender"
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">male</SelectItem>
-                            <SelectItem value="female">female</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  className="mr-3"
+                                  placeholder="Select Gender"
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
               </div>
 
               <FormField

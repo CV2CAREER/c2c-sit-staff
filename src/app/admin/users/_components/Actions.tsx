@@ -18,15 +18,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { RotateCcw, Trash2, MoreHorizontal, UserPen } from "lucide-react";
-import { useMutation, UseMutationResult, useQueryClient } from "@tanstack/react-query";
+import { UseMutationResult, useQueryClient } from "@tanstack/react-query";
 import EditTableModal from "./EditActionModal";
 import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
-import axiosInstance from "@/services/api-client";
-import { SERVER_URI } from "@/constants/env";
 import { IoDocument } from "react-icons/io5";
 import { ImProfile } from "react-icons/im";
 import { EmojiTransportationOutlined } from "@mui/icons-material";
+import { useApproveDocument, useRejectDocument, useApproveUserAccount, useDeleteUser, useSendSlackSample, useGetUserPendingDocuments, useSoftDeleteUser, useRestoreUser, usePurgeUser } from "../hooks/users-all";
 
 interface UserActionsProps {
   user: UsersTableColType;
@@ -46,143 +45,21 @@ export default function UsersTableActions({
   const [activeDialog, setActiveDialog] = useState<
     "edit" | "accept-documents" | "approve-account" | "dispatch-sample-result" | "reject-documents" | "view-documents" | "view-profile" | "soft-delete" | "restore" | "delete" | null
   >(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const toastIdRef = useRef<string | null>(null);
 
-  /* ---- Mutations ---- */
-  const editUserAction = useMutation({
-    mutationFn: ({
-      userId,
-      updatedData,
-    }: {
-      userId: string;
-      updatedData: Partial<UsersTableColType>;
-    }) => {
-      toast.loading("Editing user...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, updatedData);
-    },
-    onSuccess: () => {
-      toast.success("User has been edited successfully");
-      queryClient.invalidateQueries({ queryKey: ["users", "active"] });
-    },
-    onError: () => {
-      toast.error("Could not edit user");
-    },
-  });
-
-  const approveUserDocumentAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Approving document...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/approve-document?id=${userId}`);
-    },
-    onSuccess: (data) => {
-      const successMessage = data.data.message || "Document approved for user";
-      toast.success(successMessage);
-      queryClient.invalidateQueries({ queryKey: ["users", "active"] });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response.data?.message || "Could not approve user document";
-      toast.error(errorMessage);
-    }
-  })
-
-  const approveAccountAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Approving account...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/approve-account?id=${userId}`);
-    },
-    onSuccess: (data) => {
-      const successMessage = data.data.message || "Account approved for user";
-      toast.success(successMessage);
-      queryClient.invalidateQueries({ queryKey: ["users", "active"] });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response.data?.message || "Could not approve user document";
-      toast.error(errorMessage);
-    }
-  })
-
-  const rejectUserDocumentAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Rejecting document...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/reject-document?id=${userId}`);
-    },
-    onSuccess: (data) => {
-      const successMessage = data.data.message || "Document rejected for user";
-      toast.success(successMessage);
-      queryClient.invalidateQueries({ queryKey: ["users", "active"] });
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response.data?.message || "Could not reject user document";
-      toast.error(errorMessage);
-    }
-  })
-
-  const dispatchUserSampleAction = useMutation({
-    mutationFn: (userId: string) => {
-      toastIdRef.current = toast.loading("Dispatching Samples");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users/dispatch-sample?id=${userId}`);
-    },
-    onSuccess: (data) => {
-      const successMessage = data.data.message || "Samples dispatched for user";
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
-      toast.success(successMessage);
-    },
-    onError: (error: any) => {
-      const errorMessage = error.response?.data?.message || "Could not dispatch user samples";
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
-      toast.error(errorMessage);
-    }
-  })
-
-  const softDeleteUserAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Moving to the Recycle bin...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, {
-        isDeleted: true,
-      });
-    },
-    onSuccess: () => {
-      toast.success("User has been moved to the Recycle bin");
-      queryClient.invalidateQueries({ queryKey: ["users", "recycle"] });
-    },
-    onError: () => {
-      toast.error("Could not move user to the Recycle bin");
-    },
-  });
+  /* ---- Mutations & Queries ---- */
+  const approveDocument = useApproveDocument();
+  const rejectDocument = useRejectDocument();
+  const approveUserAccount = useApproveUserAccount();
+  const deleteUser = useDeleteUser();
+  const sendSlackSample = useSendSlackSample();
+  const softDeleteUser = useSoftDeleteUser();
+  const restoreUser = useRestoreUser();
+  const purgeUser = usePurgeUser();
   
-  const restoreUserAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Restoring user...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/admin/users?id=${userId}`, {
-        isDeleted: false,
-      });
-    },
-    onSuccess: () => {
-      toast.success("User has been restored to active users table");
-      queryClient.invalidateQueries({ queryKey: ["users", "active"] });
-      queryClient.invalidateQueries({ queryKey: ["users", "recycle"] });
-    },
-    onError: () => {
-      toast.error("Could not restore user");
-    },
-  });
-    
-  const deleteUserAction = useMutation({
-    mutationFn: (userId: string) => {
-      toast.loading("Deleting user permanently...");
-      return axiosInstance.delete(`${SERVER_URI}/api/v1/admin/users?id=${userId}`);
-    },
-    onSuccess: () => {
-      toast.success("User has been delete permanently.");
-      queryClient.invalidateQueries({ queryKey: ["users", "recycle"] });
-    },
-    onError: () => {
-      toast.error("Could not delete user.");
-    },
+  const pendingDocuments = useGetUserPendingDocuments(user.id, {
+    enabled: activeDialog === "accept-documents" || activeDialog === "reject-documents"
   });
   
   /* ---- Render ---- */
@@ -200,7 +77,7 @@ export default function UsersTableActions({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem
-            onClick={() => navigator.clipboard.writeText(user._id)}
+            onClick={() => navigator.clipboard.writeText(user.id)}
           >
             Copy User ID
           </DropdownMenuItem>
@@ -322,7 +199,7 @@ export default function UsersTableActions({
         <EditTableModal
           user={user}
           setDialog={setActiveDialog}
-          editUserAction={() => editUserAction}
+          // editUserAction={() => editUserAction}
         />
       )}
 
@@ -335,11 +212,23 @@ export default function UsersTableActions({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
+            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
             <Button
               variant="destructive"
               onClick={() => {
-                softDeleteUserAction.mutate(user._id);
-                setActiveDialog(null);
+                const toastId = toast.loading("Moving user to recycle bin...");
+                softDeleteUser.mutate({ userId: user.id }, {
+                  onSuccess: () => {
+                    toast.dismiss(toastId);
+                    toast.success("User moved to recycle bin successfully");
+                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                    setActiveDialog(null);
+                  },
+                  onError: () => {
+                    toast.dismiss(toastId);
+                    toast.error("Failed to move user to recycle bin");
+                  }
+                });
               }}
             >
               Confirm
@@ -357,10 +246,22 @@ export default function UsersTableActions({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
+            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
             <Button
               onClick={() => {
-                restoreUserAction.mutate(user._id);
-                setActiveDialog(null);
+                const toastId = toast.loading("Restoring user...");
+                restoreUser.mutate({ userId: user.id }, {
+                  onSuccess: () => {
+                    toast.dismiss(toastId);
+                    toast.success("User restored successfully");
+                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                    setActiveDialog(null);
+                  },
+                  onError: () => {
+                    toast.dismiss(toastId);
+                    toast.error("Failed to restore user");
+                  }
+                });
               }}
             >
               Restore
@@ -374,18 +275,30 @@ export default function UsersTableActions({
           <DialogHeader>
             <DialogTitle>Are you sure?</DialogTitle>
             <DialogDescription>
-              This user will be deleted permanently from our server!
+              This user will be deleted permanently from our server! This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
+            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
             <Button
               variant="destructive"
               onClick={() => {
-                deleteUserAction.mutate(user._id);
-                setActiveDialog(null);
+                const toastId = toast.loading("Permanently deleting user...");
+                purgeUser.mutate({ userId: user.id }, {
+                  onSuccess: () => {
+                    toast.dismiss(toastId);
+                    toast.success("User permanently deleted");
+                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                    setActiveDialog(null);
+                  },
+                  onError: () => {
+                    toast.dismiss(toastId);
+                    toast.error("Failed to delete user permanently");
+                  }
+                });
               }}
             >
-              Delete
+              Permanently Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -394,19 +307,67 @@ export default function UsersTableActions({
       {activeDialog === "accept-documents" && (
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogTitle>Approve User Documents</DialogTitle>
             <DialogDescription>
-              This user's documents will be approved and verified
+              The following pending documents will be approved:
             </DialogDescription>
+            
+            {pendingDocuments.isLoading && (
+              <div className="py-4 text-sm text-gray-500">Loading documents...</div>
+            )}
+            
+            {pendingDocuments.data && (
+              <div className="py-4 space-y-2 max-h-[320px] overflow-y-auto">
+                {(pendingDocuments.data as any)?.data?.map((doc: any) => (
+                  <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors ${selectedDocuments.has(doc.id) ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-transparent'}`} onClick={() => {
+                    const newSelected = new Set(selectedDocuments);
+                    if (newSelected.has(doc.id)) {
+                      newSelected.delete(doc.id);
+                    } else {
+                      newSelected.add(doc.id);
+                    }
+                    setSelectedDocuments(newSelected);
+                  }}>
+                    <input type="checkbox" checked={selectedDocuments.has(doc.id)} onChange={() => {}} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <IoDocument className={`w-5 h-5 ${selectedDocuments.has(doc.id) ? 'text-blue-600' : 'text-blue-500'}`} />
+                    <div className="flex-1">
+                      <div className="font-medium">{doc.document.name}</div>
+                      <div className="text-sm text-gray-500">{doc.type} - {doc.status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </DialogHeader>
           <DialogFooter>
+            <Button variant="secondary" onClick={() => {
+              setSelectedDocuments(new Set());
+              setActiveDialog(null);
+            }}>Cancel</Button>
             <Button
+              disabled={selectedDocuments.size === 0}
               onClick={() => {
-                approveUserDocumentAction.mutate(user._id);
-                setActiveDialog(null);
+                const toastId = toast.loading(`Approving ${selectedDocuments.size} document(s)...`);
+                
+                // Approve each selected document
+                Promise.all(
+                  Array.from(selectedDocuments).map(docId => 
+                    approveDocument.mutateAsync({ documentId: docId })
+                  )
+                ).then(() => {
+                  toast.dismiss(toastId);
+                  toast.success(`${selectedDocuments.size} document(s) approved successfully`);
+                  setSelectedDocuments(new Set());
+                  queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                  queryClient.invalidateQueries({ queryKey: ["user-pending-documents"] });
+                  setActiveDialog(null);
+                }).catch(() => {
+                  toast.dismiss(toastId);
+                  toast.error("Failed to approve some documents");
+                });
               }}
             >
-              Accept Documents
+              Approve Selected ({selectedDocuments.size})
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -423,7 +384,18 @@ export default function UsersTableActions({
           <DialogFooter>
             <Button
               onClick={() => {
-                approveAccountAction.mutate(user._id);
+                const toastId = toast.loading("Approving account...");
+                approveUserAccount.mutate({ userId: user.id }, {
+                  onSuccess: () => {
+                    toast.dismiss(toastId);
+                    toast.success("Account approved successfully");
+                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                  },
+                  onError: () => {
+                    toast.dismiss(toastId);
+                    toast.error("Failed to approve account");
+                  }
+                });
                 setActiveDialog(null);
               }}
             >
@@ -436,19 +408,67 @@ export default function UsersTableActions({
       {activeDialog === "reject-documents" && (
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogTitle>Reject User Documents</DialogTitle>
             <DialogDescription>
-              This user's documents will be rejected and unverfied
+              The following pending documents will be rejected:
             </DialogDescription>
+            
+            {pendingDocuments.isLoading && (
+              <div className="py-4 text-sm text-gray-500">Loading documents...</div>
+            )}
+            
+            {pendingDocuments.data && (
+              <div className="py-4 space-y-2 max-h-[320px] overflow-y-auto">
+                {(pendingDocuments.data as any)?.data?.map((doc: any) => (
+                  <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors ${selectedDocuments.has(doc.id) ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-transparent'}`} onClick={() => {
+                    const newSelected = new Set(selectedDocuments);
+                    if (newSelected.has(doc.id)) {
+                      newSelected.delete(doc.id);
+                    } else {
+                      newSelected.add(doc.id);
+                    }
+                    setSelectedDocuments(newSelected);
+                  }}>
+                    <input type="checkbox" checked={selectedDocuments.has(doc.id)} onChange={() => {}} className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
+                    <IoDocument className={`w-5 h-5 ${selectedDocuments.has(doc.id) ? 'text-red-600' : 'text-red-500'}`} />
+                    <div className="flex-1">
+                      <div className="font-medium">{doc.document.name}</div>
+                      <div className="text-sm text-gray-500">{doc.type} - {doc.status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </DialogHeader>
           <DialogFooter>
-            <Button
+            <Button variant="secondary" onClick={() => {
+              setSelectedDocuments(new Set());
+              setActiveDialog(null);
+            }}>Cancel</Button>
+            <Button variant="destructive"
+              disabled={selectedDocuments.size === 0}
               onClick={() => {
-                rejectUserDocumentAction.mutate(user._id);
-                setActiveDialog(null);
+                const toastId = toast.loading(`Rejecting ${selectedDocuments.size} document(s)...`);
+                
+                // Reject each selected document
+                Promise.all(
+                  Array.from(selectedDocuments).map(docId => 
+                    rejectDocument.mutateAsync({ documentId: docId })
+                  )
+                ).then(() => {
+                  toast.dismiss(toastId);
+                  toast.success(`${selectedDocuments.size} document(s) rejected successfully`);
+                  setSelectedDocuments(new Set());
+                  queryClient.invalidateQueries({ queryKey: ["users-all"] });
+                  queryClient.invalidateQueries({ queryKey: ["user-pending-documents"] });
+                  setActiveDialog(null);
+                }).catch(() => {
+                  toast.dismiss(toastId);
+                  toast.error("Failed to reject some documents");
+                });
               }}
             >
-              Reject Documents
+              Reject Selected ({selectedDocuments.size})
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -465,7 +485,17 @@ export default function UsersTableActions({
           <DialogFooter>
             <Button
               onClick={() => {
-                dispatchUserSampleAction.mutate(user.uniqueId);
+                const toastId = toast.loading("Dispatching sample...");
+                sendSlackSample.mutate({ userId: user.id }, {
+                  onSuccess: () => {
+                    toast.dismiss(toastId);
+                    toast.success("Sample dispatched successfully");
+                  },
+                  onError: () => {
+                    toast.dismiss(toastId);
+                    toast.error("Failed to dispatch sample");
+                  }
+                });
                 setActiveDialog(null);
               }}
             >
