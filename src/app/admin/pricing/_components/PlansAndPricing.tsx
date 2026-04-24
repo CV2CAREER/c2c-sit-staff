@@ -28,7 +28,7 @@ const SubscriptionPlan: React.FC<SubscriptionPlanProps> = ({
     pricing.price * (Number.isFinite(numericMultiplier) && numericMultiplier > 0 ? numericMultiplier : 1);
 
   return (
-    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[24rem] max-w-[80vw] flex-shrink-0">
+    <div className="bg-[#EEF7FF] rounded-2xl overflow-hidden flex flex-col w-[24rem] min-h-[18rem] max-w-[80vw] flex-shrink-0">
       <div className="px-6 pt-5 pb-4 flex items-start justify-between gap-4">
         <span className="text-32 flex flex-row justify-end items-end smallLaptop:text-3xl bigLaptop:text-4xl font-medium text-white mix-blend-difference font-sharp-grotesk">
           {currencyFormatterFunc({
