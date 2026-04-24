@@ -56,7 +56,7 @@ const AggregatorListing: React.FC<AggregatorListingProps> = ({ data }) => {
             )}
             <div className="bg-white rounded-full flex items-center justify-center w-[56px] h-[56px] mx-4">
               <Image
-                src={agg?.picture?.fileUrl}
+                src={agg?.picture?.url}
                 alt=""
                 width={48}
                 height={18}
