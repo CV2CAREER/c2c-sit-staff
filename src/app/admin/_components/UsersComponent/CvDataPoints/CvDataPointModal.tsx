@@ -22,13 +22,13 @@ export const CvDataPointModal: React.FC<CvDataPointModalProps> = ({
       onClose={onClose} 
     >
       <div className="space-y-6 max-h-[60vh] overflow-y-auto">
-        <DataSection label="CV Type" content={dataPoint.cvType} />
-        <DataSection label="Contact Information" content={dataPoint.contactInformation} />
-        <DataSection label="Professional Summary" content={dataPoint.professionalSummary} />
+        <DataSection label="CV Type" content={dataPoint.cvDataPoints?.cvType} />
+        <DataSection label="Contact Information" content={dataPoint.cvDataPoints?.contactInformation} />
+        <DataSection label="Professional Summary" content={dataPoint.cvDataPoints?.professionalSummary} />
         
         <div className="space-y-2">
           <h3 className="text-lg font-semibold text-gray-700">Work Experience</h3>
-          {dataPoint.workExperience?.map((exp, index) => (
+          {dataPoint.cvDataPoints?.workExperience?.map((exp, index) => (
             <div key={index} className="ml-4 mb-4 p-3 bg-gray-50 rounded">
               <p className="font-medium">{exp.jobTitle} at {exp.organization}</p>
               <p className="text-sm text-gray-600">{exp.dates}</p>
@@ -37,9 +37,9 @@ export const CvDataPointModal: React.FC<CvDataPointModalProps> = ({
           ))}
         </div>
         
-        <ArraySection label="Skills" items={dataPoint.skills} />
-        <ArraySection label="Achievements" items={dataPoint.achievements} />
-        <ArraySection label="Languages" items={dataPoint.languages} />
+        <ArraySection label="Skills" items={dataPoint.cvDataPoints?.skills} />
+        <ArraySection label="Achievements" items={dataPoint.cvDataPoints?.achievements} />
+        <ArraySection label="Languages" items={dataPoint.cvDataPoints?.languages} />
       </div>
     </AppModal>
   );

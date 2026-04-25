@@ -14,7 +14,7 @@ export const VACell = ({ data = null } : VACellProps) => {
     const [unassign, setUnassign] = useState(data?.VaEmail);
 
     const { pcsDomain: { data: vaData, isError } } = useAdminQueries({ fetchPCs: true });
-    const vas = Array.isArray(vaData) ? vaData : (vaData?.items ?? []);
+    const vas = Array.isArray(vaData) ? vaData : ((vaData as any)?.items ?? []);
     
     const { assignVaMutation } = useAdminMutations();
 

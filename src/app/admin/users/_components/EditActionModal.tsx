@@ -134,12 +134,13 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
     <DialogContent className="h-[70vh] overflow-auto">
       <DialogHeader>
         <DialogTitle className="text-blue">Edit User</DialogTitle>
-        <DialogDescription>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-8 text-black"
-            >
+      </DialogHeader>
+
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-8 text-black px-1"
+          >
               <div className="flex gap-3">
                 <FormField
                   control={form.control}
@@ -498,10 +499,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                   )}
                 />
               </div>
-            </form>
-          </Form>
-        </DialogDescription>
-      </DialogHeader>
+        </form>
+      </Form>
 
       <DialogFooter>
         <Button
