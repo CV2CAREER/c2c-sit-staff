@@ -150,7 +150,7 @@ export default function UsersTableActions({
               case "view-documents":
                 return (
                   <DropdownMenuItem
-                    onClick={() => window.open(`/admin/users/${user._id}`, '_blank')}
+                    onClick={() => window.open(`/admin/users/${user.id}`, '_blank')}
                     key="view-documents"
                   >
                     <IoDocument/>
@@ -160,7 +160,7 @@ export default function UsersTableActions({
               case "view-profile":
                 return (
                   <DropdownMenuItem
-                    onClick={() => window.open(`/admin/users/${user._id}`, '_blank')}
+                    onClick={() => window.open(`/admin/users/${user.id}`, '_blank')}
                     key="view-profile"
                   >
                     <ImProfile/>

@@ -13,13 +13,12 @@ const columns:GridColDef[] = [
 ];
 
 
-const AdminUsersReferralHistory = () => {
-    const { user } = useAdminUserDetailContext()
-    const { referralHistoryDomain } = useAdminQueries({
-        fetchReferralHistory: true,
-        referralEmail: user?.email,
+const AdminUsersReferralHistory = ({ userId }: { userId: string }) => {
+    const { userReferralsDomain } = useAdminQueries({
+        userId,
+        fetchUserReferrals: true,
     });
-    const referralHistory = referralHistoryDomain.data;
+    const referralHistory = userReferralsDomain.data;
     const getRowClassName = (params: GridRowClassNameParams<GridValidRowModel>) => {
         return params.indexRelativeToCurrentPage % 2 !== 0 ? 'bg-career-gray-400' : 'bg-white';
     };
@@ -30,10 +29,10 @@ const AdminUsersReferralHistory = () => {
             <div style={{ height: 400, width: '100%' }}>
                 <StyledDataGridPro
                     columns={columns}
-                    rows={referralHistory?.data?.map((row: any) => ({
-                        ...((row._doc ?? row) as object),
-                        referralStatus: row.referralStatus,
-                        id: row._doc?._id ?? row._id
+                    rows={referralHistory?.referrals?.map((row: any) => ({
+                        ...row.user,
+                        referralStatus: row.status,
+                        id: row.id
                     })) || []}
                     getRowId={(row: any) => row.id}
                     getRowClassName={getRowClassName}

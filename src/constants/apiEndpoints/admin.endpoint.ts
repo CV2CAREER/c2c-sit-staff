@@ -97,6 +97,14 @@ export const ADMIN_RESOURCES = "/api/v1/resources";
 export const ADMIN_PROMOTION = "/api/v1/promotions";
 export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/promotions?id=${id}`;
 
+// User Management Endpoints - Temidayo
+export const ADMIN_FEATURE_TITLES = "/api/v1/user-management/features";
+export const ADMIN_USER_PREFERENCES_V2 = (userId: string) => `/api/v1/user-management/users/${userId}/preferences`;
+export const ADMIN_USER_PREFERENCES_HISTORY = (userId: string) => `/api/v1/user-management/users/${userId}/preferences/history`;
+export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management/users/${userId}/referrals`;
+export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;
+export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
+
 // Blog Endpoints
 export const ADMIN_BLOG = "/api/v1/blog";
 export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/blog?id=${id}`;

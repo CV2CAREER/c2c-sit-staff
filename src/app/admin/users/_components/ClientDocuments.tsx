@@ -7,7 +7,7 @@ import {
 } from "./clientDocumentsColumns";
 import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -21,22 +21,18 @@ import PulseLoader from "../../_components/DropDown/loader";
 
 const ClientDocument = ({ userId }: { userId: string }) => {
   const queryClient = new QueryClient();
-  const { documentsDomain: documentsData } = useAdminQueries({
+  const { userDocumentsDomain: documentsData } = useAdminQueries({
     userId,
-    fetchDocuments: true,
+    fetchUserDocuments: true,
   });
   const { uploadDocumentsMutation, submitDocumentReviewMutation } = useAdminMutations();
   const isLoading = documentsData.isLoading;
   const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [isReviseModalOpen, setIsReviseModalOpen] = useState(false);
-  const rows = documentsData?.data?.userDocs || [];
-  const [documentRows, setDocumentRows] = useState([]);
-
-  useEffect(() => {
-    if (documentsData) {
-      setDocumentRows(generateClientDocumentRows(rows) as never[]);
-    }
-  }, [rows, documentsData]);
+  const rows = documentsData?.data?.documents || [];
+  const documentRows = useMemo(() => {
+    return generateClientDocumentRows(rows) as never[];
+  }, [rows]);
 
 //   console.log("client documents", documentsData);
   return (
@@ -62,11 +58,14 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               <PulseLoader />
             </div>
           ) : (
-            <StyledDataGridPro
-              rows={documentRows}
-              columns={
-                generateClientDocumentsColumns(rows as any[]) as GridColDef[]
-              }
+             <StyledDataGridPro
+               rows={documentRows}
+               getRowId={(row) => {
+                 return row.id || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
+               }}
+               columns={
+                 generateClientDocumentsColumns(rows as any[]) as GridColDef[]
+               }
               paginationMode="server"
               rowCount={0}
               pagination

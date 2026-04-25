@@ -31,7 +31,8 @@ export default function OnBoardingProgress() {
     <section className="flex flex-col gap-3 bg-white rounded-md p-4 shadow-lg">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Onboarding Progress</h2>
-        {user?.isEmailVerified ? (
+        {/* @ts-ignore - API response structure has nested user property */}
+        {(user as any)?.user.isEmailVerified ? (
           <Chip
             size="sm"
             color="success"

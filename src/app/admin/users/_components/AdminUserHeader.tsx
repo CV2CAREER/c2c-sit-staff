@@ -14,11 +14,19 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
   // const router = useRouter();
   const pathName = usePathname();
 
-  const { userDetailDomain: userData, usersListDomain: allUserData } = useAdminQueries({
-    userId,
-    fetchUserDetail: true,
-    fetchUsersList: true,
-  });
+   const { userDetailDomain: userData, usersListDomain: allUserData, featureTitlesDomain, userProfileSafeDomain } = useAdminQueries({
+     userId,
+     fetchUserDetail: true,
+     fetchUsersList: true,
+     fetchFeatureTitles: true,
+     fetchUserProfileSafe: true,
+   });
+
+   const profileUser = userProfileSafeDomain?.data?.profile;
+
+  const features = featureTitlesDomain?.data?.features || [];
+  const userPlanId = userData?.data?.planId;
+  const userPlan = features.find((f: any) => f.id === userPlanId);
 
   const { setUser } = useAdminUserDetailContext()
 
@@ -58,7 +66,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
             <div>
               <div className="flex  items-center ">
                 <h4 className="!font-medium  font-sharp-grotesk text-lg smallLaptop:text-32 text-career-black-200 capitalize">
-                  {userData?.data?.firstName} {userData?.data?.lastName}
+                  {profileUser?.firstName ?? userData?.data?.firstName} {profileUser?.lastName ?? userData?.data?.lastName}
                 </h4>
 
                 {dropdownIsOpened ? (
@@ -108,9 +116,12 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
             </div>
 
             <div className="rounded-full w-2 mx-4 h-2 bg-career-blue-800" />
-            <p className="text-14 text-career-gray-200 capitalize">{userData?.data?.plan}</p>
+            <p className="text-14 text-career-gray-200 capitalize">{profileUser?.plan ?? userData?.data?.plan}</p>
           </div>
-          <p className="text-career-gray-200 mt-1 capitalize">{userData?.data?.role}</p>
+          <p className="text-career-gray-200 mt-1">
+            {profileUser?.email ?? userData?.data?.email}
+          </p>
+          <p className="text-career-gray-200 mt-1 capitalize">{profileUser?.role ?? userData?.data?.role}</p>
         </div>
       </div>
       <UserAccountOptions

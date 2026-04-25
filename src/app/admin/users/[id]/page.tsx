@@ -5,7 +5,6 @@ import AdminUserHeader from "../_components/AdminUserHeader";
 import { AdminUserDetailProvider, useAdminUserDetailContext } from "../context/userDetailContext";
 import TriggerApplicationAction from "../_components/ApplicationAction";
 import ClientDocument from "../_components/ClientDocuments";
-import AdminUsersJobSites from "../_components/AdminUsersJobSites";
 import AdminProfileInfo from "../_components/AdminUsersProfileInfo";
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
@@ -20,9 +19,10 @@ function UserDetailsContent({ userId }: { userId: string }) {
     const [isUserId, setIsUserId] = useState<string | null>(null);
     const currentUserId = isUserId || userId;
 
-    const { userDetailDomain: userData } = useAdminQueries({
+    const { 
+      userDetailDomain: userData,
+    } = useAdminQueries({
         userId: currentUserId,
-        fetchUserDetail: true,
     });
 
     useEffect(() => {
@@ -47,11 +47,10 @@ function UserDetailsContent({ userId }: { userId: string }) {
             {/* <OnboardingStatus/> */}
             <TriggerApplicationAction/>
             <ClientDocument userId={currentUserId} />
-            <AdminUsersJobSites userId={currentUserId}/>
-            <AdminProfileInfo/>
+            <AdminProfileInfo userId={currentUserId}/>
             <AdminUsersJobPreferences userId={currentUserId}/>
             <AdminUserJobPreferenceHistory userId={currentUserId} />
-            <AdminUsersReferralHistory/>
+            <AdminUsersReferralHistory userId={currentUserId} />
         </main>
     );
 }

@@ -17,7 +17,17 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     fetchClients = false,
     fetchPCs = false,
     fetchPlans = false,
+
+
     fetchUserPreferences = false,
+    fetchFeatureTitles = false,
+    fetchUserPreferencesV2 = false,
+    fetchUserPreferencesHistory = false,
+    fetchUserReferrals = false,
+    fetchUserDocuments = false,
+    fetchUserProfileSafe = false,
+
+    
     startDate = "",
     endDate = "",
     userId = "",
@@ -145,6 +155,49 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     queryKey: ["admin-user-preferences", userId],
     params: { id: userId },
     enabled: fetchUserPreferences && !!userId,
+  });
+
+  // User MAnagement Page - Temidayo
+  const featureTitles = useFetchData<any>({
+    method: "GET",
+    url: endpoints.ADMIN_FEATURE_TITLES,
+    queryKey: ["admin-feature-titles"],
+    enabled: fetchFeatureTitles,
+  });
+
+  const userPreferencesV2 = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_PREFERENCES_V2(userId) : "",
+    queryKey: ["admin-user-preferences-v2", userId],
+    enabled: fetchUserPreferencesV2 && !!userId,
+  });
+
+  const userPreferencesHistory = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_PREFERENCES_HISTORY(userId) : "",
+    queryKey: ["admin-user-preferences-history", userId],
+    enabled: fetchUserPreferencesHistory && !!userId,
+  });
+
+  const userReferrals = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_REFERRALS(userId) : "",
+    queryKey: ["admin-user-referrals", userId],
+    enabled: fetchUserReferrals && !!userId,
+  });
+
+  const userDocuments = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_DOCUMENTS(userId) : "",
+    queryKey: ["admin-user-documents", userId],
+    enabled: fetchUserDocuments && !!userId,
+  });
+
+  const userProfileSafe = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_PROFILE_SAFE(userId) : "",
+    queryKey: ["admin-user-profile-safe", userId],
+    enabled: fetchUserProfileSafe && !!userId,
   });
 
   // Transform the analytics data into the expected persona count format
@@ -336,6 +389,50 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       isSuccess: userPreferences.isSuccess,
       isError: userPreferences.isError,
       error: userPreferences.error,
+    },
+
+    // User Management Page
+    featureTitlesDomain: {
+      data: featureTitles.data?.data,
+      isLoading: featureTitles.isLoading,
+      isSuccess: featureTitles.isSuccess,
+      isError: featureTitles.isError,
+      error: featureTitles.error,
+    },
+    userPreferencesV2Domain: {
+      data: userPreferencesV2.data?.data,
+      isLoading: userPreferencesV2.isLoading,
+      isSuccess: userPreferencesV2.isSuccess,
+      isError: userPreferencesV2.isError,
+      error: userPreferencesV2.error,
+    },
+    userPreferencesHistoryDomain: {
+      data: userPreferencesHistory.data?.data,
+      isLoading: userPreferencesHistory.isLoading,
+      isSuccess: userPreferencesHistory.isSuccess,
+      isError: userPreferencesHistory.isError,
+      error: userPreferencesHistory.error,
+    },
+    userReferralsDomain: {
+      data: userReferrals.data?.data,
+      isLoading: userReferrals.isLoading,
+      isSuccess: userReferrals.isSuccess,
+      isError: userReferrals.isError,
+      error: userReferrals.error,
+    },
+    userDocumentsDomain: {
+      data: userDocuments.data?.data,
+      isLoading: userDocuments.isLoading,
+      isSuccess: userDocuments.isSuccess,
+      isError: userDocuments.isError,
+      error: userDocuments.error,
+    },
+    userProfileSafeDomain: {
+      data: userProfileSafe.data?.data,
+      isLoading: userProfileSafe.isLoading,
+      isSuccess: userProfileSafe.isSuccess,
+      isError: userProfileSafe.isError,
+      error: userProfileSafe.error,
     },
   }), [
     usersCount.data, usersCount.isLoading, usersCount.isSuccess, usersCount.isError, usersCount.error,

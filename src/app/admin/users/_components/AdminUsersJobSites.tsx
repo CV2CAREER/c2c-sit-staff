@@ -1,70 +1,31 @@
-import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api"
+// import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api"
 import React, { useState } from "react"
 import { useAdminUserDetailContext } from "../context/userDetailContext"
 import AdminJobsiteRowGeneratorModal from "./AdminJobsiteRowGeneratorModal"
 import Table from "@/components/newTable/Table"
 import CustomButton from "@/components/CustomButton/CustomButton"
 import toast from 'react-hot-toast';
-import { useQueryClient } from '@tanstack/react-query'
-import UpdateJobsite from "./UpdateJobsite"
+// import { useQueryClient } from '@tanstack/react-query'
+// import UpdateJobsite from "./UpdateJobsite"
 
 
 const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     const [allowJobsiteEdit, setAllowJobsiteEdit] = useState(false)
     const [editingJobsite, setEditingJobsite] = useState<any>(null)
     const { user } = useAdminUserDetailContext()
-    const [triggeredJobsite, setTriggeredJobsite] = useState(null)
-    const queryClient = useQueryClient();
+    const aggregators: any[] = [];
+    const isClientDataLoading = false;
 
-    const { clientJobsiteDomain: aggregatorsData } = useAdminQueries({
-        userId,
-        fetchClientJobsite: true,
-    });
-    const aggregators = aggregatorsData.data || [];
-    const isClientDataLoading = aggregatorsData.isLoading;
-
-    const { triggerJobsiteMutation, deleteJobsiteMutation, updateJobsiteMutation } = useAdminMutations();
-
-    async function triggerJobsite(agg: any) {
-        try {
-            setTriggeredJobsite(agg.aggregator?._id)
-            await triggerJobsiteMutation.mutateAsync({ aggId: agg.aggregator?._id, userId });
-            toast.success('Jobsite triggered successfully.')
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Trigger jobsite failed")
-        } finally {
-            setTriggeredJobsite(null)
-        }
+    function triggerJobsite() {
+        toast.success("Coming Soon! Jobsite feature is not available yet.")
     }
 
-    async function handleDeleteJobsite(agg: any) {
-        try {
-            toast.loading('deleting')
-            await deleteJobsiteMutation.mutateAsync({ aggId: agg.aggregator?._id, userId });
-            toast.success('Jobsite deleted successfully.')
-            
-            // Invalidate search query
-            queryClient.invalidateQueries({ queryKey: ["admin-client-jobsite", userId]});
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Delete jobsite failed")
-        } finally {
-            setTriggeredJobsite(null)
-        }
+    function handleDeleteJobsite() {
+        toast.success("Coming Soon! Jobsite feature is not available yet.")
     }
 
-    async function handleUpdateJobsite(agg: any) {
-        if (!editingJobsite) return
-
-        const tId = toast.loading('Updating jobsite...')
-
-        try {
-            const payload = { username: agg.username, password: agg.password, userId: userId, aggId: agg?.id, generatedEmail: agg.generatedEmail }
-            await updateJobsiteMutation.mutateAsync(payload);
-            toast.success('Jobsite updated.', { id: tId })
-            queryClient.invalidateQueries({ queryKey: ["admin-client-jobsite", userId]});
-        } catch (err:any) {
-            toast.error(err.response?.data?.message ?? 'Failed to update jobsite', { id: tId })
-        }
+    function handleUpdateJobsite() {
+        toast.success("Coming Soon! Jobsite feature is not available yet.")
     }
 
     const setupAliasmail = (username: string) => {
@@ -96,7 +57,6 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 cellClassName: 'el',
                 headerClassName: 'bg-[#80D7FF]',
                 renderCell: (params: any) => {
-                    // console.log(params, "Jobsite table params")
                     return setupAliasmail(params?.row?.username)
                 }
             },
@@ -115,10 +75,10 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 type: 'triggerJobsite',
                 cellClassName: 'el',
                 headerClassName: 'bg-[#80D7FF] text-black font-semibold',
-                renderCell: (params: any) => {
+                renderCell: () => {
                 return (
-                    <CustomButton customBtnClass='h-[45px]' isSubmitting={params.row?.aggregator?._id && params.row?.aggregator?._id == triggeredJobsite} isDisabled={params.row?.aggregator?._id == triggeredJobsite} title="Trigger Jobsite" handleClick={async () => {
-                        await triggerJobsite(params.row)
+                    <CustomButton customBtnClass='h-[45px]' isSubmitting={false} isDisabled={false} title="Trigger Jobsite" handleClick={() => {
+                        triggerJobsite()
                     }} />
                 );
                 }
@@ -159,7 +119,7 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                             }}
                             checkBoxSelection={false}
                             handleDelete={handleDeleteJobsite}
-                            onRowUpdate={handleUpdateJobsite}
+                            // onRowUpdate={handleUpdateJobsite}
                             isLoading={isClientDataLoading}
                             hideXFlow={true}
                         />
@@ -170,9 +130,9 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                     )}
                 </div>
                 {
-                    editingJobsite != null && (
-                        <UpdateJobsite visibility={editingJobsite !== null} toggleVisibility={() => setEditingJobsite(null)} data={editingJobsite} handleSubmit={handleUpdateJobsite} />
-                    )
+                    // editingJobsite != null && (
+                    //     <UpdateJobsite visibility={editingJobsite !== null} toggleVisibility={() => setEditingJobsite(null)} data={editingJobsite} handleSubmit={handleUpdateJobsite} />
+                    // )
                 }
             </div>
         </div>

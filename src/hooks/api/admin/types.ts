@@ -152,4 +152,12 @@ export interface AdminQueriesOptions {
   fetchChatbotTrainer?: boolean;
   fetchChatbotLogs?: boolean;
   chatbotLogsDate?: string;
+  
+  // User Management Page
+  fetchFeatureTitles?: boolean;
+  fetchUserPreferencesV2?: boolean;
+  fetchUserPreferencesHistory?: boolean;
+  fetchUserReferrals?: boolean;
+  fetchUserDocuments?: boolean;
+  fetchUserProfileSafe?: boolean;
 }

@@ -11,15 +11,15 @@ const AdminUserJobPreferenceHistory = ({ userId }: { userId: string }) => {
         page: 0,
         pageSize: 20
     })
-    const { profileHistoryDomain } = useAdminQueries({
+    const { userPreferencesHistoryDomain } = useAdminQueries({
         userId,
-        fetchProfileHistory: true,
+        fetchUserPreferencesHistory: true,
         profileHistorySkip: paginationModel.page * paginationModel.pageSize,
     });
-    const profileHistoryData = profileHistoryDomain.data;
-    const isLoading = profileHistoryDomain.isLoading;
-    const rows = profileHistoryData?.data?.preferenceHistory || []
-    const totalCount = profileHistoryData?.data?.totalCount || 0
+    const profileHistoryData = userPreferencesHistoryDomain.data;
+    const isLoading = userPreferencesHistoryDomain.isLoading;
+    const rows = profileHistoryData?.history || []
+    const totalCount = profileHistoryData?.history?.length || 0
     // console.log(profileHistoryData)
     return (
         <>
@@ -51,7 +51,7 @@ const AdminUserJobPreferenceHistory = ({ userId }: { userId: string }) => {
                                 onPaginationModelChange={setPaginationModel}
                                 paginationModel={paginationModel}
                                 disableRowSelectionOnClick
-                                getRowId={(row) => row._id}
+                                getRowId={(row) => row.id}
                             />
                         </div>
                     </>

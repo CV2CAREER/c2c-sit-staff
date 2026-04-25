@@ -93,6 +93,11 @@ const PreferenceToolTip = ({title}:{title:string}) => {
 
 const generateJobHistoryColumns = () => {
     const columns = preferenceHistoryColumns.reduce((acc: GridColDef[], el: GridColDef) => {
+        // Get value safely from preferenceSnapshot first, fallback to root
+        const getFieldValue = (row: any, field: string) => {
+            return row?.preferenceSnapshot?.[field] ?? row?.[field];
+        };
+        
         if (el.field === "createdAt") {
             const timestampEl:GridColDef = {
                 ...el,
@@ -107,7 +112,22 @@ const generateJobHistoryColumns = () => {
                         minute: '2-digit',
                         hour12: false,
                     });
-                    const formatted = formatter.format(new Date(params.value)).replace(',', '');
+                    
+                    const dateValue = getFieldValue(params.row, 'createdAt') ?? params.row?.preferenceSnapshot?.updatedAt;
+                    
+                    // Safely handle invalid or missing date values
+                    if (!dateValue) {
+                        return <PreferenceToolTip title="N/A" />;
+                    }
+                    
+                    const date = new Date(dateValue);
+                    
+                    // Check if date is valid
+                    if (isNaN(date.getTime())) {
+                        return <PreferenceToolTip title="N/A" />;
+                    }
+                    
+                    const formatted = formatter.format(date).replace(',', '');
                     return <PreferenceToolTip title={formatted} />
                 },
             }
@@ -130,10 +150,10 @@ const generateJobHistoryColumns = () => {
                 headerClassName: 'bg-[#80D7FF]',
                 sortable: false,
                 renderCell: (params: any) => {
-                    const arr = params.value as []
+                    const arr = getFieldValue(params.row, el.field) as []
                     const arrData = arr && arr.length > 0 ? arr?.join(', ') : "No records"
-                    if (el.field === "classifications") {
-                        const classificationsData = arr && arr.length > 0 ? arr.map((item:{name:string}) => item.name).join(", ") : "No records"
+                    if (el.field === "classifications" || el.field === "classificationsExcluded") {
+                        const classificationsData = arr && arr.length > 0 ? arr.map((item:{name:string}) => item?.name || item).join(", ") : "No records"
                         return <PreferenceToolTip title={classificationsData}/>
                     }
                     return <PreferenceToolTip title={arrData} />
@@ -149,7 +169,7 @@ const generateJobHistoryColumns = () => {
                 width: 100,
                 headerClassName: 'bg-[#80D7FF]',
                 sortable: false,
-                renderCell: (params: any) => <PreferenceToolTip title={params.value ? "Yes" : "No" }/>
+                renderCell: (params: any) => <PreferenceToolTip title={getFieldValue(params.row, el.field) ? "Yes" : "No" }/>
             }
             return [...acc, boolEl]
         }
@@ -157,6 +177,10 @@ const generateJobHistoryColumns = () => {
             ...el,
             width: 200,
             headerClassName: 'bg-[#80D7FF]',
+            renderCell: (params: any) => {
+                const value = getFieldValue(params.row, el.field);
+                return <PreferenceToolTip title={value ?? "N/A"} />;
+            }
         }]
     }, [])
     return columns

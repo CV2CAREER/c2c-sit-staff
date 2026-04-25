@@ -6,14 +6,14 @@ import { Alert } from '@material-tailwind/react';
 
 const AdminUsersJobPreferences = ({ userId }: { userId: string }) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { userPreferencesDomain, jobPreferencesOptionsDomain } = useAdminQueries({
+    const { userPreferencesV2Domain, jobPreferencesOptionsDomain } = useAdminQueries({
         userId,
-        fetchUserPreferences: true,
+        fetchUserPreferencesV2: true,
         fetchJobPreferences: true,
     });
 
-    const userPreferencesData = userPreferencesDomain.data;
-    const isUserPreferencesLoading = userPreferencesDomain.isLoading;
+    const userPreferencesData = userPreferencesV2Domain.data;
+    const isUserPreferencesLoading = userPreferencesV2Domain.isLoading;
     const isJobPreferencesLoading = jobPreferencesOptionsDomain.isLoading;
 
     const loading = isUserPreferencesLoading || isJobPreferencesLoading;
@@ -21,7 +21,7 @@ const AdminUsersJobPreferences = ({ userId }: { userId: string }) => {
         <>
             {
                 loading ? <PulseLoader /> :
-                    (userPreferencesData?.data?.userPreference ? <AdminUsersJobPreferencesCard preferences={userPreferencesData?.data?.userPreference} userId={userId}/> : <Alert color="red" variant="ghost">
+                    (userPreferencesData?.primary ? <AdminUsersJobPreferencesCard preferences={userPreferencesData?.primary} userId={userId} secondary={userPreferencesData?.secondary} /> : <Alert color="red" variant="ghost">
                         This user has not filled out their job preferences.
                     </Alert>)
             }

@@ -164,7 +164,11 @@ const fetchDataPoints = async (customerId?: string, page = 0, pageSize = 20, isD
   });
 
   return {
-    data: response.data.data.uploads,
+    data: (response.data.data.uploads || []).map((item: any, index: number) => ({
+      ...item,
+      // Ensure every row has an id for DataGrid
+      id: item.id || `row-${index}-${Date.now()}`
+    })),
     totalCount: response.data.data.count
   };
 };

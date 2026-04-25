@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useMemo } from "react";
 import { IUserDetail } from "@/types/user.types";
 
 type AdminUserDetailContextType = {
@@ -14,12 +14,14 @@ export const AdminUserDetailProvider = ({
     children: React.ReactNode
 }) => {
     const [user, setUser] = useState<IUserDetail | null>(null)
+    const contextValue = React.useMemo(() => ({
+        user,
+        setUser
+    }), [user, setUser]);
+
     return (
         <AdminUserDetailContext.Provider
-            value={{
-                user,
-                setUser
-            }}
+            value={contextValue}
         >
             {children}
         </AdminUserDetailContext.Provider>

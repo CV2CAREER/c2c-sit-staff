@@ -272,7 +272,10 @@ export default function CvDataPointsTable({
   return (
     <div className="h-[600px] w-full">
       <StyledDataGridPro
-      rows={dataPoints}
+      rows={dataPoints.map((item, index) => ({
+        ...item,
+        id: item.id || `dg-row-${index}-${Date.now()}`
+      }))}
       columns={columns}
       loading={loading}
       pagination
@@ -281,7 +284,10 @@ export default function CvDataPointsTable({
       paginationModel={{ page, pageSize }} // ✅ this replaces page & pageSize props
       onPaginationModelChange={onPaginationModelChange}
       pageSizeOptions={[10, 25, 50]}
-      getRowId={(row) => row.id}
+      getRowId={(row) => {
+        // Always return a unique id, generate one if missing
+        return row.id  || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
+      }}
       disableRowSelectionOnClick
     />
     </div>

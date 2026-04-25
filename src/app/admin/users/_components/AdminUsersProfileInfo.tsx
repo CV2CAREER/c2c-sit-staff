@@ -1,11 +1,15 @@
 "use client"
 
-import { useAdminUserDetailContext } from "../context/userDetailContext";
+import { useAdminQueries } from "@/hooks/api/admin.api";
 import PlanTransition from "./ServiceHistory";
 
-const AdminProfileInfo = () => {
-    const {user} = useAdminUserDetailContext()
-    const loading = user === null
+const AdminProfileInfo = ({ userId }: { userId: string }) => {
+    const { userProfileSafeDomain } = useAdminQueries({
+        userId,
+        fetchUserProfileSafe: true,
+    });
+    const user = userProfileSafeDomain?.data?.profile;
+    const loading = userProfileSafeDomain.isLoading;
     const getReferrer = () => {
         try {
             const referrer = user?.referrer;
@@ -118,7 +122,7 @@ const AdminProfileInfo = () => {
                         ))}
                     </div>
                     <PlanTransition
-                        plans={user?.service_history}
+                        plans={user?.serviceHistory}
                     />
                 </div>
             )}

@@ -119,12 +119,12 @@ export const generateClientDocumentsColumns = (rows: any[]) => {
 export const generateClientDocumentRows = (rows: any[]) => {
     return rows.map(row => {
         return ({
-        id: row._id,
-        fileName: row.document[0]?.filename ?? row.document?.filename,
+        id: row.id || row._id || `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        fileName: row.document?.name ?? row.document?.[0]?.filename ?? "Unknown File",
         type: row.type,
         source: row.source,
         dateUpdated: row.updatedAt,
-        extractionType: row.cvDataPoints.cvType,
+        extractionType: row.cvDataPoints?.cvType ?? "N/A",
         dataPoints: "No data",
         suggestedKeywords: "View",
         suggestedJobTitles: "View",

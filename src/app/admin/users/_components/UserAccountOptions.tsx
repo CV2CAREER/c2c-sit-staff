@@ -11,10 +11,10 @@ import FurtherUserAccountActions from "./FurtherUserAccountActions";
 const UserAccountOptions = ({ userId }: { userId: string }) => {
     // const { user } = useAdminUserDetailContext()
     // const [showUpgradeOptions, setShowUpgradeOptions] = useState(false)
-    const { plansDomain: planOptions } = useAdminQueries({
-        fetchPlans: true,
+    const { featureTitlesDomain: planOptions } = useAdminQueries({
+        fetchFeatureTitles: true,
     });
-    const plans = planOptions?.data || []
+    const plans = planOptions?.data?.features || []
     const [showModal, setShowModal] = useState(false)
     const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined)
 

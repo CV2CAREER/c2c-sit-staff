@@ -12,11 +12,13 @@ import { useQueryClient } from "@tanstack/react-query";
 interface IAdminUsersJobPreferencesCardProps {
   preferences: any;
   userId: string;
+  secondary?: any;
 }
 
 const AdminUsersJobPreferencesCard = ({
   preferences,
   userId,
+  secondary
 }: IAdminUsersJobPreferencesCardProps) => {
   const [isEditable, setIsEditable] = useState(false);
   const queryClient = useQueryClient();
@@ -72,9 +74,39 @@ const AdminUsersJobPreferencesCard = ({
   // console.log(editedFormData);
   // console.log(editedFormData.veteran)
 
+  const [activeProfile, setActiveProfile] = useState<'primary' | 'secondary'>('primary');
+  
+  const activePreferences = activeProfile === 'primary' ? preferences : secondary;
+
   return (
     <div className="mt-6 w-full p-8 rounded-3xl bg-white">
-      <h3 className="font-medium text-2xl">Preferences</h3>
+      <h3 className="font-medium text-2xl mb-4">Preferences</h3>
+      
+      {secondary && (
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveProfile('primary')}
+            className={`px-4 py-2 rounded-md font-medium transition-all ${
+              activeProfile === 'primary' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Primary Profile
+          </button>
+          <button
+            onClick={() => setActiveProfile('secondary')}
+            className={`px-4 py-2 rounded-md font-medium transition-all ${
+              activeProfile === 'secondary' 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Secondary Profile
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-[repeat(auto-fit,minmax(auto,19.8rem))] gap-4 my-4 gap-y-8">
         {jobPreferencesSchema.map((preferenceSection) => (
           <Section
@@ -278,10 +310,10 @@ const AdminUsersJobPreferencesCard = ({
         ))}
 
         {/* Questions section not editable just display since its personal and only editable by client */}
-        {preferences?.questions?.length > 0 && (
+        {activePreferences?.questions?.length > 0 && (
           <div>
             <h3 className="font-medium text-2xl">Questions</h3>
-            {preferences?.questions.map((question: any, index: number) => (
+            {activePreferences?.questions.map((question: any, index: number) => (
               <div key={index} className="-ml-2 p-1">
                 <p>{question?.question}</p>
                 <p>{question?.answer}</p>
