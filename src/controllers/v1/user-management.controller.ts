@@ -204,3 +204,128 @@ export const sendUserDetailsToSlack = catchAsyncError(
     res.apiSuccess(result, result.message);
   },
 );
+
+/**
+ * Get all feature titles
+ */
+export const getFeatureTitles = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+
+    logger.info(`Processing request to get all feature titles`);
+
+    const result = await userManagementService.getAllFeatureTitles();
+
+    logger.info(`Retrieved ${result.features.length} feature titles`);
+
+    res.apiSuccess(
+      result,
+      "Feature titles retrieved successfully",
+    );
+  },
+);
+
+/**
+ * Get user preferences by user ID
+ */
+export const getUserPreferences = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get preferences for user ID: ${userId}`);
+
+    const result = await userManagementService.getUserPreferences(userId);
+
+    logger.info(`User preferences retrieved for user ID: ${userId}`);
+
+    res.apiSuccess(
+      result,
+      "User preferences retrieved successfully",
+    );
+  },
+);
+
+/**
+ * Get job preferences history for user
+ */
+export const getJobPreferencesHistory = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get job preferences history for user ID: ${userId}`);
+
+    const result = await userManagementService.getJobPreferencesHistory(userId);
+
+    logger.info(`Retrieved ${result.history.length} history entries for user ID: ${userId}`);
+
+    res.apiSuccess(
+      result,
+      "Job preferences history retrieved successfully",
+    );
+  },
+);
+
+/**
+ * Get user referrals
+ */
+export const getUserReferrals = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get referrals for user ID: ${userId}`);
+
+    const result = await userManagementService.getUserReferrals(userId);
+
+    logger.info(`Retrieved ${result.count} referrals for user ID: ${userId}`);
+
+    res.apiSuccess(
+      result,
+      "User referrals retrieved successfully",
+    );
+  },
+);
+
+/**
+ * Get user uploaded documents
+ */
+export const getUserUploadedDocuments = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get uploaded documents for user ID: ${userId}`);
+
+    const result = await userManagementService.getUserUploadedDocuments(userId);
+
+    logger.info(`Retrieved ${result.count} documents for user ID: ${userId}`);
+
+    res.apiSuccess(
+      result,
+      "User uploaded documents retrieved successfully",
+    );
+  },
+);
+
+/**
+ * Get user profile (exclude sensitive data)
+ */
+export const getUserProfile = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get profile for user ID: ${userId}`);
+
+    const result = await userManagementService.getUserProfile(userId);
+
+    logger.info(`User profile retrieved successfully for ID: ${userId}`);
+
+    res.apiSuccess(
+      result,
+      "User profile retrieved successfully",
+    );
+  },
+);

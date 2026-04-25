@@ -53,6 +53,7 @@ import { SupportSession } from "../models/v1/support-session.model";
 import { SlackMessage } from "../models/v1/slack-message.model";
 import AuditLog from "@/models/v1/audit-log.model";
 import PassKeyVault from "@/models/v1/passkey-vault.model";
+import { UserPreferenceHistory } from "../models/v1/user-preference-history.model"
 
 export const modelList = [
   User,
@@ -111,4 +112,5 @@ export const modelList = [
   SupportSession,
   AuditLog,
   PassKeyVault,
+  UserPreferenceHistory,
 ];

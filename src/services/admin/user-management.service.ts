@@ -5,6 +5,10 @@ import ErrorHandler from "../../utils/errorHandler";
 import { User } from "../../models/v1/user.model";
 import { Upload } from "../../models/v1/upload.model";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
+import { Feature } from "../../models/v1/feature.model";
+import { Profile } from "../../models/v1/profile.model";
+import { UserPreferenceHistory } from "../../models/v1/user-preference-history.model";
+import { Referrer } from "../../models/v1/referrer.model";
 import { Role, UploadStatus } from "../../utils/enum";
 import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
@@ -656,6 +660,212 @@ class UserManagementService {
     return {
       success: true,
       message: "User details sent to Slack successfully"
+    };
+  }
+
+  /**
+   * Get all feature titles (unique only)
+   */
+  async getAllFeatureTitles() {
+    logger.info(`Retrieving unique feature titles from feature model`);
+    
+    const features = await Feature.findAll({
+      attributes: ['id', 'title', 'description', 'isActive'],
+      order: [['title', 'ASC']]
+    });
+
+    // Remove duplicate titles, keep first occurrence only
+    const seenTitles = new Set();
+    const uniqueFeatures = features.filter(feature => {
+      if (seenTitles.has(feature.title.toLowerCase())) {
+        return false;
+      }
+      seenTitles.add(feature.title.toLowerCase());
+      return true;
+    });
+
+    logger.info(`Retrieved ${uniqueFeatures.length} unique feature titles out of ${features.length} total`);
+    return { features: uniqueFeatures };
+  }
+
+  /**
+   * Get user preferences by user ID (primary and secondary)
+   * @param userId ID of user
+   */
+  async getUserPreferences(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving preferences for user ID: ${userId}`);
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    // Fetch primary and secondary profiles directly
+    const primaryProfile = await Profile.findByPk(user.profileId);
+    const secondaryProfile = await Profile.findByPk(user.secondaryProfileId);
+
+    // Return all fields for both profiles
+    return {
+      primary: primaryProfile ? primaryProfile.toJSON() : null,
+      secondary: secondaryProfile ? secondaryProfile.toJSON() : null,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    };
+  }
+
+  /**
+   * Get job preferences history for user
+   * @param userId ID of user
+   */
+  async getJobPreferencesHistory(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving job preferences history for user ID: ${userId}`);
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    // Get history from user-preference-history model
+    const history = await UserPreferenceHistory.findAll({
+      where: {
+        userId: userId
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 50
+    });
+
+    logger.info(`Retrieved ${history.length} history entries for user ${userId}`);
+    return { history };
+  }
+
+  /**
+   * Get all referrals for user
+   * @param userId ID of user
+   */
+  async getUserReferrals(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving referrals for user ID: ${userId}`);
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    // Get all referrals from referrer model
+    const referrals = await Referrer.findAll({
+      where: {
+        referrer: user.email
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass', 'phoneNumber']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    logger.info(`Retrieved ${referrals.length} referrals for user ${userId}`);
+    
+    return {
+      referrals,
+      count: referrals.length,
+      referrer: {
+        id: user.id,
+        email: user.email,
+        firstname: user.firstName,
+        lastName: user.lastName,
+        phoneNumber: user.phoneNumber
+      }
+    };
+  }
+
+  /**
+   * Get all uploaded documents for user
+   * @param userId ID of user
+   */
+  async getUserUploadedDocuments(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving uploaded documents for user ID: ${userId}`);
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    const documents = await Upload.findAll({
+      where: {
+        userId: userId
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    logger.info(`Retrieved ${documents.length} uploaded documents for user ${userId}`);
+    
+    return {
+      documents,
+      count: documents.length,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    };
+  }
+
+  /**
+   * Get user profile by user ID (excludes sensitive data)
+   * @param userId ID of user
+   */
+  async getUserProfile(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving user profile for ID: ${userId}`);
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    const userData = user.toJSON();
+
+    // Exclude sensitive fields
+    const { 
+      password, 
+      accessToken, 
+      adminPassword, 
+      resetToken,
+      refreshToken,
+      verificationToken,
+      ...safeProfile
+    } = userData;
+
+    logger.info(`User profile retrieved for ID: ${userId}`);
+    
+    return {
+      profile: safeProfile
     };
   }
 }

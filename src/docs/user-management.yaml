@@ -463,3 +463,319 @@ paths:
           description: Insufficient permissions
         '404':
           description: User not found
+
+  /v1/user-management/features:
+    get:
+      tags:
+        - User Management
+      summary: Get all feature titles
+      description: Retrieve all available feature titles from the system
+      operationId: getFeatureTitles
+      responses:
+        '200':
+          description: Features retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Feature titles retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      features:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            title:
+                              type: string
+                              example: "Resume Review"
+                            description:
+                              type: string
+                              example: "Professional resume review service"
+                            isActive:
+                              type: boolean
+                              example: true
+        '403':
+          description: Insufficient permissions
+
+  /v1/user-management/users/{userId}/preferences:
+    get:
+      tags:
+        - User Management
+      summary: Get user preferences
+      description: Get user preferences including both primary and secondary profiles
+      operationId: getUserPreferences
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User preferences retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      primary:
+                        type: object
+                        description: Primary profile data with all fields
+                      secondary:
+                        type: object
+                        description: Secondary profile data with all fields
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          email:
+                            type: string
+                            example: "user@example.com"
+                          firstName:
+                            type: string
+                          lastName:
+                            type: string
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/preferences/history:
+    get:
+      tags:
+        - User Management
+      summary: Get job preferences history
+      description: Get complete history of job preference changes for a user
+      operationId: getJobPreferencesHistory
+      parameters:
+        - name: userId
+          in: path
+          description: ID of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job preferences history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Job preferences history retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      history:
+                        type: array
+                        items:
+                          type: object
+                          description: User preference history entries
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/referrals:
+    get:
+      tags:
+        - User Management
+      summary: Get user referrals
+      description: Get all users that were referred by the specified user
+      operationId: getUserReferrals
+      parameters:
+        - name: userId
+          in: path
+          description: ID of referrer user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User referrals retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User referrals retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      referrals:
+                        type: array
+                        items:
+                          type: object
+                      count:
+                        type: integer
+                        example: 7
+                      referrer:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          email:
+                            type: string
+                          firstname:
+                            type: string
+                          lastName:
+                            type: string
+                          phoneNumber:
+                            type: string
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/documents:
+    get:
+      tags:
+        - User Management
+      summary: Get user uploaded documents
+      description: |
+        Get all uploaded documents for a specific user.
+        
+        Accessible only by Admin and Assistant roles.
+        Returns all document uploads including pending, approved and rejected.
+      operationId: getUserUploadedDocuments
+      parameters:
+        - name: userId
+          in: path
+          description: UUID of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User uploaded documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User uploaded documents retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      documents:
+                        type: array
+                        items:
+                          type: object
+                          description: Uploaded document objects
+                      count:
+                        type: integer
+                        example: 3
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          email:
+                            type: string
+                            example: "user@example.com"
+                          firstName:
+                            type: string
+                          lastName:
+                            type: string
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/profile:
+    get:
+      tags:
+        - User Management
+      summary: Get user profile (safe)
+      description: |
+        Get user profile with all sensitive data automatically excluded.
+        
+        Accessible only by Admin and Assistant roles.
+        Automatically removes passwords, tokens and other sensitive fields.
+      operationId: getUserProfile
+      parameters:
+        - name: userId
+          in: path
+          description: UUID of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User profile retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      profile:
+                        type: object
+                        description: Complete user profile without sensitive fields
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found

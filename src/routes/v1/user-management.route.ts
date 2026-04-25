@@ -10,7 +10,13 @@ import {
   purgeUser,
   getPendingDocumentsByUserId,
   approveUserAccount,
-  sendUserDetailsToSlack
+  sendUserDetailsToSlack,
+  getFeatureTitles,
+  getUserPreferences,
+  getJobPreferencesHistory,
+  getUserReferrals,
+  getUserUploadedDocuments,
+  getUserProfile
 } from "../../controllers/v1/user-management.controller";
 
 const userManagementRouterV1 = Router();
@@ -63,6 +69,36 @@ userManagementRouterV1.post(
 // Send user details sample to Slack
 userManagementRouterV1.post(
   "/users/:userId/send-slack-sample", sendUserDetailsToSlack
+);
+
+// Get all feature titles
+userManagementRouterV1.get(
+  "/features", getFeatureTitles
+);
+
+// Get user preferences by user ID
+userManagementRouterV1.get(
+  "/users/:userId/preferences", getUserPreferences
+);
+
+// Get job preferences history for user
+userManagementRouterV1.get(
+  "/users/:userId/preferences/history", getJobPreferencesHistory
+);
+
+// Get user referrals
+userManagementRouterV1.get(
+  "/users/:userId/referrals", getUserReferrals
+);
+
+// Get user uploaded documents
+userManagementRouterV1.get(
+  "/users/:userId/documents", getUserUploadedDocuments
+);
+
+// Get user profile (exclude sensitive data)
+userManagementRouterV1.get(
+  "/users/:userId/profile", getUserProfile
 );
 
 export default userManagementRouterV1;
