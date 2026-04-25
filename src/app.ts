@@ -46,6 +46,7 @@ import sessionsRouterV1 from "./routes/v1/sessions.route";
 import slackManageRouterV1 from "./routes/v1/slack-manage.route";
 import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
 import userManagementRouterV1 from "./routes/v1/user-management.route"
+import uploadRouterV1 from "./routes/v1/upload.route"
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -187,6 +188,8 @@ app.use("/api/v1/chats", chatRouterV1);
 app.use("/api/v1/support", supportRouterV1);
 app.use("/api/v1/slack-manage", slackManageRouterV1);
 app.use("/api/v1/user-management", userManagementRouterV1)
+app.use("/api/v1/uploads", uploadRouterV1)
+
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);

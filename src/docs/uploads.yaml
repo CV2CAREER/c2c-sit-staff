@@ -1,0 +1,244 @@
+
+
+paths:
+  /v1/uploads:
+    get:
+      tags:
+        - Uploads
+      summary: Get all uploaded documents
+      description: Retrieve all uploaded documents with optional filtering
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            example: 10
+        - name: status
+          in: query
+          description: Filter by upload status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, ACCEPTED, REJECTED]
+            example: PENDING
+        - name: type
+          in: query
+          description: Filter by upload type
+          required: false
+          schema:
+            type: string
+            enum: [CV, PASSPORT, CERTIFICATE, ID_CARD, OTHER]
+            example: CV
+        - name: userId
+          in: query
+          description: Filter by user ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: isDeleted
+          in: query
+          description: Filter by deleted status
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        200:
+          description: Uploads retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Uploaded documents retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      uploads:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Upload'
+                      count:
+                        type: integer
+                        example: 42
+                      page:
+                        type: integer
+                        example: 1
+                      limit:
+                        type: integer
+                        example: 10
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+
+  /v1/uploads/{uploadId}:
+    patch:
+      tags:
+        - Uploads
+      summary: Update upload document
+      description: Update an existing upload document
+      parameters:
+        - name: uploadId
+          in: path
+          description: ID of upload to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [PENDING, ACCEPTED, REJECTED]
+                isDefault:
+                  type: boolean
+                approvedAt:
+                  type: string
+                  format: date-time
+                approvedBy:
+                  type: string
+                rejectedAt:
+                  type: string
+                  format: date-time
+                rejectedBy:
+                  type: string
+                rejectionReason:
+                  type: string
+                cvDataPoints:
+                  type: object
+                cvJobTitles:
+                  type: array
+                  items:
+                    type: string
+                keywords:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        200:
+          description: Upload updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Upload document updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      upload:
+                        $ref: '#/components/schemas/Upload'
+        400:
+          description: Invalid input
+        401:
+          description: Unauthorized
+        403:
+          description: Forbidden
+        404:
+          description: Upload not found
+
+components:
+  schemas:
+    Upload:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the upload
+        userId:
+          type: string
+          format: uuid
+          description: ID of the user who uploaded the document
+        type:
+          type: string
+          enum: [CV, PASSPORT, CERTIFICATE, ID_CARD, OTHER]
+          description: Type of uploaded document
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, REJECTED]
+          description: Approval status of the upload
+        document:
+          type: object
+          description: Document file details
+        source:
+          type: string
+          enum: [CLIENT, ADMIN, SYSTEM]
+          description: Source of the upload
+        isDeleted:
+          type: boolean
+          description: Soft delete status
+        isDefault:
+          type: boolean
+          description: Whether this is the default document for its type
+        cvDataPoints:
+          type: object
+          description: Extracted data points from CV
+        cvJobTitles:
+          type: array
+          items:
+            type: string
+          description: Extracted job titles from CV
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Extracted keywords from document
+        approvedAt:
+          type: string
+          format: date-time
+          description: When the document was approved
+        approvedBy:
+          type: string
+          description: Who approved the document
+        rejectedAt:
+          type: string
+          format: date-time
+          description: When the document was rejected
+        rejectedBy:
+          type: string
+          description: Who rejected the document
+        rejectionReason:
+          type: string
+          description: Reason for rejection
+        createdAt:
+          type: string
+          format: date-time
+          description: When the upload was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the upload was last updated
+        deletedAt:
+          type: string
+          format: date-time
+          description: When the upload was soft deleted

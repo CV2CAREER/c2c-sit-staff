@@ -12,6 +12,7 @@ import {
   CreatedAt,
   UpdatedAt,
   HasOne,
+  HasMany,
 } from "sequelize-typescript";
 import {
   ApplicationStatus,
@@ -36,6 +37,7 @@ import { Partner } from "./partner.model";
 import { SalesConsultant } from "./sales-consultant.model";
 import { CustomerService } from "./customer-service.model";
 import { Location } from "./location.model";
+import { Aggregator } from "./aggregator.model";
 
 @Table({
   tableName: "users",
@@ -229,6 +231,16 @@ export class User extends Model {
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)
+  campaignActive!: boolean;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  hasActiveSubscription!: boolean;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
   hasOpenedJobsiteProfile!: boolean;
 
   @AllowNull(false)
@@ -385,6 +397,10 @@ export class User extends Model {
   @AllowNull(true)
   @Column(DataType.STRING)
   deletedBy?: string;
+
+  // Aggregator relationship
+  @HasMany(() => Aggregator, "userId")
+  aggregators?: Aggregator[];
 
   // Timestamps
   @CreatedAt
