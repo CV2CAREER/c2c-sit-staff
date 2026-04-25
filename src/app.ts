@@ -83,13 +83,26 @@ app.use(
 // 3. Basic body parsers (must come early so req.body is populated)
 app.use(
   express.json({
+    limit: "50mb", // Increase limit for large payloads
     verify: (req: any, res, buf) => {
       req.rawBody = buf.toString(); // Save raw string for signature check
     },
   }),
 );
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser(COOKIE_SECRET));
+
+// Handle payload too large errors
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      message: "Payload too large. Maximum file size is 50MB.",
+      statusCode: 413,
+    });
+  }
+  next(err);
+});
 
 // 4. Security: Prevent HTTP parameter pollution
 app.use(hpp());

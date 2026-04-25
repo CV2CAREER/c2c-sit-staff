@@ -1,8 +1,23 @@
-import { Resource } from "../models/v1/resources.model";
+import { Setting } from "../models/v1/settings.model";
 import { getServiceLogger } from "../utils/createLogger";
 import { Op } from "sequelize";
 
 const logger = getServiceLogger("resources-service");
+
+const normalizeResourceName = (resourceName: string) =>
+  resourceName.replace(/ /g, "_").toUpperCase();
+
+const toLegacyResource = (setting: Setting | null) => {
+  if (!setting) return null;
+
+  return {
+    id: setting.id,
+    name: setting.key,
+    value: setting.value,
+    createdAt: setting.createdAt,
+    updatedAt: setting.updatedAt,
+  };
+};
 
 export class ResourcesService {
   /**
@@ -11,13 +26,22 @@ export class ResourcesService {
   static async getResources(type?: string) {
     try {
       if (type) {
-        return await Resource.findOne({
-          where: { name: type.toUpperCase().replace(/ /g, "_") }
+        const setting = await Setting.findOne({
+          where: { key: normalizeResourceName(type) },
         });
+
+        return toLegacyResource(setting);
       } else {
-        return await Resource.findAll({
-          order: [['createdAt', 'DESC']]
+        const settings = await Setting.findAll({
+          where: {
+            key: {
+              [Op.ne]: "masterpass",
+            },
+          },
+          order: [["createdAt", "DESC"]],
         });
+
+        return settings.map((setting) => toLegacyResource(setting));
       }
     } catch (error: any) {
       logger.error(`Failed to retrieve resources: ${error.message}`);
@@ -30,23 +54,22 @@ export class ResourcesService {
    */
   static async createResource(resourceName: string, value: string) {
     try {
-      // Format resource name
-      const formattedName = resourceName.replace(/ /g, "_").toUpperCase();
+      const formattedName = normalizeResourceName(resourceName);
 
-      // Check for duplicate resource
-      const existingResource = await Resource.findOne({
-        where: { name: formattedName }
+      const existingResource = await Setting.findOne({
+        where: { key: formattedName }
       });
 
       if (existingResource) {
         throw new Error("Duplicate Resource, Resource already exists!");
       }
 
-      // Create new resource
-      return await Resource.create({
-        name: formattedName,
-        value: value
+      const createdResource = await Setting.create({
+        key: formattedName,
+        value,
       });
+
+      return toLegacyResource(createdResource);
     } catch (error: any) {
       logger.error(`Failed to create resource: ${error.message}`);
       throw error;
@@ -58,26 +81,22 @@ export class ResourcesService {
    */
   static async updateResource(resourceName: string, value: string) {
     try {
-      // Format resource name
-      const formattedName = resourceName.replace(/ /g, "_").toUpperCase();
+      const formattedName = normalizeResourceName(resourceName);
 
-      // Find existing resource
-      let resource = await Resource.findOne({
-        where: { name: formattedName }
+      let resource = await Setting.findOne({
+        where: { key: formattedName }
       });
 
       if (resource) {
-        // Update existing resource
         await resource.update({ value });
       } else {
-        // Create new resource if it doesn't exist
-        resource = await Resource.create({
-          name: formattedName,
-          value: value
+        resource = await Setting.create({
+          key: formattedName,
+          value,
         });
       }
 
-      return resource;
+      return toLegacyResource(resource);
     } catch (error: any) {
       logger.error(`Failed to update resource: ${error.message}`);
       throw error;
@@ -89,7 +108,7 @@ export class ResourcesService {
    */
   static async deleteResource(resourceId: string) {
     try {
-      const result = await Resource.destroy({
+      const result = await Setting.destroy({
         where: { id: resourceId }
       });
 

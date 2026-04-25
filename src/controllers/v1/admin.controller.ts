@@ -68,15 +68,120 @@ const currencySymbolsByCode: Record<string, string> = {
   JPY: "JPY",
 };
 
+const getRecordTimestamp = (record: { updatedAt?: Date; createdAt?: Date }) =>
+  record.updatedAt?.getTime?.() ?? record.createdAt?.getTime?.() ?? 0;
+
+const getLocationFeatureCounts = (plans: Feature[]) => {
+  const counts = new Map<string, number>();
+
+  for (const plan of plans) {
+    for (const locationId of plan.locationIds ?? []) {
+      counts.set(locationId, (counts.get(locationId) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+};
+
+const selectCanonicalLocations = (
+  locations: Location[],
+  locationFeatureCounts: Map<string, number>,
+) => {
+  const preferredByCurrency = new Map<string, Location>();
+  const locationsWithoutCurrency: Location[] = [];
+
+  for (const location of locations) {
+    const normalizedCurrencyCode = location.currencyCode?.trim().toUpperCase();
+
+    if (!normalizedCurrencyCode) {
+      locationsWithoutCurrency.push(location);
+      continue;
+    }
+
+    const existing = preferredByCurrency.get(normalizedCurrencyCode);
+    if (!existing) {
+      preferredByCurrency.set(normalizedCurrencyCode, location);
+      continue;
+    }
+
+    const currentFeatureCount = locationFeatureCounts.get(location.id) ?? 0;
+    const existingFeatureCount = locationFeatureCounts.get(existing.id) ?? 0;
+
+    if (currentFeatureCount !== existingFeatureCount) {
+      if (currentFeatureCount > existingFeatureCount) {
+        preferredByCurrency.set(normalizedCurrencyCode, location);
+      }
+      continue;
+    }
+
+    if (getRecordTimestamp(location) > getRecordTimestamp(existing)) {
+      preferredByCurrency.set(normalizedCurrencyCode, location);
+    }
+  }
+
+  return [...preferredByCurrency.values(), ...locationsWithoutCurrency].sort(
+    (left, right) => getRecordTimestamp(right) - getRecordTimestamp(left),
+  );
+};
+
+const selectPreferredPricingPlans = (plans: Feature[], locationId: string) => {
+  const preferredByTitle = new Map<string, Feature>();
+
+  for (const plan of plans) {
+    const titleKey = plan.title.trim().toLowerCase();
+    const existing = preferredByTitle.get(titleKey);
+
+    if (!existing) {
+      preferredByTitle.set(titleKey, plan);
+      continue;
+    }
+
+    const currentExactMatch =
+      Array.isArray(plan.locationIds) &&
+      plan.locationIds.length === 1 &&
+      plan.locationIds[0] === locationId;
+    const existingExactMatch =
+      Array.isArray(existing.locationIds) &&
+      existing.locationIds.length === 1 &&
+      existing.locationIds[0] === locationId;
+
+    if (currentExactMatch && !existingExactMatch) {
+      preferredByTitle.set(titleKey, plan);
+      continue;
+    }
+
+    if (currentExactMatch === existingExactMatch) {
+      const currentStamp = plan.updatedAt?.getTime?.() ?? plan.createdAt?.getTime?.() ?? 0;
+      const existingStamp =
+        existing.updatedAt?.getTime?.() ?? existing.createdAt?.getTime?.() ?? 0;
+      if (currentStamp > existingStamp) {
+        preferredByTitle.set(titleKey, plan);
+      }
+    }
+  }
+
+  return [...preferredByTitle.values()];
+};
+
 export const getAdminLocations = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
 
-    const locations = await Location.findAll({
-      order: [["createdAt", "DESC"]],
-    });
+    const [locations, plans] = await Promise.all([
+      Location.findAll({
+        order: [["createdAt", "DESC"]],
+      }),
+      Feature.findAll({
+        attributes: ["id", "locationIds", "createdAt", "updatedAt"],
+      }),
+    ]);
 
-    const payload = locations.map((location) => {
+    const canonicalLocations = selectCanonicalLocations(
+      locations,
+      getLocationFeatureCounts(plans),
+    );
+
+    const payload = canonicalLocations.map((location) => {
       const currencyCode = location.currencyCode ?? null;
       const mappedSymbol =
         currencyCode && currencySymbolsByCode[currencyCode]
@@ -117,7 +222,9 @@ export const getAdminPricingPlans = catchAsyncError(
       order: [["createdAt", "DESC"]],
     });
 
-    const payload = plans.map((plan) => ({
+    const preferredPlans = selectPreferredPricingPlans(plans, locationId);
+
+    const payload = preferredPlans.map((plan) => ({
       _id: plan.id,
       title: plan.title,
       tier: String(plan.tier).toLowerCase(),
