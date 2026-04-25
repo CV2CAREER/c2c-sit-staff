@@ -7,9 +7,7 @@ const UsersPage = () => {
   return (
     <section className="flex flex-col gap-8 mt-8">
       <PageHeader title="Users Management" renderJSX={<AddUserBtn />} />
-        <div style={{ height: "calc(100vh - 180px)", width: "100%" }}>
-          <Users route="admin"/>
-        </div>
+      <Users route="admin"/>
     </section>
   );
 };
