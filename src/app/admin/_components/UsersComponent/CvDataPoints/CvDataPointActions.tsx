@@ -1,4 +1,3 @@
-// components/CvDataPoints/CvDataPointActions.tsx
 import React from 'react';
 import { Button } from 'antd';
 import { CvDataPoint } from './types';
@@ -6,7 +5,7 @@ import { CvDataPoint } from './types';
 interface CvDataPointActionsProps {
   dataPoint: CvDataPoint;
   onExtractData: (id: string) => void;
-  onPopulateKeywords: (id: string , keywords: any) => void;
+  onPopulateKeywords: (id: string , keywords: string[]) => void;
   onViewDataPoints: (dataPoint: CvDataPoint) => void;
   onViewJobTitles: (dataPoint: CvDataPoint) => void;
 }
@@ -52,8 +51,7 @@ export const CvDataPointActions: React.FC<CvDataPointActionsProps> = ({
           
           <Button
             onClick={() => {
-              const keywords = JSON.parse(dataPoint.cvJobTitles || '[]');
-              onPopulateKeywords(dataPoint.id, keywords);
+              onPopulateKeywords(dataPoint.id, dataPoint.cvJobTitles);
             }}
             className="bg-green-500 hover:bg-green-600 text-white"
           >
@@ -66,13 +64,15 @@ export const CvDataPointActions: React.FC<CvDataPointActionsProps> = ({
 };
 
 const isEmptyDataPoint = (dataPoint: CvDataPoint): boolean => {
-  const fieldsToCheck: (keyof CvDataPoint)[] = [
+  if (!dataPoint.cvDataPoints) return true;
+  
+  const fieldsToCheck = [
     'skills', 'achievements', 'certificationsLicenses',
     'relevantProjects', 'languages', 'workExperience', 'education'
-  ];
+  ] as const;
   
   return fieldsToCheck.every(field => {
-    const value = dataPoint[field];
+    const value = (dataPoint.cvDataPoints as any)[field];
     return !value || (Array.isArray(value) && value.length === 0);
   });
 };

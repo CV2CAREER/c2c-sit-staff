@@ -36,24 +36,6 @@ export default function CvDataPointsTable({
 
 
 
-  const keys: (keyof CvDataPoint)[] = [
-    'customerId',
-    'fullName',
-    'document',
-    'source',
-    'cvType',
-    'contactInformation',
-    'professionalSummary',
-    'workExperience',
-    'education',
-    'skills',
-    'achievements',
-    'certificationsLicenses',
-    'relevantProjects',
-    'languages',
-    'professionalAssociationsVolunteerWork',
-  ];
-
   const columns: GridColDef[] = [
     {
       field: 'actions',
@@ -71,95 +53,237 @@ export default function CvDataPointsTable({
         />
       ),
     },
-  ].concat(
-    keys
-      .filter((key) => key !== 'id')
-      .map((key) => {
-        if (key === 'document') {
-          return {
-            field: key,
-            headerName: 'Document',
-            width: 300,
+    {
+      field: 'userId',
+      headerName: 'User ID',
+      width: 280,
+      sortable: false,
+      filterable: false,
+    },
+    {
+      field: 'type',
+      headerName: 'Type',
+      width: 120,
+      sortable: false,
+      filterable: false,
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      sortable: false,
+      filterable: false,
+    },
+    {
+      field: 'document',
+      headerName: 'Document',
+      width: 300,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => (
+        <div>
+          <Link
+            href={params.value?.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {params.value?.name}
+          </Link>
+        </div>
+      ),
+    },
+    {
+      field: 'source',
+      headerName: 'Source',
+      width: 120,
+      sortable: false,
+      filterable: false,
+    },
+    {
+      field: 'cvJobTitles',
+      headerName: 'Job Titles Count',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return <span>{params.value?.length || 0}</span>;
+      },
+    },
+    {
+      field: 'keywords',
+      headerName: 'Keywords Count',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return <span>{params.value?.length || 0}</span>;
+      },
+    },
+    {
+      field: 'isDefault',
+      headerName: 'Default',
+      width: 100,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return <span>{params.value ? 'Yes' : 'No'}</span>;
+      },
+    },
+    {
+      field: 'cvType',
+      headerName: 'CV Type',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return params.row.cvDataPoints?.cvType || '-';
+      },
+    },
+    {
+      field: 'contactInformation',
+      headerName: 'Contact Information',
+      width: 200,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return params.row.cvDataPoints?.contactInformation || '-';
+      },
+    },
+    {
+      field: 'professionalSummary',
+      headerName: 'Professional Summary',
+      width: 250,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.professionalSummary;
+        return (
+          <Tooltip title={value} arrow>
+            <span className="truncate block max-w-[240px]">{value || '-'}</span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      field: 'skills',
+      headerName: 'Skills',
+      width: 200,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.skills;
+        return Array.isArray(value) ? value.join(', ') : '-';
+      },
+    },
+    {
+      field: 'workExperience',
+      headerName: 'Work Experience',
+      width: 250,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.workExperience;
+        return Array.isArray(value) ? `${value.length} records` : '-';
+      },
+    },
+    {
+      field: 'education',
+      headerName: 'Education',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.education;
+        return Array.isArray(value) ? `${value.length} records` : '-';
+      },
+    },
+    {
+      field: 'achievements',
+      headerName: 'Achievements',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.achievements;
+        return Array.isArray(value) ? value.length : '0';
+      },
+    },
+    {
+      field: 'certificationsLicenses',
+      headerName: 'Certifications',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.certificationsLicenses;
+        return Array.isArray(value) ? value.length : '0';
+      },
+    },
+    {
+      field: 'relevantProjects',
+      headerName: 'Relevant Projects',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.relevantProjects;
+        return Array.isArray(value) ? value.length : '0';
+      },
+    },
+    {
+      field: 'languages',
+      headerName: 'Languages',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.languages;
+        return Array.isArray(value) ? value.join(', ') : '-';
+      },
+    },
+    {
+      field: 'professionalAssociationsVolunteerWork',
+      headerName: 'Associations',
+      width: 150,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        const value = params.row.cvDataPoints?.professionalAssociationsVolunteerWork;
+        return Array.isArray(value) ? value.length : '0';
+      },
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Created',
+      width: 180,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
+        return new Date(params.value).toLocaleString();
+      },
+    },
+  ];
 
-            sortable: false,
-            filterable: false,
-            renderCell: (params: GridRenderCellParams<CvDataPoint>) => (
-              <div>
-                {params.value?.map((doc: { fileUrl: string; filename: string }, index: number) => (
-                  <Link
-                    key={index}
-                    href={doc.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    {doc.filename}
-                    {index < params.value?.length - 1 && ', '}
-                  </Link>
-                ))}
-              </div>
-            ),
-          };
-        }
-        
-        return {
-          field: key,
-          headerName:
-            key.charAt(0).toUpperCase() +
-            key
-              .slice(1)
-              .replace(/([A-Z])/g, ' $1')
-              .trim(),
-          width: 300,
-          sortable: false,
-          filterable: false,
-          renderCell: (params: GridRenderCellParams<CvDataPoint>) => {
-            let cellContent = '';
-            
-            if (Array.isArray(params.value)) {
-              if (key === 'workExperience' || key === 'education') {
-                cellContent = params.value
-                  ?.map((item: any) =>
-                    `${item.jobTitle || item.degree} at ${item.organization} (${item.dates})`
-                  )
-                  .join(', ');
-              } else {
-                cellContent = params.value?.join(', ');
-              }
-            } else if (typeof params.value === 'object' && params.value !== null) {
-              cellContent = JSON.stringify(params.value);
-            } else {
-              cellContent = params.value || '';
-            }
-
-            return (
-              <Tooltip title={cellContent} arrow>
-                <span>{cellContent}</span>
-              </Tooltip>
-            );
-          },
-        };
-      })
-  );
 
   return (
     <div className="h-[600px] w-full">
       <StyledDataGridPro
-  rows={dataPoints}
-  columns={columns}
-  loading={loading}
-  pagination
-  paginationMode="server"
-  rowCount={totalCount}
-  paginationModel={{ page, pageSize }} // ✅ this replaces page & pageSize props
-  onPaginationModelChange={onPaginationModelChange}
-  pageSizeOptions={[10, 25, 50]}
-  getRowId={(row) => row.id}
-  disableRowSelectionOnClick
-/>
+      rows={dataPoints}
+      columns={columns}
+      loading={loading}
+      pagination
+      paginationMode="server"
+      rowCount={totalCount}
+      paginationModel={{ page, pageSize }} // ✅ this replaces page & pageSize props
+      onPaginationModelChange={onPaginationModelChange}
+      pageSizeOptions={[10, 25, 50]}
+      getRowId={(row) => row.id}
+      disableRowSelectionOnClick
+    />
     </div>
   );
 };

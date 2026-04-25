@@ -105,38 +105,32 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
 
   const pcsAssistant = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_USERS,
-    params: { role: PC_ROLES[0], variant: "all" },
-    queryKey: ["admin-pcs", PC_ROLES[0]],
-    enabled: fetchPCs,
-  });
-
-  const pcsCoach = useFetchData<any>({
-    method: "GET",
-    url: endpoints.ADMIN_USERS,
-    params: { role: PC_ROLES[1], variant: "all" },
-    queryKey: ["admin-pcs", PC_ROLES[1]],
+    url: "/api/v1/user/assistants",
+    queryKey: ["admin-pcs"],
     enabled: fetchPCs,
   });
 
   const pcsMerged = useMemo(() => {
-    const assistantItems = pcsAssistant.data?.data?.items ?? pcsAssistant.data?.data ?? [];
-    const coachItems = pcsCoach.data?.data?.items ?? pcsCoach.data?.data ?? [];
+    // Axios wraps response: .data.data is actual API response body
+    const apiResponse = pcsAssistant.data?.data;
+    const pcUsers = apiResponse?.pcUsers ?? [];
 
-    const mergedItems = [...(Array.isArray(assistantItems) ? assistantItems : []), ...(Array.isArray(coachItems) ? coachItems : [])];
-
-    const mergedData = pcsAssistant.data?.data?.items
-      ? { items: mergedItems, pagination: { total: mergedItems.length } }
-      : mergedItems;
+    const formattedPCs = Array.isArray(pcUsers) ? pcUsers.map((pc: any) => ({
+      id: pc.id,
+      firstName: pc.firstName,
+      lastName: pc.lastName,
+      middleName: pc.middleName,
+      ...pc
+    })) : [];
 
     return {
-      data: mergedData,
-      isLoading: pcsAssistant.isLoading || pcsCoach.isLoading,
-      isSuccess: pcsAssistant.isSuccess && pcsCoach.isSuccess,
-      isError: pcsAssistant.isError || pcsCoach.isError,
-      error: pcsAssistant.error || pcsCoach.error,
+      data: formattedPCs,
+      isLoading: pcsAssistant.isLoading,
+      isSuccess: pcsAssistant.isSuccess,
+      isError: pcsAssistant.isError,
+      error: pcsAssistant.error,
     };
-  }, [pcsAssistant, pcsCoach]);
+  }, [pcsAssistant]);
 
   const plans = useFetchData<any>({
     method: "GET",

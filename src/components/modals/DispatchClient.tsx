@@ -46,7 +46,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
   const users = Array.isArray(clientsData) ? clientsData : (clientsData?.items ?? []);
 
   const pcsData = pcsDomain.data;
-  const vas = Array.isArray(pcsData) ? pcsData : (pcsData?.items ?? []);
+  const vas = Array.isArray(pcsData) ? pcsData : [];
 
   const handleDispatch = () => {
     if (!selectedVa) return toast.error("Select a PC");
@@ -151,7 +151,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
                   <SelectContent>
                     {vas?.map((va: any) => (
                       <SelectItem key={va.id} value={va.id}>
-                        {va.firstName} {va.lastName}
+                        {va.firstName} {va.middleName || ''} {va.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>

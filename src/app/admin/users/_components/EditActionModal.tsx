@@ -201,8 +201,6 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                                 />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
                               </SelectContent>

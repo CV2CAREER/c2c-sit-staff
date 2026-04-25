@@ -4,7 +4,7 @@ import AppModal from '@/components/modals/AppModal';
 
 interface CvJobTitlesModalProps {
   visible: boolean;
-  jobTitles: string | null;
+  jobTitles: string[] | null;
   onClose: () => void;
 }
 
@@ -14,19 +14,8 @@ export const CvJobTitlesModal: React.FC<CvJobTitlesModalProps> = ({
   onClose,
 }) => {
   if (!jobTitles) return null;
- const formatCvJobTitles = (dataPoints: any) => {
-    if (!dataPoints) return null;
-
-    let jobTitles;
-    try {
-      jobTitles = JSON.parse(dataPoints.cvJobTitles);
-    } catch {
-      return null;
-    }
-
-    if (!Array.isArray(jobTitles)) {
-      return null;
-    }
+  const formatCvJobTitles = (jobTitles: string[] | null) => {
+    if (!jobTitles || !Array.isArray(jobTitles) || jobTitles.length === 0) return null;
 
     return (
       <div className="bg-white p-8 rounded-2xl shadow-lg max-w-4xl w-full">

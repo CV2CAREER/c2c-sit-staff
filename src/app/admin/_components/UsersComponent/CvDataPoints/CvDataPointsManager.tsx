@@ -1,4 +1,3 @@
-// components/CvDataPoints/CvDataPointsManager.tsx
 import React, { useState } from 'react';
 import CvDataPointsTable from './CvDataPointsTable';
 import { CvDataPointModal } from './CvDataPointModal';
@@ -19,14 +18,15 @@ export const CvDataPointsManager: React.FC<CvDataPointsManagerProps> = ({ custom
   
 const [page, setPage] = useState(0);
 const [pageSize, setPageSize] = useState(20);
+const [showDeleted, setShowDeleted] = useState(false);
  const {
   data,
   isLoading,
   error,
   refetch,
 } = useQuery({
-  queryKey: ['cvDataPoints', customerId, page, pageSize],
-  queryFn: () => fetchDataPoints(customerId, page, pageSize),
+queryKey: ['cvDataPoints', customerId, page, pageSize, showDeleted],
+  queryFn: () => fetchDataPoints(customerId, page, pageSize, showDeleted),
   
 });
 
@@ -35,11 +35,10 @@ const handleExtractData = async (id: string) => {
     try {
       toast.loading('Extracting CV Data Points...');
 
-      await axiosInstance.post(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}`, { id });
+      await axiosInstance.post(`${process.env.NEXT_PUBLIC_CUSTOMER_URL}/api/v1/documents/extract-cv-data-points`, { id });
       toast.success('CV Data Points extracted successfully');
       refetch(); // Refresh the data after extraction
     } catch{
-      // console.error('Error extracting data:', error);
       toast.error('An error occurred while extracting data');
     }
   };
@@ -91,13 +90,25 @@ const handleExtractData = async (id: string) => {
   return (
     <div className="cv-data-points-manager">
       <div className="flex justify-between items-center mb-4">
-
-        <Button
-          onClick={() => fetchDataPoints(customerId)}
-          disabled={isLoading}
-        >
-          Refresh
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            Refresh
+          </Button>
+          
+          <Button
+            variant={showDeleted ? "default" : "ghost"}
+            onClick={() => {
+              setShowDeleted(prev => !prev);
+              setPage(0);
+            }}
+            disabled={isLoading}
+          >
+            {showDeleted ? "📁 Recycle Bin" : "✅ Active Uploads"}
+          </Button>
+        </div>
       </div>
 
     
@@ -131,15 +142,29 @@ const handleExtractData = async (id: string) => {
     </div>
   );
 };
-const fetchDataPoints = async (customerId?: string, page = 0, pageSize = 20): Promise<{
+const fetchDataPoints = async (customerId?: string, page = 0, pageSize = 20, isDeleted = false): Promise<{
   data: CvDataPoint[];
   totalCount: number;
 }> => {
-  const params = new URLSearchParams();
-  if (customerId) params.append("customerId", customerId);
-  params.append("skip", String(page * pageSize));
-  params.append("limit", String(pageSize));
+  const queryParams: any = {
+    page: page + 1,
+    limit: pageSize
+  };
+  
+  if (customerId) queryParams.userId = customerId;
+  
+  // ✅ ALWAYS send isDeleted parameter - explicit boolean
+  queryParams.isDeleted = isDeleted;
 
-  const response = await axiosInstance.get(`${SERVER_URI}${ADMIN_EXTRACT_CV_DATA_POINTS}?${params.toString()}`);
-  return response.data;
+  const response = await axiosInstance.get(`${SERVER_URI}/api/v1/uploads`, {
+    params: queryParams,
+    paramsSerializer: {
+      indexes: null
+    }
+  });
+
+  return {
+    data: response.data.data.uploads,
+    totalCount: response.data.data.count
+  };
 };
