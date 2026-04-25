@@ -68,6 +68,62 @@ const currencySymbolsByCode: Record<string, string> = {
   JPY: "JPY",
 };
 
+const getRecordTimestamp = (record: { updatedAt?: Date; createdAt?: Date }) =>
+  record.updatedAt?.getTime?.() ?? record.createdAt?.getTime?.() ?? 0;
+
+const getLocationFeatureCounts = (plans: Feature[]) => {
+  const counts = new Map<string, number>();
+
+  for (const plan of plans) {
+    for (const locationId of plan.locationIds ?? []) {
+      counts.set(locationId, (counts.get(locationId) ?? 0) + 1);
+    }
+  }
+
+  return counts;
+};
+
+const selectCanonicalLocations = (
+  locations: Location[],
+  locationFeatureCounts: Map<string, number>,
+) => {
+  const preferredByCurrency = new Map<string, Location>();
+  const locationsWithoutCurrency: Location[] = [];
+
+  for (const location of locations) {
+    const normalizedCurrencyCode = location.currencyCode?.trim().toUpperCase();
+
+    if (!normalizedCurrencyCode) {
+      locationsWithoutCurrency.push(location);
+      continue;
+    }
+
+    const existing = preferredByCurrency.get(normalizedCurrencyCode);
+    if (!existing) {
+      preferredByCurrency.set(normalizedCurrencyCode, location);
+      continue;
+    }
+
+    const currentFeatureCount = locationFeatureCounts.get(location.id) ?? 0;
+    const existingFeatureCount = locationFeatureCounts.get(existing.id) ?? 0;
+
+    if (currentFeatureCount !== existingFeatureCount) {
+      if (currentFeatureCount > existingFeatureCount) {
+        preferredByCurrency.set(normalizedCurrencyCode, location);
+      }
+      continue;
+    }
+
+    if (getRecordTimestamp(location) > getRecordTimestamp(existing)) {
+      preferredByCurrency.set(normalizedCurrencyCode, location);
+    }
+  }
+
+  return [...preferredByCurrency.values(), ...locationsWithoutCurrency].sort(
+    (left, right) => getRecordTimestamp(right) - getRecordTimestamp(left),
+  );
+};
+
 const selectPreferredPricingPlans = (plans: Feature[], locationId: string) => {
   const preferredByTitle = new Map<string, Feature>();
 
@@ -111,11 +167,21 @@ export const getAdminLocations = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
 
-    const locations = await Location.findAll({
-      order: [["createdAt", "DESC"]],
-    });
+    const [locations, plans] = await Promise.all([
+      Location.findAll({
+        order: [["createdAt", "DESC"]],
+      }),
+      Feature.findAll({
+        attributes: ["id", "locationIds", "createdAt", "updatedAt"],
+      }),
+    ]);
 
-    const payload = locations.map((location) => {
+    const canonicalLocations = selectCanonicalLocations(
+      locations,
+      getLocationFeatureCounts(plans),
+    );
+
+    const payload = canonicalLocations.map((location) => {
       const currencyCode = location.currencyCode ?? null;
       const mappedSymbol =
         currencyCode && currencySymbolsByCode[currencyCode]
