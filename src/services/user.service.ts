@@ -275,17 +275,60 @@ export const getAllUsers = async (query: {
   active?: boolean | string;
   recycle?: boolean | string;
   q?: string;
+  search?: string;
   userType?: string;
+  role?: string;
   plan?: string;
+  startDate?: string;
+  endDate?: string;
+  from?: string;
+  to?: string;
 } = {}) => {
   logger.info(`Retrieving all users from database with filters`);
 
+  const parseOptionalBoolean = (value: unknown): boolean | undefined => {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+    return undefined;
+  };
+
+  const parseOptionalDate = (value: unknown, fieldName: string): Date | undefined => {
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return undefined;
+    }
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new ErrorHandler(`Invalid ${fieldName}.`, 400);
+    }
+    return parsedDate;
+  };
+
   // Parse query parameters (they come as strings from Express)
-  const page = query.page ? parseInt(query.page as string, 10) : undefined;
-  const limit = query.limit ? parseInt(query.limit as string, 10) : undefined;
-  const active = query.active === 'true' ? true : query.active === 'false' ? false : undefined;
-  const recycle = query.recycle === 'true' ? true : query.recycle === 'false' ? false : undefined;
-  const { q, userType, plan } = query;
+  const page = query.page ? parseInt(String(query.page), 10) : undefined;
+  const limit = query.limit ? parseInt(String(query.limit), 10) : undefined;
+  const active = parseOptionalBoolean(query.active);
+  const recycle = parseOptionalBoolean(query.recycle);
+  const q = typeof query.q === "string" ? query.q : query.search;
+  const userType =
+    typeof query.userType === "string" ? query.userType : query.role;
+  const plan = typeof query.plan === "string" ? query.plan : undefined;
+  const startDate = parseOptionalDate(query.startDate ?? query.from, "startDate");
+  const endDate = parseOptionalDate(query.endDate ?? query.to, "endDate");
+
+  if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
+    throw new ErrorHandler("startDate cannot be after endDate.", 400);
+  }
   
   const where: any = {};
   
@@ -320,6 +363,17 @@ export const getAllUsers = async (query: {
   // Plan filter
   if (plan) {
     where.planId = plan;
+  }
+
+  // Date range filter
+  if (startDate || endDate) {
+    where.createdAt = {};
+    if (startDate) {
+      where.createdAt[Op.gte] = startDate;
+    }
+    if (endDate) {
+      where.createdAt[Op.lte] = endDate;
+    }
   }
 
   // Pagination handling
