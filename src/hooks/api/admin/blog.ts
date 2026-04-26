@@ -5,6 +5,60 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { IBlogPost, IBlogStats} from "@/types/blog.types";
 import { useMemo } from "react";
 
+const normalizeBlogStatus = (rawStatus: any, scheduledDate?: string) => {
+  if (typeof rawStatus === "string" && rawStatus.trim().length > 0) {
+    return rawStatus as IBlogPost["status"];
+  }
+
+  if (scheduledDate && new Date(scheduledDate).getTime() > Date.now()) {
+    return "Scheduled" as const;
+  }
+
+  return "Draft" as const;
+};
+
+const normalizeBlogPost = (post: any): IBlogPost => {
+  const resolvedScheduledDate =
+    post?.scheduledDate || (post?.publishedAt && new Date(post.publishedAt).getTime() > Date.now()
+      ? post.publishedAt
+      : undefined);
+
+  return {
+    _id: post?._id || post?.id || "",
+    id: post?.id || post?._id || "",
+    title: post?.title || "",
+    body: post?.body || post?.content || "",
+    category: post?.category || "",
+    location: post?.location || "",
+    option: post?.option || (Array.isArray(post?.tags) ? (post.tags[0] || "") : ""),
+    description: post?.description || post?.excerpt || "",
+    image: post?.image || post?.featuredImage || "",
+    featuredImage: post?.featuredImage || post?.image || "",
+    status: normalizeBlogStatus(post?.status, resolvedScheduledDate),
+    recycled: Boolean(post?.recycled),
+    scheduledDate: resolvedScheduledDate,
+    author: post?.author || "",
+    userId: post?.userId || "",
+    createdAt: post?.createdAt || new Date().toISOString(),
+    updatedAt: post?.updatedAt,
+  };
+};
+
+const normalizeBlogStats = (stats: any): IBlogStats => ({
+  followers: {
+    value: Number(stats?.followers?.value || 0),
+    trend: Number(stats?.followers?.trend || 0),
+  },
+  posts: {
+    value: Number(stats?.posts?.value || 0),
+    trend: Number(stats?.posts?.trend || 0),
+  },
+  comments: {
+    value: Number(stats?.comments?.value || 0),
+    trend: Number(stats?.comments?.trend || 0),
+  },
+});
+
 export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) => {
   const posts = useFetchData<IBlogPost[]>({
     method: "GET",
@@ -16,7 +70,7 @@ export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) =>
 
   const postById = useFetchData<IBlogPost>({
     method: "GET",
-    url: endpoints.ADMIN_BLOG_DETAILS,
+    url: endpoints.ADMIN_BLOG,
     params: { id: options?.id },
     queryKey: ["admin-blog-post", options?.id],
     enabled: !!options?.id,
@@ -24,14 +78,14 @@ export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) =>
 
   const stats = useFetchData<IBlogStats>({
     method: "GET",
-    url: endpoints.ADMIN_FOLLOWERS, // Note: Using existing followers endpoint as proxy for blog stats if applicable, or we might need a dedicated one
+    url: endpoints.ADMIN_BLOG_STATS,
     queryKey: ["admin-blog-stats"],
     enabled: true,
   });
 
   return useMemo(() => ({
     blogPostsDomain: {
-      data: posts.data?.data || [],
+      data: ((posts.data?.data || []) as any[]).map(normalizeBlogPost),
       isLoading: posts.isLoading,
       isSuccess: posts.isSuccess,
       isError: posts.isError,
@@ -40,7 +94,7 @@ export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) =>
       refetch: posts.refetch,
     },
     blogPostByIdDomain: {
-      data: postById.data?.data,
+      data: postById.data?.data ? normalizeBlogPost(postById.data.data as any) : undefined,
       isLoading: postById.isLoading,
       isSuccess: postById.isSuccess,
       isError: postById.isError,
@@ -49,7 +103,7 @@ export const useBlogQueries = (options?: { recycled?: boolean; id?: string }) =>
       refetch: postById.refetch,
     },
     blogStatsDomain: {
-      data: stats.data?.data,
+      data: normalizeBlogStats(stats.data?.data || {}),
       isLoading: stats.isLoading,
       isSuccess: stats.isSuccess,
       isError: stats.isError,

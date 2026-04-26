@@ -94,8 +94,8 @@ export const AGGREGATOR_LOCATIONS = "/api/v1/aggregator-locations";
 export const COUNTRY_INFO = "/api/v1/country-info";
 export const ADMIN_SLACK_QUEUE = "/api/v1/aggregator/slack/queue";
 export const ADMIN_RESOURCES = "/api/v1/resources";
-export const ADMIN_PROMOTION = "/api/v1/promotions";
-export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/promotions?id=${id}`;
+export const ADMIN_PROMOTION = "/api/v1/admin/promos";
+export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/admin/promos?id=${id}`;
 
 // User Management Endpoints - Temidayo
 export const ADMIN_FEATURE_TITLES = "/api/v1/user-management/features";
@@ -106,9 +106,10 @@ export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management
 export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
 
 // Blog Endpoints
-export const ADMIN_BLOG = "/api/v1/blog";
-export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/blog?id=${id}`;
-export const ADMIN_BLOG_DETAILS = "/api/v1/blog/id";
+export const ADMIN_BLOG = "/api/v1/admin/blog";
+export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/admin/blog?id=${id}`;
+export const ADMIN_BLOG_DETAILS = "/api/v1/admin/blog/id";
+export const ADMIN_BLOG_STATS = "/api/v1/admin/blog/stats";
 
 // Admin Prompts Endpoints
 export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/v1/admin/${basePath}`;

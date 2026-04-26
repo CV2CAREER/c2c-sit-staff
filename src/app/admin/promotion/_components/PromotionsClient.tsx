@@ -22,7 +22,16 @@ export default function PromotionsClient() {
   const promotionLengthDataObj = promotionLengthDomain.data?.[0] || {};
   const length = promotionLengthDataObj.numberOfReferralsBeforePromo || 0;
   const numberOfFreePromos = promotionLengthDataObj.numberOfFreePromo || 0;
-  const promotionLengthData = promotionLengthDataObj;
+  const promotionLengthData = {
+    numberOfReferralsBeforePromo:
+      promotionLengthDataObj.numberOfReferralsBeforePromo != null
+        ? String(promotionLengthDataObj.numberOfReferralsBeforePromo)
+        : "",
+    numberOfFreePromo:
+      promotionLengthDataObj.numberOfFreePromo != null
+        ? String(promotionLengthDataObj.numberOfFreePromo)
+        : "",
+  };
 
   const handleLengthSubmit = async (values: any) => {
     try {
