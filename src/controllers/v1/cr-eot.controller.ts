@@ -12,8 +12,15 @@ const logger = getServiceLogger("cr-eot-controller");
 export const getEOTOptions = catchAsyncError(async (req: Request, res: Response) => {
   try {
     const { variance } = req.query;
-    const options = await CREOTService.getEOCOptions(variance as string);
-    return res.apiSuccess(options, "EOT options retrieved successfully", 200);
+    if (variance) {
+      const options = await CREOTService.getEOCOptions(variance as string);
+      return res.apiSuccess(options, "EOT options retrieved successfully", 200);
+    }
+
+    const active = req.query.active === "true";
+    const recycle = req.query.recycle === "true";
+    const requests = await CREOTService.getEOTRequests({ active, recycle });
+    return res.apiSuccess(requests, "EOT requests retrieved successfully", 200);
 
   } catch (error: any) {
     logger.error(`❌ Failed to get EOT options: ${error.message}`);

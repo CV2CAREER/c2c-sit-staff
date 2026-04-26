@@ -52,6 +52,85 @@ export class CREOTService {
   }
 
   /**
+   * Get EOT requests list
+   */
+  static async getEOTRequests(filters: { active?: boolean; recycle?: boolean } = {}) {
+    try {
+      const requests = await CREOT.findAll({
+        order: [["createdAt", "DESC"]],
+        raw: true,
+      });
+
+      if (!requests.length) {
+        return [];
+      }
+
+      const crIds = [...new Set(requests.map((row: any) => row.crId).filter(Boolean))];
+      const ownerIds = [
+        ...new Set(
+          requests
+            .flatMap((row: any) => [row.developerId, row.nilId])
+            .filter(Boolean),
+        ),
+      ];
+
+      const [crRows, ownerRows] = await Promise.all([
+        CRTracking.findAll({
+          where: { id: crIds },
+          attributes: ["id", "changeRequestId", "description", "isDeleted"],
+          raw: true,
+        }),
+        CROwner.findAll({
+          where: { id: ownerIds },
+          attributes: ["id", "name", "email", "role", "slackId"],
+          raw: true,
+        }),
+      ]);
+
+      const crMap = new Map(crRows.map((row: any) => [row.id, row]));
+      const ownerMap = new Map(ownerRows.map((row: any) => [row.id, row]));
+
+      const rows = requests
+        .map((request: any) => {
+          const cr = crMap.get(request.crId);
+          if (filters.active && cr?.isDeleted) return null;
+          if (filters.recycle && !cr?.isDeleted) return null;
+
+          const developer = ownerMap.get(request.developerId);
+          const nil = ownerMap.get(request.nilId);
+
+          return {
+            _id: request.id,
+            numberOfHours: Number(request.numberOfHours),
+            duration: {
+              start: request.durationStart,
+              end: request.durationEnd,
+            },
+            note: request.note,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt,
+            CR: cr
+              ? {
+                  _id: cr.id,
+                  id: cr.changeRequestId || cr.id,
+                  description: cr.description,
+                }
+              : null,
+            developer: developer ? { _id: developer.id, ...developer } : null,
+            NIL: nil ? { _id: nil.id, ...nil } : null,
+          };
+        })
+        .filter(Boolean);
+
+      logger.info(`âœ… EOT requests loaded successfully (${rows.length})`);
+      return rows;
+    } catch (error: any) {
+      logger.error(`âŒ Failed to get EOT requests: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Create new EOT Request and send Slack notification
    */
   static async createEOTRequest(req: any, data: any, user: any) {

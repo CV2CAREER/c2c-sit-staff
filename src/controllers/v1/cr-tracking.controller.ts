@@ -11,8 +11,10 @@ const logger = getServiceLogger("cr-tracking-controller");
  */
 export const getCRTrackingEntries = catchAsyncError(async (req: Request, res: Response) => {
   try {
+    const active = req.query.active === "true";
+    const recycle = req.query.recycle === "true";
     const filters = {
-      isDeleted: req.query.isDeleted === "true"
+      isDeleted: active ? false : recycle ? true : req.query.isDeleted === "true"
     };
 
     const entries = await CRTrackingService.getAll(filters);
@@ -138,7 +140,9 @@ export const getCRTrackingHistory = catchAsyncError(async (req: any, res: Respon
  */
 export const notifyCRNIL = catchAsyncError(async (req: any, res: Response) => {
   try {
-    const { id } = req.query as { id: string };
+    const queryId = (req.query as { id?: string }).id;
+    const bodyId = req.body?.id as string | undefined;
+    const id = queryId || bodyId;
 
     if (!id) {
       return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
@@ -189,5 +193,29 @@ export const modifyCRTracking = catchAsyncError(async (req: any, res: Response) 
     }
 
     return res.apiError(new ErrorHandler(error.message || "Failed to modify CR tracking", 500));
+  }
+});
+
+/**
+ * Update CR Tracking entry
+ */
+export const updateCRTracking = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const id = (req.query.id as string) || (req.body?.id as string) || (req.body?._id as string);
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("CR Tracking ID is required", 400));
+    }
+
+    const entry = await CRTrackingService.update(req, id, req.body, req.user);
+    return res.apiSuccess(entry, "CR Tracking updated successfully", 200);
+  } catch (error: any) {
+    logger.error(`âŒ Failed to update CR tracking: ${error.message}`);
+
+    if (error.message === "CR Tracking entry not found") {
+      return res.apiError(new ErrorHandler(error.message, 404));
+    }
+
+    return res.apiError(new ErrorHandler(error.message || "Failed to update CR tracking", 500));
   }
 });

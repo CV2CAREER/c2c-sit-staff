@@ -74,6 +74,10 @@ import {
   updateBlogPost,
 } from "../../controllers/v1/blog.controller";
 import clientSampleRouterV1 from "./client-sample.route";
+import trainingTrackerRouterV1 from "./training-tracker.route";
+import crTrackingRouterV1 from "./cr-tracking.route";
+import crEOTRouterV1 from "./cr-eot.route";
+import adminAiRouterV1 from "./admin-ai.route";
 const adminRouterV1 = Router();
 
 adminRouterV1.use("/client-sample", clientSampleRouterV1);
@@ -97,6 +101,30 @@ adminRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   applicationsController,
+);
+adminRouterV1.use(
+  "/ai",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  adminAiRouterV1,
+);
+adminRouterV1.use(
+  "/prompts",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  adminAiRouterV1,
+);
+adminRouterV1.use(
+  "/training-tracker",
+  trainingTrackerRouterV1,
+);
+adminRouterV1.use(
+  "/trackers/cr/eot",
+  crEOTRouterV1,
+);
+adminRouterV1.use(
+  "/trackers/cr",
+  crTrackingRouterV1,
 );
 adminRouterV1.all(
   "/support-ai-prompt",
