@@ -59,6 +59,20 @@ import {
   getSheetTemplatesController,
   getUsersFullNameController,
 } from "@/controllers/v1/job-preferences.controller";
+import {
+  createPromotion,
+  deletePromotion,
+  getPromotions,
+  updatePromotionLength,
+} from "../../controllers/v1/promotion.controller";
+import {
+  createBlogPost,
+  deleteBlogPost,
+  getBlogPostById,
+  getBlogPosts,
+  getBlogStats,
+  updateBlogPost,
+} from "../../controllers/v1/blog.controller";
 import clientSampleRouterV1 from "./client-sample.route";
 const adminRouterV1 = Router();
 
@@ -223,6 +237,66 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   patchAdminPricingPlan,
+);
+adminRouterV1.get(
+  "/promos",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getPromotions,
+);
+adminRouterV1.post(
+  "/promos",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  createPromotion,
+);
+adminRouterV1.patch(
+  "/promos",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  updatePromotionLength,
+);
+adminRouterV1.delete(
+  "/promos",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deletePromotion,
+);
+adminRouterV1.get(
+  "/blog",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getBlogPosts,
+);
+adminRouterV1.post(
+  "/blog",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  createBlogPost,
+);
+adminRouterV1.patch(
+  "/blog",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  updateBlogPost,
+);
+adminRouterV1.delete(
+  "/blog",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteBlogPost,
+);
+adminRouterV1.get(
+  "/blog/id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getBlogPostById,
+);
+adminRouterV1.get(
+  "/blog/stats",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getBlogStats,
 );
 adminRouterV1.get(
   "/pricing-plans",
