@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import axiosInstance from "@/services/api-client";
 import { SERVER_URI } from "@/constants/env";
+import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ImSpinner2 } from "react-icons/im"; // Assuming react-icons is installed
 import moment from "moment"; // Ensure moment.js is installed
 import Image from "next/image";
@@ -103,7 +104,7 @@ const PromptsSimulation = <
     try {
       // Use dynamic apiBasePath for the simulation endpoint
       const runProcess = await axiosInstance.post(
-        `${SERVER_URI}/api/v1/admin/${apiBasePath}/simulation`,
+        `${SERVER_URI}${endpoints.ADMIN_PROMPTS_SIMULATION(apiBasePath)}`,
         {
           prompt: promptString,
         }
@@ -145,7 +146,9 @@ const PromptsSimulation = <
       setDeletingSim(id);
 
       // Use dynamic apiBasePath for the delete endpoint
-      await axiosInstance.delete(`${SERVER_URI}/api/v1/admin/${apiBasePath}/simulation?id=${id}`);
+      await axiosInstance.delete(
+        `${SERVER_URI}${endpoints.ADMIN_PROMPTS_SIMULATION(apiBasePath)}?id=${id}`
+      );
 
       setSimulations((sims) => {
         return sims?.filter((s) => s._id !== id) || null;

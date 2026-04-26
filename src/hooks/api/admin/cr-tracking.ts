@@ -5,6 +5,43 @@ import { AdminQueriesOptions } from "./types";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
+const normalizeCrRow = (row: any) => {
+  const primaryId = row?._id || row?.id;
+  return {
+    ...row,
+    _id: primaryId,
+    id: row?.changeRequestId || row?.id,
+    crStatus: row?.crStatus || row?.status,
+    status: row?.status || row?.crStatus,
+    owner: typeof row?.owner === "object" ? row?.owner?.name : row?.owner,
+    NIL:
+      row?.NIL ||
+      (typeof row?.nil === "object" ? row?.nil?.name : row?.nil),
+    nominatedDeveloper:
+      typeof row?.nominatedDeveloper === "object"
+        ? row?.nominatedDeveloper?.name
+        : row?.nominatedDeveloper,
+    ownerEmail:
+      row?.ownerEmail ||
+      (typeof row?.owner === "object" ? row?.owner?.email : undefined),
+    nilEmail:
+      row?.nilEmail ||
+      (typeof row?.nil === "object" ? row?.nil?.email : undefined),
+    nominatedDeveloperEmail:
+      row?.nominatedDeveloperEmail ||
+      (typeof row?.nominatedDeveloper === "object"
+        ? row?.nominatedDeveloper?.email
+        : undefined),
+    impactedProvider: row?.impactedProvider || row?.impactedProdiver || [],
+    impactedProdiver: row?.impactedProdiver || row?.impactedProvider || [],
+  };
+};
+
+const normalizeEotRow = (row: any) => ({
+  ...row,
+  _id: row?._id || row?.id,
+});
+
 // ────────────────────────────────────────────────────
 // Query Keys  (centralised so invalidation is consistent)
 // ────────────────────────────────────────────────────
@@ -92,13 +129,13 @@ export const useCRTrackingQueries = (options: AdminQueriesOptions) => {
   return useMemo(
     () => ({
       crDataDomain: {
-        data: crData.data?.data,
+        data: (crData.data?.data || []).map(normalizeCrRow),
         isLoading: crData.isLoading,
         isSuccess: crData.isSuccess,
         refetch: crData.refetch,
       },
       eotDataDomain: {
-        data: eotData.data?.data,
+        data: (eotData.data?.data || []).map(normalizeEotRow),
         isLoading: eotData.isLoading,
         isSuccess: eotData.isSuccess,
         refetch: eotData.refetch,
@@ -114,11 +151,11 @@ export const useCRTrackingQueries = (options: AdminQueriesOptions) => {
         isSuccess: crHistory.isSuccess,
       },
       eotCRsDomain: {
-        data: eotCRs.data?.data,
+        data: (eotCRs.data?.data || []).map(normalizeEotRow),
         isLoading: eotCRs.isLoading,
       },
       eotOwnersDomain: {
-        data: eotOwners.data?.data,
+        data: (eotOwners.data?.data || []).map(normalizeEotRow),
         isLoading: eotOwners.isLoading,
       },
     }),

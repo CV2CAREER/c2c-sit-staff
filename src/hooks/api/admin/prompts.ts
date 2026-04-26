@@ -43,6 +43,8 @@ export const usePromptsQueries = (options: { basePath: string; enabled?: boolean
     enabled: enabled && isCvAi,
   });
 
+  const queuePayload: any = queue.data?.data;
+
   return useMemo(() => ({
     promptsDataDomain: {
       data: allData.data?.data,
@@ -59,7 +61,9 @@ export const usePromptsQueries = (options: { basePath: string; enabled?: boolean
       refetch: simulations.refetch,
     },
     queueDomain: {
-      data: queue.data?.data || [],
+      data: Array.isArray(queuePayload)
+        ? queuePayload
+        : queuePayload?.result || [],
       isLoading: queue.isLoading,
       isSuccess: queue.isSuccess,
       isError: queue.isError,
@@ -79,7 +83,7 @@ export const usePromptsQueries = (options: { basePath: string; enabled?: boolean
       isError: cvStyle.isError,
       refetch: cvStyle.refetch,
     }
-  }), [allData, simulations, queue, vcs, cvStyle]);
+  }), [allData, simulations, queue, queuePayload, vcs, cvStyle]);
 };
 
 export const usePromptsMutations = (basePath: string) => {

@@ -112,29 +112,29 @@ export const ADMIN_BLOG_DETAILS = "/api/v1/admin/blog/id";
 export const ADMIN_BLOG_STATS = "/api/v1/admin/blog/stats";
 
 // Admin Prompts Endpoints
-export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/v1/admin/${basePath}`;
-export const ADMIN_PROMPTS_SIMULATION = (basePath: string) => `/api/v1/admin/${basePath}/simulation`;
-export const ADMIN_PROMPTS_QUEUE = (basePath: string) => `/api/v1/admin/${basePath}/queue`;
-export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/v1/admin/${basePath}/vcs`;
-export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/prompts/cv-ai/style`;
+const normalizeAiModulePath = (basePath: string) => basePath.replace(/^prompts\//, "");
+export const ADMIN_PROMPTS_BASE = (basePath: string) => `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}`;
+export const ADMIN_PROMPTS_SIMULATION = (basePath: string) => `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/simulation`;
+export const ADMIN_PROMPTS_QUEUE = (basePath: string) => `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/queue`;
+export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/vcs`;
+export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/ai/cv-ai/style`;
 
 // Admin Training Tracker Endpoints
-export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
-export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/training-tracker/sessions";
+export const ADMIN_TRAINING_TRACKER = "/api/v1/admin/training-tracker";
+export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/admin/training-tracker/sessions";
 export const ADMIN_COACHES_VARIANT = "/api/v1/coach";
 
 // Admin CR Tracking Endpoints
-export const ADMIN_CR_TRACKING = "/api/v1/cr-tracking";
-export const ADMIN_CR_TRACKING_OPTIONS = "/api/v1/cr-tracking/options";
-export const ADMIN_CR_TRACKING_MODIFY = "/api/v1/cr-tracking/modify";
-export const ADMIN_CR_TRACKING_RESTORE = "/api/v1/cr-tracking/restore";
-export const ADMIN_CR_TRACKING_DELETE = "/api/v1/cr-tracking/delete";
-// Note: EOT, History, and Notify-Nil currently have no backend routes mounted in v1
-export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/cr-tracking/history";
+export const ADMIN_CR_TRACKING = "/api/v1/admin/trackers/cr";
+export const ADMIN_CR_TRACKING_OPTIONS = "/api/v1/admin/trackers/cr/options";
+export const ADMIN_CR_TRACKING_MODIFY = "/api/v1/admin/trackers/cr/modify";
+export const ADMIN_CR_TRACKING_RESTORE = "/api/v1/admin/trackers/cr/restore";
+export const ADMIN_CR_TRACKING_DELETE = "/api/v1/admin/trackers/cr/delete";
+export const ADMIN_CR_TRACKING_HISTORY = "/api/v1/admin/trackers/cr/history";
 export const ADMIN_SYSTEM_LOGS = "/api/v1/logs";
 export const ADMIN_SYSTEM_LOGS_EXPORT = "/api/v1/logs/export/csv";
-export const ADMIN_CR_TRACKING_EOT = "/api/v1/cr-tracking/eot";
-export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/cr-tracking/notify-nil";
+export const ADMIN_CR_TRACKING_EOT = "/api/v1/admin/trackers/cr/eot";
+export const ADMIN_CR_TRACKING_NOTIFY_NIL = "/api/v1/admin/trackers/cr/notify-nil";
 
 // slack management
 export const ADMIN_SLACK_MANAGE = "/api/v1/slack-manage";

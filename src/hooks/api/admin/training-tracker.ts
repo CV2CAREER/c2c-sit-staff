@@ -5,6 +5,13 @@ import { AdminQueriesOptions } from "./types";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
+const normalizeTrainingRow = (row: any) => ({
+  ...row,
+  _id: row?._id || row?.id,
+  traineeId: row?.traineeId || row?.userId,
+  coachId: row?.coachId || row?.pcId,
+});
+
 export const useTrainingTrackerQueries = (options: AdminQueriesOptions) => {
   const {
     fetchTrainingSessions = false,
@@ -44,7 +51,7 @@ export const useTrainingTrackerQueries = (options: AdminQueriesOptions) => {
 
   return useMemo(() => ({
     sessionsDomain: {
-      data: sessions.data?.data || [],
+      data: (sessions.data?.data || []).map(normalizeTrainingRow),
       isLoading: sessions.isLoading,
       isSuccess: sessions.isSuccess,
     },
@@ -59,7 +66,7 @@ export const useTrainingTrackerQueries = (options: AdminQueriesOptions) => {
       isSuccess: usersFullName.isSuccess,
     },
     trainingDataDomain: {
-      data: trainingData.data?.data || [],
+      data: (trainingData.data?.data || []).map(normalizeTrainingRow),
       isLoading: trainingData.isLoading,
       isSuccess: trainingData.isSuccess,
       refetch: trainingData.refetch,
