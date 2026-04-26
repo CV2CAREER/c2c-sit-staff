@@ -49,7 +49,7 @@ const CreateBlogPostPage = () => {
   }
 
   const role = user?.role;
-  const userId = user?._id || "";
+  const userId = user?._id || (user as any)?.id || "";
   const name = ((user?.firstName || "") + " " + (user?.lastName || "")).trim() || "Unknown";
 
   const handleCreateContent = async () => {

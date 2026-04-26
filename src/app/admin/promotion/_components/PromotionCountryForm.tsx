@@ -131,7 +131,11 @@ const PromotionCountryForm: React.FC<PromotionCountryFormProps> = ({
                           label: country.label,
                           value: country.label,
                         }))}
-                        {...field}
+                        name={field.name}
+                        value={
+                          typeof field.value === "string" ? field.value : undefined
+                        }
+                        onValueChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />

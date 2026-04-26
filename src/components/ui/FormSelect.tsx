@@ -20,6 +20,7 @@ interface FormSelectProps extends React.ComponentPropsWithoutRef<
   options: { label: string; value: string }[];
   error?: string;
   className?: string;
+  onChange?: (value: string) => void;
 }
 
 const FormSelect = React.forwardRef<
@@ -30,6 +31,16 @@ const FormSelect = React.forwardRef<
   const inputId = React.useId();
   // @ts-expect-error: FormSelectProps incorrectly assumes 'multiple' exists on Radix Select. This component is being used as a multi-select wrapper.
   const isMulti = props.multiple || false;
+  const isControlledValue =
+    typeof props.value === "string" && props.value.length > 0;
+
+  const handleValueChange = React.useCallback(
+    (value: string) => {
+      props.onValueChange?.(value);
+      props.onChange?.(value);
+    },
+    [props],
+  );
 
   return (
     <div className="space-y-2">
@@ -42,9 +53,14 @@ const FormSelect = React.forwardRef<
         </label>
       ) : null}
       <Select
-        name={name}
-        defaultValue={props.defaultValue}
-        onValueChange={props.onValueChange}
+        name={props.name || name}
+        value={isControlledValue ? props.value : undefined}
+        defaultValue={
+          !isControlledValue && typeof props.defaultValue === "string"
+            ? props.defaultValue
+            : undefined
+        }
+        onValueChange={handleValueChange}
         disabled={props.disabled}
         // @ts-expect-error: Shadcn Select component does not natively support the 'multiple' prop.
         multiple={isMulti}

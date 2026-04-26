@@ -75,8 +75,14 @@ export default function TrainingTrackerDatagrid({
     if (user.length > 0 && coachesDomain.data.length > 0) {
       return coachesDomain.data
         .map((coach: any) => {
-          const coachUserId = coach.user?._id || coach.user;
-          const coachUser = user.find((u: any) => u._id === coachUserId);
+          const coachUserId =
+            coach?.user?._id ||
+            coach?.user?.id ||
+            coach?.userId ||
+            (typeof coach?.user === "string" ? coach.user : undefined);
+          const coachUser = user.find(
+            (u: any) => u?._id === coachUserId || u?.id === coachUserId,
+          );
           return coachUser
             ? {
                 _id: coachUserId,
