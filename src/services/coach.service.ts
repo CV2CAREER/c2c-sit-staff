@@ -4,6 +4,33 @@ import { getServiceLogger } from "@/utils/createLogger";
 
 const logger = getServiceLogger("CoachService");
 
+const normalizeCoachUser = (user: any) => ({
+  ...user,
+  _id: user?.id || user?._id,
+});
+
+const buildCoachFallback = (user: any) => ({
+  id: user?.id || user?._id,
+  user: normalizeCoachUser(user),
+  isAccredited: Boolean(user?.isAccredited),
+});
+
+const getCoachModel = () => {
+  const model = (db as any).coach;
+  if (!model || typeof model.findAll !== "function") {
+    return null;
+  }
+  return model;
+};
+
+const getCoachUsers = async () => {
+  const users = await db.user.findAll({
+    where: { role: "coach" },
+    raw: true,
+  });
+  return users.map(normalizeCoachUser);
+};
+
 /**
  * Get coaches based on query parameters
  */
@@ -42,24 +69,49 @@ export async function getCoaches(
  */
 export async function getCoachesWithUserData(): Promise<any[]> {
   try {
-    const coaches = await db.user.findAll({
-      where: { role: "coach" },
-      raw: true,
-    });
+    const coachUsers = await getCoachUsers();
+    const coachModel = getCoachModel();
 
-    const coachIds = coaches.map((coach: any) => coach.id);
+    if (!coachModel || coachUsers.length === 0) {
+      logger.info("Coaches retrieved from users table fallback");
+      return coachUsers.map(buildCoachFallback);
+    }
 
-    const coachData = await db.coach.findAll({
-      where: { user: coachIds },
-    });
+    const coachIds = coachUsers
+      .map((coach: any) => coach.id)
+      .filter((id: string | undefined) => Boolean(id));
 
-    const data = coachData.map((coach: any) => {
-      const user = coaches.find((c: any) => c.id === coach.user);
-      return {
+    let coachData: any[] = [];
+    try {
+      coachData = await coachModel.findAll({
+        where: { user: coachIds },
+      });
+    } catch (error) {
+      logger.warn("Coach model query failed, using users table fallback", error);
+      return coachUsers.map(buildCoachFallback);
+    }
+
+    const coachesByUserId = new Map<string, any>();
+
+    for (const row of coachData) {
+      const coach =
+        typeof row?.toJSON === "function" ? row.toJSON() : row;
+      const coachUserId = coach?.user?._id || coach?.user?.id || coach?.user;
+      const user = coachUsers.find((candidate: any) => candidate.id === coachUserId);
+
+      if (!user) {
+        continue;
+      }
+
+      coachesByUserId.set(user.id, {
         ...coach,
-        user,
-      };
-    });
+        user: normalizeCoachUser(user),
+      });
+    }
+
+    const data = coachUsers.map(
+      (user: any) => coachesByUserId.get(user.id) || buildCoachFallback(user),
+    );
 
     logger.info("Coaches with user data retrieved successfully");
     return data;
@@ -74,6 +126,13 @@ export async function getCoachesWithUserData(): Promise<any[]> {
  */
 export async function getAllCoachesPopulated(): Promise<any[]> {
   try {
+    const coachModel = getCoachModel();
+    if (!coachModel) {
+      logger.info("Coach model unavailable, returning user-role coaches");
+      const coachUsers = await getCoachUsers();
+      return coachUsers.map(buildCoachFallback);
+    }
+
     const coaches = await db.coach.findAll({
       include: [
         {
@@ -109,6 +168,21 @@ export async function getAllCoachesPopulated(): Promise<any[]> {
  */
 export async function getCurrentUserCoachData(userId: string): Promise<any> {
   try {
+    const coachModel = getCoachModel();
+    if (!coachModel) {
+      const user = await db.user.findOne({
+        where: { id: userId, role: "coach" },
+        raw: true,
+      });
+
+      if (!user) {
+        throw new ErrorHandler("You are not a coach", 404);
+      }
+
+      logger.info(`Coach data retrieved from user table for user: ${userId}`);
+      return buildCoachFallback(user);
+    }
+
     const coachData = await db.coach.findOne({
       where: { user: userId },
       include: [
