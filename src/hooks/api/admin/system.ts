@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
+import { BOT_NAMES } from "@/utils/constants";
 import { 
   Throttle,
   CreateTablePayload,
@@ -66,13 +67,12 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
     bot: botName
   } : null;
 
-  const mappedAnswerMode = adminStatus.data?.data ? [
-    { botName: "Seek", mode: adminStatus.data.data.questionAnswerMode },
-    { botName: "Jora", mode: adminStatus.data.data.questionAnswerMode },
-    { botName: "Indeed", mode: adminStatus.data.data.questionAnswerMode },
-    { botName: "Adzuna", mode: adminStatus.data.data.questionAnswerMode },
-    { botName: "LinkedIn", mode: adminStatus.data.data.questionAnswerMode },
-  ] : [];
+  const mappedAnswerMode = adminStatus.data?.data
+    ? BOT_NAMES.map((botName) => ({
+        botName,
+        mode: adminStatus.data.data.questionAnswerMode,
+      }))
+    : [];
 
   const HARDCODED_TABLES = [
     "Users",

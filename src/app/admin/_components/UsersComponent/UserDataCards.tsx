@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useAdminAnalytics } from "@/app/admin/users/hooks/analytics-endpoint";
 import {
   LucideIcon,
@@ -11,6 +11,7 @@ import {
   Cog
 } from "lucide-react";
 import DateFilter from "@/components/reusable/DateFilter";
+import { IDateFilter } from "@/types/common";
 
 interface UsersCountData {
   adminPersonnaCount: number;
@@ -53,14 +54,17 @@ interface UserDataCardsProps {
     plan: string;
   }
   scrollTotable: any
+  dateFilterData: IDateFilter;
+  setDateFilterData: React.Dispatch<React.SetStateAction<IDateFilter>>;
 }
 
-const UserDataCards = ({setUserType, userType, scrollTotable}: UserDataCardsProps) => {
-  const [dateFilterData, setDateFilterData] = useState<{ startDate: string | null; endDate: string | null }>({
-    startDate: null,
-    endDate: null,
-  });
-
+const UserDataCards = ({
+  setUserType,
+  userType,
+  scrollTotable,
+  dateFilterData,
+  setDateFilterData
+}: UserDataCardsProps) => {
   const analytics = useAdminAnalytics({
     enabled: true,
     startDate: dateFilterData.startDate || undefined,

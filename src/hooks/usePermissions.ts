@@ -13,6 +13,17 @@ export function usePermissions() {
   const user = useAuthStore((state) => state.user);
 
   const role = user?.role;
+  const rawPermissions = (user as any)?.permissions;
+  const permissionList = Array.isArray(rawPermissions)
+    ? rawPermissions
+        .map((permission: any) =>
+          typeof permission === "string"
+            ? permission
+            : permission?.action || permission?.key || permission?.name || null
+        )
+        .filter(Boolean)
+    : [];
+  const permissionSet = new Set<string>(permissionList);
 
   const isAdmin = role === "admin";
   const isCoach = role === "coach";
@@ -34,11 +45,19 @@ export function usePermissions() {
 
   /**
    * Check if the user has a specific permission.
-   * (Placeholder logic until backend provides granular permissions array)
    */
   const can = (action: string) => {
     if (!role) return false;
-    
+
+    if (
+      permissionSet.has("*") ||
+      permissionSet.has(action) ||
+      permissionSet.has(`${action.split(":")[0]}:*`) ||
+      permissionSet.has(`${role}:*`)
+    ) {
+      return true;
+    }
+
     // Default system permissions by role
     switch (action) {
       case "delete:user":

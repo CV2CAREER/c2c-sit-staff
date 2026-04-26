@@ -39,6 +39,19 @@ function UserDetailsContent({ userId }: { userId: string }) {
         );
     }
 
+    if (userData?.isError) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <p className="text-lg font-semibold text-red-600">Unable to load user details</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                        {userData?.error?.message || "Please refresh and try again."}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
 
     return (
         <main className="flex flex-col gap-6 mt-6 w-full">

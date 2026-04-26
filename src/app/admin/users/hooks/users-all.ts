@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useFetchData, useMutateData } from "@/hooks/useApi";
 import toast from "react-hot-toast";
 
-// Endpoint URL: GET /v1/user/all
-export const USER_ALL_ENDPOINT = "/api/v1/user/all";
+// Endpoint URL: GET /v1/admin/users
+export const USER_ALL_ENDPOINT = "/api/v1/admin/users";
 
 // Type Definitions for User Object
 interface UserReview {
@@ -104,6 +104,8 @@ export const useGetAllUsers = (options: {
   q?: string;
   userType?: string;
   plan?: string;
+  startDate?: string;
+  endDate?: string;
 } = {}) => {
   const { 
     enabled = true, 
@@ -113,7 +115,9 @@ export const useGetAllUsers = (options: {
     recycle,
     q,
     userType,
-    plan
+    plan,
+    startDate,
+    endDate
   } = options;
 
   const params: Record<string, any> = { page, limit };
@@ -124,6 +128,8 @@ export const useGetAllUsers = (options: {
   if (q) params.q = q;
   if (userType) params.userType = userType;
   if (plan) params.plan = plan;
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
 
   // Stringify parameters for stable query key to prevent infinite re-renders
   const queryKey = useMemo(() => [
@@ -134,8 +140,10 @@ export const useGetAllUsers = (options: {
     recycle ?? null, 
     q ?? null, 
     userType ?? null, 
-    plan ?? null
-  ], [page, limit, active, recycle, q, userType, plan]);
+    plan ?? null,
+    startDate ?? null,
+    endDate ?? null
+  ], [page, limit, active, recycle, q, userType, plan, startDate, endDate]);
 
   const usersQuery = useFetchData<UsersAllResponse>({
     method: "GET",

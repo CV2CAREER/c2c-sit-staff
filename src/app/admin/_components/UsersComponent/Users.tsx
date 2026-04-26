@@ -3,6 +3,7 @@
 import UserDataCards from "./UserDataCards";
 import UsersDataTable from "./UsersDataTable";
 import { useRef, useState } from "react";
+import { IDateFilter } from "@/types/common";
 
 interface UserProp {
     route: string;
@@ -20,11 +21,27 @@ const Users = ({route} : UserProp) => {
         usersDataState: "active",
         plan: "all",
     })
+    const [dateFilterData, setDateFilterData] = useState<IDateFilter>({
+      startDate: null,
+      endDate: null,
+    });
 
   return (
     <section className="flex flex-col gap-8 mt-8">
-      <UserDataCards setUserType={setUserType} userType={userType} scrollTotable={scrollTotable}/>
-      <UsersDataTable userType={userType} setUserType={setUserType} route={route} tableRef={tableRef}/>
+      <UserDataCards
+        setUserType={setUserType}
+        userType={userType}
+        scrollTotable={scrollTotable}
+        dateFilterData={dateFilterData}
+        setDateFilterData={setDateFilterData}
+      />
+      <UsersDataTable
+        userType={userType}
+        setUserType={setUserType}
+        route={route}
+        tableRef={tableRef}
+        dateFilterData={dateFilterData}
+      />
     </section>
   );
 };

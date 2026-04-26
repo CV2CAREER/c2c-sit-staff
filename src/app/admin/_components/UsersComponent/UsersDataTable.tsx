@@ -33,6 +33,7 @@ import { Combobox } from "@/components/ui/combobox";
 import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
+import { IDateFilter } from "@/types/common";
 
 
 
@@ -46,14 +47,15 @@ interface UsersDataTableProps {
   route?: any
   userType: {
     user: string;
-    status: string;
+    usersDataState: string;
     plan: string;
   };
   setUserType: (data: any) => void;
   tableRef: any
+  dateFilterData: IDateFilter;
 }
 
-const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, tableRef, route = "admin"}) => {
+const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, tableRef, dateFilterData, route = "admin"}) => {
   /*---- State ----*/
   const [usersDataState, setUsersDataState] = useState<
     "active" | "recycle"
@@ -97,6 +99,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     q: searchQuery,
     userType: userType?.user !== "all" ? userType?.user?.toLowerCase() : undefined,
     plan: userType?.plan !== "all" ? userType?.plan?.toLowerCase() : undefined,
+    startDate: dateFilterData.startDate ?? undefined,
+    endDate: dateFilterData.endDate ?? undefined,
   });
 
   // Legacy query removed - all filtering now handled by useGetAllUsers
@@ -427,7 +431,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
           list={rows
             .map((user: any) => ({
             value: user.id,
-            label: `${user.firstName} ${user.middleName} ${user.lastName}`,
+            label: [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ").trim() || user.email || "Unnamed User",
           }))
             .sort((a, b) => a.label.localeCompare(b.label)) // <- alphabetical magic
           }

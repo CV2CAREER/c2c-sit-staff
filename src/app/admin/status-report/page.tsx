@@ -38,9 +38,6 @@ const StatusReportPage = () => {
     fetchBotStatus: true, // We still use this to trigger the mapping in admin.api.ts
   });
   
-  const { answerModeDomain } = useAdminQueries({ fetchAnswerMode: true });
-  const { data: answerModeData, isLoading: isAnswerModeDataLoading, error: answerModeError } = answerModeDomain;
-
   // --- Centralized API Hooks (Mutations) ---
   const { toggleBotMutation, updateAnswerModeMutation } = useAdminMutations();
 
@@ -121,6 +118,14 @@ const StatusReportPage = () => {
       setAnswerMode(consolidatedAnswerDomain.data[0].mode.toUpperCase() as AnswerModeState);
     }
   }, [consolidatedAnswerDomain.data]);
+
+  useEffect(() => {
+    const pollId = window.setInterval(() => {
+      adminStatusDomain.refetch?.();
+    }, 15000);
+
+    return () => window.clearInterval(pollId);
+  }, [adminStatusDomain.refetch]);
 
   const isInitialLoading = isBotStatusLoading || consolidatedAnswerDomain.isLoading;
 
