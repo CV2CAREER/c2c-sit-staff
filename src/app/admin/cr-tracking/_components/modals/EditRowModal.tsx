@@ -236,11 +236,11 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
           `${endpoints.ADMIN_CR_TRACKING_HISTORY}?customId=${rowData?.id}&id=${rowData?._id}&page=${crLogPage}`
         );
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = res.data as any;
-        setCrLogs(data.data);
-        setHasNextPage(data.hasNextPage);
-        setHasPrevPage(data.hasPrevPage);
-        setTotalLogs(data.totalCrHistoryLog);
+        const payload = res.data?.data as any;
+        setCrLogs(payload?.data || []);
+        setHasNextPage(Boolean(payload?.hasNextPage));
+        setHasPrevPage(Boolean(payload?.hasPrevPage));
+        setTotalLogs(Number(payload?.totalCrHistoryLog || 0));
       } catch{
         toast.error("Failed to fetch history logs.");
       } finally {
