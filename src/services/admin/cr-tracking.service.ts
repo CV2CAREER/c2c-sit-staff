@@ -305,6 +305,9 @@ export class CRTrackingService {
       delete normalized.newRow;
       delete normalized.trackerId;
       delete normalized.counter;
+      delete normalized.createdBy;
+      delete normalized.creator;
+      delete normalized.cardName;
       delete normalized.createdAt;
       delete normalized.updatedAt;
 

@@ -13,6 +13,10 @@ export const getCROptions = catchAsyncError(async (req: Request, res: Response) 
   try {
     const { type } = req.query;
     const options = await CROptionsService.getAllOptions(type as string);
+    const singleTypeRequest = typeof type === "string" && type.trim().toLowerCase() !== "all";
+    if (singleTypeRequest) {
+      return res.apiSuccess(options.data, options.message, 200);
+    }
     return res.apiSuccess(options, options.message, 200);
 
   } catch (error: any) {
