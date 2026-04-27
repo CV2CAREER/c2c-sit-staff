@@ -87,12 +87,16 @@ export class TrainingTrackerService {
   /**
    * Get training trackers with filters
    */
-  static async getAll(filters: { sessionId?: string; isDeleted?: boolean } = {}) {
+  static async getAll(filters: { sessionId?: string; sessionNumber?: number; isDeleted?: boolean } = {}) {
     try {
       const whereClause: any = {};
 
       if (filters.sessionId) {
         whereClause.sessionId = filters.sessionId;
+      }
+
+      if (typeof filters.sessionNumber === "number") {
+        whereClause.sessionNumber = filters.sessionNumber;
       }
 
       if (typeof filters.isDeleted === 'boolean') {
@@ -154,7 +158,11 @@ export class TrainingTrackerService {
       const existing = await TrainingTracker.findOne({
         where: {
           fullName: data.fullName,
-          sessionId: data.sessionId
+          ...(typeof data.sessionNumber === "number"
+            ? { sessionNumber: data.sessionNumber }
+            : data.sessionId
+              ? { sessionId: data.sessionId }
+              : {}),
         }
       });
 
@@ -176,7 +184,7 @@ export class TrainingTrackerService {
 📝 **Training Tracker Created** 📝
 • Created by: ${user.email}
 • Candidate: ${tracker.fullName}
-• Session ID: ${tracker.sessionId}
+• Session: ${tracker.sessionNumber || tracker.sessionId || "N/A"}
 • Assessment Score: ${data.assessment}
 • PC Assessment Score: ${data.pcAssessment}
       `;
@@ -388,7 +396,11 @@ export class TrainingTrackerService {
    * Export Training Tracker data as CSV
    * Can filter by sessionId or trackerId
    */
-  static async exportToCSV(req: any, filters: { sessionId?: string; trackerId?: string } = {}, user: any): Promise<string> {
+  static async exportToCSV(
+    req: any,
+    filters: { sessionId?: string; sessionNumber?: number; trackerId?: string } = {},
+    user: any
+  ): Promise<string> {
     try {
       const host = req.headers.host || req.headers.origin || "localhost";
       
@@ -399,6 +411,9 @@ export class TrainingTrackerService {
       }
       if (filters.sessionId) {
         whereClause.sessionId = filters.sessionId;
+      }
+      if (typeof filters.sessionNumber === "number") {
+        whereClause.sessionNumber = filters.sessionNumber;
       }
 
       const trackers = await TrainingTracker.findAll({
@@ -421,7 +436,7 @@ export class TrainingTrackerService {
         userFirstName: tracker.user?.firstName,
         userLastName: tracker.user?.lastName,
         sessionId: tracker.session?.id,
-        sessionNumber: (tracker.session as any)?.number,
+        sessionNumber: tracker.sessionNumber ?? (tracker.session as any)?.number,
         sessionName: (tracker.session as any)?.name,
         pcEmail: tracker.pc?.email,
         pcFirstName: tracker.pc?.firstName,
@@ -470,6 +485,7 @@ export class TrainingTrackerService {
 • Exported by: ${user.email}
 • Number of records: ${trackers.length}
 ${filters.sessionId ? `• Filter: Session ID = ${filters.sessionId}` : ''}
+${typeof filters.sessionNumber === "number" ? `• Filter: Session Number = ${filters.sessionNumber}` : ""}
 ${filters.trackerId ? `• Filter: Tracker ID = ${filters.trackerId}` : ''}
       `;
       await this.notifySlack(host, "Exported", message, user);

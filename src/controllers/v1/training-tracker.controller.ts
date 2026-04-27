@@ -4,7 +4,6 @@ import ErrorHandler from "../../utils/errorHandler";
 import { TrainingTrackerService } from "../../services/training-tracker.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import { User } from "../../models/v1/user.model";
-import { Session } from "../../models/v1/session.model";
 
 const logger = getServiceLogger("training-tracker-controller");
 
@@ -21,6 +20,17 @@ const normalizeTrainingPayload = async (payload: any) => {
 
   if (normalized.coachId && !normalized.pcId) {
     normalized.pcId = normalized.coachId;
+  }
+
+  if (
+    normalized.sessionNumber !== undefined &&
+    normalized.sessionNumber !== null &&
+    normalized.sessionNumber !== ""
+  ) {
+    const parsedSessionNumber = Number(normalized.sessionNumber);
+    normalized.sessionNumber = Number.isFinite(parsedSessionNumber)
+      ? parsedSessionNumber
+      : undefined;
   }
 
   if (!normalized.fullName && normalized.userId) {
@@ -50,7 +60,7 @@ const normalizeTrainingResponse = (row: any) => {
     _id: plain.id,
     traineeId: plain.userId,
     coachId: plain.pcId,
-    sessionNumber: plain.session?.number,
+    sessionNumber: plain.sessionNumber ?? plain.session?.number,
   };
 };
 
@@ -59,27 +69,16 @@ const normalizeTrainingResponse = (row: any) => {
  */
 export const getTrainingTrackers = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    let sessionId = req.query.sessionId as string;
+    const sessionId = req.query.sessionId as string;
     const sessionNumberQuery = req.query.sessionNumber as string | undefined;
-
-    if (!sessionId && sessionNumberQuery) {
-      const sessionNumber = Number(sessionNumberQuery);
-      if (Number.isFinite(sessionNumber)) {
-        try {
-          const session = await Session.findOne({
-            where: { number: sessionNumber } as any,
-            attributes: ["id"],
-            raw: true,
-          });
-          sessionId = (session as any)?.id;
-        } catch (sessionLookupError) {
-          logger.warn(`Could not map sessionNumber=${sessionNumber} to sessionId`);
-        }
-      }
-    }
+    const sessionNumber =
+      sessionNumberQuery !== undefined && sessionNumberQuery !== ""
+        ? Number(sessionNumberQuery)
+        : undefined;
 
     const filters = {
       sessionId,
+      sessionNumber: Number.isFinite(sessionNumber as number) ? sessionNumber : undefined,
       isDeleted: req.query.isDeleted === "true"
     };
 
