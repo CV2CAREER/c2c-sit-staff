@@ -144,6 +144,7 @@ export const useCRTrackingQueries = (options: AdminQueriesOptions) => {
         data: crOptions.data?.data,
         isLoading: crOptions.isLoading,
         isSuccess: crOptions.isSuccess,
+        refetch: crOptions.refetch,
       },
       crHistoryDomain: {
         data: crHistory.data?.data,

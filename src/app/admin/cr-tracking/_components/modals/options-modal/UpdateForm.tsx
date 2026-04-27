@@ -194,7 +194,7 @@ const UpdateForm: React.FC<UpdateFormProps> = ({
             />
             <FormField
               // @ts-ignore
-              control={form.contol}
+              control={form.control}
               name="slackId"
               render={({ field }) => (
                 <FormItem>

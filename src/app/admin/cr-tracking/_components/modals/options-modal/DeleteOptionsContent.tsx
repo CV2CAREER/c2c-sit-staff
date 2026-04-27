@@ -27,6 +27,7 @@ interface DeleteOptionConfig {
 
 const DeleteOptionsContent: React.FC<OptionsContentProps> = ({
   onCloseModal,
+  onSuccess,
   owners,
   changes,
   severities,
@@ -131,7 +132,7 @@ const DeleteOptionsContent: React.FC<OptionsContentProps> = ({
           return (
             <DeleteForm
               onClose={() => setActiveTab("select")}
-              onSuccess={() => null} // Pass onDelete as onSuccess to generic form
+              onSuccess={onSuccess}
               items={currentOption.data}
               itemType={currentOption.type}
               itemLabelField={currentOption.itemLabelField}

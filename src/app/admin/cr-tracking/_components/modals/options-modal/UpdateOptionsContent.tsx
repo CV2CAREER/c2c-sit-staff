@@ -24,6 +24,7 @@ interface UpdateOptionConfig {
 
 const UpdateOptionsContent: React.FC<OptionsContentProps> = ({
   onCloseModal,
+  onSuccess,
   owners,
   changes,
   severities,
@@ -128,7 +129,7 @@ const UpdateOptionsContent: React.FC<OptionsContentProps> = ({
           return (
             <UpdateForm
               onClose={() => setActiveTab("select")}
-              onSuccess={() => null}
+              onSuccess={onSuccess}
               items={currentOption.data}
               itemType={currentOption.type}
               itemLabelField={currentOption.itemLabelField}

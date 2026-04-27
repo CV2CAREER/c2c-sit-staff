@@ -106,7 +106,7 @@ const AddForm: React.FC<AddFormProps> = ({
       const response = await axiosInstance.get(
         `${endpoints.ADMIN_CR_TRACKING_OPTIONS}?type=${itemType}`
       );
-      setExistingItems(response.data.data);
+      setExistingItems(response.data.data || []);
     } catch {
       toast.error(`Failed to fetch existing ${itemType.replace(/-/g, " ")}`);
     }

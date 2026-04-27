@@ -44,7 +44,9 @@ const CudOptionsDialog: React.FC<CudOptionsDialogProps> = ({
     }
   }, [isOpen, initialTab]);
 
-  const handleSuccess = () => {};
+  const handleSuccess = () => {
+    crOptionsDomain.refetch?.();
+  };
 
   // Extract data from the consolidated response for passing to child components
   const owners = data?.allCROwnersData || [];

@@ -10,7 +10,7 @@ interface AddOptionConfig {
   itemLabelField?: string;
 }
 
-const AddOptionsContent: React.FC<OptionsContentProps> = ({ onCloseModal }) => {
+const AddOptionsContent: React.FC<OptionsContentProps> = ({ onCloseModal, onSuccess }) => {
   const [activeTab, setActiveTab] = useState("select");
 
   const addOptions: AddOptionConfig[] = [
@@ -78,7 +78,7 @@ const AddOptionsContent: React.FC<OptionsContentProps> = ({ onCloseModal }) => {
           return (
             <AddForm
               onClose={() => setActiveTab("select")}
-              onSuccess={() => null}
+              onSuccess={onSuccess}
               itemType={currentOption.type}
               itemLabelField={currentOption.itemLabelField}
             />
