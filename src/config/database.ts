@@ -5,6 +5,7 @@ import { getServiceLogger } from "../utils/createLogger";
 import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
+import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
 import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -23,6 +24,10 @@ const ensureTrainingTrackerSessions = async () => {
       },
     });
   }
+};
+
+const ensureCRTrackingHistoryTable = async () => {
+  await CRTrackingHistory.sync({ force: false });
 };
 
 export const connectDB = async (): Promise<void> => {
@@ -53,6 +58,7 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         await ensureTrainingTrackerSessions();
+        await ensureCRTrackingHistoryTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -106,6 +112,7 @@ export const connectDB = async (): Promise<void> => {
 
         await newSequelize.sync({ alter: true });
         await ensureTrainingTrackerSessions();
+        await ensureCRTrackingHistoryTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

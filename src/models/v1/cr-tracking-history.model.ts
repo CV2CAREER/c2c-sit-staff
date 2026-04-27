@@ -19,7 +19,6 @@ import { CRTracking } from "./cr-tracking.model";
   timestamps: false,
   indexes: [
     { name: "idx_cr_history_cr_id", fields: ["crId"] },
-    { name: "idx_cr_history_custom_id", fields: ["crCustomId"] },
     { name: "idx_cr_history_created_at", fields: ["createdAt"] }
   ]
 })
