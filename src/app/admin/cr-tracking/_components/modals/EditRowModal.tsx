@@ -876,8 +876,8 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
                     {...restField}
                     isMulti
                     options={personas.map((p) => ({
-                      value: p.name,
-                      label: p.name,
+                      value: p.value || p.label || p.name || "",
+                      label: p.label || p.name || p.value || "",
                     }))}
                     value={value?.map((val:any) => ({ value: val, label: val }))}
                     onChange={(options) => {
@@ -906,8 +906,8 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
                     {...restField}
                     isMulti
                     options={impactedProviders.map((p) => ({
-                      value: p.name,
-                      label: p.name,
+                      value: p.value || p.label || p.name || "",
+                      label: p.label || p.name || p.value || "",
                     }))}
                     value={value?.map((val:any) => ({ value: val, label: val }))}
                     onChange={(options) => {
@@ -936,8 +936,8 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
                     {...restField}
                     isMulti
                     options={impactedNodes.map((p) => ({
-                      value: p.name,
-                      label: p.name,
+                      value: p.value || p.label || p.name || "",
+                      label: p.label || p.name || p.value || "",
                     }))}
                     value={value?.map((val:any) => ({ value: val, label: val }))}
                     onChange={(options) => {
