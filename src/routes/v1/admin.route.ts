@@ -78,6 +78,7 @@ import trainingTrackerRouterV1 from "./training-tracker.route";
 import crTrackingRouterV1 from "./cr-tracking.route";
 import crEOTRouterV1 from "./cr-eot.route";
 import adminAiRouterV1 from "./admin-ai.route";
+import adminDocumentRouterV1 from "./admin-document.route";
 const adminRouterV1 = Router();
 
 adminRouterV1.use("/client-sample", clientSampleRouterV1);
@@ -126,6 +127,7 @@ adminRouterV1.use(
   "/trackers/cr",
   crTrackingRouterV1,
 );
+adminRouterV1.use("/documents", adminDocumentRouterV1);
 adminRouterV1.all(
   "/support-ai-prompt",
   checkBlacklistedTokens,
