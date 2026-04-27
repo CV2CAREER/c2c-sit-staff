@@ -14,6 +14,51 @@ const logger = getServiceLogger("cr-tracking-service");
  * Optimized for speed and stability
  */
 export class CRTrackingService {
+  private static buildCRName(payload: Record<string, any>) {
+    const candidates = [payload?.name, payload?.description, payload?.changeType, payload?.crType];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return `CR ${new Date().toISOString()}`;
+  }
+
+  private static normalizeCreatePayload(data: any) {
+    const payload: any = { ...(data || {}) };
+
+    if (payload.crStatus && !payload.status) {
+      payload.status = payload.crStatus;
+    }
+    delete payload.crStatus;
+    delete payload._id;
+
+    if (payload.nil && !payload.NIL) {
+      payload.NIL = payload.nil;
+    }
+    delete payload.nil;
+
+    if (payload.change && !payload.changeType) {
+      payload.changeType = payload.change;
+    }
+    delete payload.change;
+
+    if (payload.futureStateImageUrls && !payload.futureStateImageURLs) {
+      payload.futureStateImageURLs = payload.futureStateImageUrls;
+    }
+    delete payload.futureStateImageUrls;
+
+    if (payload.currentStateImageUrls && !payload.currentStateImageURLs) {
+      payload.currentStateImageURLs = payload.currentStateImageUrls;
+    }
+    delete payload.currentStateImageUrls;
+
+    payload.name = this.buildCRName(payload);
+
+    return payload;
+  }
 
   /**
    * Send Slack notification
@@ -75,6 +120,8 @@ export class CRTrackingService {
           ...plain,
           _id: plain.id,
           id: plain.changeRequestId || plain.id,
+          name: plain.name || plain.description || "",
+          cardName: plain.name || plain.description || "",
           crStatus: plain.status,
           owner: plain.owner?.name || plain.owner || "",
           ownerEmail: plain.ownerEmail || plain.owner?.email || "",
@@ -627,13 +674,7 @@ export class CRTrackingService {
   static async create(req: any, data: any, user: any) {
     try {
       const host = req.headers.host || req.headers.origin || "localhost";
-      const payload: any = { ...(data || {}) };
-
-      if (payload.crStatus && !payload.status) {
-        payload.status = payload.crStatus;
-      }
-      delete payload.crStatus;
-      delete payload._id;
+      const payload = this.normalizeCreatePayload(data);
 
       if (typeof payload.impactedPersona === "string") {
         payload.impactedPersona = payload.impactedPersona
