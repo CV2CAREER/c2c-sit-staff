@@ -262,7 +262,7 @@ export const deleteTrainingTracker = catchAsyncError(async (req: any, res: Respo
 
     await TrainingTrackerService.delete(req, id, req.user);
 
-    return res.apiSuccess({}, "Training tracker permanently deleted successfully", 204);
+    return res.apiSuccess({}, "Training tracker permanently deleted successfully", 200);
   } catch (error: any) {
     logger.error(`❌ Failed to delete training tracker: ${error.message}`);
 
