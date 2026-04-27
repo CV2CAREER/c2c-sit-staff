@@ -4,6 +4,7 @@ import ErrorHandler from "../../utils/errorHandler";
 import { TrainingTrackerService } from "../../services/training-tracker.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import { User } from "../../models/v1/user.model";
+import { Session } from "../../models/v1/session.model";
 
 const logger = getServiceLogger("training-tracker-controller");
 
@@ -28,10 +29,20 @@ const normalizeTrainingPayload = async (payload: any) => {
     normalized.sessionNumber !== ""
   ) {
     const parsedSessionNumber = Number(normalized.sessionNumber);
-    normalized.sessionNumber = Number.isFinite(parsedSessionNumber)
-      ? parsedSessionNumber
-      : undefined;
+    if (Number.isFinite(parsedSessionNumber)) {
+      const session = await Session.findOne({
+        where: { number: parsedSessionNumber } as any,
+        attributes: ["id"],
+        raw: true,
+      });
+
+      if (session?.id && !normalized.sessionId) {
+        normalized.sessionId = session.id;
+      }
+    }
   }
+
+  delete normalized.sessionNumber;
 
   if (!normalized.fullName && normalized.userId) {
     const user = await User.findByPk(normalized.userId, {
@@ -60,7 +71,7 @@ const normalizeTrainingResponse = (row: any) => {
     _id: plain.id,
     traineeId: plain.userId,
     coachId: plain.pcId,
-    sessionNumber: plain.sessionNumber ?? plain.session?.number,
+    sessionNumber: plain.session?.number,
   };
 };
 
@@ -69,16 +80,27 @@ const normalizeTrainingResponse = (row: any) => {
  */
 export const getTrainingTrackers = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    const sessionId = req.query.sessionId as string;
+    let sessionId = req.query.sessionId as string;
     const sessionNumberQuery = req.query.sessionNumber as string | undefined;
-    const sessionNumber =
-      sessionNumberQuery !== undefined && sessionNumberQuery !== ""
-        ? Number(sessionNumberQuery)
-        : undefined;
+
+    if (!sessionId && sessionNumberQuery) {
+      const sessionNumber = Number(sessionNumberQuery);
+      if (Number.isFinite(sessionNumber)) {
+        try {
+          const session = await Session.findOne({
+            where: { number: sessionNumber } as any,
+            attributes: ["id"],
+            raw: true,
+          });
+          sessionId = (session as any)?.id;
+        } catch (sessionLookupError) {
+          logger.warn(`Could not map sessionNumber=${sessionNumber} to sessionId`);
+        }
+      }
+    }
 
     const filters = {
       sessionId,
-      sessionNumber: Number.isFinite(sessionNumber as number) ? sessionNumber : undefined,
       isDeleted: req.query.isDeleted === "true"
     };
 
