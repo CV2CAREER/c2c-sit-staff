@@ -38,7 +38,6 @@ export class CREOTService {
       if (variance === 'owners') {
         const owners = await CROwner.findAll({
           attributes: ['id', 'name', 'email', 'slackId', 'role'],
-          where: { active: true },
           raw: true,
           order: [['name', 'ASC']]
         });

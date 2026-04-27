@@ -36,6 +36,7 @@ import { TrainingTracker } from "../models/v1/training-tracker.model";
 import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 import { SalesOperation } from "../models/v1/sales-operation.model";
 import { CRTracking } from "../models/v1/cr-tracking.model";
+import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
 import { CROwner } from "../models/v1/cr/owner.model";
 import { CRChange } from "../models/v1/cr/change.model";
 import { CRSeverity } from "../models/v1/cr/severity.model";
@@ -96,6 +97,7 @@ export const modelList = [
   TrainingTrackerSession,
   SalesOperation,
   CRTracking,
+  CRTrackingHistory,
   CROwner,
   CRChange,
   CRSeverity,
