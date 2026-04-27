@@ -21,14 +21,18 @@ export class CREOTService {
     try {
       if (variance === 'CRs') {
         const crs = await CRTracking.findAll({
-          attributes: ['id', 'CRID', 'description'],
-          where: { status: 'ACTIVE' },
+          attributes: ['id', 'changeRequestId', 'description'],
+          where: { isDeleted: false },
           raw: true,
-          order: [['CRID', 'ASC']]
+          order: [['createdAt', 'DESC']]
         });
 
         logger.info(`✅ EOT CR options loaded successfully`);
-        return crs;
+        return crs.map((row: any) => ({
+          _id: row.id,
+          id: row.changeRequestId || row.id,
+          description: row.description || "",
+        }));
       }
 
       if (variance === 'owners') {
@@ -191,7 +195,7 @@ export class CREOTService {
           teamMentions: "CSM",
           body: `⏱️ *EXTENSION OF TIME REQUEST* ⏱️
 • Created by: ${user.email}
-• CR: ${cr?.CRID || 'N/A'} - ${cr?.description || 'N/A'}
+• CR: ${cr?.changeRequestId || cr?.id || 'N/A'} - ${cr?.description || 'N/A'}
 • Developer: ${developer?.name || 'N/A'}
 • Requested Hours: ${eot.numberOfHours} hours
 • NIL: ${nil?.name || 'N/A'}
