@@ -240,29 +240,21 @@ export const CRTrackingPage1Form = ({
     setIsAddingUrl(true);
 
     try {
-      const response = await fetch('/api/admin/documents/validate-and-upload-url', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: urlInput }),
-      });
+      const response = await axiosInstance.post(
+        endpoints.ADMIN_CR_TRACKING_VALIDATE_URL,
+        { url: urlInput },
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.message === 'URL is a valid image') {
-          if (stateType === 'current') {
-            setCurrentStateImageURLs((prevUrls) => [...prevUrls, urlInput]);
-          } else {
-            setFutureStateImageURLs((prevUrls) => [...prevUrls, urlInput]);
-          }
-          setUrlInput('');
-          toast.success('Image URL added successfully');
+      if (response.data?.message === 'URL is a valid image') {
+        if (stateType === 'current') {
+          setCurrentStateImageURLs((prevUrls) => [...prevUrls, urlInput]);
         } else {
-          toast.error('Invalid image URL');
+          setFutureStateImageURLs((prevUrls) => [...prevUrls, urlInput]);
         }
+        setUrlInput('');
+        toast.success('Image URL added successfully');
       } else {
-        toast.error("Failed to add URL. Please ensure it's a valid image URL.");
+        toast.error('Invalid image URL');
       }
     } catch {
       toast.error("Failed to add URL. Please ensure it's a valid image URL.");
