@@ -19,6 +19,54 @@ const logger = getServiceLogger("cr-options-service");
  * Returns all dropdown select options for CR Tracking
  */
 export class CROptionsService {
+  private static getDisplayValue(row: Record<string, any>) {
+    const raw = row?.name ?? row?.label ?? row?.value ?? "";
+    return typeof raw === "string" ? raw.trim() : String(raw || "").trim();
+  }
+
+  private static normalizeOptionRow(type: string, row: Record<string, any>) {
+    const id = row?.id || row?._id;
+    const display = this.getDisplayValue(row);
+    const base = {
+      ...row,
+      id,
+      _id: id,
+      name: display,
+      label: display,
+      value: display,
+    };
+
+    if (type === "owner") {
+      return {
+        ...base,
+        email: row?.email ?? null,
+        slackId: row?.slackId ?? null,
+        role: row?.role ?? null,
+      };
+    }
+
+    return base;
+  }
+
+  private static normalizeOptionRows(type: string, rows: any[]) {
+    return rows.map((row) => this.normalizeOptionRow(type, row));
+  }
+
+  private static normalizeOptionPayload(type: string, data: Record<string, any>) {
+    const display = this.getDisplayValue(data);
+
+    if (type === "persona") {
+      return {
+        ...data,
+        label: display,
+      };
+    }
+
+    return {
+      ...data,
+      name: display,
+    };
+  }
 
   /**
    * Get all CR options in single consolidated response
@@ -38,7 +86,7 @@ export class CROptionsService {
         logger.info(`✅ CR ${type} options loaded successfully`);
         return {
           message: `CR ${type} options retrieved successfully`,
-          data: data
+          data: this.normalizeOptionRows(type, data)
         };
       }
 
@@ -69,15 +117,15 @@ export class CROptionsService {
 
       return {
         message: "All CR Options retrieved successfully",
-        allCROwnersData: owners,
-        allCRChangesData: changes,
-        allCRSeveritiesData: severities,
-        allCRFamiliesData: families,
-        allCRStagesData: stages,
-        allCRTypesData: types,
-        allCRImpactedPersonasData: personas,
-        allCRImpactedProvidersData: providers,
-        allCRImpactedNodesData: nodes
+        allCROwnersData: this.normalizeOptionRows("owner", owners),
+        allCRChangesData: this.normalizeOptionRows("change", changes),
+        allCRSeveritiesData: this.normalizeOptionRows("severity", severities),
+        allCRFamiliesData: this.normalizeOptionRows("family", families),
+        allCRStagesData: this.normalizeOptionRows("stage", stages),
+        allCRTypesData: this.normalizeOptionRows("type", types),
+        allCRImpactedPersonasData: this.normalizeOptionRows("persona", personas),
+        allCRImpactedProvidersData: this.normalizeOptionRows("provider", providers),
+        allCRImpactedNodesData: this.normalizeOptionRows("node", nodes)
       };
 
     } catch (error: any) {
@@ -145,7 +193,8 @@ export class CROptionsService {
         throw new Error(`Invalid option type: ${type}`);
       }
 
-      const item = await Model.create(data);
+      const payload = this.normalizeOptionPayload(type, data);
+      const item = await Model.create(payload);
 
       const nameField = type === 'persona' ? 'label' : 'name';
       await this.notifySlack(host, "Created", type, item[nameField], user);
@@ -175,7 +224,8 @@ export class CROptionsService {
         throw new Error(`CR ${type} option not found`);
       }
 
-      await item.update(data);
+      const payload = this.normalizeOptionPayload(type, data);
+      await item.update(payload);
 
       const nameField = type === 'persona' ? 'label' : 'name';
       await this.notifySlack(host, "Updated", type, item[nameField], user);
