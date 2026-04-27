@@ -4,9 +4,30 @@ import ErrorHandler from "../../utils/errorHandler";
 import { TrainingTrackerService } from "../../services/training-tracker.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import { User } from "../../models/v1/user.model";
-import { Session } from "../../models/v1/session.model";
+import { TrainingTrackerSession } from "../../models/v1/training-tracker-session.model";
 
 const logger = getServiceLogger("training-tracker-controller");
+
+const resolveTrainingSessionId = async (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsedSessionNumber = Number(value);
+  if (!Number.isFinite(parsedSessionNumber)) {
+    return undefined;
+  }
+
+  const [session] = await TrainingTrackerSession.findOrCreate({
+    where: { sessionNumber: parsedSessionNumber },
+    defaults: {
+      sessionNumber: parsedSessionNumber,
+      name: `Session ${parsedSessionNumber}`,
+    },
+  });
+
+  return session.id;
+};
 
 const normalizeTrainingPayload = async (payload: any) => {
   const normalized = { ...(payload || {}) };
@@ -23,22 +44,10 @@ const normalizeTrainingPayload = async (payload: any) => {
     normalized.pcId = normalized.coachId;
   }
 
-  if (
-    normalized.sessionNumber !== undefined &&
-    normalized.sessionNumber !== null &&
-    normalized.sessionNumber !== ""
-  ) {
-    const parsedSessionNumber = Number(normalized.sessionNumber);
-    if (Number.isFinite(parsedSessionNumber)) {
-      const session = await Session.findOne({
-        where: { number: parsedSessionNumber } as any,
-        attributes: ["id"],
-        raw: true,
-      });
-
-      if (session?.id && !normalized.sessionId) {
-        normalized.sessionId = session.id;
-      }
+  if (!normalized.sessionId) {
+    const sessionId = await resolveTrainingSessionId(normalized.sessionNumber);
+    if (sessionId) {
+      normalized.sessionId = sessionId;
     }
   }
 
@@ -71,7 +80,7 @@ const normalizeTrainingResponse = (row: any) => {
     _id: plain.id,
     traineeId: plain.userId,
     coachId: plain.pcId,
-    sessionNumber: plain.session?.number,
+    sessionNumber: plain.session?.sessionNumber,
   };
 };
 
@@ -80,23 +89,11 @@ const normalizeTrainingResponse = (row: any) => {
  */
 export const getTrainingTrackers = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    let sessionId = req.query.sessionId as string;
+    let sessionId = req.query.sessionId as string | undefined;
     const sessionNumberQuery = req.query.sessionNumber as string | undefined;
 
     if (!sessionId && sessionNumberQuery) {
-      const sessionNumber = Number(sessionNumberQuery);
-      if (Number.isFinite(sessionNumber)) {
-        try {
-          const session = await Session.findOne({
-            where: { number: sessionNumber } as any,
-            attributes: ["id"],
-            raw: true,
-          });
-          sessionId = (session as any)?.id;
-        } catch (sessionLookupError) {
-          logger.warn(`Could not map sessionNumber=${sessionNumber} to sessionId`);
-        }
-      }
+      sessionId = await resolveTrainingSessionId(sessionNumberQuery);
     }
 
     const filters = {
@@ -282,13 +279,7 @@ export const deleteTrainingTracker = catchAsyncError(async (req: any, res: Respo
  */
 export const getAllSessions = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    const filters = {
-      coachId: req.query.coachId as string,
-      clientId: req.query.clientId as string,
-      sessionStatus: req.query.sessionStatus as string
-    };
-
-    const sessions = await TrainingTrackerService.getAllSessions(filters);
+    const sessions = await TrainingTrackerService.getAllSessions();
 
     return res.apiSuccess(
       sessions.map((row: any) => {
@@ -296,6 +287,7 @@ export const getAllSessions = catchAsyncError(async (req: Request, res: Response
         return {
           ...plain,
           _id: plain.id,
+          sessionNumber: plain.sessionNumber,
         };
       }),
       "Sessions retrieved successfully",

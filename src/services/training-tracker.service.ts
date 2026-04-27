@@ -1,5 +1,5 @@
 import { TrainingTracker } from "../models/v1/training-tracker.model";
-import { Session } from "../models/v1/session.model";
+import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 import { getServiceLogger } from "../utils/createLogger";
 import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
@@ -103,7 +103,7 @@ export class TrainingTrackerService {
         where: whereClause,
         include: [
           { association: "user", attributes: ["id", "email", "firstName", "lastName"] },
-          { association: "session", attributes: ["id", "number", "name"] },
+          { association: "session", attributes: ["id", "sessionNumber", "name"] },
           { association: "pc", attributes: ["id", "email", "firstName", "lastName"] }
         ],
         order: [["createdAt", "DESC"]],
@@ -126,7 +126,7 @@ export class TrainingTrackerService {
       const tracker = await TrainingTracker.findByPk(id, {
         include: [
           { association: "user", attributes: ["id", "email", "firstName", "lastName"] },
-          { association: "session", attributes: ["id", "number", "name"] },
+          { association: "session", attributes: ["id", "sessionNumber", "name"] },
           { association: "pc", attributes: ["id", "email", "firstName", "lastName"] }
         ]
       });
@@ -351,29 +351,10 @@ export class TrainingTrackerService {
   /**
    * Get all sessions with client and coach details
    */
-  static async getAllSessions(filters: { coachId?: string; clientId?: string; sessionStatus?: string } = {}) {
+  static async getAllSessions() {
     try {
-      const whereClause: any = {};
-
-      if (filters.coachId) {
-        whereClause.coachId = filters.coachId;
-      }
-
-      if (filters.clientId) {
-        whereClause.clientId = filters.clientId;
-      }
-
-      if (filters.sessionStatus) {
-        whereClause.sessionStatus = filters.sessionStatus;
-      }
-
-      const sessions = await Session.findAll({
-        where: whereClause,
-        include: [
-          { association: "client", attributes: ["id", "email", "firstName", "lastName", "country"] },
-          { association: "coach", attributes: ["id", "email", "firstName", "lastName"] }
-        ],
-        order: [["createdAt", "DESC"]]
+      const sessions = await TrainingTrackerSession.findAll({
+        order: [["sessionNumber", "ASC"]],
       });
 
       logger.info(`✅ Retrieved ${sessions.length} sessions`);
@@ -405,7 +386,7 @@ export class TrainingTrackerService {
         where: whereClause,
         include: [
           { association: "user", attributes: ["email", "firstName", "lastName"] },
-          { association: "session", attributes: ["id", "number", "name"] },
+          { association: "session", attributes: ["id", "sessionNumber", "name"] },
           { association: "pc", attributes: ["email", "firstName", "lastName"] }
         ],
         order: [["createdAt", "DESC"]],
@@ -421,7 +402,7 @@ export class TrainingTrackerService {
         userFirstName: tracker.user?.firstName,
         userLastName: tracker.user?.lastName,
         sessionId: tracker.session?.id,
-        sessionNumber: (tracker.session as any)?.number,
+        sessionNumber: (tracker.session as any)?.sessionNumber,
         sessionName: (tracker.session as any)?.name,
         pcEmail: tracker.pc?.email,
         pcFirstName: tracker.pc?.firstName,

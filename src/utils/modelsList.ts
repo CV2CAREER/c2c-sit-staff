@@ -33,6 +33,7 @@ import { UnsubscribedUser } from "../models/v1/unsubscribed-user.model";
 import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 import { Blog } from "../models/v1/blog.model";
 import { TrainingTracker } from "../models/v1/training-tracker.model";
+import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 import { SalesOperation } from "../models/v1/sales-operation.model";
 import { CRTracking } from "../models/v1/cr-tracking.model";
 import { CROwner } from "../models/v1/cr/owner.model";
@@ -92,6 +93,7 @@ export const modelList = [
   PromotionLength,
   Blog,
   TrainingTracker,
+  TrainingTrackerSession,
   SalesOperation,
   CRTracking,
   CROwner,
