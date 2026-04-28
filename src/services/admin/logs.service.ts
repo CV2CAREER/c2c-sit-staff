@@ -107,17 +107,24 @@ export class LogsService {
     }
 
     if (filters.type && filters.type !== "all") {
-      const requestedCategory = filters.type.trim().toLowerCase();
-      const matchingTypes = this.VALID_TYPES.filter(
-        (type) => this.getCategoryFromType(type) === requestedCategory,
-      );
+      const requested = filters.type.trim().toLowerCase();
 
-      if (matchingTypes.length > 0) {
-        andConditions.push({
-          type: {
-            [Op.in]: matchingTypes,
-          },
-        });
+      // Check if it's a direct log type value (e.g. "bot_log", "ai_log")
+      if (this.VALID_TYPES.includes(requested)) {
+        andConditions.push({ type: requested });
+      } else {
+        // Treat as a category (scraper, parser, system)
+        const matchingTypes = this.VALID_TYPES.filter(
+          (type) => this.getCategoryFromType(type) === requested,
+        );
+
+        if (matchingTypes.length > 0) {
+          andConditions.push({
+            type: {
+              [Op.in]: matchingTypes,
+            },
+          });
+        }
       }
     }
 
