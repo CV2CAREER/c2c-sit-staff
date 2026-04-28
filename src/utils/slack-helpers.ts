@@ -220,3 +220,31 @@ export const getSlackUserIdsFromQueue = async (team: string) => {
     return [];
   }
 };
+
+export const getSlackIdByEmail = async (email: string): Promise<string | null> => {
+  try {
+    const slackResponse = await axios.post(
+      "https://slack.com/api/users.lookupByEmail",
+      new URLSearchParams({ email }),
+      {
+        headers: {
+          Authorization: `Bearer ${SLACK_USERS_TOKEN}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+    );
+
+    if (slackResponse?.data?.ok) {
+      return `${slackResponse?.data?.user?.id}`;
+    } else {
+      logger.error(
+        `Error fetching Slack ID for ${email}:`,
+        slackResponse?.data?.error,
+      );
+      return null;
+    }
+  } catch (error) {
+    logger.error("Error fetching Slack ID by email:", error);
+    return null;
+  }
+};

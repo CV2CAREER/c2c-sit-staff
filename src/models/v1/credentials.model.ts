@@ -90,6 +90,19 @@ export class Credentials extends Model {
   @UpdatedAt
   updatedAt!: Date;
 
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
   @Column(DataType.DATE)
   deletedAt?: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedPCName?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedPCEmail?: string;
 }

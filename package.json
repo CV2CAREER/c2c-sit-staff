@@ -21,6 +21,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@digitalocean/gradient": "^0.1.0-alpha.2",
     "@sendgrid/mail": "^8.1.6",
     "@slack/web-api": "^7.14.1",
     "@types/swagger-ui-express": "^4.1.8",

@@ -13,7 +13,10 @@ import { validateSignInInput } from "../validators/input.validator";
 import { signInCredentials } from "./signin.service";
 import BlacklistedToken from "../models/v1/blacklistedToken.model";
 import jwt from "jsonwebtoken";
-import { SIGN_IN_ACCESS_SECRET_KEY } from "../config/env";
+import { Profile } from "../models/v1/profile.model";
+import { Credentials } from "../models/v1/credentials.model";
+import { Aggregator } from "../models/v1/aggregator.model";
+import { Plan } from "../models/v1/plan.model";
 
 const logger = getServiceLogger("user");
 
@@ -202,24 +205,225 @@ export const logoutUser = async (token: string, userId: string) => {
   return { message: "Logout successful" };
 };
 
-// Get all users with role 'client'
-export const getClients = async () => {
-  logger.info(`Retrieving all clients from database`);
+// attributes: [
+//           'id', 'planId', 'campaignEnd',
+//           'weeklyMax', 'assurance', 'orderNumber', 'subDurationDays', 'capitalizedInflight',
+//           'capitalizedFlight', 'capitalizedHold', 'throttleListing', 'aliasEmail', 'aliasPassword',
+//           'externalPassword', 'assignedPcId', 'assignedPcName', 'pcEmail', 'lastApplication',
+//           'firstApplication', 'firstApplicationAggregator', 'lastApplicationSource',
+//           'doneCount', 'doneSource', 'batch', 'caft', 'isAdminTriggered'
+//         ]
 
-  const clients = await User.findAll({
-    where: {
-      role: 'client',
-      isActive: true,
-      isDeleted: false
-    },
+// Get all users with role 'client' - Enhanced with all required fields
+export const getClients = async (query: {
+  page?: number | string;
+  limit?: number | string;
+  status?: string;
+  q?: string;
+} = {}) => {
+  logger.info(`Retrieving clients from database with filters`);
+
+  // Parse query parameters
+  const page = query.page ? parseInt(query.page as string, 10) : 1;
+  const limit = query.limit ? parseInt(query.limit as string, 10) : 20;
+  const status = query.status || 'active';
+  const { q } = query;
+  
+  const where: any = {
+    role: 'client'
+  };
+  
+  // Status filter
+  switch (status) {
+    case 'active':
+      where.isDeleted = false;
+      where.isActive = true;
+      break;
+    case 'deleted':
+      where.isDeleted = true;
+      break;
+    case 'all':
+      // No filter - return all including active and deleted
+      break;
+    default:
+      // Default to active
+      where.isDeleted = false;
+      where.isActive = true;
+  }
+  
+  // Search filter
+  if (q) {
+    where[Op.or] = [
+      { email: { [Op.iLike]: `%${q}%` } },
+      { firstName: { [Op.iLike]: `%${q}%` } },
+      { lastName: { [Op.iLike]: `%${q}%` } },
+    ];
+  }
+
+  // Get total count
+  const total = await User.count({ where });
+
+  // Optimized query with all required joins
+  const options: any = {
+    where,
     attributes: {
       exclude: ['password', 'accessToken', 'adminPassword']
     },
-    order: [['createdAt', 'DESC']]
+    include: [
+      {
+        model: Profile,
+        as: 'profile',
+        required: false,
+        attributes: [
+          'id', 'planId'
+        ]
+      },
+      {
+        model: Credentials,
+        foreignKey: 'clientId',
+        required: true,
+        attributes: [
+          'id', 'seekEmail', 'seekPassword', 'seekAnswerPriority'
+        ]
+      },
+      {
+        model: Aggregator,
+        as: 'aggregators',
+        required: false,
+        attributes: ['name', 'isEnabled']
+      },
+      {
+        model: Plan,
+        as: 'activePlan',
+        required: false,
+        attributes: ['title', 'expiresAt', 'createdAt']
+      }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset: (page - 1) * limit
+  };
+
+  const clients = await User.findAll(options);
+
+  // Transform and calculate all required fields
+  const enhancedClients = clients.map(client => {
+    const clientJson = client.toJSON();
+    const profile = clientJson.profile || {};
+    const credentials = clientJson.credentials || {};
+    const aggregators = clientJson.aggregators || [];
+    
+    // Create aggregator status map
+    const aggregatorStatus: Record<string, boolean> = {};
+    aggregators.forEach((agg: any) => {
+      const key = agg.name.toLowerCase().replace(/\s+/g, '');
+      aggregatorStatus[key] = agg.isEnabled;
+    });
+
+    // Calculate subscription dates from plan
+    const today = new Date();
+    const activePlan = clientJson.activePlan;
+    const planCreatedAt = activePlan?.createdAt ? new Date(activePlan.createdAt) : null;
+    const planDurationDays = activePlan?.durationDays || 0;
+    
+    const subStartDate = planCreatedAt;
+    const subEndDate = planCreatedAt && planDurationDays 
+      ? new Date(planCreatedAt.getTime() + (planDurationDays * 24 * 60 * 60 * 1000)) 
+      : null;
+    
+    // Calculate days remaining / expired
+    let subToExpireDays = 0;
+    let subExpired = false;
+    let subDurationDays = planDurationDays;
+    
+    if (subEndDate) {
+      const diffTime = subEndDate.getTime() - today.getTime();
+      subToExpireDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      subExpired = subToExpireDays < 0;
+      
+      // Calculate remaining days passed
+      if (subStartDate && subDurationDays) {
+        const totalPassed = Math.ceil((today.getTime() - subStartDate.getTime()) / (1000 * 60 * 60 * 24));
+        subDurationDays = Math.max(0, subDurationDays - totalPassed);
+      }
+    }
+
+    // Capitalized status
+    const capitalized = {
+      inflight: !!profile.capitalizedInflight,
+      flight: !!profile.capitalizedFlight,
+      hold: !!profile.capitalizedHold
+    };
+
+    return {
+      // All original user fields
+      ...clientJson,
+      
+      // Additional required fields
+      order: profile.orderNumber,
+      returnCount: clientJson.returnCount || 0,
+      subStartDate: profile.subStartDate,
+      assurance: profile.assurance,
+      weeklyMax: profile.weeklyMax,
+      subDurationDays,
+      subEndDate: profile.subEndDate,
+      graceDuration: profile.graceDuration,
+      campaignEnd: profile.campaignEnd,
+      capitalized,
+      subToExpireDays: Math.max(0, subToExpireDays),
+      subExpired,
+      isActiveTriggeredByAdmin: !!profile.isAdminTriggered,
+      answerPriority: !!credentials.seekAnswerPriority,
+      
+      // Aggregator statuses
+      seekAggregator: !!aggregatorStatus['seek'],
+      linkedinAggregator: !!aggregatorStatus['linkedin'],
+      jobserveAggregator: !!aggregatorStatus['jobserve'],
+      escapecityAggregator: !!aggregatorStatus['escapecity'],
+      workforceaustraliaAggregator: !!aggregatorStatus['workforceaustralia'],
+      indeedAggregator: !!aggregatorStatus['indeed'],
+      monsterAggregator: !!aggregatorStatus['monster'],
+      joraAggregator: !!aggregatorStatus['jora'],
+      adzunaAggregator: !!aggregatorStatus['adzuna'],
+      careeroneAggregator: !!aggregatorStatus['careerone'],
+      reedAggregator: !!aggregatorStatus['reed'],
+      adeccoAggregator: !!aggregatorStatus['adecco'],
+      cvlibraryAggregator: !!aggregatorStatus['cvlibrary'],
+      nhsjobsAggregator: !!aggregatorStatus['nhsjobs'],
+      
+      // Credential fields
+      aliasEmail: profile.aliasEmail,
+      aliasPassword: profile.aliasPassword,
+      externalPassword: profile.externalPassword,
+      
+      // PC Assignment
+      pcName: profile.assignedPcName,
+      pcEmail: profile.pcEmail,
+      
+      // Application metrics
+      lastApplication: profile.lastApplication,
+      firstApplication: profile.firstApplication,
+      firstApplicationAggregator: profile.firstApplicationAggregator,
+      throttleListing: !!profile.throttleListing,
+      lastApplicationSource: profile.lastApplicationSource,
+      done: profile.doneCount || 0,
+      doneSource: profile.doneSource,
+      batch: profile.batch,
+      caft: profile.caft
+    };
   });
 
-  logger.info(`Retrieved ${clients.length} clients from database`);
-  return clients;
+  logger.info(`Retrieved ${enhancedClients.length} of ${total} clients from database`);
+  
+  return {
+    clients: enhancedClients,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    }
+  };
 };
 
 // Get all users with role 'assistant' (returned as PC - Placement Control)

@@ -3,12 +3,14 @@ import {
   getAllUploadDocuments,
   updateUploadDocument
 } from "../../controllers/v1/upload.controller";
+import { generateKeywords, extractCvDataPoints } from "../../controllers/v1/admin-document.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const uploadRouterV1 = Router();
 
-uploadRouterV1.use(checkBlacklistedTokens, isUserAuthenticated)
+uploadRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"))
 
 /**
  * Get all uploaded documents
@@ -25,5 +27,9 @@ uploadRouterV1.get(
 uploadRouterV1.patch(
   "/:uploadId", updateUploadDocument,
 );
+
+// Admin document operations
+uploadRouterV1.post("/extract-cv-data-points", extractCvDataPoints);
+uploadRouterV1.post("/generate-keywords", generateKeywords);
 
 export default uploadRouterV1;
