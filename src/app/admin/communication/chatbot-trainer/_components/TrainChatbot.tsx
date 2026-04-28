@@ -15,6 +15,13 @@ interface TrainingEntry {
   response: string;
 }
 
+interface DeleteConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  question: string;
+}
+
 /**
  * Helper to parse the prompt string into Q&A pairs
  */
@@ -38,10 +45,43 @@ const promptToQA = (prompt: string): TrainingEntry[] => {
   return entries;
 };
 
+const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ isOpen, onClose, onConfirm, question }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg p-6 w-11/12 md:w-1/3 shadow-xl">
+        <h4 className="text-lg font-bold mb-4">Confirm Deletion</h4>
+        <p className="text-gray-600 mb-2">Are you sure you want to delete this question?</p>
+        <p className="text-sm text-gray-500 italic mb-6 line-clamp-2">"{question}"</p>
+        <div className="flex justify-end space-x-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            className="px-4 py-2"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={onConfirm}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2"
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TrainChatbot = () => {
   const [entries, setEntries] = useState<TrainingEntry[]>([]);
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
 
   const { supportAiPromptDomain } = useAdminQueries({
     fetchChatbotTrainer: true,
@@ -83,11 +123,16 @@ const TrainChatbot = () => {
   };
 
   const handleDelete = async (q: string) => {
-    if (!window.confirm("Are you sure you want to delete this question?")) return;
+    setQuestionToDelete(q);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!questionToDelete) return;
 
     try {
       await toast.promise(
-        deleteChatbotEntryMutation.mutateAsync({ question: q }),
+        deleteChatbotEntryMutation.mutateAsync({ question: questionToDelete }),
         {
           loading: "Deleting question...",
           success: "Question deleted successfully!",
@@ -96,7 +141,15 @@ const TrainChatbot = () => {
       );
     } catch (error) {
       console.error("Delete error:", error);
+    } finally {
+      setDeleteModalOpen(false);
+      setQuestionToDelete(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+    setQuestionToDelete(null);
   };
 
   const isLoading = supportAiPromptDomain.isLoading;
@@ -231,6 +284,13 @@ const TrainChatbot = () => {
           </table>
         </div>
       </section>
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        question={questionToDelete || ""}
+      />
     </div>
   );
 };
