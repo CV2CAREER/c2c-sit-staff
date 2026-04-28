@@ -119,14 +119,25 @@ const BotLogTable = () => {
             setSearchQuery={setLogsSearch}
           />
           <Select value={logsType} onValueChange={setLogsType}>
-            <SelectTrigger className="w-[180px] bg-white shadow-sm">
-              <SelectValue placeholder="Log Type" />
+            <SelectTrigger className="w-[250px] bg-white shadow-sm">
+              <SelectValue placeholder="Select Logs..." />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Logs</SelectItem>
-              <SelectItem value="scraper">Scraper</SelectItem>
-              <SelectItem value="parser">Parser</SelectItem>
-              <SelectItem value="system">System</SelectItem>
+              <SelectItem value="bot_log">Bot Logs</SelectItem>
+              <SelectItem value="ai_log">AI Logs</SelectItem>
+              <SelectItem value="cv_ai_log">CV AI Logs</SelectItem>
+              <SelectItem value="reed_logs">Reed Logs</SelectItem>
+              <SelectItem value="jora_log">Jora Logs</SelectItem>
+              <SelectItem value="aq_ai_log">AQ AI Logs</SelectItem>
+              <SelectItem value="cv_auto_accept_reject_log">CV Auto Reject Acceptance Logs</SelectItem>
+              <SelectItem value="keyword_log">Keyword Generator Logs</SelectItem>
+              <SelectItem value="interview_prep_log">Interview Prep Logs</SelectItem>
+              <SelectItem value="regression_bot_log">Regression Bot Logs</SelectItem>
+              <SelectItem value="digital-traceability-logs">Digital Traceability Logs</SelectItem>
+              <SelectItem value="adzuna-logs">Adzuna Logs</SelectItem>
+              <SelectItem value="seek-logs">SEEK Logs</SelectItem>
+              <SelectItem value="careerone-logs">CareerOne Logs</SelectItem>
             </SelectContent>
           </Select>
         </div>

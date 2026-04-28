@@ -6,6 +6,7 @@ import Select from "react-select";
 import { Add } from "@mui/icons-material";
 import { useAccessControl } from "@/hooks/useAccessControl";
 import { usePermissions } from "@/hooks/usePermissions";
+import toast from "react-hot-toast";
 
 type AccessOption = { value: string; label: string };
 
@@ -96,14 +97,22 @@ export default function ViewRulesModal({
               access: rule.access?.map((item: string) => ({ label: item, value: item })) || [],
             }}
             onSubmit={(values) => {
-              updateRule.mutate(
-                {
-                  id: rule._id,
-                  description: values.description,
-                  path: values.path,
-                  access: values.access.map((item: AccessOption) => item.value),
-                },
-                { onSuccess: () => void refetchAccessLevels() },
+              toast.promise(
+                new Promise((resolve, reject) => {
+                  updateRule.mutate(
+                    {
+                      id: rule._id,
+                      description: values.description,
+                      path: values.path,
+                      access: values.access.map((item: AccessOption) => item.value),
+                    },
+                    {
+                      onSuccess: (data) => { void refetchAccessLevels(); resolve(data); },
+                      onError: (err) => reject(err),
+                    },
+                  );
+                }),
+                { loading: "Updating rule...", success: "Rule updated!", error: "Failed to update rule." },
               );
             }}
           >
@@ -118,9 +127,20 @@ export default function ViewRulesModal({
                     <button
                       onClick={(event) => {
                         event.preventDefault();
-                        deleteRule.mutate({ id: rule._id }, { onSuccess: () => void refetchAccessLevels() });
+                        toast.promise(
+                          new Promise((resolve, reject) => {
+                            deleteRule.mutate(
+                              { id: rule._id },
+                              {
+                                onSuccess: (data) => { void refetchAccessLevels(); resolve(data); },
+                                onError: (err) => reject(err),
+                              },
+                            );
+                          }),
+                          { loading: "Deleting rule...", success: "Rule deleted!", error: "Failed to delete rule." },
+                        );
                       }}
-                      className="font-semibold text-[14px] text-white bg-red-500 rounded-sm p-2"
+                      className="font-semibold text-[14px] text-white bg-red-500 rounded-md px-3 py-2"
                     >
                       Delete
                     </button>
@@ -162,8 +182,8 @@ export default function ViewRulesModal({
 
                 {editStates[rule._id] ? (
                   <div style={{ marginTop: "15px" }}>
-                    <button type="submit" style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}>
-                      Submit
+                    <button type="submit" className="px-4 py-2 bg-blue text-white rounded-md font-medium hover:opacity-90 transition cursor-pointer">
+                      Save Changes
                     </button>
                   </div>
                 ) : null}
@@ -188,20 +208,27 @@ export default function ViewRulesModal({
           <Formik
             initialValues={{ description: "", path: "", access: [] as AccessOption[] }}
             onSubmit={(values, { resetForm }) => {
-              createRule.mutate(
-                {
-                  accessLevel: accessLevel._id,
-                  description: values.description,
-                  path: values.path,
-                  access: values.access.map((item) => item.value),
-                },
-                {
-                  onSuccess: () => {
-                    resetForm();
-                    setAddRuleOpen(false);
-                    void refetchAccessLevels();
-                  },
-                },
+              toast.promise(
+                new Promise((resolve, reject) => {
+                  createRule.mutate(
+                    {
+                      accessLevel: accessLevel._id,
+                      description: values.description,
+                      path: values.path,
+                      access: values.access.map((item) => item.value),
+                    },
+                    {
+                      onSuccess: (data) => {
+                        resetForm();
+                        setAddRuleOpen(false);
+                        void refetchAccessLevels();
+                        resolve(data);
+                      },
+                      onError: (err) => reject(err),
+                    },
+                  );
+                }),
+                { loading: "Creating rule...", success: "Rule created!", error: "Failed to create rule." },
               );
             }}
           >
@@ -232,10 +259,10 @@ export default function ViewRulesModal({
                 </div>
 
                 <div style={{ marginTop: "15px" }} className="flex gap-3">
-                  <button type="submit" className="px-4 py-2 rounded text-white font-medium transition bg-blue-600 hover:bg-blue-700">
-                    Submit
+                  <button type="submit" className="px-4 py-2 rounded-md text-white font-medium transition bg-blue hover:opacity-90">
+                    Save Rule
                   </button>
-                  <button type="button" onClick={close} className="px-4 py-2 rounded border border-gray-300">
+                  <button type="button" onClick={close} className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
                     Close
                   </button>
                 </div>

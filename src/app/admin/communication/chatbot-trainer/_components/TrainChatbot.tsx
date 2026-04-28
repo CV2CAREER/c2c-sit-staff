@@ -146,7 +146,7 @@ const TrainChatbot = () => {
             <Button
               type="submit"
               disabled={saveChatbotEntryMutation.isPending || !question || !response}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 rounded-lg text-lg font-medium flex items-center gap-3 shadow-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              className="bg-blue hover:opacity-90 text-white px-8 py-6 rounded-lg text-lg font-medium flex items-center gap-3 shadow-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-50"
             >
               {saveChatbotEntryMutation.isPending ? (
                 <Loader2 className="animate-spin" size={20} />
