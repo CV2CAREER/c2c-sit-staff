@@ -206,7 +206,7 @@ const TrainChatbot = () => {
               ) : (
                 <Save size={20} />
               )}
-              {saveChatbotEntryMutation.isPending ? "Saving Pair..." : "Save QA Pair"}
+              {saveChatbotEntryMutation.isPending ? "Saving Pair..." : "Save Pair"}
             </Button>
           </div>
         </form>
