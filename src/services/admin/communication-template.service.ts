@@ -25,14 +25,23 @@ const serialize = (template: CommunicationTemplate) => ({
   updatedAt: template.updatedAt,
 });
 
+const isValidUUID = (str: string) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
 const resolveTemplate = async (idOrName: string) => {
   if (!idOrName) {
     throw new ErrorHandler("template identifier is required", 400);
   }
 
-  const byId = await CommunicationTemplate.findByPk(idOrName);
-  if (byId) return byId;
+  // Only try findByPk if the identifier looks like a UUID
+  if (isValidUUID(idOrName)) {
+    const byId = await CommunicationTemplate.findByPk(idOrName);
+    if (byId) return byId;
+  }
 
+  // Otherwise, search by template name
   const byName = await CommunicationTemplate.findOne({
     where: { templateName: idOrName },
     order: [["updatedAt", "DESC"]],
