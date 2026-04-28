@@ -76,6 +76,35 @@ export const updateViewAsRule = catchAsyncError(async (req: any, res: Response) 
 });
 
 /**
+ * Upsert a view as rule by persona.
+ * Used by the split admin persona-settings screen.
+ */
+export const upsertViewAsRuleByPersona = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const { persona, allowedTargets } = req.body;
+
+    if (!persona || !Array.isArray(allowedTargets)) {
+      return res.apiError(
+        new ErrorHandler("persona and allowedTargets are required", 400),
+      );
+    }
+
+    const rule = await ViewAsRuleService.upsertByPersona(
+      { persona, allowedTargets },
+      req,
+      req.user,
+    );
+
+    return res.apiSuccess(rule, "View as rule saved successfully", 200);
+  } catch (error: any) {
+    logger.error(`❌ Failed to save view as rule: ${error.message}`);
+    return res.apiError(
+      new ErrorHandler(error.message || "Failed to save view as rule", 500),
+    );
+  }
+});
+
+/**
  * Check view as permission
  */
 export const checkViewAsPermission = catchAsyncError(async (req: any, res: Response) => {

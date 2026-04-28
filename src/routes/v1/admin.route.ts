@@ -29,6 +29,7 @@ import { generateExternalPassword } from "../../controllers/v1/generate-password
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { campaignCalculatorMiddleware } from "../../middlewares/campaign.middleware";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 import {
   countApplications,
   toggleAggregatorStatus,
@@ -73,12 +74,24 @@ import {
   getBlogStats,
   updateBlogPost,
 } from "../../controllers/v1/blog.controller";
+import { chatbotLogsController } from "@/controllers/v1/chatbot-logs.controller";
+import {
+  exportLogsToCsv,
+  getLogs,
+} from "@/controllers/v1/logs.controller";
+import {
+  getAllViewAsRules,
+  upsertViewAsRuleByPersona,
+} from "@/controllers/v1/view-as-rules.controller";
 import clientSampleRouterV1 from "./client-sample.route";
 import trainingTrackerRouterV1 from "./training-tracker.route";
 import crTrackingRouterV1 from "./cr-tracking.route";
 import crEOTRouterV1 from "./cr-eot.route";
 import adminAiRouterV1 from "./admin-ai.route";
 import adminDocumentRouterV1 from "./admin-document.route";
+import supportRouterV1 from "./support.route";
+import accessLevelRouterV1 from "./access-level.route";
+import communicationTemplateRouterV1 from "./communication-template.route";
 const adminRouterV1 = Router();
 
 adminRouterV1.use("/client-sample", clientSampleRouterV1);
@@ -127,12 +140,69 @@ adminRouterV1.use(
   "/trackers/cr",
   crTrackingRouterV1,
 );
+adminRouterV1.use(
+  "/support",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  supportRouterV1,
+);
+adminRouterV1.use(
+  "/access-levels",
+  accessLevelRouterV1,
+);
+adminRouterV1.use(
+  "/templates",
+  communicationTemplateRouterV1,
+);
 adminRouterV1.use("/documents", adminDocumentRouterV1);
 adminRouterV1.all(
   "/support-ai-prompt",
   checkBlacklistedTokens,
   isUserAuthenticated,
   supportAiPromptController,
+);
+adminRouterV1.all(
+  "/chatbot/train",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  supportAiPromptController,
+);
+adminRouterV1.get(
+  "/chatbot/logs",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  chatbotLogsController,
+);
+adminRouterV1.get(
+  "/persona-rules",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  getAllViewAsRules,
+);
+adminRouterV1.put(
+  "/persona-rules",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  upsertViewAsRuleByPersona,
+);
+adminRouterV1.get(
+  "/system/logs",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  getLogs,
+);
+adminRouterV1.get(
+  "/system/logs/export/csv",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin"),
+  exportLogsToCsv,
 );
 
 adminRouterV1.all(

@@ -7,6 +7,8 @@ import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
 import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
 import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
+import { AccessLevelService } from "../services/admin/access-level.service";
+import { CommunicationTemplateService } from "../services/admin/communication-template.service";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -28,6 +30,14 @@ const ensureTrainingTrackerSessions = async () => {
 
 const ensureCRTrackingHistoryTable = async () => {
   await CRTrackingHistory.sync({ force: false });
+};
+
+const ensureAccessLevelTables = async () => {
+  await AccessLevelService.ensureAccessLevelTablesAndSeed();
+};
+
+const ensureCommunicationTemplatesTable = async () => {
+  await CommunicationTemplateService.ensureTemplatesTable();
 };
 
 export const connectDB = async (): Promise<void> => {
@@ -59,6 +69,8 @@ export const connectDB = async (): Promise<void> => {
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         await ensureTrainingTrackerSessions();
         await ensureCRTrackingHistoryTable();
+        await ensureAccessLevelTables();
+        await ensureCommunicationTemplatesTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -113,6 +125,8 @@ export const connectDB = async (): Promise<void> => {
         await newSequelize.sync({ alter: true });
         await ensureTrainingTrackerSessions();
         await ensureCRTrackingHistoryTable();
+        await ensureAccessLevelTables();
+        await ensureCommunicationTemplatesTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

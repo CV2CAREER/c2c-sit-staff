@@ -56,6 +56,10 @@ import { SlackMessage } from "../models/v1/slack-message.model";
 import AuditLog from "@/models/v1/audit-log.model";
 import PassKeyVault from "@/models/v1/passkey-vault.model";
 import { UserPreferenceHistory } from "../models/v1/user-preference-history.model"
+import { AccessLevel } from "../models/v1/access-level.model";
+import { AccessRule } from "../models/v1/access-rule.model";
+import { UserAccessLevel } from "../models/v1/user-access-level.model";
+import { CommunicationTemplate } from "../models/v1/communication-template.model";
 
 export const modelList = [
   User,
@@ -114,6 +118,10 @@ export const modelList = [
   ViewAsRule, 
   SupportConversation,
   SupportSession,
+  AccessLevel,
+  AccessRule,
+  UserAccessLevel,
+  CommunicationTemplate,
   AuditLog,
   PassKeyVault,
   UserPreferenceHistory,
