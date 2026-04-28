@@ -81,8 +81,11 @@ export const supportAiPromptController = catchAsyncError(
         throw new ErrorHandler("Prompt not found.", 404);
       }
 
+      // Escape special regex characters in the question
+      const escapedQuestion = question.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
       const qaRegex = new RegExp(
-        `QUESTION: ${question}\\s+ANSWER: .*?(?=QUESTION:|$)`,
+        `QUESTION:\\s*${escapedQuestion}\\s+ANSWER:\\s*.*?(?=\\s*QUESTION:|$)`,
         "s",
       );
 
