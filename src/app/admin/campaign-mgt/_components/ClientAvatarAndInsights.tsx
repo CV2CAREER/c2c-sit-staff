@@ -29,61 +29,59 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   });
 
   const {
-    campaignClientsDomain: { data: allUserData },
+    campaignClientsDomain: { data: allUserData, isLoading: isClientsLoading },
     clientCampaignInsightsDomain: { data: clientCampaignData, isLoading },
+    singleClientDomain: { data: singleClientData, isLoading: isSingleClientLoading },
   } = useAdminQueries({
     fetchCampaignClients: true,
     fetchClientCampaignInsights: !!clientId,
+    fetchSingleClient: !!clientId,
     userId: String(clientId),
+    clientId: String(clientId),
   });
 
   const {
     generatePasswordMutation,
     dispatchCredentialsMutation,
-    fetchPreferenceEmailDetailsMutation,
     sendPreferenceEmailMutation,
-  } = useAdminMutations();
+   } = useAdminMutations();
 
   useEffect(() => {
     if (allUserData) {
-      setClientList(
-        allUserData?.data
-          ?.map(({ Full_Name, id }: { Full_Name: string; id: number }) => {
-            return { Full_Name, id };
-          })
-          .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name))
-      );
+      // Handle both direct array response and nested data format
+      const clientDataArray = allUserData;
+      
+      const mapped = clientDataArray
+        ?.map((data: any) => ({
+          Full_Name: `${data.firstName} ${data.lastName}`,
+          id: data.id,
+          _id: data.id,
+        }))
+        .filter((item: any) => item.Full_Name && item.id)
+        .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name)) || [];
+      
+      setClientList(mapped);
     }
   }, [allUserData]);
 
-  // const plan = clientCampaignData?.data?.user?.plan || null;
-  const clientFullName = clientCampaignData?.data?.clientDetails?.Full_Name || "";
-  const clientCraft = clientCampaignData?.data?.clientDetails?.Craft || "";
+  // const plan = clientCampaignData?.data?.plan || null;
+  const clientFullName = singleClientData?.name || clientCampaignData?.data?.name || "";
+  const clientCraft = singleClientData?.craft || clientCampaignData?.data?.craft || "";
 
   useEffect(() => {
     if (clientCampaignData) {
       setApplicationData([
-        clientCampaignData.data.successfulApplications,
-        clientCampaignData.data.failedApplications,
+        clientCampaignData.data.statistics?.successfulApplications ?? 0,
+        clientCampaignData.data.statistics?.failedApplications ?? 0,
         0,
       ]);
     }
   }, [clientCampaignData]);
 
-  function generatePassword(length = 16) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '$' ;
-    for (let i = 0; i < length; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  }
-
-  async function handleGeneratePassword(id: number) {
+  async function handleGeneratePassword(userId: string) {
     try {
       toast.loading('Generating password...');
-      const password = generatePassword();
-      await generatePasswordMutation.mutateAsync({ password, userId: String(id) });
+      await generatePasswordMutation.mutateAsync({ userId });
       toast.success('Password generated successfully');
     } catch (error: any) {
       toast.error(error.message || 'Failed to generate password');
@@ -103,18 +101,9 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   const handleDispatchPreferences = async (userId: string) => {
     toast.loading("Dispatching preferences...");
     try {
-      const emailResponse = await fetchPreferenceEmailDetailsMutation.mutateAsync({ search: userId });
-      const userEmail = emailResponse.data.email;
-      const userFirstName = emailResponse.data.firstname;
-
-      if (!userEmail) {
-        toast.error("User email is not specified");
-        return;
-      }
 
       await sendPreferenceEmailMutation.mutateAsync({
-        email: userEmail,
-        firstname: userFirstName,
+        userId
       });
 
       toast.success("Email sent successfully");
@@ -265,7 +254,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
                 openConfirmationModal({
                   title: "Generate Password",
                   description: "Are you sure you want to generate password for this client?",
-                  onConfirm: () => handleGeneratePassword(Number(clientId as string)),
+                  onConfirm: () => handleGeneratePassword(clientId as string),
                 })
               }
             >Generate Password</Button>

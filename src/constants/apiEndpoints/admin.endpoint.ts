@@ -12,7 +12,6 @@ export const ADMIN_USERS_FULL_NAME = "/api/v1/admin/users/full-name";
 export const ADMIN_AGGREGATORS = "/api/v1/aggregator";
 export const ADMIN_APPLICATIONS = "/api/v1/admin/applications";
 export const ADMIN_FOLLOWERS = "/api/v1/analytics/followers";
-export const ADMIN_BOT_CONTROL = "/api/v1/admin/bot-toggle";
 export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
 export const ADMIN_SCHEMA_EXPAND = "/api/v1/admin/schema/expand";
@@ -34,7 +33,7 @@ export const ADMIN_USER_INFO = (id: string | number) => `/api/v1/admin/user-info
 export const USER_STAFF = "/api/v1/user/staff";
 export const USER_ALL = "/api/v1/user/all";
 
-export const ADMIN_CAMPAIGN = "/api/v1/admin/campaign";
+
 export const ADMIN_CAMPAIGN_SHEET = "/api/v1/admin/campaign/sheet";
 export const ADMIN_CAMPAIGN_SHEET_UPDATE = "/api/v1/admin/campaign/sheet/update";
 export const ADMIN_CAMPAIGN_SHEET_UPDATE_SINGLE = "/api/v1/admin/campaign/sheet/update-single";
@@ -43,21 +42,15 @@ export const ADMIN_CAMPAIGN_SHEET_UPDATE_KEYWORDS = "/api/v1/admin/keywords/upda
 export const ADMIN_CLIENT_SAMPLE = "/api/v1/admin/samples";
 export const ADMIN_CLIENT_SAMPLE_USERS = "/api/v1/admin/client-sample/users";
 export const ADMIN_CLIENT_SAMPLE_TABLE = "/api/v1/admin/client-sample/table";
-export const ADMIN_DISPATCH_SAMPLE = "/api/v1/admin/users/dispatch-sample";
-export const ADMIN_CAMPAIGN_GET_CLIENTS = "/api/v1/admin/campaign/sheet/get-clients";
-export const ADMIN_CAMPAIGN_CLIENT_INSIGHTS = (id: string | number) => `/api/v1/admin/campaign/client/${id}`;
+export const ADMIN_CAMPAIGN_CLIENT_INSIGHTS = (id: string | number) => `/api/v1/campaigns/users/${id}/profile`;
 export const ADMIN_CAMPAIGN_COUNT_APPLICATIONS = "/api/v1/admin/campaign/sheet/count-applications";
 
 // User specific actions
 export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/user/${id}`;
-export const ADMIN_GENERATE_PASSWORD = "/api/v1/admin/generate-password";
-export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/admin/dispatchCredentials";
-export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/admin/send-preference-email";
-export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/admin/send-preference-email-userid";
+
 export const ADMIN_DISPATCH_CLIENT = "/api/v1/user/dispatch-client";
 export const ADMIN_USER_EXTRACT_CV = "/api/v1/admin/extract-cv-data";
 export const ADMIN_UPDATE_USER_PROGRESS = "/api/v1/admin/user-progress";
-export const ADMIN_ASSIGN_VA = "/api/v1/admin/assign-va";
 export const SHORTEN_WORDS = "/api/v1/shortenWords";
 
 // Dropdown/Schema management
@@ -104,6 +97,20 @@ export const ADMIN_USER_PREFERENCES_HISTORY = (userId: string) => `/api/v1/user-
 export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management/users/${userId}/referrals`;
 export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;
 export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
+
+// User Campaign Manegement Page - Temidayo
+export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients/{id}/soft-delete";
+export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/campaigns/preferences/notify";
+export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/campaigns/preferences/notify"; 
+export const ADMIN_GENERATE_PASSWORD = "/api/v1/campaigns/credentials/generate-password";
+export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/campaigns/credentials/dispatch";
+export const ADMIN_BOT_CONTROL = "/api/v1/campaigns/aggregators/toggle";
+export const ADMIN_CAMPAIGN_JOBS_EXTRACT = "/api/v1/campaigns/jobs/extract";
+export const ADMIN_CAMPAIGN_JOBS_SAVE = "/api/v1/campaigns/jobs/save";
+export const ADMIN_UPLOADS_GENERATE_KEYWORDS = "/api/v1/uploads/generate-keywords";
+export const ADMIN_CAMPAIGN_GET_CLIENTS = "/api/v1/campaigns/clients";
+export const ADMIN_DISPATCH_SAMPLE = (clientId: string ) => `/api/v1/campaigns/clients/${clientId}/dispatch-samples`;
+export const ADMIN_ASSIGN_VA = "/api/v1/campaigns//va/assign";
 
 // Blog Endpoints
 export const ADMIN_BLOG = "/api/v1/blog";

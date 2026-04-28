@@ -3,10 +3,8 @@ import React from "react";
 import ClientDataTable from "@/app/admin/campaign-mgt/_components/ClientDataTable";
 import ClientAvatarAndInsights from "@/app/admin/campaign-mgt/_components/ClientAvatarAndInsights";
 
-type ClientPageParams = Promise<{ id: number }>;
-
-export default function ClientPage(props: { params: ClientPageParams }) {
-  const params = React.use(props.params);
+export default async function ClientPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const clientId = params.id;
 
   return (

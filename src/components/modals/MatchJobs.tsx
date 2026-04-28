@@ -72,7 +72,7 @@ const JobMatchTriggerModal: React.FC<JobMatchTriggerModalProps> = ({
           break;
       }
 
-      const response = await axiosInstance.post(`${SERVER_URI}/api/v1/admin/matchJobs`, payload);
+      const response = await axiosInstance.post(`${SERVER_URI}/api/v1/campaigns/jobs/match`, payload);
       if (response.status >= 200 && response.status < 300) {
         toast.success("Job match submitted for processing");
         onTrigger(payload);

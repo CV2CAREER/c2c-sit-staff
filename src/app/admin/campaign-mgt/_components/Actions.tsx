@@ -47,13 +47,15 @@ export function CampaignTableActions({
   const {
     updateCampaignMutation,
     deleteCampaignMutation,
+    restoreCampaignMutation,
+    permanentDeleteCampaignMutation,
     generatePasswordMutation,
   } = useAdminMutations();
 
   const handleEditClient = (clientId: number, updatedData: Partial<CampaignTableColType>) => {
     toast.loading("Updating client...");
     updateCampaignMutation.mutate(
-      { id: clientId, updateBy: "system", data: updatedData },
+      { clientId: String(clientId), data: updatedData },
       {
         onSuccess: () => {
           toast.dismiss();
@@ -70,8 +72,8 @@ export function CampaignTableActions({
 
   const handleSoftDelete = (clientId: number) => {
     toast.loading("Moving client to the Recycle bin...");
-    updateCampaignMutation.mutate(
-      { id: clientId, updatedByFName: "system", data: { isDeleted: true } },
+    deleteCampaignMutation.mutate(
+      { id: clientId },
       {
         onSuccess: () => {
           toast.dismiss();
@@ -88,8 +90,8 @@ export function CampaignTableActions({
 
   const handleRestore = (clientId: number) => {
     toast.loading("Restoring client...");
-    updateCampaignMutation.mutate(
-      { id: clientId, updatedByFName: "system", data: { isDeleted: false } },
+    restoreCampaignMutation.mutate(
+      { id: clientId },
       {
         onSuccess: () => {
           toast.dismiss();
@@ -106,7 +108,7 @@ export function CampaignTableActions({
 
   const handleDeletePermanent = (clientId: number) => {
     toast.loading("Deleting client permanently...");
-    deleteCampaignMutation.mutate(
+    permanentDeleteCampaignMutation.mutate(
       { id: clientId },
       {
         onSuccess: () => {
@@ -136,7 +138,7 @@ export function CampaignTableActions({
     const password = generatePassword();
 
     generatePasswordMutation.mutate(
-      { userId: String(id), password: password },
+      { userId: String(id)},
       {
         onSuccess: () => {
           toast.dismiss();

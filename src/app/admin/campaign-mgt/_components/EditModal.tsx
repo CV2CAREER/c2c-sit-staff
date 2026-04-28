@@ -87,7 +87,7 @@ interface EditTableModalProps {
   editClientAction: () => UseMutationResult<
     ApiSuccess<any>,
     ApiError,
-    { id: string | number; updateBy?: string; updatedByFName?: string; data: any }
+    { clientId: string | number; data: any }
   >;
 }
 
@@ -186,33 +186,49 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       }
     }
 
-        // Only add to updatedData if the value is different and not empty
-        if (value !== currentValue && value !== "" && value !== " ") {
-          if (typedKey in formSchema.shape) {
-            // Properly handle null values for TypeScript
-            const safeValue = value === null ? undefined : value;
-            (acc as any)[typedKey] = safeValue;
-          }
-        }
+    // Only add to updatedData if the value is different and not empty
+    if (value !== currentValue && value !== "" && value !== " ") {
+      if (typedKey in formSchema.shape) {
+        // Properly handle null values for TypeScript
+        const safeValue = value === null ? undefined : value;
+        (acc as any)[typedKey] = safeValue;
+      }
+    }
 
-        return acc;
-      },
-      {} as Partial<z.infer<typeof formSchema>>
-    );
+      return acc;
+    },
+    {} as Partial<z.infer<typeof formSchema>>
+  );
 
     // If there are no changes, return early
     if (Object.keys(updatedData).length === 0) {
       toast("No changes detected.");
+      setDialog(null);
     } else {
+      toast.loading("Updating client...");
+      
       editClientAction().mutate({
-        id: client.id,
-        updateBy: "system",
+        clientId: client.id,
         data: {
           ...updatedData,
         },
+      }, {
+        onSuccess: () => {
+          toast.dismiss();
+          toast.success("Client updated successfully");
+          setDialog(null);
+          
+          // Refresh campaign clients table
+          window.dispatchEvent(new CustomEvent("invalidateQuery", { 
+            detail: { queryKey: ["admin-fetch-campaign-clients"] } 
+          }));
+        },
+        onError: (err) => {
+          toast.dismiss();
+          toast.error(err.message || "Failed to update client");
+        }
       });
     }
-    setDialog(null);
   }
 
   return (

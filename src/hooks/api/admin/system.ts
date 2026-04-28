@@ -400,10 +400,9 @@ export const useSystemMutations = () => {
       onError: () => {},
     }),
     dispatchCredentialsMutation: useMutateData<any, { clientId: string }>({
-      method: "GET",
+      method: "POST",
       url: endpoints.ADMIN_DISPATCH_CREDENTIALS,
       mutationKey: ["admin-dispatch-credentials"],
-      paramKey: "clientId",
       onSuccess: () => {},
       onError: () => {},
     }),
@@ -414,14 +413,14 @@ export const useSystemMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    generatePasswordMutation: useMutateData<any, { password: string; userId: string }>({
+    generatePasswordMutation: useMutateData<any, { userId: string }>({
       method: "POST",
       url: endpoints.ADMIN_GENERATE_PASSWORD,
       mutationKey: ["admin-generate-password"],
       onSuccess: () => {},
       onError: () => {},
     }),
-    sendPreferenceEmailMutation: useMutateData<any, { email: string; firstname: string }>({
+    sendPreferenceEmailMutation: useMutateData<any, { userId: string }>({
       method: "POST",
       url: endpoints.ADMIN_SEND_PREFERENCE_EMAIL,
       mutationKey: ["admin-send-preference-email"],
