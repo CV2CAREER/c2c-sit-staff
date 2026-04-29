@@ -59,6 +59,12 @@ const ReferralComponent = () => {
   const [isVarianceAll, setIsVarianceAll] = useState<boolean>(false);
   const [clickedUserRefs, setClickedUserRefs] = useState("");
   const [clickedUserId, setClickedUserId] = useState("");
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<any>(null);
+  const [editForm, setEditForm] = useState<{ status: string; paymentStatus: string }>({
+    status: "",
+    paymentStatus: "",
+  });
 
   const [detailedReferredUsers, setDetailedReferredUsers] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -638,6 +644,28 @@ const ReferralComponent = () => {
     }
 
     if (variance !== "all") {
+        if (!showDeleted) {
+          modifiedArr.unshift({
+            field: "editReferral",
+            headerName: "Edit",
+            width: 90,
+            headerClassName: "bg-[#80D7FF]",
+            renderCell: (params: any) => (
+              <button
+                disabled={!editMode}
+                onClick={() => openEditModal(params.row)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${
+                  editMode
+                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Edit
+              </button>
+            ),
+          });
+        }
+
         // Restore button for deleted items
         if (showDeleted) {
           modifiedArr.unshift({
@@ -735,6 +763,50 @@ const ReferralComponent = () => {
     }
   };
 
+  const openEditModal = (row: any) => {
+    setEditingRow(row);
+    setEditForm({
+      status: row?.status || "PENDING",
+      paymentStatus: row?.paymentStatus || "unpaid",
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRow) return;
+    const id = editingRow.id || editingRow._id;
+    if (!id) {
+      toast.error("Invalid referral row.");
+      return;
+    }
+
+    const loadingToast = toast.loading("Saving changes...");
+    try {
+      if (variance === "claim" && editForm.status) {
+        await updateReferralStatus.mutateAsync({
+          id,
+          variance,
+          status: editForm.status,
+          referrerEmail: editingRow.referrerEmail || editingRow.email,
+        });
+      }
+
+      if (editForm.paymentStatus) {
+        await updatePaymentStatus.mutateAsync({
+          id,
+          paymentStatus: editForm.paymentStatus,
+        });
+      }
+
+      toast.success("Referral updated successfully.", { id: loadingToast });
+      setEditModalOpen(false);
+      setEditingRow(null);
+      referralsListDomain.refetch();
+    } catch {
+      toast.error("Failed to update referral.", { id: loadingToast });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     // Safety check for aggregated view
     if (variance === "all") {
@@ -818,6 +890,66 @@ const ReferralComponent = () => {
 
   return (
     <div className="flex flex-col bg-white rounded-sm p-3 sm:p-5 shadow-md">
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="bg-white rounded-lg shadow-md p-4 max-w-md mx-auto">
+          <DialogTitle className="text-xl font-bold text-center mb-4">
+            Edit Referral
+          </DialogTitle>
+          <div className="space-y-4">
+            {variance === "claim" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={editForm.status || "PENDING"}
+                  onValueChange={(value) =>
+                    setEditForm((prev) => ({ ...prev, status: value }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">PENDING</SelectItem>
+                    <SelectItem value="APPROVED">APPROVED</SelectItem>
+                    <SelectItem value="REJECTED">REJECTED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">Payment Status</label>
+              <Select
+                value={editForm.paymentStatus || "unpaid"}
+                onValueChange={(value) =>
+                  setEditForm((prev) => ({ ...prev, paymentStatus: value }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select payment status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">unpaid</SelectItem>
+                  <SelectItem value="pending">pending</SelectItem>
+                  <SelectItem value="paid">paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogActions className="flex justify-between mt-5">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditModalOpen(false);
+                setEditingRow(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>Save</Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={reasonModalVisibility}
         onOpenChange={setReasonModalVisibility}

@@ -281,6 +281,13 @@ export default function SalesOperationComponent() {
         handleDelete={(id: string) =>
           isRecycle ? setConfirmHardDelete(id as string) : setConfirmDelete(id as string)
         }
+        onRowClick={(params: any) => {
+          if (!isRecycle && editMode) {
+            setEditRow(params?.row);
+            setEditOpen(true);
+          }
+        }}
+        cursorPointer={!isRecycle && editMode}
         handleRestore={(id: string) => setConfirmRestore(id as string)}
         handleDeleteMultiple={handleDeleteMultiple}
         isLoading={isLoading}
