@@ -289,7 +289,7 @@ const Header = ({
     const password = generatePassword();
     const tId = toast.loading("Generating password...");
     generatePasswordMutation.mutate(
-      { password, userId },
+      { userId },
       {
         onSuccess: () => toast.success("Password generated successfully", { id: tId }),
         onError: (err: any) => toast.error(err?.message || "Failed to generate password", { id: tId }),
@@ -308,7 +308,7 @@ const Header = ({
           }
           toast.loading("Sending preference email...", { id: tId });
           sendPreferenceEmailMutation.mutate(
-            { email: data.data.email, firstname: data.data.firstname },
+            { userId },
             {
               onSuccess: () => toast.success("Email sent successfully", { id: tId }),
               onError: (err: any) => toast.error(err?.message || "Failed to send email", { id: tId }),
