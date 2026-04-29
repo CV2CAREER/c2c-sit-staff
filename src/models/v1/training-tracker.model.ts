@@ -10,7 +10,7 @@ import {
   AllowNull
 } from "sequelize-typescript";
 import { User } from "./user.model";
-import { Session } from "./session.model";
+import { TrainingTrackerSession } from "./training-tracker-session.model";
 
 @Table({
   tableName: "training_trackers",
@@ -48,13 +48,13 @@ export class TrainingTracker extends Model {
   @BelongsTo(() => User, { foreignKey: "userId", targetKey: "id" })
   user!: User;
 
-  @ForeignKey(() => Session)
+  @ForeignKey(() => TrainingTrackerSession)
   @AllowNull
   @Column(DataType.UUID)
   sessionId?: string;
   
-  @BelongsTo(() => Session, { foreignKey: "sessionId", targetKey: "id" })
-  session?: Session;
+  @BelongsTo(() => TrainingTrackerSession, { foreignKey: "sessionId", targetKey: "id" })
+  session?: TrainingTrackerSession;
 
   @ForeignKey(() => User)
   @AllowNull

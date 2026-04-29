@@ -56,7 +56,12 @@ export class SettingService {
       }
 
       logger.info(`✅ Master password details retrieved`);
-      return masterpass;
+      
+      // Map updatedAt to updated for frontend compatibility
+      return {
+        ...masterpass,
+        updated: masterpass.updatedAt
+      };
     } catch (error: any) {
       logger.error(`❌ Failed to get master password details: ${error.message}`);
       throw error;

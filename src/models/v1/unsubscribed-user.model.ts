@@ -27,6 +27,9 @@ export class UnsubscribedUser extends Model {
   })
   userId!: string;
 
+  @BelongsTo(() => User, 'userId')
+  user!: User;
+
   @Column({
     type: DataType.TEXT,
     allowNull: true,

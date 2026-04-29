@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getBlogPosts,
   getBlogPostById,
+  getBlogStats,
   createBlogPost,
   updateBlogPost,
   deleteBlogPost
@@ -18,5 +19,6 @@ blogRouterV1.post("/", createBlogPost);
 blogRouterV1.patch("/", updateBlogPost);
 blogRouterV1.delete("/", deleteBlogPost);
 blogRouterV1.get("/id", getBlogPostById);
+blogRouterV1.get("/stats", getBlogStats);
 
 export default blogRouterV1;

@@ -33,6 +33,123 @@ export class LogsService {
   private static readonly ALLOWED_SORT_COLUMNS = ['id', 'origin', 'title', 'type', 'createdAt'];
   private static readonly DEFAULT_LIMIT = 20;
   private static readonly MAX_LIMIT = 100;
+  private static readonly SCRAPER_TYPES = new Set([
+    "reed_logs",
+    "jora_log",
+    "digital-traceability-logs",
+    "adzuna-logs",
+    "seek-logs",
+    "careerone-logs",
+  ]);
+  private static readonly PARSER_TYPES = new Set([
+    "ai_log",
+    "cv_ai_log",
+    "aq_ai_log",
+    "keyword_log",
+    "interview_prep_log",
+    "cv_auto_accept_reject_log",
+  ]);
+
+  private static getCategoryFromType(type?: string) {
+    if (!type) return "system";
+    if (this.SCRAPER_TYPES.has(type)) return "scraper";
+    if (this.PARSER_TYPES.has(type)) return "parser";
+    return "system";
+  }
+
+  private static getLevelFromRow(row: { title?: string; summary?: string }) {
+    const haystack = `${row.title ?? ""} ${row.summary ?? ""}`.toLowerCase();
+    if (/(error|failed|exception|fatal|invalid|timeout)/i.test(haystack)) {
+      return "error";
+    }
+    return "info";
+  }
+
+  private static getMessageFromRow(row: { title?: string; summary?: string }) {
+    const title = (row.title ?? "").trim();
+    const summary = (row.summary ?? "").trim();
+
+    if (title && summary) {
+      return `${title}: ${summary}`;
+    }
+
+    return summary || title || "-";
+  }
+
+  private static buildWhereClause(filters: {
+    search?: string;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const whereClause: any = {};
+    const andConditions: any[] = [];
+
+    if (filters.startDate || filters.endDate) {
+      whereClause.createdAt = {};
+      if (filters.startDate) {
+        whereClause.createdAt[Op.gte] = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        whereClause.createdAt[Op.lte] = new Date(filters.endDate);
+      }
+    }
+
+    if (filters.search?.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      andConditions.push({
+        [Op.or]: [
+          { origin: { [Op.iLike]: term } },
+          { title: { [Op.iLike]: term } },
+          { summary: { [Op.iLike]: term } },
+        ],
+      });
+    }
+
+    if (filters.type && filters.type !== "all") {
+      const requested = filters.type.trim().toLowerCase();
+
+      // Check if it's a direct log type value (e.g. "bot_log", "ai_log")
+      if (this.VALID_TYPES.includes(requested)) {
+        andConditions.push({ type: requested });
+      } else {
+        // Treat as a category (scraper, parser, system)
+        const matchingTypes = this.VALID_TYPES.filter(
+          (type) => this.getCategoryFromType(type) === requested,
+        );
+
+        if (matchingTypes.length > 0) {
+          andConditions.push({
+            type: {
+              [Op.in]: matchingTypes,
+            },
+          });
+        }
+      }
+    }
+
+    if (andConditions.length > 0) {
+      whereClause[Op.and] = andConditions;
+    }
+
+    return whereClause;
+  }
+
+  private static mapRow(row: any) {
+    return {
+      id: row.id,
+      _id: row.id,
+      origin: row.origin,
+      title: row.title,
+      rawType: row.type,
+      type: this.getCategoryFromType(row.type),
+      level: this.getLevelFromRow(row),
+      message: this.getMessageFromRow(row),
+      timestamp: row.createdAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  }
 
   /**
    * ✅ NON-BLOCKING LOG WRITER
@@ -65,7 +182,13 @@ export class LogsService {
     page: number = 1, 
     limit: number = this.DEFAULT_LIMIT, 
     sortColumn: string = 'id', 
-    sortDirection: string = 'DESC'
+    sortDirection: string = 'DESC',
+    filters: {
+      search?: string;
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {},
   ) {
     try {
       // Input Validation & Sanitization
@@ -77,9 +200,11 @@ export class LogsService {
       const direction = sortDirection?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
       const offset = (page - 1) * limit;
+      const where = this.buildWhereClause(filters);
 
       // Single database query
       const { rows: result, count } = await Log.findAndCountAll({
+        where,
         offset,
         limit,
         order: [[column, direction]],
@@ -89,8 +214,8 @@ export class LogsService {
       logger.info(`✅ Logs retrieved: page ${page}, ${result.length} records`);
 
       return {
-        result,
-        count: count - 1
+        result: result.map((row) => this.mapRow(row)),
+        total: count
       };
 
     } catch (error: any) {
@@ -103,21 +228,19 @@ export class LogsService {
    * Export Logs data as CSV
    * Can filter by date range and type
    */
-  static async exportToCSV(req: any, filters: { startDate?: string, endDate?: string, type?: string } = {}, user: any): Promise<string> {
+  static async exportToCSV(
+    req: any,
+    filters: {
+      startDate?: string;
+      endDate?: string;
+      type?: string;
+      search?: string;
+    } = {},
+    user: any,
+  ): Promise<string> {
     try {
       const host = req.headers.host || req.headers.origin || "localhost";
-      
-      const whereClause: any = {};
-
-      if (filters.startDate || filters.endDate) {
-        whereClause.createdAt = {};
-        if (filters.startDate) whereClause.createdAt[Op.gte] = new Date(filters.startDate);
-        if (filters.endDate) whereClause.createdAt[Op.lte] = new Date(filters.endDate);
-      }
-
-      if (filters.type) {
-        whereClause.type = filters.type;
-      }
+      const whereClause = this.buildWhereClause(filters);
 
       const logs = await Log.findAll({
         where: whereClause,
@@ -125,18 +248,24 @@ export class LogsService {
         raw: true
       });
 
+      const normalizedLogs = logs.map((row) => this.mapRow(row));
+
       const fields = [
         { label: "Log ID", value: "id" },
         { label: "Origin", value: "origin" },
-        { label: "Title", value: "title" },
-        { label: "Type", value: "type" },
-        { label: "Summary", value: (row: any) => row.summary ? row.summary.replace(/(\r\n|\n|\r)/gm, " ") : "" },
-        { label: "Created At", value: (row: any) => row.createdAt.toISOString() },
-        { label: "Updated At", value: (row: any) => row.updatedAt.toISOString() }
+        { label: "Category", value: "type" },
+        { label: "Raw Type", value: "rawType" },
+        { label: "Level", value: "level" },
+        {
+          label: "Message",
+          value: (row: any) => row.message.replace(/(\r\n|\n|\r)/gm, " "),
+        },
+        { label: "Created At", value: (row: any) => new Date(row.createdAt).toISOString() },
+        { label: "Updated At", value: (row: any) => new Date(row.updatedAt).toISOString() }
       ];
 
       const json2csvParser = new Parser({ fields });
-      const csv = json2csvParser.parse(logs);
+      const csv = json2csvParser.parse(normalizedLogs);
 
       logger.info(`✅ Exported ${logs.length} logs to CSV by ${user.email}`);
       return csv;

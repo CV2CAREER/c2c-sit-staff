@@ -11,7 +11,12 @@ const logger = getServiceLogger("blog-controller");
  */
 export const getBlogPosts = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    const { recycled } = req.query;
+    const { recycled, id } = req.query;
+
+    if (typeof id === "string" && id.trim().length > 0) {
+      const post = await BlogService.getBlogPostById(id);
+      return res.apiSuccess(post, "Blog post retrieved successfully");
+    }
     
     const filters: any = {};
     if (recycled === 'true') filters.recycled = true;
@@ -22,6 +27,19 @@ export const getBlogPosts = catchAsyncError(async (req: Request, res: Response) 
     res.apiSuccess(posts, "Blog posts retrieved successfully");
   } catch (error: any) {
     logger.error(`Failed to fetch blog posts: ${error.message}`);
+    return res.apiError(new ErrorHandler(error.message, 500));
+  }
+});
+
+/**
+ * Get blog stats
+ */
+export const getBlogStats = catchAsyncError(async (_req: Request, res: Response) => {
+  try {
+    const stats = await BlogService.getBlogStats();
+    res.apiSuccess(stats, "Blog stats retrieved successfully");
+  } catch (error: any) {
+    logger.error(`Failed to fetch blog stats: ${error.message}`);
     return res.apiError(new ErrorHandler(error.message, 500));
   }
 });

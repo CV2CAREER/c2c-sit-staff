@@ -7,6 +7,7 @@ import {
   Default,
   AllowNull,
   ForeignKey,
+  BelongsTo,
   CreatedAt,
   UpdatedAt,
   Index,
@@ -30,10 +31,16 @@ export class SupportSession extends Model {
   @Column(DataType.UUID)
   customerId?: string;
 
+  @BelongsTo(() => User, "customerId")
+  customer?: User;
+
   @ForeignKey(() => User)
   @AllowNull(true)
   @Column(DataType.UUID)
   assignedStaffId?: string;
+
+  @BelongsTo(() => User, "assignedStaffId")
+  assignedStaff?: User;
 
   @AllowNull(true)
   @Column(DataType.STRING)

@@ -17,6 +17,7 @@ import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { Role } from "../../utils/enum";
 import { Op } from "sequelize";
+import { getAllUsers as getAllUsersService } from "../../services/user.service";
 
 const logger = getServiceLogger("admin-controller");
 
@@ -646,10 +647,60 @@ export const getAdminUsers = catchAsyncError(async (req: Request, res: Response)
   const search =
     typeof req.query.search === "string" ? req.query.search : undefined;
   const role = typeof req.query.role === "string" ? req.query.role : undefined;
+  const q = typeof req.query.q === "string" ? req.query.q : undefined;
+  const userType =
+    typeof req.query.userType === "string" ? req.query.userType : undefined;
+  const plan = typeof req.query.plan === "string" ? req.query.plan : undefined;
+  const active = toOptionalBoolean(req.query.active);
+  const recycle = toOptionalBoolean(req.query.recycle);
+  const startDate =
+    typeof req.query.startDate === "string"
+      ? req.query.startDate
+      : typeof req.query.from === "string"
+        ? req.query.from
+        : undefined;
+  const endDate =
+    typeof req.query.endDate === "string"
+      ? req.query.endDate
+      : typeof req.query.to === "string"
+        ? req.query.to
+        : undefined;
+
+  const hasTableFilters =
+    q !== undefined ||
+    userType !== undefined ||
+    plan !== undefined ||
+    active !== undefined ||
+    recycle !== undefined ||
+    startDate !== undefined ||
+    endDate !== undefined;
 
   logger.info(
     `Processing admin users request for admin ${user.email} (page=${page ?? "default"}, limit=${limit ?? "default"})`,
   );
+
+  if (hasTableFilters) {
+    const users = await getAllUsersService({
+      page,
+      limit,
+      active,
+      recycle,
+      q: q ?? search,
+      userType: userType ?? role,
+      plan,
+      startDate,
+      endDate,
+    });
+
+    res.apiSuccess(
+      {
+        users,
+        count: users.length,
+      },
+      "Admin users retrieved successfully",
+    );
+    return;
+  }
 
   const payload = await adminUserApplicationService.getUsers({
     page,

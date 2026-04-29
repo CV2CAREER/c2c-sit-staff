@@ -46,6 +46,9 @@ export class SupportConversation extends Model {
   @Column(DataType.UUID)
   senderId?: string;
 
+  @BelongsTo(() => User, "senderId")
+  sender?: User;
+
   @AllowNull(false)
   @Column(DataType.TEXT)
   message!: string;

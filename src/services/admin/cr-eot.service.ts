@@ -21,20 +21,23 @@ export class CREOTService {
     try {
       if (variance === 'CRs') {
         const crs = await CRTracking.findAll({
-          attributes: ['id', 'CRID', 'description'],
-          where: { status: 'ACTIVE' },
+          attributes: ['id', 'changeRequestId', 'description'],
+          where: { isDeleted: false },
           raw: true,
-          order: [['CRID', 'ASC']]
+          order: [['createdAt', 'DESC']]
         });
 
         logger.info(`✅ EOT CR options loaded successfully`);
-        return crs;
+        return crs.map((row: any) => ({
+          _id: row.id,
+          id: row.changeRequestId || row.id,
+          description: row.description || "",
+        }));
       }
 
       if (variance === 'owners') {
         const owners = await CROwner.findAll({
           attributes: ['id', 'name', 'email', 'slackId', 'role'],
-          where: { active: true },
           raw: true,
           order: [['name', 'ASC']]
         });
@@ -47,6 +50,85 @@ export class CREOTService {
 
     } catch (error: any) {
       logger.error(`❌ Failed to get EOT options: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get EOT requests list
+   */
+  static async getEOTRequests(filters: { active?: boolean; recycle?: boolean } = {}) {
+    try {
+      const requests = await CREOT.findAll({
+        order: [["createdAt", "DESC"]],
+        raw: true,
+      });
+
+      if (!requests.length) {
+        return [];
+      }
+
+      const crIds = [...new Set(requests.map((row: any) => row.crId).filter(Boolean))];
+      const ownerIds = [
+        ...new Set(
+          requests
+            .flatMap((row: any) => [row.developerId, row.nilId])
+            .filter(Boolean),
+        ),
+      ];
+
+      const [crRows, ownerRows] = await Promise.all([
+        CRTracking.findAll({
+          where: { id: crIds },
+          attributes: ["id", "changeRequestId", "description", "isDeleted"],
+          raw: true,
+        }),
+        CROwner.findAll({
+          where: { id: ownerIds },
+          attributes: ["id", "name", "email", "role", "slackId"],
+          raw: true,
+        }),
+      ]);
+
+      const crMap = new Map(crRows.map((row: any) => [row.id, row]));
+      const ownerMap = new Map(ownerRows.map((row: any) => [row.id, row]));
+
+      const rows = requests
+        .map((request: any) => {
+          const cr = crMap.get(request.crId);
+          if (filters.active && cr?.isDeleted) return null;
+          if (filters.recycle && !cr?.isDeleted) return null;
+
+          const developer = ownerMap.get(request.developerId);
+          const nil = ownerMap.get(request.nilId);
+
+          return {
+            _id: request.id,
+            numberOfHours: Number(request.numberOfHours),
+            duration: {
+              start: request.durationStart,
+              end: request.durationEnd,
+            },
+            note: request.note,
+            createdAt: request.createdAt,
+            updatedAt: request.updatedAt,
+            CR: cr
+              ? {
+                  _id: cr.id,
+                  id: cr.changeRequestId || cr.id,
+                  description: cr.description,
+                }
+              : null,
+            developer: developer ? { _id: developer.id, ...developer } : null,
+            NIL: nil ? { _id: nil.id, ...nil } : null,
+          };
+        })
+        .filter(Boolean);
+
+      logger.info(`âœ… EOT requests loaded successfully (${rows.length})`);
+      return rows;
+    } catch (error: any) {
+      logger.error(`âŒ Failed to get EOT requests: ${error.message}`);
       throw error;
     }
   }
@@ -112,7 +194,7 @@ export class CREOTService {
           teamMentions: "CSM",
           body: `⏱️ *EXTENSION OF TIME REQUEST* ⏱️
 • Created by: ${user.email}
-• CR: ${cr?.CRID || 'N/A'} - ${cr?.description || 'N/A'}
+• CR: ${cr?.changeRequestId || cr?.id || 'N/A'} - ${cr?.description || 'N/A'}
 • Developer: ${developer?.name || 'N/A'}
 • Requested Hours: ${eot.numberOfHours} hours
 • NIL: ${nil?.name || 'N/A'}

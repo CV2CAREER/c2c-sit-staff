@@ -3,22 +3,111 @@ import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { TrainingTrackerService } from "../../services/training-tracker.service";
 import { getServiceLogger } from "../../utils/createLogger";
+import { User } from "../../models/v1/user.model";
+import { TrainingTrackerSession } from "../../models/v1/training-tracker-session.model";
 
 const logger = getServiceLogger("training-tracker-controller");
+
+const resolveTrainingSessionId = async (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsedSessionNumber = Number(value);
+  if (!Number.isFinite(parsedSessionNumber)) {
+    return undefined;
+  }
+
+  const [session] = await TrainingTrackerSession.findOrCreate({
+    where: { sessionNumber: parsedSessionNumber },
+    defaults: {
+      sessionNumber: parsedSessionNumber,
+      name: `Session ${parsedSessionNumber}`,
+    },
+  });
+
+  return session.id;
+};
+
+const normalizeTrainingPayload = async (payload: any) => {
+  const normalized = { ...(payload || {}) };
+
+  if (normalized._id && !normalized.id) {
+    normalized.id = normalized._id;
+  }
+
+  if (normalized.traineeId && !normalized.userId) {
+    normalized.userId = normalized.traineeId;
+  }
+
+  if (normalized.coachId && !normalized.pcId) {
+    normalized.pcId = normalized.coachId;
+  }
+
+  if (!normalized.sessionId) {
+    const sessionId = await resolveTrainingSessionId(normalized.sessionNumber);
+    if (sessionId) {
+      normalized.sessionId = sessionId;
+    }
+  }
+
+  delete normalized.sessionNumber;
+
+  if (!normalized.fullName && normalized.userId) {
+    const user = await User.findByPk(normalized.userId, {
+      attributes: ["firstName", "lastName"],
+      raw: true,
+    });
+    if (user) {
+      normalized.fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    }
+  }
+
+  delete normalized._id;
+  delete normalized.id;
+  delete normalized.traineeId;
+  delete normalized.coachId;
+  delete normalized.trackerId;
+  delete normalized.newRow;
+
+  return normalized;
+};
+
+const normalizeTrainingResponse = (row: any) => {
+  const plain = row?.toJSON ? row.toJSON() : row;
+  return {
+    ...plain,
+    _id: plain.id,
+    traineeId: plain.userId,
+    coachId: plain.pcId,
+    sessionNumber: plain.session?.sessionNumber,
+  };
+};
 
 /**
  * Get all training trackers
  */
 export const getTrainingTrackers = catchAsyncError(async (req: Request, res: Response) => {
   try {
+    let sessionId = req.query.sessionId as string | undefined;
+    const sessionNumberQuery = req.query.sessionNumber as string | undefined;
+
+    if (!sessionId && sessionNumberQuery) {
+      sessionId = await resolveTrainingSessionId(sessionNumberQuery);
+    }
+
     const filters = {
-      sessionId: req.query.sessionId as string,
+      sessionId,
       isDeleted: req.query.isDeleted === "true"
     };
 
     const trackers = await TrainingTrackerService.getAll(filters);
 
-    return res.apiSuccess(trackers, "Training trackers retrieved successfully", 200);
+    return res.apiSuccess(
+      trackers.map(normalizeTrainingResponse),
+      "Training trackers retrieved successfully",
+      200,
+    );
   } catch (error: any) {
     logger.error(`❌ Failed to get training trackers: ${error.message}`);
     return res.apiError(new ErrorHandler(error.message || "Failed to retrieve training trackers", 500));
@@ -55,9 +144,15 @@ export const getTrainingTrackerById = catchAsyncError(async (req: Request, res: 
  */
 export const createTrainingTracker = catchAsyncError(async (req: any, res: Response) => {
   try {
-    const tracker = await TrainingTrackerService.create(req, req.body, req.user);
+    const body = req.body?.newRow && typeof req.body.newRow === "object" ? req.body.newRow : req.body;
+    const payload = await normalizeTrainingPayload(body);
+    const tracker = await TrainingTrackerService.create(req, payload, req.user);
 
-    return res.apiSuccess(tracker, "Training tracker created successfully", 201);
+    return res.apiSuccess(
+      normalizeTrainingResponse(tracker),
+      "Training tracker created successfully",
+      201,
+    );
   } catch (error: any) {
     logger.error(`❌ Failed to create training tracker: ${error.message}`);
 
@@ -80,9 +175,15 @@ export const updateTrainingTracker = catchAsyncError(async (req: any, res: Respo
       return res.apiError(new ErrorHandler("Training tracker ID is required", 400));
     }
 
-    const tracker = await TrainingTrackerService.update(req, id, req.body, req.user);
+    const body = req.body?.newRow && typeof req.body.newRow === "object" ? req.body.newRow : req.body;
+    const payload = await normalizeTrainingPayload(body);
+    const tracker = await TrainingTrackerService.update(req, id, payload, req.user);
 
-    return res.apiSuccess(tracker, "Training tracker updated successfully", 200);
+    return res.apiSuccess(
+      normalizeTrainingResponse(tracker),
+      "Training tracker updated successfully",
+      200,
+    );
   } catch (error: any) {
     logger.error(`❌ Failed to update training tracker: ${error.message}`);
 
@@ -132,7 +233,11 @@ export const restoreTrainingTracker = catchAsyncError(async (req: any, res: Resp
 
     const tracker = await TrainingTrackerService.restore(req, id, req.user);
 
-    return res.apiSuccess(tracker, "Training tracker restored successfully", 200);
+    return res.apiSuccess(
+      normalizeTrainingResponse(tracker),
+      "Training tracker restored successfully",
+      200,
+    );
   } catch (error: any) {
     logger.error(`❌ Failed to restore training tracker: ${error.message}`);
 
@@ -157,7 +262,7 @@ export const deleteTrainingTracker = catchAsyncError(async (req: any, res: Respo
 
     await TrainingTrackerService.delete(req, id, req.user);
 
-    return res.apiSuccess({}, "Training tracker permanently deleted successfully", 204);
+    return res.apiSuccess({}, "Training tracker permanently deleted successfully", 200);
   } catch (error: any) {
     logger.error(`❌ Failed to delete training tracker: ${error.message}`);
 
@@ -174,15 +279,20 @@ export const deleteTrainingTracker = catchAsyncError(async (req: any, res: Respo
  */
 export const getAllSessions = catchAsyncError(async (req: Request, res: Response) => {
   try {
-    const filters = {
-      coachId: req.query.coachId as string,
-      clientId: req.query.clientId as string,
-      sessionStatus: req.query.sessionStatus as string
-    };
+    const sessions = await TrainingTrackerService.getAllSessions();
 
-    const sessions = await TrainingTrackerService.getAllSessions(filters);
-
-    return res.apiSuccess(sessions, "Sessions retrieved successfully", 200);
+    return res.apiSuccess(
+      sessions.map((row: any) => {
+        const plain = row?.toJSON ? row.toJSON() : row;
+        return {
+          ...plain,
+          _id: plain.id,
+          sessionNumber: plain.sessionNumber,
+        };
+      }),
+      "Sessions retrieved successfully",
+      200,
+    );
   } catch (error: any) {
     logger.error(`❌ Failed to get sessions: ${error.message}`);
     return res.apiError(new ErrorHandler(error.message || "Failed to retrieve sessions", 500));

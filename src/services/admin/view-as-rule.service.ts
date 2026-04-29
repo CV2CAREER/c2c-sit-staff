@@ -152,6 +152,32 @@ export class ViewAsRuleService {
   }
 
   /**
+   * Upsert a rule using persona as the stable key.
+   * This matches the admin persona-settings UI, which saves by persona
+   * instead of tracking rule ids in local state.
+   */
+  static async upsertByPersona(
+    data: { persona: string; allowedTargets: string[] },
+    req: any,
+    user: any,
+  ): Promise<ViewAsRule> {
+    const existingRule = await ViewAsRule.findOne({
+      where: { persona: data.persona },
+    });
+
+    if (!existingRule) {
+      return this.create(data, req, user);
+    }
+
+    return this.update(
+      existingRule.id,
+      { allowedTargets: data.allowedTargets },
+      req,
+      user,
+    );
+  }
+
+  /**
    * Check if staff can view as target user
    * Optimized database query with index
    */

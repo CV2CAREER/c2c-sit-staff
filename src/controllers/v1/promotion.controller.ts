@@ -93,8 +93,15 @@ export const getPromotions = catchAsyncError(async (req: Request, res: Response)
  */
 export const updatePromotionLength = catchAsyncError(async (req: Request, res: Response) => {
   const { id } = req.query;
+
+  if (!id || typeof id !== "string" || id.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Promotion length id is required",
+    });
+  }
   
-  const promotionLength = await PromotionService.updatePromotionLength(id as string, req.body);
+  const promotionLength = await PromotionService.updatePromotionLength(id, req.body);
   
   res.status(200).json({
     success: true,
@@ -108,8 +115,15 @@ export const updatePromotionLength = catchAsyncError(async (req: Request, res: R
  */
 export const deletePromotion = catchAsyncError(async (req: Request, res: Response) => {
   const { id } = req.query;
+
+  if (!id || typeof id !== "string" || id.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Promotion id is required",
+    });
+  }
   
-  await PromotionService.deletePromotion(req, id as string);
+  await PromotionService.deletePromotion(req, id);
   
   res.status(204).send();
 });

@@ -14,14 +14,36 @@ export class UnsubscribedUserService {
   }
 
   /**
-   * Get all unsubscribed users
+   * Get all unsubscribed users with user details (firstName, lastName)
    */
   static async getAllUnsubscribedUsers() {
     try {
-      // Skip user association temporarily - relation fix pending
-      return await UnsubscribedUser.findAll({
-        order: [['createdAt', 'DESC']]
+      const records = await UnsubscribedUser.findAll({
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'firstName', 'lastName', 'email'],
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        raw: true,
+        nest: true,
       });
+
+      // Flatten user details into each record for easy frontend consumption
+      return records.map((record: any) => ({
+        id: record.id,
+        userId: record.userId,
+        reason: record.reason,
+        date: record.date,
+        time: record.time,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        firstName: record.user?.firstName || 'Unknown',
+        lastName: record.user?.lastName || 'User',
+        email: record.user?.email || '',
+      }));
     } catch (error: any) {
       logger.error(`Failed to retrieve unsubscribed users: ${error.message}`);
       throw error;

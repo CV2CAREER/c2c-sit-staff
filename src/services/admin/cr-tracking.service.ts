@@ -14,6 +14,51 @@ const logger = getServiceLogger("cr-tracking-service");
  * Optimized for speed and stability
  */
 export class CRTrackingService {
+  private static buildCRName(payload: Record<string, any>) {
+    const candidates = [payload?.name, payload?.description, payload?.changeType, payload?.crType];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return `CR ${new Date().toISOString()}`;
+  }
+
+  private static normalizeCreatePayload(data: any) {
+    const payload: any = { ...(data || {}) };
+
+    if (payload.crStatus && !payload.status) {
+      payload.status = payload.crStatus;
+    }
+    delete payload.crStatus;
+    delete payload._id;
+
+    if (payload.nil && !payload.NIL) {
+      payload.NIL = payload.nil;
+    }
+    delete payload.nil;
+
+    if (payload.change && !payload.changeType) {
+      payload.changeType = payload.change;
+    }
+    delete payload.change;
+
+    if (payload.futureStateImageUrls && !payload.futureStateImageURLs) {
+      payload.futureStateImageURLs = payload.futureStateImageUrls;
+    }
+    delete payload.futureStateImageUrls;
+
+    if (payload.currentStateImageUrls && !payload.currentStateImageURLs) {
+      payload.currentStateImageURLs = payload.currentStateImageUrls;
+    }
+    delete payload.currentStateImageUrls;
+
+    payload.name = this.buildCRName(payload);
+
+    return payload;
+  }
 
   /**
    * Send Slack notification
@@ -55,13 +100,47 @@ export class CRTrackingService {
 
       const entries = await CRTracking.findAll({
         where: whereClause,
+        include: [
+          { association: "owner", attributes: ["id", "name", "email", "slackId"] },
+          { association: "nil", attributes: ["id", "name", "email", "slackId"] },
+          { association: "nominatedDeveloper", attributes: ["id", "name", "email", "slackId"] },
+          { association: "creator", attributes: ["id", "firstName", "lastName", "email"] },
+        ],
         order: [['createdAt', 'DESC']],
-        raw: true,
         benchmark: true
       });
 
       logger.info(`✅ Retrieved ${entries.length} CR tracking entries`);
-      return entries;
+      const mapped = entries.map((entry: any) => {
+        const plain = entry?.toJSON ? entry.toJSON() : entry;
+        const createdDate = plain.createdAt ? new Date(plain.createdAt).getTime() : Date.now();
+        const days = Math.floor((Date.now() - createdDate) / (24 * 60 * 60 * 1000));
+
+        return {
+          ...plain,
+          _id: plain.id,
+          id: plain.changeRequestId || plain.id,
+          name: plain.name || plain.description || "",
+          cardName: plain.name || plain.description || "",
+          crStatus: plain.status,
+          owner: plain.owner?.name || plain.owner || "",
+          ownerEmail: plain.ownerEmail || plain.owner?.email || "",
+          NIL: plain.nil?.name || plain.NIL || "",
+          nilEmail: plain.nilEmail || plain.nil?.email || "",
+          nominatedDeveloper: plain.nominatedDeveloper?.name || plain.nominatedDeveloper || "",
+          nominatedDeveloperEmail:
+            plain.nominatedDeveloperEmail || plain.nominatedDeveloper?.email || "",
+          impactedProvider: plain.impactedProvider || [],
+          impactedProdiver: plain.impactedProvider || [],
+          createdBy:
+            `${plain.creator?.firstName || ""} ${plain.creator?.lastName || ""}`.trim() ||
+            plain.createdBy,
+          counter: days > 0 ? days : 0,
+        };
+      });
+
+      logger.info(`Retrieved ${mapped.length} CR tracking entries`);
+      return mapped;
     } catch (error: any) {
       logger.error(`❌ Failed to get CR tracking entries: ${error.message}`);
       throw error;
@@ -203,6 +282,137 @@ export class CRTrackingService {
       return true;
     } catch (error: any) {
       logger.error(`❌ Failed to send NIL notification: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Update CR Tracking entry
+   */
+  static async update(req: any, id: string, updates: any, user: any) {
+    try {
+      const entry = await CRTracking.findByPk(id);
+      if (!entry) {
+        throw new Error("CR Tracking entry not found");
+      }
+
+      const previousState = entry.toJSON();
+      const payload = updates?.newRow && typeof updates.newRow === "object" ? updates.newRow : updates;
+      const normalized: any = { ...(payload || {}) };
+
+      delete normalized._id;
+      delete normalized.id;
+      delete normalized.newRow;
+      delete normalized.trackerId;
+      delete normalized.counter;
+      delete normalized.createdBy;
+      delete normalized.creator;
+      delete normalized.cardName;
+      delete normalized.createdAt;
+      delete normalized.updatedAt;
+
+      if (normalized.crStatus && !normalized.status) {
+        normalized.status = normalized.crStatus;
+      }
+      delete normalized.crStatus;
+
+      if (typeof normalized.impactedPersona === "string") {
+        normalized.impactedPersona = normalized.impactedPersona
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof normalized.impactedProvider === "string") {
+        normalized.impactedProvider = normalized.impactedProvider
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof normalized.impactedNode === "string") {
+        normalized.impactedNode = normalized.impactedNode
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof normalized.currentStateImageURLs === "string") {
+        normalized.currentStateImageURLs = normalized.currentStateImageURLs
+          .split(",")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof normalized.futureStateImageURLs === "string") {
+        normalized.futureStateImageURLs = normalized.futureStateImageURLs
+          .split(",")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+
+      if (normalized.owner && !normalized.ownerId) {
+        const owner = await CROwner.findOne({ where: { name: normalized.owner }, raw: true });
+        if (owner) {
+          normalized.ownerId = owner.id;
+          normalized.ownerEmail = normalized.ownerEmail || owner.email;
+        }
+      }
+      if (normalized.NIL && !normalized.nilId) {
+        const nil = await CROwner.findOne({ where: { name: normalized.NIL }, raw: true });
+        if (nil) {
+          normalized.nilId = nil.id;
+          normalized.nilEmail = normalized.nilEmail || nil.email;
+        }
+      }
+      if (normalized.nominatedDeveloper && !normalized.nominatedDeveloperId) {
+        const developer = await CROwner.findOne({
+          where: { name: normalized.nominatedDeveloper },
+          raw: true,
+        });
+        if (developer) {
+          normalized.nominatedDeveloperId = developer.id;
+          normalized.nominatedDeveloperEmail =
+            normalized.nominatedDeveloperEmail || developer.email;
+        }
+      }
+
+      if (normalized.note && typeof normalized.note === "string" && normalized.note.trim()) {
+        const existingTrail = Array.isArray(entry.noteTrail) ? entry.noteTrail : [];
+        normalized.noteTrail = [
+          ...existingTrail,
+          {
+            note: normalized.note.trim(),
+            addedBy: user?.email || user?.id || "system",
+            addedAt: new Date(),
+          },
+        ];
+      }
+
+      normalized.updatedBy = user?.id;
+      await entry.update(normalized);
+
+      setImmediate(async () => {
+        try {
+          await CRTrackingHistory.create({
+            crId: id,
+            action: "UPDATE",
+            previousState,
+            newState: entry.toJSON(),
+            performedBy: user?.id,
+          });
+        } catch (historyError) {
+          logger.warn(`Could not create history log: ${historyError}`);
+        }
+      });
+
+      if (payload?.notify) {
+        try {
+          await this.notifyNIL(req, id, user);
+        } catch (notifyError) {
+          logger.warn(`Unable to trigger NIL notification after update: ${notifyError}`);
+        }
+      }
+
+      return entry.toJSON();
+    } catch (error: any) {
+      logger.error(`Failed to update CR tracking: ${error.message}`);
       throw error;
     }
   }
@@ -467,6 +677,64 @@ export class CRTrackingService {
   static async create(req: any, data: any, user: any) {
     try {
       const host = req.headers.host || req.headers.origin || "localhost";
+      const payload = this.normalizeCreatePayload(data);
+
+      if (typeof payload.impactedPersona === "string") {
+        payload.impactedPersona = payload.impactedPersona
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof payload.impactedProvider === "string") {
+        payload.impactedProvider = payload.impactedProvider
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof payload.impactedNode === "string") {
+        payload.impactedNode = payload.impactedNode
+          .split(";")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof payload.currentStateImageURLs === "string") {
+        payload.currentStateImageURLs = payload.currentStateImageURLs
+          .split(",")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+      if (typeof payload.futureStateImageURLs === "string") {
+        payload.futureStateImageURLs = payload.futureStateImageURLs
+          .split(",")
+          .map((v: string) => v.trim())
+          .filter(Boolean);
+      }
+
+      if (payload.owner && !payload.ownerId) {
+        const owner = await CROwner.findOne({ where: { name: payload.owner }, raw: true });
+        if (owner) {
+          payload.ownerId = owner.id;
+          payload.ownerEmail = payload.ownerEmail || owner.email;
+        }
+      }
+      if (payload.NIL && !payload.nilId) {
+        const nil = await CROwner.findOne({ where: { name: payload.NIL }, raw: true });
+        if (nil) {
+          payload.nilId = nil.id;
+          payload.nilEmail = payload.nilEmail || nil.email;
+        }
+      }
+      if (payload.nominatedDeveloper && !payload.nominatedDeveloperId) {
+        const developer = await CROwner.findOne({
+          where: { name: payload.nominatedDeveloper },
+          raw: true,
+        });
+        if (developer) {
+          payload.nominatedDeveloperId = developer.id;
+          payload.nominatedDeveloperEmail =
+            payload.nominatedDeveloperEmail || developer.email;
+        }
+      }
 
       // Auto upload base64 images to Firebase Storage
       const uploadImageToFirebase = async (imageData: string) => {
@@ -481,31 +749,31 @@ export class CRTrackingService {
       };
 
       // Process currentStateImageURLs array
-      if (data.currentStateImageURLs) {
-        if (!Array.isArray(data.currentStateImageURLs)) {
-          data.currentStateImageURLs = [data.currentStateImageURLs];
+      if (payload.currentStateImageURLs) {
+        if (!Array.isArray(payload.currentStateImageURLs)) {
+          payload.currentStateImageURLs = [payload.currentStateImageURLs];
         }
-        data.currentStateImageURLs = await Promise.all(
-          data.currentStateImageURLs.map((img: string) => uploadImageToFirebase(img))
+        payload.currentStateImageURLs = await Promise.all(
+          payload.currentStateImageURLs.map((img: string) => uploadImageToFirebase(img))
         );
       }
 
       // Process futureStateImageURLs array
-      if (data.futureStateImageURLs) {
-        if (!Array.isArray(data.futureStateImageURLs)) {
-          data.futureStateImageURLs = [data.futureStateImageURLs];
+      if (payload.futureStateImageURLs) {
+        if (!Array.isArray(payload.futureStateImageURLs)) {
+          payload.futureStateImageURLs = [payload.futureStateImageURLs];
         }
-        data.futureStateImageURLs = await Promise.all(
-          data.futureStateImageURLs.map((img: string) => uploadImageToFirebase(img))
+        payload.futureStateImageURLs = await Promise.all(
+          payload.futureStateImageURLs.map((img: string) => uploadImageToFirebase(img))
         );
       }
 
       const entry = await CRTracking.create({
-        ...data,
+        ...payload,
         createdBy: user.id,
         updatedBy: user.id,
         isDeleted: false,
-        level: data.level ?? 1
+        level: payload.level ?? 1
       });
 
       // Create history log ASYNCHRONOUSLY (non blocking)

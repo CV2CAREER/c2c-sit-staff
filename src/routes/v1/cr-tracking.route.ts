@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getCRTrackingEntries,
   createCRTracking,
+  updateCRTracking,
   softDeleteCRTracking,
   restoreCRTracking,
   permanentDeleteCRTracking,
@@ -29,6 +30,7 @@ crTrackingRouterV1.post("/options", createCROption);
 crTrackingRouterV1.put("/options", updateCROption);
 crTrackingRouterV1.delete("/options", deleteCROption);
 crTrackingRouterV1.post("/", createCRTracking);
+crTrackingRouterV1.put("/", updateCRTracking);
 crTrackingRouterV1.delete("/", softDeleteCRTracking);
 crTrackingRouterV1.post("/restore", restoreCRTracking);
 crTrackingRouterV1.delete("/delete", permanentDeleteCRTracking);

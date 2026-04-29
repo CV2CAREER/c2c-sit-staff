@@ -33,8 +33,10 @@ import { UnsubscribedUser } from "../models/v1/unsubscribed-user.model";
 import { Promotion, PromotionLength } from "../models/v1/promotion.model";
 import { Blog } from "../models/v1/blog.model";
 import { TrainingTracker } from "../models/v1/training-tracker.model";
+import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 import { SalesOperation } from "../models/v1/sales-operation.model";
 import { CRTracking } from "../models/v1/cr-tracking.model";
+import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
 import { CROwner } from "../models/v1/cr/owner.model";
 import { CRChange } from "../models/v1/cr/change.model";
 import { CRSeverity } from "../models/v1/cr/severity.model";
@@ -54,6 +56,10 @@ import { SlackMessage } from "../models/v1/slack-message.model";
 import AuditLog from "@/models/v1/audit-log.model";
 import PassKeyVault from "@/models/v1/passkey-vault.model";
 import { UserPreferenceHistory } from "../models/v1/user-preference-history.model"
+import { AccessLevel } from "../models/v1/access-level.model";
+import { AccessRule } from "../models/v1/access-rule.model";
+import { UserAccessLevel } from "../models/v1/user-access-level.model";
+import { CommunicationTemplate } from "../models/v1/communication-template.model";
 
 export const modelList = [
   User,
@@ -92,8 +98,10 @@ export const modelList = [
   PromotionLength,
   Blog,
   TrainingTracker,
+  TrainingTrackerSession,
   SalesOperation,
   CRTracking,
+  CRTrackingHistory,
   CROwner,
   CRChange,
   CRSeverity,
@@ -110,6 +118,10 @@ export const modelList = [
   ViewAsRule, 
   SupportConversation,
   SupportSession,
+  AccessLevel,
+  AccessRule,
+  UserAccessLevel,
+  CommunicationTemplate,
   AuditLog,
   PassKeyVault,
   UserPreferenceHistory,
