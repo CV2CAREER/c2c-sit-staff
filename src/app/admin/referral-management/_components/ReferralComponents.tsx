@@ -39,7 +39,6 @@ interface IUser {
 
 const ReferralComponent = () => {
   const [users, setUsers] = useState<any[]>([]);
-  const [reload, setReload] = useState<boolean>(true);
   const [queryString, setQueryString] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [user, setUser] = useState<IUser>({});
@@ -63,6 +62,9 @@ const ReferralComponent = () => {
 
   const [detailedReferredUsers, setDetailedReferredUsers] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const isDeletedReferral = (entry: any) =>
+    Boolean(entry?.archived || entry?.isDeleted || entry?.deletedAt);
 
   // === Domain Hooks ===
   const { referralsListDomain, referredUsersDetailsDomain } = useReferralQueries({
@@ -156,16 +158,24 @@ const ReferralComponent = () => {
       const responseData = referralsListDomain.data;
       const usersArray = responseData?.users || responseData || [];
       const totalCount = responseData?.total || 0;
-      
-      const filteredUsers = Array.isArray(usersArray) 
+
+      const normalizedUsers = Array.isArray(usersArray)
         ? usersArray.filter((u: any) => u.details !== null)
         : [];
 
+      const filteredByDeletedState = normalizedUsers.filter((u: any) =>
+        showDeleted ? isDeletedReferral(u) : !isDeletedReferral(u)
+      );
+
       setIsVarianceAll(variance === "all");
-      setUsers(filteredUsers);
-      setRowCount(totalCount);
+      setUsers(filteredByDeletedState);
+      setRowCount(
+        typeof totalCount === "number" && filteredByDeletedState.length > 0
+          ? totalCount
+          : filteredByDeletedState.length
+      );
     }
-  }, [referralsListDomain.data, variance, referralsListDomain.isLoading, referralsListDomain.isFetching]);
+  }, [referralsListDomain.data, variance, showDeleted, referralsListDomain.isLoading, referralsListDomain.isFetching]);
 
   // Sync referredUsersDetailsDomain
   useEffect(() => {
@@ -252,8 +262,7 @@ const ReferralComponent = () => {
         el.field !== "note" &&
         el.field !== "nominatedDeveloper" &&
         el.field !== "lastUpdatedBy" &&
-        el.field !== "source" &&
-        el.field !== "userId"
+        el.field !== "source"
     );
 
     if (variance == "all" && isVarianceAll) {
@@ -626,11 +635,14 @@ const ReferralComponent = () => {
       }
 
       // 🚫 ONLY SHOW DELETE/RESTORE/APPROVE ACTIONS FOR NON-AGGREGATED VIEWS
-      if (variance !== "all") {
+    }
+
+    if (variance !== "all") {
         // Restore button for deleted items
         if (showDeleted) {
           modifiedArr.unshift({
-            field: "Restore",
+            field: "restore",
+            headerName: "Restore",
             width: 100,
             headerClassName: "bg-[#80D7FF]",
             renderCell: (params: any) => {
@@ -649,10 +661,11 @@ const ReferralComponent = () => {
         }
 
         // Approve/Decline buttons for claim referrals
-        if (variance == "claim") {
+        if (variance === "claim" && !showDeleted) {
           modifiedArr.unshift(
             {
-              field: "Approve Claim",
+              field: "approveClaim",
+              headerName: "Approve Claim",
               width: 150,
               headerClassName: "bg-[#80D7FF]",
               renderCell: (params: any) => {
@@ -668,7 +681,8 @@ const ReferralComponent = () => {
               },
             },
             {
-              field: "Decline Claim",
+              field: "declineClaim",
+              headerName: "Decline Claim",
               width: 150,
               headerClassName: "bg-[#80D7FF]",
               renderCell: (params: any) => {
@@ -689,7 +703,6 @@ const ReferralComponent = () => {
       }
 
       return modifiedArr;
-    }
   }
 
   /*
@@ -716,7 +729,6 @@ const ReferralComponent = () => {
       toast.success("Referral Declined successfully", { id: loadingToast });
       setReasonModalVisibility(false);
       setDeclinationReason("");
-      setReload(!reload);
       referralsListDomain.refetch();
     } catch {
       // Error handled silently
@@ -734,7 +746,7 @@ const ReferralComponent = () => {
       const loadingToast = toast.loading("Recycling claim..");
       const res = await deleteReferral.mutateAsync({ id, variance });
       toast.success(res.message || "Deleted successfully", { id: loadingToast });
-      setReload(!reload);
+      referralsListDomain.refetch();
     } catch {
       // Error handled silently
     }
@@ -745,14 +757,45 @@ const ReferralComponent = () => {
       const loadingToast = toast.loading("Recycling claim..");
       const res = await hardDeleteReferral.mutateAsync({ id, variance });
       toast.success(res.message || "Deleted successfully", { id: loadingToast });
-      setReload(!reload);
+      referralsListDomain.refetch();
     } catch {
       // Error handled silently
     }
   };
 
-  const handleDeleteMultiple = async (_prop: any) => {
-    // console.log("Deleting Multiple Referrals...", { prop });
+  const handleDeleteMultiple = async (selectedIds: any) => {
+    if (variance === "all") {
+      toast.error("Bulk delete is unavailable in aggregated view.");
+      return;
+    }
+
+    const ids = (Array.isArray(selectedIds) ? selectedIds : []).filter(Boolean);
+    if (ids.length === 0) return;
+
+    const loadingToast = toast.loading(
+      showDeleted ? "Deleting selected referrals..." : "Moving selected referrals..."
+    );
+
+    try {
+      if (showDeleted) {
+        await Promise.all(
+          ids.map((id: string) =>
+            hardDeleteReferral.mutateAsync({ id: String(id), variance })
+          )
+        );
+      } else {
+        await Promise.all(
+          ids.map((id: string) =>
+            deleteReferral.mutateAsync({ id: String(id), variance })
+          )
+        );
+      }
+
+      toast.success("Selected referrals updated successfully.", { id: loadingToast });
+      referralsListDomain.refetch();
+    } catch {
+      toast.error("Failed to update selected referrals.", { id: loadingToast });
+    }
   };
 
   const handleSelection = async (_prop: any) => {
@@ -766,7 +809,6 @@ const ReferralComponent = () => {
       toast.success("Referral Claim Restored Successfully", {
         id: loadingToast,
       });
-      setReload(!reload);
       referralsListDomain.refetch();
     } catch {
       toast.error("Something went wrong");
@@ -853,14 +895,14 @@ const ReferralComponent = () => {
             handleSelection={handleSelection}
             actions={[
               {
-                label: 'Show Deleted',
+                label: showDeleted ? "Show Active" : "Show Deleted",
                 handler: () => {
                   setShowDeleted(!showDeleted);
                 },
                 isChecked: showDeleted,
               },
             ]}
-            checkBoxSelection={false}
+            checkBoxSelection={variance !== "all"}
             paginationData={paginationData}
             rowCount={rowCount}
             setPaginationData={setPaginationData}

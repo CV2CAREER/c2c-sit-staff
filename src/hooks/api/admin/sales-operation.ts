@@ -107,9 +107,39 @@ export const useSalesOperationMutations = () => {
     },
   });
 
+  // DELETE /?id=...&hard=true (permanent delete from recycle bin)
+  const hardDeleteMutation = useMutateData<any, { id: string }>({
+    method: "DELETE",
+    url: (data) => `${endpoints.ADMIN_SALES_OPERATION}?id=${data.id}&hard=true`,
+    mutationKey: ["admin-hard-delete-sales-operation"],
+    onSuccess: (res) => {
+      toast.success(res?.message || "Entry permanently deleted.");
+      invalidate();
+    },
+    onError: (err) => {
+      toast.error(err?.message || "Failed to permanently delete entry.");
+    },
+  });
+
+  // DELETE /?id=...&undo=true (restore from recycle bin)
+  const restoreMutation = useMutateData<any, { id: string }>({
+    method: "DELETE",
+    url: (data) => `${endpoints.ADMIN_SALES_OPERATION}?id=${data.id}&undo=true`,
+    mutationKey: ["admin-restore-sales-operation"],
+    onSuccess: (res) => {
+      toast.success(res?.message || "Entry restored successfully.");
+      invalidate();
+    },
+    onError: (err) => {
+      toast.error(err?.message || "Failed to restore entry.");
+    },
+  });
+
   return {
     createMutation,
     updateMutation,
     softDeleteMutation,
+    hardDeleteMutation,
+    restoreMutation,
   };
 };

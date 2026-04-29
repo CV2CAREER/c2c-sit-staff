@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -155,18 +155,27 @@ export default function SalesOperationComponent() {
   const [editForm, setEditForm] = useState<Record<string, string>>(emptyForm);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmHardDelete, setConfirmHardDelete] = useState<string | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
 
   const { activeDataDomain, recycleDataDomain } = useSalesOperationQueries({
     fetchActive: !isRecycle,
     fetchRecycle: isRecycle,
   });
 
-  const { createMutation, updateMutation, softDeleteMutation } = useSalesOperationMutations();
+  const {
+    createMutation,
+    updateMutation,
+    softDeleteMutation,
+    hardDeleteMutation,
+    restoreMutation,
+  } = useSalesOperationMutations();
 
   const domain = isRecycle ? recycleDataDomain : activeDataDomain;
   const data = domain.data ?? [];
   const isLoading = domain.isLoading;
 
+  // Sync edit form when row selected
   useEffect(() => {
     if (editRow) {
       const vals: Record<string, string> = {};
@@ -174,6 +183,45 @@ export default function SalesOperationComponent() {
       setEditForm(vals);
     }
   }, [editRow]);
+
+  // ── modifyArray ──
+  // NOTE: editMode and openEdit are passed via helpers so Table's columnHeaders
+  // useMemo (which has helpers in its deps) picks up changes reactively.
+  function modifyArray(arr: any[], helpers: any) {
+    const currentEditMode: boolean = helpers?.editMode ?? false;
+    const openEdit: (row: any) => void = helpers?.openEdit ?? (() => {});
+
+    const filtered = arr.filter(
+      (col) =>
+        !["__v", "isDeleted", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "deletedAt"].includes(col.field)
+    );
+
+    // Only show Edit column in active view
+    if (!isRecycle) {
+      filtered.unshift({
+        field: "editAction",
+        headerName: "Edit",
+        width: 80,
+        headerClassName: "bg-[#80D7FF]",
+        sortable: false,
+        renderCell: (params: any) => (
+          <button
+            disabled={!currentEditMode}
+            onClick={() => openEdit(params.row)}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              currentEditMode
+                ? "bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            Edit
+          </button>
+        ),
+      });
+    }
+
+    return filtered;
+  }
 
   const handleCreate = async () => {
     try {
@@ -192,42 +240,23 @@ export default function SalesOperationComponent() {
     } catch { /* handled in hook */ }
   };
 
-  function modifyArray(arr: any[]) {
-    const filtered = arr.filter(
-      (col) => !["__v", "isDeleted", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "deletedAt"].includes(col.field)
-    );
+  const handleDeleteMultiple = async (selectedIds: unknown) => {
+    const ids = (Array.isArray(selectedIds) ? selectedIds : []).filter(Boolean) as string[];
+    if (!ids.length) return;
 
-    // Only show Edit in non-recycle (active) view
-    if (!isRecycle) {
-      filtered.unshift({
-        field: "edit",
-        headerName: "Edit",
-        width: 80,
-        headerClassName: "bg-[#80D7FF]",
-        renderCell: (params: any) => (
-          <button
-            disabled={!editMode}
-            onClick={() => { setEditRow(params.row); setEditOpen(true); }}
-            className={`text-xs px-2 py-1 rounded transition-colors ${
-              editMode
-                ? "bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            Edit
-          </button>
-        ),
-      });
+    if (isRecycle) {
+      await Promise.all(ids.map((id) => hardDeleteMutation.mutateAsync({ id })));
+      return;
     }
 
-    return filtered;
-  }
+    await Promise.all(ids.map((id) => softDeleteMutation.mutateAsync({ id })));
+  };
 
   return (
     <div className="flex flex-col gap-6">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {!isRecycle && (
+      {!isRecycle && (
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-2 bg-[#008ED3] hover:bg-[#0073a8] text-white font-semibold px-4 py-2 rounded-lg shadow transition-colors"
@@ -235,27 +264,37 @@ export default function SalesOperationComponent() {
             <PlusIcon className="w-4 h-4" />
             Add Entry
           </Button>
-        )}
-        <Button
-          onClick={() => setIsRecycle((v) => !v)}
-          className="flex items-center gap-2 bg-[#008ED3] hover:bg-[#0073a8] text-white font-semibold px-4 py-2 rounded-lg shadow transition-colors"
-        >
-          <Trash2Icon className="w-4 h-4" />
-          {isRecycle ? "View Active" : "Recycle Bin"}
-        </Button>
-      </div>
+        </div>
+      )}
 
-      {/* Table */}
+      {/* Table — Show Deleted is in the actions prop (checkbox row) */}
       <Table
         data={data}
-        helpers={{}}
-        allowDelete={!isRecycle}
+        // Pass editMode + openEdit through helpers so modifyArray gets them reactively
+        helpers={{ editMode, openEdit: (row: any) => { setEditRow(row); setEditOpen(true); } }}
+        allowDelete={true}
+        allowRestore={isRecycle}
         modifyArray={modifyArray}
         tableName={`SALES_OPERATION_${isRecycle ? "RECYCLE" : "ACTIVE"}`}
         editMode={editMode}
-        setEditMode={!isRecycle ? setEditMode : undefined}
-        handleDelete={(id: string) => setConfirmDelete(id as string)}
+        setEditMode={setEditMode}
+        handleDelete={(id: string) =>
+          isRecycle ? setConfirmHardDelete(id as string) : setConfirmDelete(id as string)
+        }
+        handleRestore={(id: string) => setConfirmRestore(id as string)}
+        handleDeleteMultiple={handleDeleteMultiple}
         isLoading={isLoading}
+        actions={[
+          {
+            label: isRecycle ? "Show Active" : "Show Deleted",
+            handler: () => {
+              setIsRecycle((v) => !v);
+              setEditMode(false); // reset edit mode when switching views
+            },
+            isChecked: isRecycle,
+          },
+        ]}
+        checkBoxSelection={isRecycle}
       />
 
       {/* Create Modal */}
@@ -314,7 +353,7 @@ export default function SalesOperationComponent() {
       <ConfirmDialog
         open={!!confirmDelete}
         title="Move to Recycle Bin?"
-        description="This entry will be soft-deleted and can be found in the Recycle Bin view."
+        description="This entry will be soft-deleted. You can view it by enabling 'Show Deleted'."
         confirmLabel="Move to Recycle Bin"
         onConfirm={async () => {
           if (confirmDelete) {
@@ -323,6 +362,36 @@ export default function SalesOperationComponent() {
           }
         }}
         onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* Confirm Restore */}
+      <ConfirmDialog
+        open={!!confirmRestore}
+        title="Restore Entry?"
+        description="This entry will be moved back to the active list."
+        confirmLabel="Restore Entry"
+        onConfirm={async () => {
+          if (confirmRestore) {
+            await restoreMutation.mutateAsync({ id: confirmRestore });
+            setConfirmRestore(null);
+          }
+        }}
+        onCancel={() => setConfirmRestore(null)}
+      />
+
+      {/* Confirm Permanent Delete */}
+      <ConfirmDialog
+        open={!!confirmHardDelete}
+        title="Permanently Delete?"
+        description="This action cannot be undone."
+        confirmLabel="Delete Permanently"
+        onConfirm={async () => {
+          if (confirmHardDelete) {
+            await hardDeleteMutation.mutateAsync({ id: confirmHardDelete });
+            setConfirmHardDelete(null);
+          }
+        }}
+        onCancel={() => setConfirmHardDelete(null)}
       />
     </div>
   );
