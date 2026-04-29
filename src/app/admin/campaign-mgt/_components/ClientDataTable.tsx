@@ -53,6 +53,12 @@ interface Client {
     plans?: any;
     craft?: string | null;
     master_credentials?: any | null;
+    seekExternalCredentials?: {
+        Plan?: string;
+        Full_Name?: string;
+        Craft?: string;
+        [key: string]: any;
+    };
     source: "mongodb" | "master_credentials" | "client";
 }
 
@@ -73,12 +79,15 @@ const useClientPlan = (clientInfo: Client | null) => {
     const hasPremiumAccess = useMemo(() => {
         if (!clientInfo) return false;
 
-        // Extract plan value from multiple possible locations to be robust
-        // Normalize: plans might be an object {title: '...'} or a string directly
-        const plansObj = clientInfo.plans;
-        const planFromPlans = typeof plansObj === 'string' ? plansObj : (plansObj?.title || plansObj?.name);
+        // Extract plan value from the new API response structure (seekExternalCredentials)
+        let planValue = clientInfo?.seekExternalCredentials?.Plan;
         
-        const planValue = planFromPlans || clientInfo.plan;
+        // Fallback to other possible locations
+        if (!planValue) {
+            const plansObj = clientInfo.plans;
+            const planFromPlans = typeof plansObj === 'string' ? plansObj : (plansObj?.title || plansObj?.name);
+            planValue = planFromPlans || clientInfo.plan;
+        }
                          
         if (!planValue) {
             console.log("[ClientPlan] No plan value found for client:", clientInfo.name);
@@ -103,8 +112,8 @@ const useClientPlan = (clientInfo: Client | null) => {
         if (isPremium) return true;
 
         // Fallback: check raw plans object if it's a NormalizedPlan or has nested properties
-        if (plansObj && typeof plansObj === 'object') {
-            const rawTitle = plansObj.title || plansObj.name || plansObj.planName;
+        if (clientInfo.plans && typeof clientInfo.plans === 'object') {
+            const rawTitle = clientInfo.plans.title || clientInfo.plans.name || clientInfo.plans.planName;
             if (rawTitle) {
                 const normalizedTitle = rawTitle.toString().toLowerCase();
                 if (normalizedTitle.includes("gold") || 
@@ -123,14 +132,11 @@ const useClientPlan = (clientInfo: Client | null) => {
     return {
         hasPremiumAccess,
         canUseSecondaryProfile: hasPremiumAccess,
-        clientPlan: clientInfo?.plan || null,
+        clientPlan: clientInfo?.seekExternalCredentials?.Plan || clientInfo?.plan || null,
         fullPlan: clientInfo?.plans || null,
         planName: (() => {
             if (!clientInfo) return null;
-            const plansObj = clientInfo.plans;
-            const planFromPlans = typeof plansObj === 'string' ? plansObj : (plansObj?.title || plansObj?.name);
-            const planValue = planFromPlans || clientInfo.plan;
-            return planValue?.toString() || null;
+            return clientInfo?.seekExternalCredentials?.Plan || clientInfo?.plan;
         })()
     };
 };
@@ -201,8 +207,8 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     const queryClient = useQueryClient();
 
     const adminQueriesOptions = React.useMemo(() => ({
-        userId: clientId.toString(),
-        fetchUserInfo: true,
+        clientId: clientId.toString(),
+        fetchSingleClient: true,
         fetchAggregators: true,
         fetchCampaignSheet: tableDisplay === "aggregator",
         campaignOptions: {
@@ -217,7 +223,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     }), [clientId, tableDisplay, aggregatorDataState, selectedAggregator, dataOption, jobApplicationsStatusFilter, paginationModel.pageSize, paginationModel.page]);
 
     const {
-        userInfoDomain,
+        singleClientDomain,
         campaignSheetDomain,
         aggregatorsDomain,
     } = useAdminQueries(adminQueriesOptions);
@@ -231,9 +237,9 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     const { generateKeywordsFromResumeMutation, addToClientQueueMutation, syncAggregatorsMutation } = useCampaignMutations();
 
     // Extract actual user data from API response wrapper
-    const apiResponse = userInfoDomain.data;
+    const apiResponse = singleClientDomain.data;
     const clientInfo = apiResponse?.data || apiResponse;
-    const isLoadingClient = userInfoDomain.isLoading;
+    const isLoadingClient = singleClientDomain.isLoading;
 
     const { data: jobsiteAggregators, isLoading: isJobsiteAggregatorsLoading } = aggregatorsDomain;
     const { data: applicationData, isLoading: isApplicationLoading, error: applicationError } = campaignSheetDomain;
@@ -282,14 +288,15 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                 roleTitles: true,
                 increment: false
             });
-            
-            toast.dismiss(loadingToast);
+        
             toast.success('Keywords and role titles generated successfully');
+            toast.dismiss(loadingToast);
             queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
         } catch (error) {
-            toast.dismiss(loadingToast);
+            
             const errorMessage = handleApiError(error, 'Failed to generate keywords from resume');
             toast.error(errorMessage);
+            toast.dismiss(loadingToast);
         } finally {
             setLoaders((prev) => ({ ...prev, isUpdatingKeywords: false }));
         }
@@ -747,9 +754,6 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                         >
                             {isPrimary ? "Using Primary Profile" : "Using Secondary Profile"}
                         </button>
-                        {planName && (
-                            <span className="text-sm text-gray-600 font-medium">({planName} Plan)</span>
-                        )}
                     </div>
                 ) : (
                     <div className="px-4 py-2 rounded-lg bg-gray-200 text-gray-500 text-sm">

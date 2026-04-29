@@ -98,8 +98,8 @@ export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management
 export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;
 export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
 
-// User Campaign Manegement Page - Temidayo
-export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients/{id}/soft-delete";
+// User Campaign Management Page - Temidayo
+export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients";
 export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/campaigns/preferences/notify";
 export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/campaigns/preferences/notify"; 
 export const ADMIN_GENERATE_PASSWORD = "/api/v1/campaigns/credentials/generate-password";

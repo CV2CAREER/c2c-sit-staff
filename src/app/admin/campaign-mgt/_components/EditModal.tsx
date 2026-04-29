@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { UseMutationResult } from "@tanstack/react-query";
+import { UseMutationResult, useQueryClient } from "@tanstack/react-query";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "antd"; // Import DatePicker from antd
@@ -111,6 +111,8 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   setDialog,
   editClientAction,
 }) => {
+  const queryClient = useQueryClient();
+  
   const countries = countryList()
     .getData()
     .map((country) => ({ ...country, value: country.label }));
@@ -219,9 +221,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
           setDialog(null);
           
           // Refresh campaign clients table
-          window.dispatchEvent(new CustomEvent("invalidateQuery", { 
-            detail: { queryKey: ["admin-fetch-campaign-clients"] } 
-          }));
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: (err) => {
           toast.dismiss();

@@ -11,6 +11,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     fetchCampaigns = false,
     fetchSheetsTemplates = false,
     fetchSingleClient = false,
+    fetchUserDocsAndPreferences = false,
     userId = "",
     clientId = "",
     campaignOptions = {},
@@ -28,7 +29,11 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
   const campaignClients = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_CAMPAIGN_GET_CLIENTS,
-    queryKey: ["admin-fetch-campaign-clients"],
+    params: { 
+      active: campaignActive,
+      q: campaignSearch 
+    },
+    queryKey: ["admin-fetch-campaign-clients", campaignActive, campaignSearch],
     enabled: fetchCampaignClients,
   });
 
@@ -43,7 +48,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     method: "GET",
     url: endpoints.ADMIN_CAMPAIGN,
     params: { 
-      filter: campaignActive,
+      active: campaignActive,
       q: campaignSearch 
     },
     queryKey: ["admin-campaigns", campaignActive, campaignSearch],
@@ -62,6 +67,13 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     url: clientId ? `/api/v1/campaigns/clients/${clientId}` : "",
     queryKey: ["admin-single-campaign-client", clientId],
     enabled: fetchSingleClient && !!clientId,
+  });
+
+  const documentReview = useFetchData<any>({
+    method: "GET",
+    url: userId ? `/api/v1/campaigns/users/${userId}/document-review` : "",
+    queryKey: ["admin-document-review", userId],
+    enabled: fetchUserDocsAndPreferences && !!userId,
   });
 
   return useMemo(() => ({
@@ -109,6 +121,13 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
       isError: singleClient.isError,
       error: singleClient.error,
     },
+    documentReviewDomain: {
+      data: documentReview.data?.data,
+      isLoading: documentReview.isLoading,
+      isSuccess: documentReview.isSuccess,
+      isError: documentReview.isError,
+      error: documentReview.error,
+    },
   }), [
     campaignSheet.data, campaignSheet.isLoading, campaignSheet.isSuccess, campaignSheet.isError, campaignSheet.error,
     campaignClients.data, campaignClients.isLoading, campaignClients.isSuccess, campaignClients.isError, campaignClients.error,
@@ -116,6 +135,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     campaigns.data, campaigns.isLoading, campaigns.isSuccess, campaigns.isError, campaigns.error,
     sheetsTemplates.data, sheetsTemplates.isLoading, sheetsTemplates.isSuccess, sheetsTemplates.isError, sheetsTemplates.error,
     singleClient.data, singleClient.isLoading, singleClient.isSuccess, singleClient.isError, singleClient.error,
+    documentReview.data, documentReview.isLoading, documentReview.isSuccess, documentReview.isError, documentReview.error,
   ]);
 };
 
@@ -216,6 +236,13 @@ export const useCampaignMutations = () => {
       method: "DELETE",
       url: (params) => `/api/v1/campaigns/clients/${params?.id}/permanent`,
       mutationKey: ["admin-permanent-delete-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    toggleFlightStatusMutation: useMutateData<any, { clientId: string | number }>({
+      method: "PATCH",
+      url: (params) => `/api/v1/campaigns/clients/${params?.clientId}/toggle-flight`,
+      mutationKey: ["admin-toggle-campaign-flight"],
       onSuccess: () => {},
       onError: () => {},
     }),

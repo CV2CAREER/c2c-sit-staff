@@ -12,7 +12,7 @@ type Props = {
 const AppProvider = ({ children }: Props) => {
   return (
     <QueryProvider>
-      <AuthStoreProvider accessToken={null} user={null}>
+      <AuthStoreProvider staffAccessToken={null} user={null}>
         <ToastProvider>{children}</ToastProvider>
       </AuthStoreProvider>
       <ReactQueryDevtools initialIsOpen={false} />

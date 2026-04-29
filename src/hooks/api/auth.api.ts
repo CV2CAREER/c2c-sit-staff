@@ -50,11 +50,11 @@ export const useAuthMutations = () => {
     onSuccess: async (response) => {
       if (!response.success) return;
 
-      const { user, verificationToken, accessToken } = response.data;
+      const { user, verificationToken, staffAccessToken } = response.data;
 
       // Store user and token in Zustand
       setUser(user);
-      setAccessToken(accessToken);
+      setAccessToken(staffAccessToken);
 
       if (userEmail) setUserEmail(null);
 

@@ -78,7 +78,7 @@ export function CampaignTableActions({
         onSuccess: () => {
           toast.dismiss();
           toast.success("Client has been moved to the Recycle bin");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();
@@ -96,7 +96,7 @@ export function CampaignTableActions({
         onSuccess: () => {
           toast.dismiss();
           toast.success("Client has been restored to active campaign table");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();
@@ -114,7 +114,7 @@ export function CampaignTableActions({
         onSuccess: () => {
           toast.dismiss();
           toast.success("Client has been delete permanently.");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();

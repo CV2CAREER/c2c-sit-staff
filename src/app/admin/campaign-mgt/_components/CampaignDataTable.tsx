@@ -30,6 +30,7 @@ import { MasterSheetDropDownModal } from "./CampaignFillDown";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { useQueryClient } from '@tanstack/react-query'
 import { TableInformationEnum } from "@/types/enum";
+import { useCampaignQueries, useCampaignMutations } from "@/hooks/api/admin/campaign";
 import KwRtModalComponent from "@/components/GenerateAQComponents/kw-rt-modal-component";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import CustomModalAQ from "@/components/modals/CustomModalAQ";
@@ -130,7 +131,7 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
   const [clientData, setClientData] = useState<null | any[]>(null);
   const [isloading, setIsLoading] = useState<boolean>(false);
   const [preferences, setPreferences] = useState<Pred>();
-  const [credentialsId, setCredentialsId] = useState<null | number>(null);
+  const [credentialsId, setCredentialsId] = useState<null | string>(null);
   const [jobType, setJobType] = useState([]);
   const [workingRights, setWorkingRights] = useState([]);
   const [reload, setReload] = useState(false);
@@ -158,12 +159,17 @@ const queryClient = useQueryClient();
     jobPreferencesOptionsDomain,
     userDocsAndPreferencesDomain,
   } = useAdminQueries(adminQueriesOptions);
+  const { documentReviewDomain } = useCampaignQueries({
+    userId: usersId || "",
+    fetchUserDocsAndPreferences: !!usersId,
+  });
 
   const {
     updateCampaignSheetBulkMutation,
     reverseUserIdMutation,
     flightCampaignMutation,
   } = useAdminMutations();
+  const { toggleFlightStatusMutation } = useCampaignMutations();
 
   const usersItems = usersFullNameDomain.data || [];
   const rowsData = campaignClientsDomain.data || [];
@@ -315,30 +321,15 @@ const queryClient = useQueryClient();
     setSaveMultiple(true);
   };
 
-  const generateAQFn = useCallback(async (clientId: number) => {
+  const generateAQFn = useCallback(async (clientId: string) => {
     setCredentialsId(clientId);
+    setUserID(clientId);
     setKwrtIsOpen(true);
-
-    if (clientId) {
-      reverseUserIdMutation.mutate(
-        { clientId },
-        {
-          onSuccess: (res: any) => {
-            if (res.data?._id) {
-              setUserID(res.data._id);
-            }
-          },
-          onError: (err: any) => {
-            toast.error(err.message || "Failed to reverse user ID");
-          },
-        }
-      );
-    }
-  }, [reverseUserIdMutation]);
+  }, []);
 
   useEffect(() => {
-    if (userDocsAndPreferencesDomain.data) {
-      const { userDocs, userPreference } = userDocsAndPreferencesDomain.data;
+    if (documentReviewDomain.data) {
+      const { userDocs, userPreference } = documentReviewDomain.data;
       if (userDocs) {
         userDocs.forEach((doc: any) => {
           if (!Array.isArray(doc.document)) {
@@ -351,29 +342,29 @@ const queryClient = useQueryClient();
         setPreferences(userPreference);
       }
     }
-  }, [userDocsAndPreferencesDomain.data]);
+  }, [documentReviewDomain.data]);
 
   const fetchClientDocuments = async () => {
     setRefetch(false);
   };
 
   const handleFlight = useCallback((clientId: string) => {
-    toast.loading("Processing flight action...");
-    flightCampaignMutation.mutate(
+    toast.loading("Toggling campaign flight status...");
+    toggleFlightStatusMutation.mutate(
       { clientId },
       {
         onSuccess: (res: any) => {
           toast.dismiss();
-          toast.success(res.message || "Flight action successful");
+          toast.success(res.message || "Campaign flight status updated successfully");
           queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
         },
         onError: (err: any) => {
           toast.dismiss();
-          toast.error(err.message || "Failed to process flight action");
+          toast.error(err.message || "Failed to toggle flight status");
         },
       }
     );
-  }, [flightCampaignMutation, queryClient]);
+  }, [toggleFlightStatusMutation, queryClient]);
 
   useEffect(() => {
     if(usersId){

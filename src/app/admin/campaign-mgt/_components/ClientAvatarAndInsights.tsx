@@ -53,7 +53,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
       
       const mapped = clientDataArray
         ?.map((data: any) => ({
-          Full_Name: `${data.firstName} ${data.lastName}`,
+          Full_Name: `${data.seekExternalCredentials?.Full_Name}` || `${data.seekExternalCredentials?.Last_Name} ${data.seekExternalCredentials?.First_Name}` || "",
           id: data.id,
           _id: data.id,
         }))
@@ -65,8 +65,8 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   }, [allUserData]);
 
   // const plan = clientCampaignData?.data?.plan || null;
-  const clientFullName = singleClientData?.name || clientCampaignData?.data?.name || "";
-  const clientCraft = singleClientData?.craft || clientCampaignData?.data?.craft || "";
+  const clientFullName = singleClientData?.seekExternalCredentials?.Full_Name || singleClientData?.name || clientCampaignData?.data?.name || "";
+  const clientCraft = singleClientData?.seekExternalCredentials?.Craft || singleClientData?.craft || clientCampaignData?.data?.craft || "";
 
   useEffect(() => {
     if (clientCampaignData) {

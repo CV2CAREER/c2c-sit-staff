@@ -66,7 +66,7 @@ export function CampaignClientActions({
         onSuccess: () => {
           toast.dismiss();
           toast.success("Moved to recycle bin");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();
@@ -85,7 +85,7 @@ export function CampaignClientActions({
         onSuccess: () => {
           toast.dismiss();
           toast.success("Restored successfully");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();

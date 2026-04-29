@@ -14,7 +14,7 @@ export type ILoginRequest = {
 
 export type ILoginResponse = {
   user: IUser;
-  accessToken: string;
+  staffAccessToken: string;
   /** Returned when user is not yet verified */
   verificationToken?: string;
 };
