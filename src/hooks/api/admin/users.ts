@@ -3,6 +3,7 @@ import { useFetchData, useMutateData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 
 const PC_ROLES = ["assistant", "coach"] as const;
 
@@ -472,58 +473,98 @@ export const useUsersMutations = () => {
       url: endpoints.ADMIN_UPDATE_USER_PROGRESS,
       mutationKey: ["admin-update-user-progress"],
       paramKey: "uid",
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("User progress updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update user progress");
+      },
     }),
     upgradePlanMutation: useMutateData<any, { plan: string; userId: string }>({
       method: "POST",
       url: endpoints.ADMIN_UPGRADE_PLAN,
       mutationKey: ["admin-upgrade-plan"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("Plan upgraded successfully");
+      },
+      onError: () => {
+        toast.error("Failed to upgrade plan");
+      },
     }),
     accountActionMutation: useMutateData<any, { userId: string; action: string }>({
       method: "POST",
       url: endpoints.ADMIN_ACCOUNT_ACTION,
       mutationKey: ["admin-account-action"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("Account action completed successfully");
+      },
+      onError: () => {
+        toast.error("Failed to perform account action");
+      },
     }),
     deleteUserMutation: useMutateData<any, { userId: string }>({
       method: "DELETE",
       url: endpoints.ADMIN_DELETE_USER,
       mutationKey: ["admin-delete-user"],
       paramKey: "userId",
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("User deleted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to delete user");
+      },
     }),
     assignVaMutation: useMutateData<any, { credId: string; vaEmail: string | null; host?: string }>({
       method: "POST",
       url: endpoints.ADMIN_ASSIGN_VA,
       mutationKey: ["admin-assign-va"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("VA assigned successfully");
+      },
+      onError: () => {
+        toast.error("Failed to assign VA");
+      },
     }),
     reverseUserIdMutation: useMutateData<{ _id: string }, { clientId: string | number }>({
       method: "POST",
       url: endpoints.ADMIN_REVERSE_USER_ID,
       mutationKey: ["admin-reverse-user-id"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("User ID reversed successfully");
+      },
+      onError: () => {
+        toast.error("Failed to reverse user ID");
+      },
     }),
     applicationEmailMutation: useMutateData<any, { type: string; name: string; email: string }>({
       method: "POST",
       url: endpoints.ADMIN_APPLICATION_EMAILS,
       mutationKey: ["admin-application-email"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("Application email sent successfully");
+      },
+      onError: () => {
+        toast.error("Failed to send application email");
+      },
     }),
     dispatchSampleMutation: useMutateData<any, { clientId: string }>({
       method: "POST",
       url: (params) => endpoints.ADMIN_DISPATCH_SAMPLE(params.clientId),
       mutationKey: ["admin-dispatch-sample"],
-      onSuccess: () => invalidateAllUsersQueries(),
-      onError: () => {},
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("Sample dispatched successfully");
+      },
+      onError: () => {
+        toast.error("Failed to dispatch sample");
+      },
     }),
   };
 };

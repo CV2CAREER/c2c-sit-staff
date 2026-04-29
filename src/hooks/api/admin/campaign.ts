@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../../useApi";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
+import { toast } from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useCampaignQueries = (options: AdminQueriesOptions) => {
   const {
@@ -140,139 +142,239 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
 };
 
 export const useCampaignMutations = () => {
+  const queryClient = useQueryClient();
+
+  const invalidateCampaignQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-single-campaign-client"] });
+  };
+
   return {
     updateCampaignKeywordsMutation: useMutateData<any, { clientId: string; table: string; isSecondary: boolean }>({
       method: "POST",
       url: endpoints.ADMIN_CAMPAIGN_SHEET_UPDATE_KEYWORDS,
       mutationKey: ["admin-update-campaign-keywords"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Keywords updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update keywords");
+      },
     }),
     updateCampaignSheetMutation: useMutateData<any, any>({
       method: "POST",
       url: endpoints.ADMIN_CAMPAIGN_SHEET_UPDATE,
       mutationKey: ["admin-update-campaign-sheet"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign sheet updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update campaign sheet");
+      },
     }),
     deleteCampaignSheetMutation: useMutateData<any, { id: string | number; entity: string; table: string; action: "soft-delete" }>({
       method: "PATCH",
       url: endpoints.ADMIN_CAMPAIGN_SHEET,
       mutationKey: ["admin-delete-campaign-sheet"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign sheet deleted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to delete campaign sheet");
+      },
     }),
     overrideIncrementInputsMutation: useMutateData<any, { type: string; table: string; clientId: string | number; env: string }>({
       method: "PUT",
       url: endpoints.ADMIN_CAMPAIGN_SHEET,
       mutationKey: ["admin-override-increment-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Stage update completed successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update stage");
+      },
     }),
     campaignApplicationsCountMutation: useMutateData<any, any>({
       method: "POST",
       url: endpoints.ADMIN_CAMPAIGN_COUNT_APPLICATIONS,
       mutationKey: ["admin-campaign-applications-count"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        toast.success("Applications count updated");
+      },
+      onError: () => {
+        toast.error("Failed to count applications");
+      },
     }),
     toggleCampaignAggregatorMutation: useMutateData<any, { clientId: number; jobSite: string }>({
       method: "PUT",
       url: endpoints.ADMIN_CAMPAIGN_COUNT_APPLICATIONS,
       mutationKey: ["admin-toggle-campaign-aggregator"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Aggregator toggled successfully");
+      },
+      onError: () => {
+        toast.error("Failed to toggle aggregator");
+      },
     }),
     updateCampaignSheetBulkMutation: useMutateData<any, { table: string; data: any[] }>({
       method: "POST",
       url: (params) => `${endpoints.ADMIN_CAMPAIGN_SHEET_UPDATE}?table=${params?.table}`,
       mutationKey: ["admin-update-campaign-sheet-bulk"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Bulk update completed successfully");
+      },
+      onError: () => {
+        toast.error("Failed to perform bulk update");
+      },
     }),
     updateCampaignSheetSingleMutation: useMutateData<any, { table: string; id: string | number; data: any }>({
       method: "POST",
       url: (params) => `${endpoints.ADMIN_CAMPAIGN_SHEET_UPDATE_SINGLE}?table=${params?.table}&id=${params?.id}`,
       mutationKey: ["admin-update-campaign-sheet-single"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Record updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update record");
+      },
     }),
     flightCampaignMutation: useMutateData<any, { clientId: string }>({
       method: "POST",
       url: (params) => `${endpoints.ADMIN_ACCOUNT_ACTION}?action=flight&clientId=${params?.clientId}`,
       mutationKey: ["admin-flight-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign launched successfully");
+      },
+      onError: () => {
+        toast.error("Failed to launch campaign");
+      },
     }),
     updateCampaignMutation: useMutateData<any, { clientId: string | number; data: any }>({
       method: "PATCH",
       url: (params) => `/api/v1/campaigns/clients/${params?.clientId}`,
       mutationKey: ["admin-update-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update campaign");
+      },
     }),
     getCampaignClientMutation: useMutateData<any, { clientId: string }>({
       method: "GET",
       url: (params) => `/api/v1/campaigns/clients/${params?.clientId}`,
       mutationKey: ["admin-get-campaign-client"],
       onSuccess: () => {},
-      onError: () => {},
+      onError: () => {
+        toast.error("Failed to fetch client data");
+      },
     }),
     deleteCampaignMutation: useMutateData<any, { id: string | number }>({
       method: "PATCH",
       url: (params) => `/api/v1/campaigns/clients/${params?.id}/soft-delete`,
       mutationKey: ["admin-delete-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign deleted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to delete campaign");
+      },
     }),
     restoreCampaignMutation: useMutateData<any, { id: string | number }>({
       method: "PATCH",
       url: (params) => `/api/v1/campaigns/clients/${params?.id}/restore`,
       mutationKey: ["admin-restore-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign restored successfully");
+      },
+      onError: () => {
+        toast.error("Failed to restore campaign");
+      },
     }),
     permanentDeleteCampaignMutation: useMutateData<any, { id: string | number }>({
       method: "DELETE",
       url: (params) => `/api/v1/campaigns/clients/${params?.id}/permanent`,
       mutationKey: ["admin-permanent-delete-campaign"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Campaign permanently deleted");
+      },
+      onError: () => {
+        toast.error("Failed to permanently delete campaign");
+      },
     }),
     toggleFlightStatusMutation: useMutateData<any, { clientId: string | number }>({
       method: "PATCH",
       url: (params) => `/api/v1/campaigns/clients/${params?.clientId}/toggle-flight`,
       mutationKey: ["admin-toggle-campaign-flight"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Flight status toggled successfully");
+      },
+      onError: () => {
+        toast.error("Failed to toggle flight status");
+      },
     }),
     generateKeywordRoleTitlesMutation: useMutateData<any, { id: string; keywords?: boolean; roleTitles?: boolean; increment?: boolean; existing?: any }>({
       method: "POST",
       url: "/api/v1/admin/generateKeywordRoleTitles",
       mutationKey: ["admin-generate-keyword-role-titles"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Keywords and role titles generated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to generate keywords and role titles");
+      },
     }),
     updateKeywordsMutation: useMutateData<any, { clientId: string; approvedJobs: string[]; declined?: boolean }>({
       method: "POST",
       url: (params) => `/api/v1/admin/update-keywords${params?.declined ? "?declined=true" : ""}`,
       mutationKey: ["admin-update-keywords-manual"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Keywords updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update keywords");
+      },
     }),
     updateTitlesMutation: useMutateData<any, { clientId: string; approvedJobs: string[]; declined?: boolean }>({
       method: "POST",
       url: (params) => `/api/v1/admin/update-titles${params?.declined ? "?declined=true" : ""}`,
       mutationKey: ["admin-update-titles-manual"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Titles updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update titles");
+      },
     }),
     updateSheetsMutation: useMutateData<any, { id: string }>({
       method: "PATCH",
       url: endpoints.SHEETS_API,
       mutationKey: ["admin-update-sheets"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Sheets updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update sheets");
+      },
     }),
 
     // User Campaign Management Endpoint Call by Temidayo
@@ -280,36 +382,58 @@ export const useCampaignMutations = () => {
       method: "POST",
       url: endpoints.ADMIN_CAMPAIGN_JOBS_EXTRACT,
       mutationKey: ["admin-campaign-jobs-extract"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        toast.success("Jobs extracted successfully");
+      },
+      onError: () => {
+        toast.error("Failed to extract jobs");
+      },
     }),
     saveCampaignJobsMutation: useMutateData<any, { clientId: string, joblink: string, jobData: any }>({
       method: "POST",
       url: endpoints.ADMIN_CAMPAIGN_JOBS_SAVE,
       mutationKey: ["admin-campaign-jobs-save"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Jobs saved successfully");
+      },
+      onError: () => {
+        toast.error("Failed to save jobs");
+      },
     }),
     generateKeywordsFromResumeMutation: useMutateData<any, { id: string, keywords?: boolean, roleTitles?: boolean, increment?: boolean, existing?: any }>({
       method: "POST",
       url: endpoints.ADMIN_UPLOADS_GENERATE_KEYWORDS,
       mutationKey: ["admin-generate-keywords-resume"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        toast.success("Keywords generated from resume successfully");
+      },
+      onError: () => {
+        toast.error("Failed to generate keywords from resume");
+      },
     }),
     addToClientQueueMutation: useMutateData<any, { queue: string; environment: string; aggregator: string; clientId: string; input?: string }>({
       method: "POST",
       url: (params) => `/api/v1/campaigns/queue/${params?.queue}`,
       mutationKey: ["admin-campaign-add-queue"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        toast.success("Added to queue successfully");
+      },
+      onError: () => {
+        toast.error("Failed to add to queue");
+      },
     }),
     syncAggregatorsMutation: useMutateData<any, { clientId: string; syncType: "override" | "increment"; fromStage: boolean }>({
       method: "POST",
       url: "/api/v1/campaigns/sheets/aggregators/sync",
       mutationKey: ["admin-campaign-sync-aggregators"],
-      onSuccess: () => {},
-      onError: () => {},
+      onSuccess: () => {
+        invalidateCampaignQueries();
+        toast.success("Aggregators synced successfully");
+      },
+      onError: () => {
+        toast.error("Failed to sync aggregators");
+      },
     }),
   };
 };
