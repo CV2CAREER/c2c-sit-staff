@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { IoRefreshSharp as RefreshIcon } from "react-icons/io5";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,14 +31,12 @@ import {
   adoptionStatus,
 } from "./data-options";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type FieldType = "text" | "select";
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface FormFieldDef {
   field: string;
   label: string;
-  type: FieldType;
+  type: "text" | "select";
   options?: string[];
 }
 
@@ -66,7 +63,7 @@ const FORM_FIELDS: FormFieldDef[] = [
 
 const emptyForm = Object.fromEntries(FORM_FIELDS.map((f) => [f.field, ""]));
 
-// ─── Confirm Modal ───────────────────────────────────────────────────────────
+// ─── Confirm Dialog ───────────────────────────────────────────────────────────
 
 function ConfirmDialog({
   open,
@@ -75,7 +72,6 @@ function ConfirmDialog({
   confirmLabel,
   onConfirm,
   onCancel,
-  destructive = false,
 }: {
   open: boolean;
   title: string;
@@ -83,7 +79,6 @@ function ConfirmDialog({
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
-  destructive?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onCancel()}>
@@ -93,22 +88,15 @@ function ConfirmDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            variant={destructive ? "destructive" : "default"}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </Button>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm}>{confirmLabel}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ─── Entry Form ──────────────────────────────────────────────────────────────
+// ─── Entry Form ───────────────────────────────────────────────────────────────
 
 function EntryForm({
   values,
@@ -135,9 +123,7 @@ function EntryForm({
               </SelectTrigger>
               <SelectContent>
                 {(f.options ?? []).sort((a, b) => a.localeCompare(b)).map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {opt}
-                  </SelectItem>
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -155,64 +141,46 @@ function EntryForm({
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SalesOperationComponent() {
   const [isRecycle, setIsRecycle] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // Create modal
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<Record<string, string>>(emptyForm);
 
-  // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState<any>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>(emptyForm);
 
-  // Confirm dialogs
-  const [confirmSoftDelete, setConfirmSoftDelete] = useState<string | null>(null);
-  const [confirmHardDelete, setConfirmHardDelete] = useState<string | null>(null);
-  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const { activeDataDomain, recycleDataDomain } = useSalesOperationQueries({
     fetchActive: !isRecycle,
     fetchRecycle: isRecycle,
   });
 
-  const {
-    createMutation,
-    updateMutation,
-    softDeleteMutation,
-    hardDeleteMutation,
-    restoreMutation,
-  } = useSalesOperationMutations();
+  const { createMutation, updateMutation, softDeleteMutation } = useSalesOperationMutations();
 
   const domain = isRecycle ? recycleDataDomain : activeDataDomain;
   const data = domain.data ?? [];
   const isLoading = domain.isLoading;
 
-  // Sync edit form when a row is selected
   useEffect(() => {
     if (editRow) {
       const vals: Record<string, string> = {};
-      FORM_FIELDS.forEach((f) => {
-        vals[f.field] = editRow[f.field] ?? "";
-      });
+      FORM_FIELDS.forEach((f) => { vals[f.field] = editRow[f.field] ?? ""; });
       setEditForm(vals);
     }
   }, [editRow]);
-
-  // ── Handlers ──
 
   const handleCreate = async () => {
     try {
       await createMutation.mutateAsync(createForm);
       setCreateOpen(false);
       setCreateForm(emptyForm);
-    } catch {
-      /* error handled in hook */
-    }
+    } catch { /* handled in hook */ }
   };
 
   const handleUpdate = async () => {
@@ -221,66 +189,32 @@ export default function SalesOperationComponent() {
       await updateMutation.mutateAsync({ ...editForm, _id: editRow._id });
       setEditOpen(false);
       setEditRow(null);
-    } catch {
-      /* error handled in hook */
-    }
+    } catch { /* handled in hook */ }
   };
 
-  const handleDelete = (id: string) => {
-    if (isRecycle) {
-      setConfirmHardDelete(id);
-    } else {
-      setConfirmSoftDelete(id);
-    }
-  };
-
-  // modifyArray for the shared Table — strips internal fields, adds restore in recycle view
   function modifyArray(arr: any[]) {
     const filtered = arr.filter(
-      (col) =>
-        col.field !== "__v" &&
-        col.field !== "isDeleted" &&
-        col.field !== "createdAt" &&
-        col.field !== "updatedAt"
+      (col) => !["__v", "isDeleted", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "deletedAt"].includes(col.field)
     );
 
-    // Edit button column
-    filtered.unshift({
-      field: "edit",
-      headerName: "Edit",
-      width: 80,
-      headerClassName: "bg-[#80D7FF]",
-      renderCell: (params: any) => (
-        <button
-          disabled={!editMode}
-          onClick={() => {
-            setEditRow(params.row);
-            setEditOpen(true);
-          }}
-          className={`text-xs px-2 py-1 rounded transition-colors ${
-            editMode
-              ? "bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          Edit
-        </button>
-      ),
-    });
-
-    if (isRecycle) {
+    // Only show Edit in non-recycle (active) view
+    if (!isRecycle) {
       filtered.unshift({
-        field: "restore",
-        headerName: "Restore",
-        width: 90,
+        field: "edit",
+        headerName: "Edit",
+        width: 80,
         headerClassName: "bg-[#80D7FF]",
         renderCell: (params: any) => (
           <button
-            onClick={() => setConfirmRestore(params.row._id || params.row.id)}
-            className="text-green-600 hover:text-green-800 transition-colors"
-            title="Restore"
+            disabled={!editMode}
+            onClick={() => { setEditRow(params.row); setEditOpen(true); }}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              editMode
+                ? "bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
           >
-            <RefreshIcon size={18} />
+            Edit
           </button>
         ),
       });
@@ -291,16 +225,17 @@ export default function SalesOperationComponent() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Toolbar ── */}
+      {/* Toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 bg-[#008ED3] hover:bg-[#0073a8] text-white font-semibold px-4 py-2 rounded-lg shadow transition-colors"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Add Entry
-        </Button>
-
+        {!isRecycle && (
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 bg-[#008ED3] hover:bg-[#0073a8] text-white font-semibold px-4 py-2 rounded-lg shadow transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Entry
+          </Button>
+        )}
         <Button
           onClick={() => setIsRecycle((v) => !v)}
           className="flex items-center gap-2 bg-[#008ED3] hover:bg-[#0073a8] text-white font-semibold px-4 py-2 rounded-lg shadow transition-colors"
@@ -310,20 +245,20 @@ export default function SalesOperationComponent() {
         </Button>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       <Table
         data={data}
         helpers={{}}
-        allowDelete
+        allowDelete={!isRecycle}
         modifyArray={modifyArray}
         tableName={`SALES_OPERATION_${isRecycle ? "RECYCLE" : "ACTIVE"}`}
         editMode={editMode}
-        setEditMode={setEditMode}
-        handleDelete={handleDelete}
+        setEditMode={!isRecycle ? setEditMode : undefined}
+        handleDelete={(id: string) => setConfirmDelete(id as string)}
         isLoading={isLoading}
       />
 
-      {/* ── Create Modal ── */}
+      {/* Create Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -337,9 +272,7 @@ export default function SalesOperationComponent() {
             isLoading={createMutation.isPending}
           />
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={handleCreate}
               disabled={createMutation.isPending}
@@ -351,7 +284,7 @@ export default function SalesOperationComponent() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Edit Modal ── */}
+      {/* Edit Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -365,9 +298,7 @@ export default function SalesOperationComponent() {
             isLoading={updateMutation.isPending}
           />
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button
               onClick={handleUpdate}
               disabled={updateMutation.isPending}
@@ -379,51 +310,19 @@ export default function SalesOperationComponent() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Confirm Soft Delete ── */}
+      {/* Confirm Delete */}
       <ConfirmDialog
-        open={!!confirmSoftDelete}
+        open={!!confirmDelete}
         title="Move to Recycle Bin?"
-        description="This entry will be moved to the recycle bin and can be recovered later."
+        description="This entry will be soft-deleted and can be found in the Recycle Bin view."
         confirmLabel="Move to Recycle Bin"
-        destructive
         onConfirm={async () => {
-          if (confirmSoftDelete) {
-            await softDeleteMutation.mutateAsync({ id: confirmSoftDelete });
-            setConfirmSoftDelete(null);
+          if (confirmDelete) {
+            await softDeleteMutation.mutateAsync({ id: confirmDelete });
+            setConfirmDelete(null);
           }
         }}
-        onCancel={() => setConfirmSoftDelete(null)}
-      />
-
-      {/* ── Confirm Hard Delete ── */}
-      <ConfirmDialog
-        open={!!confirmHardDelete}
-        title="Permanently Delete?"
-        description="This action cannot be undone. The entry will be permanently removed."
-        confirmLabel="Delete Permanently"
-        destructive
-        onConfirm={async () => {
-          if (confirmHardDelete) {
-            await hardDeleteMutation.mutateAsync({ id: confirmHardDelete });
-            setConfirmHardDelete(null);
-          }
-        }}
-        onCancel={() => setConfirmHardDelete(null)}
-      />
-
-      {/* ── Confirm Restore ── */}
-      <ConfirmDialog
-        open={!!confirmRestore}
-        title="Restore Entry?"
-        description="This entry will be moved back to the active list."
-        confirmLabel="Restore"
-        onConfirm={async () => {
-          if (confirmRestore) {
-            await restoreMutation.mutateAsync({ id: confirmRestore });
-            setConfirmRestore(null);
-          }
-        }}
-        onCancel={() => setConfirmRestore(null)}
+        onCancel={() => setConfirmDelete(null)}
       />
     </div>
   );

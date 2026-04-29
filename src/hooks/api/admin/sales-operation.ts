@@ -24,16 +24,17 @@ export const useSalesOperationQueries = (
 ) => {
   const { fetchActive = false, fetchRecycle = false } = options;
 
+  // Backend uses isDeleted=false for active, isDeleted=true for recycle
   const activeData = useFetchData<any>({
     method: "GET",
-    url: `${endpoints.ADMIN_SALES_OPERATION}?active=true`,
+    url: `${endpoints.ADMIN_SALES_OPERATION}?isDeleted=false`,
     queryKey: SALES_OP_QUERY_KEYS.active,
     enabled: fetchActive,
   });
 
   const recycleData = useFetchData<any>({
     method: "GET",
-    url: `${endpoints.ADMIN_SALES_OPERATION}?recycle=true`,
+    url: `${endpoints.ADMIN_SALES_OPERATION}?isDeleted=true`,
     queryKey: SALES_OP_QUERY_KEYS.recycle,
     enabled: fetchRecycle,
   });
@@ -64,6 +65,7 @@ export const useSalesOperationMutations = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-sales-operation"] });
   };
 
+  // POST /
   const createMutation = useMutateData<any, any>({
     method: "POST",
     url: endpoints.ADMIN_SALES_OPERATION,
@@ -77,8 +79,9 @@ export const useSalesOperationMutations = () => {
     },
   });
 
+  // PATCH /?id=...  (backend uses PATCH for update)
   const updateMutation = useMutateData<any, any>({
-    method: "PUT",
+    method: "PATCH",
     url: (data) => `${endpoints.ADMIN_SALES_OPERATION}?id=${data._id}`,
     mutationKey: ["admin-update-sales-operation"],
     onSuccess: (res) => {
@@ -90,10 +93,11 @@ export const useSalesOperationMutations = () => {
     },
   });
 
+  // DELETE /?id=...  (soft-delete — sets isDeleted=true)
   const softDeleteMutation = useMutateData<any, { id: string }>({
     method: "DELETE",
     url: (data) => `${endpoints.ADMIN_SALES_OPERATION}?id=${data.id}`,
-    mutationKey: ["admin-soft-delete-sales-operation"],
+    mutationKey: ["admin-delete-sales-operation"],
     onSuccess: (res) => {
       toast.success(res?.message || "Moved to recycle bin.");
       invalidate();
@@ -103,37 +107,9 @@ export const useSalesOperationMutations = () => {
     },
   });
 
-  const hardDeleteMutation = useMutateData<any, { id: string }>({
-    method: "DELETE",
-    url: (data) => `${endpoints.ADMIN_SALES_OPERATION_HARD_DELETE}?id=${data.id}`,
-    mutationKey: ["admin-hard-delete-sales-operation"],
-    onSuccess: (res) => {
-      toast.success(res?.message || "Deleted permanently.");
-      invalidate();
-    },
-    onError: (err) => {
-      toast.error(err?.message || "Failed to permanently delete.");
-    },
-  });
-
-  const restoreMutation = useMutateData<any, { id: string }>({
-    method: "POST",
-    url: (data) => `${endpoints.ADMIN_SALES_OPERATION_RESTORE}?id=${data.id}`,
-    mutationKey: ["admin-restore-sales-operation"],
-    onSuccess: (res) => {
-      toast.success(res?.message || "Entry restored successfully.");
-      invalidate();
-    },
-    onError: (err) => {
-      toast.error(err?.message || "Failed to restore entry.");
-    },
-  });
-
   return {
     createMutation,
     updateMutation,
     softDeleteMutation,
-    hardDeleteMutation,
-    restoreMutation,
   };
 };
