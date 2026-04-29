@@ -903,7 +903,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
   logger.info(`Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`);
 
 
-  if (!vaEmail) {
+  if (!vaEmail || vaEmail.trim() === 'Unassigned' || vaEmail.trim() === 'Unassign' || vaEmail.trim() === 'unassign') {
     logger.info(`Unassigning VA for credId=${credId}`);
     
     const targetCred = await Credentials.findOne({ where: { id: credId } });
@@ -912,14 +912,21 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
       throw new Error("Client profile not found");
     }
 
-    const targetVa = await User.findOne({ where: { email: targetCred.AssignedPCEmail } });
-    if (!targetVa) {
-      logger.warn(`TPA not found for email=${targetCred.AssignedPCEmail}`);
-      throw new Error("TPA not found");
+    let targetVa = null;
+    let tagName = "Previously assigned VA";
+    
+    // Only lookup VA if there is actually an existing assigned email
+    if (targetCred.AssignedPCEmail) {
+      targetVa = await User.findOne({ where: { email: targetCred.AssignedPCEmail } });
+      
+      if (targetVa) {
+        const slackId = await getSlackIdByEmail(targetCred.AssignedPCEmail);
+        tagName = slackId ? `<@${slackId}>` : `${targetVa.firstName} ${targetVa.lastName}`;
+      } else {
+        logger.warn(`TPA not found for email=${targetCred.AssignedPCEmail}`);
+        tagName = targetCred.AssignedPCName || targetCred.AssignedPCEmail;
+      }
     }
-
-    const slackId = targetCred.AssignedPCEmail ? await getSlackIdByEmail(targetCred.AssignedPCEmail) : null;
-    const tagName = slackId ? `<@${slackId}>` : `${targetVa?.firstName} ${targetVa?.lastName}`;
 
     const message = `VA Unassignment for ${targetCred?.AssignedPCName}.
 *Success*: ${tagName} has been unassigned specifically from this client profile.
@@ -971,7 +978,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
       AssignedPCEmail: vaEmail, 
       AssignedPCName: `${targetVa?.firstName} ${targetVa?.lastName}` 
     } as any,
-    { where: { clientId: credId } }
+    { where: { id: credId } }
   );
 
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
