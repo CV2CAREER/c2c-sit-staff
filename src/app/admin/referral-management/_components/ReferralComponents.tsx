@@ -513,7 +513,7 @@ const ReferralComponent = () => {
             <>
               <div
                 onClick={() => {
-                  if (clickedUserRefs === props.row._id) {
+                  if (clickedUserRefs === props.row.id) {
                     setClickedUserRefs("");
                     setDetailedReferredUsers([]);
                   } else {
@@ -532,7 +532,7 @@ const ReferralComponent = () => {
               </div>
 
               <Dialog
-                open={clickedUserRefs === props.row._id}
+                open={clickedUserRefs === props.row.id}
                 onOpenChange={(open: boolean) => {
                   if (!open) {
                     setClickedUserRefs("");
