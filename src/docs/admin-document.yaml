@@ -1,0 +1,122 @@
+# Admin Document Management API Documentation
+
+paths:
+  /v1/uploads/extract-cv-data-points:
+    post:
+      tags:
+        - Campaign Management
+      summary: Extract structured CV data points from uploaded resume
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  description: Upload document ID
+                  example: "65f8a7c9d2e4b3a1f0e9d8c7"
+                cvType:
+                  type: string
+                  description: Optional CV type classification
+      responses:
+        '200':
+          description: CV data points extracted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "CV data points extracted successfully"
+                  data:
+                    type: object
+                    properties:
+                      upload:
+                        type: object
+                        description: Upload document object
+                      cvDataPoints:
+                        type: object
+                        description: Extracted structured CV data
+        '400':
+          description: Invalid request parameters
+        '401':
+          description: Unauthorized
+        '404':
+          description: Resume not found
+
+  /v1/uploads/generate-keywords:
+    post:
+      tags:
+        - Campaign Management
+      summary: Generate keywords and/or role titles from user resume
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  description: Upload document ID
+                  example: "65f8a7c9d2e4b3a1f0e9d8c7"
+                keywords:
+                  type: boolean
+                  description: Set true to generate keywords
+                  example: true
+                roleTitles:
+                  type: boolean
+                  description: Set true to generate role titles
+                  example: true
+                increment:
+                  type: boolean
+                  description: Set true for incremental generation (append to existing)
+                  example: false
+      responses:
+        '200':
+          description: Content generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Keywords generated successfully"
+                  success:
+                    type: boolean
+                    example: true
+                  keywords:
+                    type: array
+                    items:
+                      type: string
+                    description: Generated keywords (if requested)
+                    example: ["Node.js", "TypeScript", "React", "AWS", "MongoDB"]
+                  roleTitles:
+                    type: array
+                    items:
+                      type: string
+                    description: Generated role titles (if requested)
+                    example: ["Senior Full Stack Developer", "Tech Lead", "Software Architect"]
+        '400':
+          description: Invalid request parameters
+        '401':
+          description: Unauthorized
+        '404':
+          description: Resume not found
+        '500':
+          description: Server error during generation

@@ -42,10 +42,6 @@ export class Credentials extends Model {
   seekCredentialsTestDate?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(32))
-  seekAnswerPriority?: string;
-
-  @AllowNull(true)
   @Column(DataType.STRING(64))
   currentCity?: string;
 
@@ -90,6 +86,43 @@ export class Credentials extends Model {
   @UpdatedAt
   updatedAt!: Date;
 
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
   @Column(DataType.DATE)
   deletedAt?: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedPCName?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedPCEmail?: string;
+
+  @AllowNull(true)
+  @Default('FLIGHT')
+  @Column(DataType.STRING(32))
+  capitalized?: string;
+
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  Active?: boolean;
+
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  SeekAnswerPriority?: boolean;
+
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  SeekAggregator?: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  SeekSubStartDate?: string;
 }

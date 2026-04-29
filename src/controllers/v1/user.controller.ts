@@ -137,17 +137,14 @@ export const logoutUser = catchAsyncError(
 // Get all users with role 'client'
 export const getClients = catchAsyncError(
   async (req: Request, res: Response) => {
-    logger.info(`Processing request to get all clients`);
+    logger.info(`Processing request to get clients with filters`);
 
-    const clients = await getClientsService();
+    const result = await getClientsService(req.query);
 
-    logger.info(`Retrieved ${clients.length} clients`);
+    logger.info(`Retrieved ${result.clients.length} of ${result.pagination.total} clients`);
 
     res.apiSuccess(
-      {
-        clients,
-        count: clients.length
-      },
+      result,
       "Clients retrieved successfully",
     );
   },

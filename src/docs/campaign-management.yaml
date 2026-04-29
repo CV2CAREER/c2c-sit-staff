@@ -1,0 +1,1191 @@
+# Campaign Management API Documentation
+
+paths:
+  /v1/campaigns/preferences/notify:
+    post:
+      tags:
+        - Campaign Management
+      summary: Send job preference update notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  description: User ID
+                triggeredBy:
+                  type: string
+                  description: ID of user who triggered the action
+      responses:
+        '200':
+          description: Notifications sent successfully
+
+  /v1/campaigns/credentials/dispatch:
+    post:
+      tags:
+        - Campaign Management
+      summary: Dispatch jobsite credentials to client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID
+      responses:
+        '200':
+          description: Credentials dispatched successfully
+
+  /v1/campaigns/credentials/generate-password:
+    post:
+      tags:
+        - Campaign Management
+      summary: Generate external password for user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  description: User ID
+      responses:
+        '200':
+          description: Password generated successfully
+
+  /v1/campaigns/aggregators/list/{userId}:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get user aggregators with status
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to get aggregators for
+          example: "3d3ef615-8885-431b-9d0d-3ef6476b3cef"
+      responses:
+        '200':
+          description: Aggregators retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Aggregators retrieved successfully"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      description: Aggregator object with status
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /v1/campaigns/aggregators/list:
+    post:
+      tags:
+        - Campaign Management
+      summary: Get user aggregators with status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+                - internalJobSites
+                - externalJobSites
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID
+                internalJobSites:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      value:
+                        type: string
+                        example: "jobbank"
+                      label:
+                        type: string
+                        example: "JobBank"
+                externalJobSites:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      value:
+                        type: string
+                        example: "indeed"
+                      label:
+                        type: string
+                        example: "Indeed"
+            examples:
+              Example Request:
+                value:
+                  clientId: "12345"
+                  internalJobSites: [
+                    { "value": "jobbank", "label": "JobBank" },
+                    { "value": "seek", "label": "Seek" },
+                    { "value": "adecco", "label": "Adecco" }
+                  ]
+                  externalJobSites: [
+                    { "value": "indeed", "label": "Indeed" },
+                    { "value": "linkedin", "label": "LinkedIn" },
+                    { "value": "adzuna", "label": "Adzuna" }
+                  ]
+      responses:
+        '200':
+          description: Aggregators retrieved successfully
+
+  /v1/campaigns/aggregators/toggle:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Toggle aggregator status for client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+                - jobSite
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID
+                jobSite:
+                  type: string
+                  description: Job site name
+      responses:
+        '200':
+          description: Aggregator status updated successfully
+
+  /v1/campaigns/aggregators/user/{userId}:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get all aggregator records for a specific user ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+          description: User ID to get aggregators for
+          example: "9a85bad0-9d8d-4531-9f78-24ca959b20f3"
+      responses:
+        '200':
+          description: Aggregator records retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Aggregator records retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      count:
+                        type: integer
+                        example: 3
+                      records:
+                        type: array
+                        items:
+                          type: object
+                          description: Aggregator record
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /v1/campaigns/users/{userId}/profile:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get user profile details with plan and craft
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile retrieved successfully
+
+  /v1/campaigns/users/{userId}/preferences:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get user job preferences
+      description: Retrieve user job preferences (primary, secondary, or complete profile)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID to get preferences for
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [primary, secondary]
+          description: Optional preference type filter
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User preferences retrieved successfully"
+                  data:
+                    type: object
+                    description: User preference fields
+        '404':
+          description: User or profile not found
+
+  /v1/campaigns/users/{userId}/document-review:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get document review data
+      description: Retrieve user uploaded documents and profile preferences for document review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID to get document review data for
+      responses:
+        '200':
+          description: Document review data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Document review data retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      userDocs:
+                        type: array
+                        items:
+                          type: object
+                          description: User uploaded document
+                      userPreference:
+                        type: object
+                        description: User profile preferences
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /v1/campaigns/queue/{aggregator}/status:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get client sample queue status
+      parameters:
+        - name: aggregator
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: environment
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Queue status retrieved successfully
+
+  /v1/campaigns/queue/{queue}:
+    delete:
+      tags:
+        - Campaign Management
+      summary: Remove item from client sample queue
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - input
+                - environment
+              properties:
+                input:
+                  type: string
+                  description: Item value to remove
+                environment:
+                  type: string
+                  description: Environment (TEST or LIVE)
+      responses:
+        '200':
+          description: Item removed from queue
+
+    post:
+      tags:
+        - Campaign Management
+      summary: Add item to client sample queue
+      parameters:
+        - name: queue
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - environment
+              properties:
+                environment:
+                  type: string
+                  description: Environment (TEST or LIVE)
+                aggregator:
+                  type: string
+                  description: Aggregator name
+                clientId:
+                  type: string
+                  description: Client ID
+                input:
+                  type: string
+                  description: Direct input value (optional)
+      responses:
+        '200':
+          description: Item added to queue
+
+  /v1/campaigns/sheets/aggregators/{clientId}:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get campaign aggregator data for sheets
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: active
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Campaign aggregator data retrieved successfully
+
+  /v1/campaigns/sheets/aggregators/{recordId}/status:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Toggle aggregator record status (soft delete/restore)
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [soft-delete, restore]
+                  description: Action to perform
+      responses:
+        '200':
+          description: Aggregator record status updated successfully
+
+  /v1/campaigns/sheets/aggregators/sync:
+    post:
+      tags:
+        - Campaign Management
+      summary: Sync aggregator records between staging and production
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+                - syncType
+                - fromStage
+              properties:
+                clientId:
+                  type: integer
+                  description: Client ID
+                syncType:
+                  type: string
+                  enum: [override, increment]
+                  description: Sync type
+                fromStage:
+                  type: boolean
+                  description: Sync from staging to production (true) or vice versa (false)
+      responses:
+        '200':
+          description: Aggregator records synced successfully
+
+  /v1/campaigns/jobs/extract:
+    post:
+      tags:
+        - Campaign Management
+      summary: Extract job data using AI service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+                - joblink
+                - pageContent
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID
+                joblink:
+                  type: string
+                  description: Job URL
+                pageContent:
+                  type: string
+                  description: HTML content of the job page
+      responses:
+        '200':
+          description: Job data extracted successfully
+
+  /v1/campaigns/jobs/save:
+    post:
+      tags:
+        - Campaign Management
+      summary: Save edited job application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientId
+                - joblink
+                - jobData
+              properties:
+                clientId:
+                  type: string
+                  description: Client ID
+                joblink:
+                  type: string
+                  description: Job URL
+                jobData:
+                  type: object
+                  description: Edited job data
+      responses:
+        '200':
+          description: Job saved successfully
+
+  /v1/campaigns/jobs/match:
+    post:
+      tags:
+        - Campaign Management
+      summary: Submit job match processing request to Redis queue
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - filterType
+                - sampleType
+                - clientId
+              properties:
+                filterType:
+                  type: string
+                  enum: [date, range, first, custom]
+                  description: Filter type to apply
+                sampleType:
+                  type: string
+                  enum: [successful, unattended, all]
+                  description: Type of samples to process
+                clientId:
+                  type: string
+                  description: Client ID to process job matches for
+                filter:
+                  type: string
+                  description: Optional filter string
+                date:
+                  type: string
+                  nullable: true
+                  description: Single date for date filter
+                dateRange:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 2
+                  maxItems: 2
+                  nullable: true
+                  description: Start and end date for range filter
+                sampleSize:
+                  type: integer
+                  description: Number of samples to process
+                customRange:
+                  type: array
+                  items:
+                    type: string
+                    nullable: true
+                  minItems: 2
+                  maxItems: 2
+                  description: Custom range values
+      responses:
+        '200':
+          description: Job match submitted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Job match submitted for processing"
+                  payload:
+                    type: object
+                    description: Submitted payload that was added to queue
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /v1/campaigns/clients/va/assign-va:
+    post:
+      tags:
+        - Campaign Management
+      summary: Assign or Unassign VA (Virtual Assistant) to client profile
+      parameters:
+        - name: credId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client credential ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vaEmail:
+                  type: string
+                  nullable: true
+                  description: VA email address (pass null to unassign)
+                host:
+                  type: string
+                  description: Current host environment for Slack notification routing
+      responses:
+        '200':
+          description: VA assigned/unassigned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  vaName:
+                    type: string
+                    description: Full name of assigned VA (only when assigning)
+                  vaEmail:
+                    type: string
+                    description: Email of assigned VA (only when assigning)
+
+  /v1/campaigns/clients/{clientId}/dispatch-samples:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Dispatch sample job results to client
+      description: Updates sample status from 'Sample Test' to 'Sample', sends email notifications and updates user progress
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to dispatch samples for
+      responses:
+        '201':
+          description: Samples dispatched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Samples dispatched successfully"
+                  samplesCount:
+                    type: integer
+                    example: 7
+                  updatedRecords:
+                    type: integer
+                    example: 7
+        '404':
+          description: Client not found or no samples to dispatch
+        '500':
+          description: Server error during dispatch
+
+  /v1/campaigns/clients/{clientId}/toggle-flight:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Toggle campaign flight status (Land / Launch)
+      description: Toggles campaign status between INFLIGHT and HOLD, updates all associated fields
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to toggle flight status for
+      responses:
+        '200':
+          description: Campaign status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Campaign launched successfully!"
+                  clientId:
+                    type: string
+                    description: Client ID
+                  newStatus:
+                    type: string
+                    enum: [INFLIGHT, HOLD]
+                    description: New campaign status
+        '401':
+          description: Unauthorized
+        '404':
+          description: Client not found
+        '500':
+          description: Server error
+
+  /v1/campaigns/clients:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get list of campaign clients
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum: ['true', 'false', 'all']
+            default: 'true'
+          description: Filter by active status
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search query for name/email
+      responses:
+        '200':
+          description: Campaign clients list retrieved successfully
+
+    post:
+      tags:
+        - Campaign Management
+      summary: Create new campaign client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Campaign client data
+      responses:
+        '201':
+          description: Campaign client created successfully
+
+  /v1/campaigns/clients/{clientId}:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get single campaign client by ID
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID
+      responses:
+        '200':
+          description: Campaign client retrieved successfully
+        '404':
+          description: Client not found
+
+    patch:
+      tags:
+        - Campaign Management
+      summary: Update campaign client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client Credentials ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seekEmail:
+                  type: string
+                  maxLength: 64
+                  description: Client email address
+                seekPassword:
+                  type: string
+                  maxLength: 64
+                  description: Client password
+                seekCredentialsTest:
+                  type: string
+                  maxLength: 32
+                  nullable: true
+                  description: Test status
+                seekCredentialsTestDate:
+                  type: string
+                  maxLength: 64
+                  nullable: true
+                  description: Test completion date
+                seekAnswerPriority:
+                  type: string
+                  maxLength: 32
+                  nullable: true
+                  description: Answer priority flag
+                currentCity:
+                  type: string
+                  maxLength: 64
+                  nullable: true
+                  description: Client location
+                onboardingDate:
+                  type: string
+                  maxLength: 64
+                  nullable: true
+                  description: Onboarding date
+                criteriaReviewCompleted:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Criteria review status
+                referrer:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Referral source
+                blacklisted:
+                  type: string
+                  maxLength: 64
+                  nullable: true
+                  description: Blacklist status
+                seekLoginType:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Login authentication method
+                isDeleted:
+                  type: boolean
+                  description: Soft delete status
+                AssignedPCName:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned VA full name
+                AssignedPCEmail:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned VA email address
+                seekExternalCredentials:
+                  type: object
+                  description: Nested JSONB field - all properties inside can be updated directly
+                  properties:
+                    Plan:
+                      type: string
+                    Batch:
+                      type: string
+                    Craft:
+                      type: string
+                    Active:
+                      type: boolean
+                    Full_Name:
+                      type: string
+                    First_Name:
+                      type: string
+                    Middle_Name:
+                      type: string
+                    Last_Name:
+                      type: string
+                    CustomerId:
+                      type: string
+                    Alias_Email:
+                      type: string
+                    CampaignEnd:
+                      type: string
+                    SeekSubDurDays:
+                      type: integer
+                    SeekSubEndDate:
+                      type: string
+                    Order:
+                      type: string
+                    Capitalized:
+                      type: string
+                    Throttle_Listing:
+                      type: boolean
+                    GraceDuration:
+                      type: integer
+                    Assurance:
+                      type: string
+                    Seek_Aggregator:
+                      type: boolean
+                    Indeed_Aggregator:
+                      type: boolean
+                    Linkedin_Aggregator:
+                      type: boolean
+                    Adecco_Aggregator:
+                      type: boolean
+                    Adzuna_Aggregator:
+                      type: boolean
+                    CareerOne_Aggregator:
+                      type: boolean
+                    Jora_Aggregator:
+                      type: boolean
+                    Reed_Aggregator:
+                      type: boolean
+                    Monster_Aggregator:
+                      type: boolean
+                    NHSJobs_Aggregator:
+                      type: boolean
+                    Jobserve_Aggregator:
+                      type: boolean
+                    EscapeCity_Aggregator:
+                      type: boolean
+                    WorkforceAustralia_Aggregator:
+                      type: boolean
+                    CVLibrary_Aggregator:
+                      type: boolean
+
+              example: |
+                {
+                  "seekEmail": "client@example.com",
+                  "seekPassword": "StrongPassword123",
+                  "seekCredentialsTest": "PASSED",
+                  "seekCredentialsTestDate": "2026-04-20T10:30:00Z",
+                  "seekAnswerPriority": "true",
+                  "currentCity": "Sydney",
+                  "onboardingDate": "2026-04-01",
+                  "criteriaReviewCompleted": "YES",
+                  "referrer": "LinkedIn Campaign",
+                  "blacklisted": "false",
+                  "seekLoginType": "STANDARD",
+                  "isDeleted": false,
+                  "AssignedPCName": "John Doe",
+                  "AssignedPCEmail": "john.doe@company.com",
+
+                  "seekExternalCredentials": {
+                    "Plan": "Premium",
+                    "Batch": "Batch-12",
+                    "Craft": "Engineering",
+                    "Active": true,
+                    "Full_Name": "Temidayo Emmanuel",
+                    "First_Name": "Temidayo",
+                    "Middle_Name": "Emmanuel",
+                    "Last_Name": "Adekunle",
+                    "CustomerId": "CUST-90876",
+                    "Alias_Email": "temidayo.alias@example.com",
+                    "CampaignEnd": "2026-06-30",
+                    "SeekSubDurDays": 30,
+                    "SeekSubEndDate": "2026-05-30",
+                    "Order": "45",
+                    "Capitalized": "FLIGHT",
+                    "Throttle_Listing": true,
+                    "GraceDuration": 7,
+                    "Assurance": "Gold",
+                    "Seek_Aggregator": true,
+                    "Indeed_Aggregator": false,
+                    "Linkedin_Aggregator": false,
+                    "Adecco_Aggregator": false,
+                    "Adzuna_Aggregator": true,
+                    "CareerOne_Aggregator": false,
+                    "Jora_Aggregator": true,
+                    "Reed_Aggregator": false,
+                    "Monster_Aggregator": false,
+                    "NHSJobs_Aggregator": false,
+                    "Jobserve_Aggregator": false,
+                    "EscapeCity_Aggregator": false,
+                    "WorkforceAustralia_Aggregator": true,
+                    "CVLibrary_Aggregator": false
+                  }
+                }
+            examples:
+              ✅ Correct Request:
+                value: |
+                  {
+                    "seekEmail": "client@example.com",
+                    "seekPassword": "StrongPassword123",
+                    "seekCredentialsTest": "PASSED",
+                    "seekCredentialsTestDate": "2026-04-20T10:30:00Z",
+                    "seekAnswerPriority": "true",
+                    "currentCity": "Sydney",
+                    "onboardingDate": "2026-04-01",
+                    "criteriaReviewCompleted": "YES",
+                    "referrer": "LinkedIn Campaign",
+                    "blacklisted": "false",
+                    "seekLoginType": "STANDARD",
+                    "isDeleted": false,
+                    "AssignedPCName": "John Doe",
+                    "AssignedPCEmail": "john.doe@company.com",
+
+                    "seekExternalCredentials": {
+                      "Plan": "Premium",
+                      "Batch": "Batch-12",
+                      "Craft": "Engineering",
+                      "Active": true,
+                      "Full_Name": "Temidayo Emmanuel",
+                      "First_Name": "Temidayo",
+                      "Middle_Name": "Emmanuel",
+                      "Last_Name": "Adekunle",
+                      "CustomerId": "CUST-90876",
+                      "Alias_Email": "temidayo.alias@example.com",
+                      "CampaignEnd": "2026-06-30",
+                      "SeekSubDurDays": 30,
+                      "SeekSubEndDate": "2026-05-30",
+                      "Order": "45",
+                      "Capitalized": "FLIGHT",
+                      "Throttle_Listing": true,
+                      "GraceDuration": 7,
+                      "Assurance": "Gold",
+                      "Seek_Aggregator": true,
+                      "Indeed_Aggregator": false,
+                      "Linkedin_Aggregator": false,
+                      "Adecco_Aggregator": false,
+                      "Adzuna_Aggregator": true,
+                      "CareerOne_Aggregator": false,
+                      "Jora_Aggregator": true,
+                      "Reed_Aggregator": false,
+                      "Monster_Aggregator": false,
+                      "NHSJobs_Aggregator": false,
+                      "Jobserve_Aggregator": false,
+                      "EscapeCity_Aggregator": false,
+                      "WorkforceAustralia_Aggregator": true,
+                      "CVLibrary_Aggregator": false
+                    }
+                  }
+      responses:
+        '200':
+          description: Campaign client updated successfully
+        '400':
+          description: Invalid request payload
+        '404':
+          description: Client not found
+        '500':
+          description: Server error
+      description: |
+        Updates a campaign client record.
+        
+        **⚠️ IMPORTANT:**
+        - DO NOT send `clientId`, `id` or `createdAt` - these are protected and will be ignored
+        - Both direct fields and wrapped `data` formats are accepted
+        - Use the direct format above - it is the recommended approach
+        - All aggregator flags, numeric fields and string values are supported
+        - Fields inside `seekExternalCredentials` JSONB can be updated directly
+
+    delete:
+      tags:
+        - Campaign Management
+      summary: Delete campaign client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID
+      responses:
+        '200':
+          description: Campaign client deleted successfully
+
+  /v1/campaigns/clients/bulk:
+    delete:
+      tags:
+        - Campaign Management
+      summary: Bulk delete multiple campaign clients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of client IDs to delete
+      responses:
+        '200':
+          description: Campaign clients deleted successfully
+
+  /v1/campaigns/clients/{id}/soft-delete:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Soft delete campaign client (recoverable)
+      description: Sets isDeleted=true. Client is hidden from lists but can be restored.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to soft delete
+      responses:
+        '200':
+          description: Campaign client soft deleted successfully
+        '404':
+          description: Client not found
+
+  /v1/campaigns/clients/{id}/restore:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Restore soft deleted campaign client
+      description: Sets isDeleted=false. Restores client to active status.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to restore
+      responses:
+        '200':
+          description: Campaign client restored successfully
+        '404':
+          description: Client not found
+
+  /v1/campaigns/clients/{id}/permanent:
+    delete:
+      tags:
+        - Campaign Management
+      summary: Permanently delete campaign client (UNRECOVERABLE)
+      description: Permanently removes client from database. CANNOT BE RESTORED!
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to permanently delete
+      responses:
+        '200':
+          description: Campaign client permanently deleted successfully
+        '404':
+          description: Client not found
