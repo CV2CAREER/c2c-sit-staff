@@ -89,6 +89,8 @@ export interface AdminQueriesOptions {
   campaignActive?: string;
   campaignSearch?: string;
   fetchSheetsTemplates?: boolean;
+  fetchSingleClient?: boolean;
+  clientId?: string;
   fetchUserDocsAndPreferences?: boolean;
   fetchAggregatorLocations?: boolean;
   aggregatorName?: string;

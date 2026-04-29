@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useCampaignMutations } from "@/hooks/api/admin/campaign";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { modifyCampaignActionsColAndRows, tableColumns } from "./tableColumns";
 import { singleCampaignColumns } from "./clientCampaignTableColumns";
@@ -52,6 +53,12 @@ interface Client {
     plans?: any;
     craft?: string | null;
     master_credentials?: any | null;
+    seekExternalCredentials?: {
+        Plan?: string;
+        Full_Name?: string;
+        Craft?: string;
+        [key: string]: any;
+    };
     source: "mongodb" | "master_credentials" | "client";
 }
 
@@ -72,12 +79,15 @@ const useClientPlan = (clientInfo: Client | null) => {
     const hasPremiumAccess = useMemo(() => {
         if (!clientInfo) return false;
 
-        // Extract plan value from multiple possible locations to be robust
-        // Normalize: plans might be an object {title: '...'} or a string directly
-        const plansObj = clientInfo.plans;
-        const planFromPlans = typeof plansObj === 'string' ? plansObj : (plansObj?.title || plansObj?.name);
+        // Extract plan value from the new API response structure (seekExternalCredentials)
+        let planValue = clientInfo?.seekExternalCredentials?.Plan;
         
-        const planValue = planFromPlans || clientInfo.plan;
+        // Fallback to other possible locations
+        if (!planValue) {
+            const plansObj = clientInfo.plans;
+            const planFromPlans = typeof plansObj === 'string' ? plansObj : (plansObj?.title || plansObj?.name);
+            planValue = planFromPlans || clientInfo.plan;
+        }
                          
         if (!planValue) {
             console.log("[ClientPlan] No plan value found for client:", clientInfo.name);
@@ -90,7 +100,8 @@ const useClientPlan = (clientInfo: Client | null) => {
         const isPremium = (
             plan.includes("gold") || 
             plan.includes("platinum") || 
-            plan.includes("platinium") || // Handle common typo
+            plan.includes("platnium") || // Handle common typo
+            plan.includes("platium") || // Handle another common misspelling
             plan.includes("premium") ||
             plan.includes("diamond") ||
             plan.includes("elite")
@@ -101,13 +112,14 @@ const useClientPlan = (clientInfo: Client | null) => {
         if (isPremium) return true;
 
         // Fallback: check raw plans object if it's a NormalizedPlan or has nested properties
-        if (plansObj && typeof plansObj === 'object') {
-            const rawTitle = plansObj.title || plansObj.name || plansObj.planName;
+        if (clientInfo.plans && typeof clientInfo.plans === 'object') {
+            const rawTitle = clientInfo.plans.title || clientInfo.plans.name || clientInfo.plans.planName;
             if (rawTitle) {
                 const normalizedTitle = rawTitle.toString().toLowerCase();
                 if (normalizedTitle.includes("gold") || 
                     normalizedTitle.includes("platinum") || 
                     normalizedTitle.includes("platinium") ||
+                    normalizedTitle.includes("platium") ||
                     normalizedTitle.includes("premium")) {
                     return true;
                 }
@@ -120,8 +132,12 @@ const useClientPlan = (clientInfo: Client | null) => {
     return {
         hasPremiumAccess,
         canUseSecondaryProfile: hasPremiumAccess,
-        clientPlan: clientInfo?.plan || null,
-        fullPlan: clientInfo?.plans || null
+        clientPlan: clientInfo?.seekExternalCredentials?.Plan || clientInfo?.plan || null,
+        fullPlan: clientInfo?.plans || null,
+        planName: (() => {
+            if (!clientInfo) return null;
+            return clientInfo?.seekExternalCredentials?.Plan || clientInfo?.plan;
+        })()
     };
 };
 
@@ -191,8 +207,8 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     const queryClient = useQueryClient();
 
     const adminQueriesOptions = React.useMemo(() => ({
-        userId: clientId.toString(),
-        fetchUserInfo: true,
+        clientId: clientId.toString(),
+        fetchSingleClient: true,
         fetchAggregators: true,
         fetchCampaignSheet: tableDisplay === "aggregator",
         campaignOptions: {
@@ -207,28 +223,29 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     }), [clientId, tableDisplay, aggregatorDataState, selectedAggregator, dataOption, jobApplicationsStatusFilter, paginationModel.pageSize, paginationModel.page]);
 
     const {
-        userInfoDomain,
+        singleClientDomain,
         campaignSheetDomain,
         aggregatorsDomain,
     } = useAdminQueries(adminQueriesOptions);
 
     const {
-        updateCampaignKeywordsMutation,
-        runClientSampleMutation,
         dispatchSampleMutation,
         updateCampaignSheetMutation,
         deleteCampaignSheetMutation,
-        overrideIncrementInputsMutation,
     } = useAdminMutations();
+    
+    const { generateKeywordsFromResumeMutation, addToClientQueueMutation, syncAggregatorsMutation } = useCampaignMutations();
 
-    const clientInfo = userInfoDomain.data;
-    const isLoadingClient = userInfoDomain.isLoading;
+    // Extract actual user data from API response wrapper
+    const apiResponse = singleClientDomain.data;
+    const clientInfo = apiResponse?.data || apiResponse;
+    const isLoadingClient = singleClientDomain.isLoading;
 
     const { data: jobsiteAggregators, isLoading: isJobsiteAggregatorsLoading } = aggregatorsDomain;
     const { data: applicationData, isLoading: isApplicationLoading, error: applicationError } = campaignSheetDomain;
 
     // Use the custom hook for client plan management
-    const { hasPremiumAccess, canUseSecondaryProfile } = useClientPlan((clientInfo as unknown as Client) || null);
+    const { hasPremiumAccess, canUseSecondaryProfile, planName } = useClientPlan((clientInfo as unknown as Client) || null);
     const showSecondarySwitch = canUseSecondaryProfile;
 
     // Force primary profile if user doesn't have premium access
@@ -256,45 +273,53 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     console.log(tableData, "Data to be filled in table")
 
     const handleUpdateKeywords = async () => {
-        if (!clientId || !selectedAggregator?.value) {
-            return toast.error('One or more required values to this user keywords are missing');
+        if (!clientId) {
+            return toast.error('Client ID is required to generate keywords');
         }
 
+        const loadingToast = toast.loading('Generating keywords and role titles from resume...');
+        
         try {
             setLoaders((prev) => ({ ...prev, isUpdatingKeywords: true }));
-            toast.loading('Updating new keywords...');
-            await updateCampaignKeywordsMutation.mutateAsync({
-                clientId: clientId.toString(),
-                table: selectedAggregator.value,
-                isSecondary: !isPrimary,
+            
+            await generateKeywordsFromResumeMutation.mutateAsync({
+                id: clientId.toString(),
+                keywords: true,
+                roleTitles: true,
+                increment: false
             });
-            toast.success('Keywords updated successfully');
+        
+            toast.success('Keywords and role titles generated successfully');
+            toast.dismiss(loadingToast);
             queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
         } catch (error) {
-            const errorMessage = handleApiError(error, 'Client has missing job preference or unique id');
+            
+            const errorMessage = handleApiError(error, 'Failed to generate keywords from resume');
             toast.error(errorMessage);
+            toast.dismiss(loadingToast);
         } finally {
             setLoaders((prev) => ({ ...prev, isUpdatingKeywords: false }));
         }
     };
 
     const pushToAggQueue = async () => {
+        let loadingToast: string | undefined;
         try {
-            toast.loading("Pushing to aggregator queue...");
+            const loadingToast = toast.loading("Pushing to aggregator queue...");
             setLoaders((prev) => ({ ...prev, isPushingToQueue: true }));
             
-            const response = await runClientSampleMutation.mutateAsync({
+            const response = await addToClientQueueMutation.mutateAsync({
                 queue: selectedAggregator?.value ?? "",
                 environment: sampleRunEnvironment ?? "TEST",
                 aggregator: selectedAggregator?.value ?? "",
-                processENV: isStage(selectedAggregator?.value ?? "") ? "staging" : "production",
-                clientId: clientId,
-                email: (clientInfo as any)?.email || "",
+                clientId: clientId.toString(),
             });
 
+            toast.dismiss(loadingToast);
             toast.success(response.message || "Successfully pushed to aggregator queue");
 
         } catch (error: any) {
+            if (loadingToast) toast.dismiss(loadingToast);
             console.error("Error pushing to aggregator queue:", error);
             const errorMessage = handleApiError(error, "An error occurred while pushing to the aggregator queue.");
             toast.error(errorMessage);
@@ -322,24 +347,22 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     });
 
     const handleOverrideIncrement = async (env: string, action: "override" | "increment") => {
-        if (!selectedAggregator?.value || !clientId) {
-            toast.error("Missing aggregator or client ID.");
-            return;
-        }
-
+        let loadingToast: string | undefined;
         try {
-            toast.loading(`${action === "override" ? "Overriding" : "Incrementing"} role title and keywords...`);
-            const response = await overrideIncrementInputsMutation.mutateAsync({
-                type: action,
-                table: selectedAggregator.value,
-                clientId,
-                env,
+            loadingToast = toast.loading(`${action === "override" ? "Overriding" : "Incrementing"} role title and keywords...`);
+            
+            await syncAggregatorsMutation.mutateAsync({
+                clientId: clientId.toString(),
+                syncType: action,
+                fromStage: true
             });
 
+            toast.dismiss(loadingToast);
             const actionVerb = action === "override" ? "overridden" : "incremented";
-            toast.success(response.message || `Successfully ${actionVerb} role title and keywords to ${env}`);
+            toast.success(`Successfully ${actionVerb} role title and keywords to ${env}`);
             queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
         } catch (error: any) {
+            if (loadingToast) toast.dismiss(loadingToast);
             console.error("Error updating campaign sheet:", error);
             const errorMessage = handleApiError(error, "An error occurred while updating the campaign sheet");
             toast.error(errorMessage);
@@ -392,8 +415,8 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             const data = applicationData.data;
             
             // For campaign/sheet endpoint, optionsData might be in data.data
-            const optionsData = data.optionsData || data.data || [];
-            const totalCount = data.totalCount || data.count || 0;
+            const optionsData = data?.optionsData || data?.data || [];
+            const totalCount = data?.totalCount || data?.count || 0;
             
             setTableData(optionsData);
             setTotalTableCount(totalCount);

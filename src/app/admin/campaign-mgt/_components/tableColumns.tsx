@@ -373,10 +373,10 @@ export const modifyCampaignActionsColAndRows = (
         renderCell: (params) => {
           return (
             <Button 
-              className={params.row.Capitalized === 'INFLIGHT' ? "bg-red-600 text-white" : "bg-green-600 text-white"} 
+              className={params.row.capitalized === 'INFLIGHT' ? "bg-red-600 text-white" : "bg-green-600 text-white"} 
               onClick={() => handleFlight?.(params.id as string)}
             >
-              {params.row.Capitalized === 'INFLIGHT' ? 'Land' : 'Launch'}
+              {params.row.capitalized === 'INFLIGHT' ? 'Land' : 'Launch'}
             </Button>
           );
         },

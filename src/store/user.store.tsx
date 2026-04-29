@@ -9,7 +9,7 @@ import { persist } from "zustand/middleware";
 interface AuthState {
   user: IUser | null;
   userEmail: string | null;
-  accessToken: string | null;
+  staffAccessToken: string | null;
   isViewingAsUser: boolean;
   viewedByUserEmail: string | null;
   setUser: (user: IUser | null) => void;
@@ -25,12 +25,12 @@ export const createAuthStore = (init?: Partial<AuthState>) =>
       (set) => ({
         user: init?.user ?? null,
         userEmail: init?.userEmail ?? null,
-        accessToken: init?.accessToken ?? null,
+        staffAccessToken: init?.staffAccessToken ?? null,
         isViewingAsUser: init?.isViewingAsUser ?? false,
         viewedByUserEmail: init?.viewedByUserEmail ?? null,
         setUser: (user) => set({ user }),
         setUserEmail: (userEmail) => set({ userEmail }),
-        setAccessToken: (accessToken) => set({ accessToken }),
+        setAccessToken: (staffAccessToken) => set({ staffAccessToken }),
         setViewingAsUser: (isViewingAsUser, viewedByUserEmail) =>
           set({ isViewingAsUser, viewedByUserEmail }),
       }),
@@ -48,16 +48,16 @@ const AuthStoreContext = createContext<ReturnType<
 export function AuthStoreProvider({
   children,
   user,
-  accessToken,
+  staffAccessToken,
 }: {
   children: ReactNode;
   user?: IUser | null;
-  accessToken?: string | null;
+  staffAccessToken?: string | null;
 }) {
   const storeRef = useRef<ReturnType<typeof createAuthStore>>();
 
   if (!storeRef.current) {
-    storeRef.current = createAuthStore({ user, accessToken });
+    storeRef.current = createAuthStore({ user, staffAccessToken });
   }
 
   return (

@@ -10,7 +10,10 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     fetchClientCampaignInsights = false,
     fetchCampaigns = false,
     fetchSheetsTemplates = false,
+    fetchSingleClient = false,
+    fetchUserDocsAndPreferences = false,
     userId = "",
+    clientId = "",
     campaignOptions = {},
     campaignActive = "true",
     campaignSearch = "",
@@ -18,16 +21,19 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
 
   const campaignSheet = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_CAMPAIGN_SHEET,
-    params: { userId, ...campaignOptions },
+    url: `/api/v1/campaigns/sheets/aggregators/${userId}`,
     queryKey: ["admin-campaign-sheet", userId, campaignOptions],
     enabled: fetchCampaignSheet && !!userId,
   });
 
-  const campaignClients = useFetchData<any[]>({
+  const campaignClients = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_CAMPAIGN_GET_CLIENTS,
-    queryKey: ["admin-fetch-campaign-clients"],
+    params: { 
+      active: campaignActive,
+      q: campaignSearch 
+    },
+    queryKey: ["admin-fetch-campaign-clients", campaignActive, campaignSearch],
     enabled: fetchCampaignClients,
   });
 
@@ -41,7 +47,10 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
   const campaigns = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_CAMPAIGN,
-    params: { active: campaignActive, q: campaignSearch },
+    params: { 
+      active: campaignActive,
+      q: campaignSearch 
+    },
     queryKey: ["admin-campaigns", campaignActive, campaignSearch],
     enabled: fetchCampaigns,
   });
@@ -53,30 +62,46 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     enabled: fetchSheetsTemplates,
   });
 
+  const singleClient = useFetchData<any>({
+    method: "GET",
+    url: clientId ? `/api/v1/campaigns/clients/${clientId}` : "",
+    queryKey: ["admin-single-campaign-client", clientId],
+    enabled: fetchSingleClient && !!clientId,
+  });
+
+  const documentReview = useFetchData<any>({
+    method: "GET",
+    url: userId ? `/api/v1/campaigns/users/${userId}/document-review` : "",
+    queryKey: ["admin-document-review", userId],
+    enabled: fetchUserDocsAndPreferences && !!userId,
+  });
+
   return useMemo(() => ({
     campaignSheetDomain: {
-      data: campaignSheet.data?.data,
+      data: campaignSheet.data?.data?.records ?? campaignSheet.data?.data ?? campaignSheet.data,
+      totalCount: campaignSheet.data?.data?.totalCount ?? 0,
       isLoading: campaignSheet.isLoading,
       isSuccess: campaignSheet.isSuccess,
       isError: campaignSheet.isError,
       error: campaignSheet.error,
     },
     campaignClientsDomain: {
-      data: campaignClients.data,
+      data: campaignClients.data?.data?.campaigns ?? campaignClients.data?.data ?? campaignClients.data,
+      totalCount: campaignClients.data?.data?.totalCount ?? 0,
       isLoading: campaignClients.isLoading,
       isSuccess: campaignClients.isSuccess,
       isError: campaignClients.isError,
       error: campaignClients.error,
     },
     clientCampaignInsightsDomain: {
-      data: clientCampaignInsights.data?.data,
+      data: clientCampaignInsights.data,
       isLoading: clientCampaignInsights.isLoading,
       isSuccess: clientCampaignInsights.isSuccess,
       isError: clientCampaignInsights.isError,
       error: clientCampaignInsights.error,
     },
     campaignsDomain: {
-      data: campaigns.data?.data,
+      data: campaigns.data?.data?.clients ?? campaigns.data?.data ?? campaigns.data,
       isLoading: campaigns.isLoading,
       isSuccess: campaigns.isSuccess,
       isError: campaigns.isError,
@@ -89,12 +114,28 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
       isError: sheetsTemplates.isError,
       error: sheetsTemplates.error,
     },
+    singleClientDomain: {
+      data: singleClient.data?.data,
+      isLoading: singleClient.isLoading,
+      isSuccess: singleClient.isSuccess,
+      isError: singleClient.isError,
+      error: singleClient.error,
+    },
+    documentReviewDomain: {
+      data: documentReview.data?.data,
+      isLoading: documentReview.isLoading,
+      isSuccess: documentReview.isSuccess,
+      isError: documentReview.isError,
+      error: documentReview.error,
+    },
   }), [
     campaignSheet.data, campaignSheet.isLoading, campaignSheet.isSuccess, campaignSheet.isError, campaignSheet.error,
     campaignClients.data, campaignClients.isLoading, campaignClients.isSuccess, campaignClients.isError, campaignClients.error,
     clientCampaignInsights.data, clientCampaignInsights.isLoading, clientCampaignInsights.isSuccess, clientCampaignInsights.isError, clientCampaignInsights.error,
     campaigns.data, campaigns.isLoading, campaigns.isSuccess, campaigns.isError, campaigns.error,
     sheetsTemplates.data, sheetsTemplates.isLoading, sheetsTemplates.isSuccess, sheetsTemplates.isError, sheetsTemplates.error,
+    singleClient.data, singleClient.isLoading, singleClient.isSuccess, singleClient.isError, singleClient.error,
+    documentReview.data, documentReview.isLoading, documentReview.isSuccess, documentReview.isError, documentReview.error,
   ]);
 };
 
@@ -156,29 +197,52 @@ export const useCampaignMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    flightCampaignMutation: useMutateData<any, { clientId: string | number }>({
+    flightCampaignMutation: useMutateData<any, { clientId: string }>({
       method: "POST",
       url: (params) => `${endpoints.ADMIN_ACCOUNT_ACTION}?action=flight&clientId=${params?.clientId}`,
       mutationKey: ["admin-flight-campaign"],
       onSuccess: () => {},
       onError: () => {},
     }),
-    updateCampaignMutation: useMutateData<any, { id: string | number; updateBy?: string; updatedByFName?: string; data: any }>({
+    updateCampaignMutation: useMutateData<any, { clientId: string | number; data: any }>({
       method: "PATCH",
-      url: (params) => {
-        let url = `${endpoints.ADMIN_CAMPAIGN}?id=${params?.id}`;
-        if (params?.updateBy) url += `&updateBy=${params.updateBy}`;
-        if (params?.updatedByFName) url += `&updatedByFName=${params.updatedByFName}`;
-        return url;
-      },
+      url: (params) => `/api/v1/campaigns/clients/${params?.clientId}`,
       mutationKey: ["admin-update-campaign"],
       onSuccess: () => {},
       onError: () => {},
     }),
+    getCampaignClientMutation: useMutateData<any, { clientId: string }>({
+      method: "GET",
+      url: (params) => `/api/v1/campaigns/clients/${params?.clientId}`,
+      mutationKey: ["admin-get-campaign-client"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
     deleteCampaignMutation: useMutateData<any, { id: string | number }>({
-      method: "DELETE",
-      url: (params) => `${endpoints.ADMIN_CAMPAIGN}?id=${params?.id}`,
+      method: "PATCH",
+      url: (params) => `/api/v1/campaigns/clients/${params?.id}/soft-delete`,
       mutationKey: ["admin-delete-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    restoreCampaignMutation: useMutateData<any, { id: string | number }>({
+      method: "PATCH",
+      url: (params) => `/api/v1/campaigns/clients/${params?.id}/restore`,
+      mutationKey: ["admin-restore-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    permanentDeleteCampaignMutation: useMutateData<any, { id: string | number }>({
+      method: "DELETE",
+      url: (params) => `/api/v1/campaigns/clients/${params?.id}/permanent`,
+      mutationKey: ["admin-permanent-delete-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    toggleFlightStatusMutation: useMutateData<any, { clientId: string | number }>({
+      method: "PATCH",
+      url: (params) => `/api/v1/campaigns/clients/${params?.clientId}/toggle-flight`,
+      mutationKey: ["admin-toggle-campaign-flight"],
       onSuccess: () => {},
       onError: () => {},
     }),
@@ -207,6 +271,43 @@ export const useCampaignMutations = () => {
       method: "PATCH",
       url: endpoints.SHEETS_API,
       mutationKey: ["admin-update-sheets"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+
+    // User Campaign Management Endpoint Call by Temidayo
+    extractCampaignJobsMutation: useMutateData<any, { clientId: string, joblink: string, pageContent: string }>({
+      method: "POST",
+      url: endpoints.ADMIN_CAMPAIGN_JOBS_EXTRACT,
+      mutationKey: ["admin-campaign-jobs-extract"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    saveCampaignJobsMutation: useMutateData<any, { clientId: string, joblink: string, jobData: any }>({
+      method: "POST",
+      url: endpoints.ADMIN_CAMPAIGN_JOBS_SAVE,
+      mutationKey: ["admin-campaign-jobs-save"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    generateKeywordsFromResumeMutation: useMutateData<any, { id: string, keywords?: boolean, roleTitles?: boolean, increment?: boolean, existing?: any }>({
+      method: "POST",
+      url: endpoints.ADMIN_UPLOADS_GENERATE_KEYWORDS,
+      mutationKey: ["admin-generate-keywords-resume"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    addToClientQueueMutation: useMutateData<any, { queue: string; environment: string; aggregator: string; clientId: string; input?: string }>({
+      method: "POST",
+      url: (params) => `/api/v1/campaigns/queue/${params?.queue}`,
+      mutationKey: ["admin-campaign-add-queue"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    syncAggregatorsMutation: useMutateData<any, { clientId: string; syncType: "override" | "increment"; fromStage: boolean }>({
+      method: "POST",
+      url: "/api/v1/campaigns/sheets/aggregators/sync",
+      mutationKey: ["admin-campaign-sync-aggregators"],
       onSuccess: () => {},
       onError: () => {},
     }),

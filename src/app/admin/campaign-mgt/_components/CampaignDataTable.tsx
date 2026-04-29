@@ -30,6 +30,7 @@ import { MasterSheetDropDownModal } from "./CampaignFillDown";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { useQueryClient } from '@tanstack/react-query'
 import { TableInformationEnum } from "@/types/enum";
+import { useCampaignQueries, useCampaignMutations } from "@/hooks/api/admin/campaign";
 import KwRtModalComponent from "@/components/GenerateAQComponents/kw-rt-modal-component";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import CustomModalAQ from "@/components/modals/CustomModalAQ";
@@ -130,7 +131,7 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
   const [clientData, setClientData] = useState<null | any[]>(null);
   const [isloading, setIsLoading] = useState<boolean>(false);
   const [preferences, setPreferences] = useState<Pred>();
-  const [credentialsId, setCredentialsId] = useState<null | number>(null);
+  const [credentialsId, setCredentialsId] = useState<null | string>(null);
   const [jobType, setJobType] = useState([]);
   const [workingRights, setWorkingRights] = useState([]);
   const [reload, setReload] = useState(false);
@@ -142,7 +143,7 @@ const queryClient = useQueryClient();
   const adminQueriesOptions = React.useMemo(() => ({
     fetchUsersFullName: true,
     usersFullNameSkip: usersSkip,
-    fetchCampaigns: true,
+    fetchCampaignClients: true,
     campaignActive: clientDataState === "all" ? "all" : (clientDataState === "active" ? "true" : "false"),
     campaignSearch: searchQuery,
     fetchSheetsTemplates: true,
@@ -153,24 +154,29 @@ const queryClient = useQueryClient();
 
   const {
     usersFullNameDomain,
-    campaignsDomain,
+    campaignClientsDomain,
     sheetsTemplatesDomain,
     jobPreferencesOptionsDomain,
     userDocsAndPreferencesDomain,
   } = useAdminQueries(adminQueriesOptions);
+  const { documentReviewDomain } = useCampaignQueries({
+    userId: usersId || "",
+    fetchUserDocsAndPreferences: !!usersId,
+  });
 
   const {
     updateCampaignSheetBulkMutation,
     reverseUserIdMutation,
     flightCampaignMutation,
   } = useAdminMutations();
+  const { toggleFlightStatusMutation } = useCampaignMutations();
 
   const usersItems = usersFullNameDomain.data || [];
-  const rowsData = campaignsDomain.data?.campaigns || campaignsDomain.data || [];
+  const rowsData = campaignClientsDomain.data || [];
   const templatesData = sheetsTemplatesDomain.data;
   const jobPreferencesOptionsData = jobPreferencesOptionsDomain.data;
   
-  const isLoading = usersFullNameDomain.isLoading || campaignsDomain.isLoading;
+  const isLoading = usersFullNameDomain.isLoading || campaignClientsDomain.isLoading;
 
   // Create new user
   const createNewRecord = (): void => {
@@ -218,12 +224,45 @@ const queryClient = useQueryClient();
   }, [jobPreferencesOptionsData])
 
   const rows: GridRowsProp<CampaignTableColType> = React.useMemo(() => {
-    const apiResponse = campaignsDomain.data;
-    if (!apiResponse) return [];
-    return Array.isArray(apiResponse)
-      ? apiResponse
-      : (apiResponse?.campaigns || []);
-  }, [campaignsDomain.data]);
+    if (!rowsData || !Array.isArray(rowsData)) return [];
+    
+    // Map client fields from GET /v1/campaigns/clients response to match table column schema
+    return rowsData.map((client: any) => ({
+      // Map exactly the field names the table expects from the new API response
+      id: client.id,
+      CustomerId: client.seekExternalCredentials?.CustomerId || client.clientId,
+      Full_Name: client.seekExternalCredentials?.Full_Name || client.seekEmail,
+      First_Name: client.seekExternalCredentials?.First_Name,
+      Middle_Name: client.seekExternalCredentials?.Middle_Name,
+      Last_Name: client.seekExternalCredentials?.Last_Name,
+      Email: client.seekEmail,
+      PhoneNumber: client.phoneNumber || '',
+      Plan: client.seekExternalCredentials?.Plan,
+      ReturnCount: client.returnCount || 0,
+      Country: client.seekExternalCredentials?.Country || client.currentCity,
+      Active: client.seekExternalCredentials?.Active,
+      isEmailVerified: client.isEmailVerified || true,
+      isDocumentUploaded: client.isDocumentUploaded || false,
+      isDocumentApproved: client.isDocumentApproved || false,
+      isUserSubscribed: true,
+      campaignActive: !client.isDeleted,
+      progress: client.progress || 0,
+      applicationStatus: client.applicationStatus || 'Active',
+      paymentStatus: client.paymentStatus || 'Paid',
+      updateBy: client.AssignedPCName,
+      createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
+      Capitalized: !client.isDeleted ? 'INFLIGHT' : '',
+      AssignedPCName: client.AssignedPCName,
+      AssignedPCEmail: client.AssignedPCEmail,
+      CampaignEnd: client.seekExternalCredentials?.CampaignEnd,
+      SeekSubEndDate: client.seekExternalCredentials?.SeekSubEndDate,
+      SeekSubDurDays: client.seekExternalCredentials?.SeekSubDurDays,
+      
+      // Pass through all original client properties for action buttons
+      ...client,
+    }));
+  }, [rowsData]);
 
   useEffect(() => {
     if (rows && rows.length > 0) {
@@ -282,30 +321,15 @@ const queryClient = useQueryClient();
     setSaveMultiple(true);
   };
 
-  const generateAQFn = useCallback(async (clientId: number) => {
+  const generateAQFn = useCallback(async (clientId: string) => {
     setCredentialsId(clientId);
+    setUserID(clientId);
     setKwrtIsOpen(true);
-
-    if (clientId) {
-      reverseUserIdMutation.mutate(
-        { clientId },
-        {
-          onSuccess: (res: any) => {
-            if (res.data?._id) {
-              setUserID(res.data._id);
-            }
-          },
-          onError: (err: any) => {
-            toast.error(err.message || "Failed to reverse user ID");
-          },
-        }
-      );
-    }
-  }, [reverseUserIdMutation]);
+  }, []);
 
   useEffect(() => {
-    if (userDocsAndPreferencesDomain.data) {
-      const { userDocs, userPreference } = userDocsAndPreferencesDomain.data;
+    if (documentReviewDomain.data) {
+      const { userDocs, userPreference } = documentReviewDomain.data;
       if (userDocs) {
         userDocs.forEach((doc: any) => {
           if (!Array.isArray(doc.document)) {
@@ -318,29 +342,29 @@ const queryClient = useQueryClient();
         setPreferences(userPreference);
       }
     }
-  }, [userDocsAndPreferencesDomain.data]);
+  }, [documentReviewDomain.data]);
 
   const fetchClientDocuments = async () => {
     setRefetch(false);
   };
 
   const handleFlight = useCallback((clientId: string) => {
-    toast.loading("Processing flight action...");
-    flightCampaignMutation.mutate(
+    toast.loading("Toggling campaign flight status...");
+    toggleFlightStatusMutation.mutate(
       { clientId },
       {
         onSuccess: (res: any) => {
           toast.dismiss();
-          toast.success(res.message || "Flight action successful");
+          toast.success(res.message || "Campaign flight status updated successfully");
           queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
         },
         onError: (err: any) => {
           toast.dismiss();
-          toast.error(err.message || "Failed to process flight action");
+          toast.error(err.message || "Failed to toggle flight status");
         },
       }
     );
-  }, [flightCampaignMutation, queryClient]);
+  }, [toggleFlightStatusMutation, queryClient]);
 
   useEffect(() => {
     if(usersId){

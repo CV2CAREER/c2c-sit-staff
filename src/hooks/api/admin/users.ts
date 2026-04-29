@@ -497,7 +497,7 @@ export const useUsersMutations = () => {
       onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),
-    assignVaMutation: useMutateData<any, { credId: string; VaEmail: string | null }>({
+    assignVaMutation: useMutateData<any, { credId: string; vaEmail: string; host: string }>({
       method: "POST",
       url: endpoints.ADMIN_ASSIGN_VA,
       mutationKey: ["admin-assign-va"],
@@ -519,10 +519,9 @@ export const useUsersMutations = () => {
       onError: () => {},
     }),
     dispatchSampleMutation: useMutateData<any, { clientId: string | number }>({
-      method: "PATCH",
-      url: endpoints.ADMIN_DISPATCH_SAMPLE,
+      method: "POST",
+      url: (params) => endpoints.ADMIN_DISPATCH_SAMPLE(params.clientId),
       mutationKey: ["admin-dispatch-sample"],
-      paramKey: "clientId",
       onSuccess: () => invalidateAllUsersQueries(),
       onError: () => {},
     }),

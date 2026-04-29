@@ -53,18 +53,20 @@ export function CampaignClientActions({
 
   const {
     updateCampaignMutation,
+    deleteCampaignMutation,
+    restoreCampaignMutation,
     updateCampaignSheetSingleMutation,
   } = useAdminMutations();
 
   const handleSoftDelete = (client: any) => {
     toast.loading("Moving to recycle bin...");
-    updateCampaignMutation.mutate(
-      { id: client.id, updatedByFName: "system", data: { isDeleted: true } },
+    deleteCampaignMutation.mutate(
+      { id: client.id },
       {
         onSuccess: () => {
           toast.dismiss();
           toast.success("Moved to recycle bin");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();
@@ -77,13 +79,13 @@ export function CampaignClientActions({
 
   const handleRestore = (client: any) => {
     toast.loading("Restoring...");
-    updateCampaignMutation.mutate(
-      { id: client.id, updatedByFName: "system", data: { isDeleted: false } },
+    restoreCampaignMutation.mutate(
+      { id: client.id },
       {
         onSuccess: () => {
           toast.dismiss();
           toast.success("Restored successfully");
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: () => {
           toast.dismiss();
