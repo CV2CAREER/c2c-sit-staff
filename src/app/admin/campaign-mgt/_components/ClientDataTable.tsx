@@ -329,7 +329,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     };
 
     const dispatchUserSampleAction = useMutation({
-        mutationFn: async (userId: number) => {
+        mutationFn: async (userId: string) => {
             setLoaders((prev) => ({ ...prev, isDispatchingSample: true }));
             toast.loading("Dispatching Samples");
             return dispatchSampleMutation.mutateAsync({ clientId: userId });
@@ -725,7 +725,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                                         title: "Dispatch Samples",
                                         description: "Are you sure you want to dispatch samples?",
                                         onConfirm: () => {
-                                            dispatchUserSampleAction.mutate(clientId as number);
+                                            dispatchUserSampleAction.mutate(clientId as string);
                                         },
                                     });
                                 }}

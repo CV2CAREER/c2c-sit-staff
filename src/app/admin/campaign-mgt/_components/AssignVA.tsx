@@ -40,7 +40,7 @@ export const VACell = ({ data = null } : VACellProps) => {
         try {
             await assignVaMutation.mutateAsync({
                 credId,
-                VaEmail: VaEmail || null,
+                vaEmail: VaEmail || null,
             });
 
             toast.success(
