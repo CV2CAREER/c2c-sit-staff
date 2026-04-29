@@ -634,16 +634,48 @@ paths:
     get:
       tags:
         - User Authentication
-      summary: Get all users with client role
+      summary: Get all users with client role (paginated)
       description: |
-        Retrieves all users who have the 'client' role.
+        Retrieves users who have the 'client' role with pagination and filtering.
         
         This endpoint requires authentication and proper authorization.
-        Returns a list of client users with sensitive information excluded.
+        Returns paginated list of client users with sensitive information excluded.
       operationId: getClients
       security:
         - bearerAuth: []
         - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          description: Filter clients by status
+          required: false
+          schema:
+            type: string
+            enum: [active, deleted, all]
+            default: active
+        - name: q
+          in: query
+          description: Search query for email, first name, last name
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Clients retrieved successfully
@@ -686,6 +718,12 @@ paths:
                             role:
                               type: string
                               description: User's role (always 'client')
+                            isActive:
+                              type: boolean
+                              description: Whether user is active
+                            isDeleted:
+                              type: boolean
+                              description: Whether user is soft deleted
                             isEmailVerified:
                               type: boolean
                               description: Whether the user's email is verified
@@ -693,33 +731,53 @@ paths:
                               type: string
                               format: date-time
                               description: User creation timestamp
-                      count:
-                        type: number
-                        description: Total number of clients
-            examples:
-              clients_success:
-                summary: Clients retrieved successfully
-                value:
-                  success: true
-                  message: "Clients retrieved successfully"
-                  statusCode: 200
-                  data:
-                    clients:
-                      - id: "client-uuid-123"
-                        email: "client1@example.com"
-                        firstName: "Client"
-                        lastName: "One"
-                        role: "client"
-                        isEmailVerified: true
-                        createdAt: "2024-01-01T00:00:00.000Z"
-                      - id: "client-uuid-456"
-                        email: "client2@example.com"
-                        firstName: "Client"
-                        lastName: "Two"
-                        role: "client"
-                        isEmailVerified: false
-                        createdAt: "2024-01-02T00:00:00.000Z"
-                    count: 2
+                      pagination:
+                        type: object
+                        properties:
+                          page:
+                            type: integer
+                            description: Current page number
+                          limit:
+                            type: integer
+                            description: Items per page
+                          total:
+                            type: integer
+                            description: Total number of clients
+                          pages:
+                            type: integer
+                            description: Total number of pages
+              examples:
+                clients_success:
+                  summary: Clients retrieved successfully
+                  value:
+                    success: true
+                    message: "Clients retrieved successfully"
+                    statusCode: 200
+                    data:
+                      clients:
+                        - id: "client-uuid-123"
+                          email: "client1@example.com"
+                          firstName: "Client"
+                          lastName: "One"
+                          role: "client"
+                          isActive: true
+                          isDeleted: false
+                          isEmailVerified: true
+                          createdAt: "2024-01-01T00:00:00.000Z"
+                        - id: "client-uuid-456"
+                          email: "client2@example.com"
+                          firstName: "Client"
+                          lastName: "Two"
+                          role: "client"
+                          isActive: true
+                          isDeleted: false
+                          isEmailVerified: false
+                          createdAt: "2024-01-02T00:00:00.000Z"
+                      pagination:
+                        page: 1
+                        limit: 20
+                        total: 145
+                        pages: 8
         '401':
           description: Unauthorized - Authentication required
           content:

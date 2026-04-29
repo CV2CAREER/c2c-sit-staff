@@ -45,6 +45,20 @@ export class Aggregator extends Model {
   @Column(DataType.UUID)
   updatedByUserId?: string | null;
 
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  userId?: string | null;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isStage!: boolean;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
   @CreatedAt
   createdAt!: Date;
 

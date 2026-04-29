@@ -16,7 +16,7 @@ import {
   getJobPreferencesHistory,
   getUserReferrals,
   getUserUploadedDocuments,
-  getUserProfile
+  getUserProfile,
 } from "../../controllers/v1/user-management.controller";
 
 const userManagementRouterV1 = Router();

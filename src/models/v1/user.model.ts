@@ -38,6 +38,8 @@ import { SalesConsultant } from "./sales-consultant.model";
 import { CustomerService } from "./customer-service.model";
 import { Location } from "./location.model";
 import { Aggregator } from "./aggregator.model";
+import { Credentials } from "./credentials.model";
+import { Plan } from "./plan.model";
 
 @Table({
   tableName: "users",
@@ -401,6 +403,19 @@ export class User extends Model {
   // Aggregator relationship
   @HasMany(() => Aggregator, "userId")
   aggregators?: Aggregator[];
+
+  // Credentials relationship
+  @HasOne(() => Credentials, "clientId")
+  credentials?: Credentials;
+
+  // Plan relationship
+  @ForeignKey(() => Plan)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  planId?: string;
+
+  @BelongsTo(() => Plan, "planId")
+  activePlan?: Plan;
 
   // Timestamps
   @CreatedAt

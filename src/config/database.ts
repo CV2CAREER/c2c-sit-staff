@@ -67,6 +67,9 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
+        // await Credentials.sync({ alter: true });                      // example of altering existing table
+        // await UserPreferenceHistory.sync({ force: false });         // new table
+
         await ensureTrainingTrackerSessions();
         await ensureCRTrackingHistoryTable();
         await ensureAccessLevelTables();
