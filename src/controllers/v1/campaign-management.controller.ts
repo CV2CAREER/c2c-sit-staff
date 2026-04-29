@@ -28,7 +28,10 @@ import { getServiceLogger } from "../../utils/createLogger";
     deleteCampaignClientsBulk,
     softDeleteCampaignClient,
     restoreCampaignClient,
-    permanentDeleteCampaignClient
+    permanentDeleteCampaignClient,
+    getUserPreferencesByUserId,
+    landOrLaunchCampaign,
+    getDocumentReviewData
   } from "../../services/campaign.service";
 
 const logger = getServiceLogger("campaign-management-controller");
@@ -508,3 +511,53 @@ export const saveJob = catchAsyncError(async (req: Request, res: Response) => {
       data: result
     });
   });
+
+/**
+ * Get user preferences by user ID
+ * GET /api/v1/campaigns/users/:userId/preferences
+ * Optional query param: type=primary or type=secondary
+ */
+export const getUserPreferences = catchAsyncError(async (req: Request, res: Response) => {
+  logger.info("Processing get user preferences request");
+  const { userId } = req.params;
+  const { type } = req.query;
+
+  const preferenceType = type === 'primary' || type === 'secondary' ? type as 'primary' | 'secondary' : undefined;
+  const result = await getUserPreferencesByUserId(userId, preferenceType);
+  
+  res.status(200).json({
+    success: true,
+    message: "User preferences retrieved successfully",
+    data: result
+  });
+});
+
+/**
+ * Toggle campaign flight status (Land / Launch)
+ * PATCH /api/v1/campaigns/clients/:clientId/toggle-flight
+ */
+export const toggleCampaignFlight = catchAsyncError(async (req: Request, res: Response) => {
+  logger.info("Processing campaign toggle flight request");
+  const { clientId } = req.params;
+  
+  const result = await landOrLaunchCampaign(clientId);
+  
+  res.status(200).json(result);
+});
+
+/**
+ * Get document review data for user
+ * GET /api/v1/campaigns/users/:userId/document-review
+ */
+export const getDocumentReview = catchAsyncError(async (req: Request, res: Response) => {
+  logger.info("Processing document review request");
+  const { userId } = req.params;
+  
+  const result = await getDocumentReviewData(userId);
+  
+  res.status(200).json({
+    success: true,
+    message: "Document review data retrieved successfully",
+    data: result
+  });
+});

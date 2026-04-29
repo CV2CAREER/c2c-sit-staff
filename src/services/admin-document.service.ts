@@ -19,6 +19,7 @@ import {
 } from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import path from "path";
+import { Credentials } from "@/models/v1/credentials.model";
 
 const logger = getServiceLogger("document-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
@@ -392,8 +393,10 @@ export class AdminDocumentService {
         let upload;
         if (uploadId && uploadId !== targetUserId) {
             try {
+                const user = await Credentials.findOne({ where: { id: uploadId } });
+
                 upload = await Upload.findOne({
-                    where: { userId: uploadId, type: "resume", isDefault: true, isDeleted: false },
+                    where: { userId: user?.clientId, type: "resume", isDefault: true, isDeleted: false },
                 });
                 logger.info(`[GenerateKeywords] Found requested upload ${uploadId} for user ${targetUserId}`);
                 if (!upload) {

@@ -3,14 +3,16 @@ import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { Aggregator } from "../models/v1/aggregator.model";
 import { Profile } from "../models/v1/profile.model";
+import { Upload } from "../models/v1/upload.model";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
 import { SlackChannel, SlackNode, SlackProvider, SlackSeverity, SlackEventType } from "../utils/enum";
 import { getEnvironmentFromHost, getSlackIdByEmail } from "../utils/slack-helpers";
 import { hopeUserIdExists } from "../utils/user-helper";
 import { getConnectedRedis } from "../config/redis";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import path from "path";
+import { credential } from "firebase-admin";
 
 const logger = getServiceLogger("campaign-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
@@ -61,9 +63,22 @@ export const extractAggregatorCredentials = (obj: {[key: string]: string}) => {
  */
 export const sendPreferenceNotifications = async (userId: string, triggeredBy: string, host: string) => {
   logger.info(`Processing preference notifications for user ID: ${userId}`);
-  
-  const user = await hopeUserIdExists(userId);
-  const { email, firstName: firstname } = user;
+
+  if (!userId) {
+    logger.warn("User ID is required");
+    throw new Error("User ID is required");
+  }
+
+  const userAccount = await Credentials.findOne({ where: { id: userId }, raw: true });
+
+  if (!userAccount) {
+    logger.warn("User account not found");
+    throw new Error("User account not found");
+  }
+
+  const user = await User.findOne({ where: { id: userAccount.clientId }, raw: true });
+  const firstname = user?.firstName || "User";
+  const email = user?.email || "unknown email";
 
   // Send notification email to the user
   await sendMail({
@@ -117,14 +132,14 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
   logger.info(`Processing credentials dispatch for client ID: ${clientId}`);
 
   // Fetch client credentials
-  const client = await Credentials.findOne({ where: { clientId: clientId } });
+  const client = await Credentials.findOne({ where: { id: clientId } });
   if (!client) {
     logger.warn(`Client not found for ID: ${clientId}`);
     throw new Error("Client not found");
   }
 
   // Fetch associated user
-  const clientUser = await User.findOne({ where: { id: clientId } });
+  const clientUser = await User.findOne({ where: { id: client.clientId } });
   if (!clientUser) {
     logger.warn(`Customer ID not set for client: ${clientId}`);
     throw new Error("Client customer ID not set");
@@ -198,7 +213,7 @@ export const generateExternalPassword = async (userId: string, host: string) => 
   const generatedPassword = generatePassword();
 
   // Find user credentials
-  const userCredentials = await Credentials.findOne({ where: { clientId: userId } });
+  const userCredentials = await Credentials.findOne({ where: { id: userId } });
   if (!userCredentials) {
     logger.warn(`User credentials not found for ID: ${userId}`);
     throw new Error("User not found");
@@ -552,7 +567,7 @@ export const addToClientSampleQueue = async (queue: string, environment: string,
   // If no input provided, lookup client alias email from database
   if(!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
-      where: { clientId: clientId },
+      where: { id: clientId },
       attributes: ['seekEmail'],
     });
     
@@ -891,7 +906,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
   if (!vaEmail) {
     logger.info(`Unassigning VA for credId=${credId}`);
     
-    const targetCred = await Credentials.findOne({ where: { clientId: credId } });
+    const targetCred = await Credentials.findOne({ where: { id: credId } });
     if (!targetCred) {
       logger.warn(`Client profile not found for credId=${credId}`);
       throw new Error("Client profile not found");
@@ -939,7 +954,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
     };
   }
 
-  const targetCred = await Credentials.findOne({ where: { clientId: credId } });
+  const targetCred = await Credentials.findOne({ where: { id: credId } });
   if (!targetCred) {
     logger.warn(`Client profile not found for credId=${credId}`);
     throw new Error("Client profile not found");
@@ -1041,8 +1056,8 @@ export const submitJobMatchRequest = async (options: TriggerOptions, requestorId
 /**
  * Get campaign clients list with filters
  */
-export const getCampaignClients = async (active: string = 'true', searchQuery?: string) => {
-  logger.info(`Fetching campaign clients, active: ${active}, search: ${searchQuery || 'none'}`);
+export const getCampaignClients = async (active: string = 'true', searchQuery?: string, page: number = 1, limit: number = 20) => {
+  logger.info(`Fetching campaign clients, active: ${active}, search: ${searchQuery || 'none'}, page: ${page}, limit: ${limit}`);
 
   let whereClause: any = {};
 
@@ -1054,30 +1069,54 @@ export const getCampaignClients = async (active: string = 'true', searchQuery?: 
     whereClause = { isDeleted: false };
   }
 
+  // Working PostgreSQL JSONB search implementation
   if (searchQuery) {
+    const searchTerm = `%${searchQuery}%`;
     whereClause = {
       ...whereClause,
       [Op.or]: [
-        { firstName: { [Op.iLike]: `%${searchQuery}%` } },
-        { lastName: { [Op.iLike]: `%${searchQuery}%` } },
-        { email: { [Op.iLike]: `%${searchQuery}%` } }
+        // Search inside seekExternalCredentials JSON fields
+        Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'First_Name'`)),
+          Op.like,
+          searchTerm.toLowerCase()
+        ),
+        Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'Last_Name'`)),
+          Op.like,
+          searchTerm.toLowerCase()
+        ),
+        Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'Full_Name'`)),
+          Op.like,
+          searchTerm.toLowerCase()
+        ),
+        // Also search top level fields
+        { seekEmail: { [Op.iLike]: searchTerm } },
       ]
     };
   }
 
+  const offset = (page - 1) * limit;
+
   const campaigns = await Credentials.findAll({
     where: whereClause,
     order: [["createdAt", "DESC"]],
+    limit: limit,
+    offset: offset,
     raw: true
   });
 
   const totalCount = await Credentials.count({ where: whereClause });
 
-  logger.info(`Found ${campaigns.length} campaign clients`);
+  logger.info(`Found ${campaigns.length} campaign clients (total: ${totalCount})`);
 
   return {
     campaigns,
-    totalCount
+    totalCount,
+    currentPage: page,
+    totalPages: Math.ceil(totalCount / limit),
+    limit
   };
 };
 
@@ -1097,7 +1136,169 @@ export const getCampaignClientById = async (clientId: string) => {
     throw new Error("Client not found");
   }
 
-  return clientData;
+  // Fetch associated user and profile for application statistics
+  const user = await User.findOne({ where: { id: clientId } });
+  let applicationCounts = {
+    totalApplications: 0,
+    successfulApplications: 0,
+    failedApplications: 0
+  };
+
+  if (user && user.profileId) {
+    const profile = await Profile.findByPk(user.profileId);
+    if (profile) {
+      const profileData = profile.toJSON() as any;
+      applicationCounts = {
+        totalApplications: profileData.totalApplications || 0,
+        successfulApplications: profileData.successfulApplications || 0,
+        failedApplications: profileData.failedApplications || 0
+      };
+    }
+  }
+
+  // Combine client data with application counts
+  return {
+    ...clientData,
+    ...applicationCounts
+  };
+};
+
+/**
+ * Get user preferences by user ID
+ * @param userId User ID
+ * @param preferenceType Optional preference type: 'primary' | 'secondary'
+ * @returns Requested preference fields or complete profile including both primary and secondary fields
+ */
+export const getUserPreferencesByUserId = async (userId: string, preferenceType?: 'primary' | 'secondary') => {
+  logger.info(`Fetching ${preferenceType || 'all'} user preferences for user ID: ${userId}`);
+
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  const user = await User.findOne({ where: { id: userId } });
+  
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  if (!user.profileId) {
+    throw new Error("User profile not found");
+  }
+
+  // Fetch profile and cast to any to bypass TypeScript field checking
+  const profile = await Profile.findByPk(user.profileId, { raw: true }) as any;
+
+  if (!profile) {
+    throw new Error("Profile not found for user");
+  }
+
+  // If specific preference type requested, return only those fields
+  if (preferenceType === 'primary') {
+    return {
+      userId,
+      preferenceType: 'primary',
+      profile
+    };
+  }
+
+  if (preferenceType === 'secondary') {
+    return {
+      userId,
+      preferenceType: 'secondary',
+      profile
+    };
+  }
+
+  // Return complete profile including ALL fields (both primary and secondary)
+  return profile;
+};
+
+/**
+ * Toggle campaign flight status (Launch / Land)
+ * Toggles between INFLIGHT and HOLD status with all associated fields
+ */
+export const landOrLaunchCampaign = async (clientId: string) => {
+  logger.info(`Toggling campaign flight status for client: ${clientId}`);
+
+  if (!clientId) {
+    throw new Error("Client ID is required");
+  }
+
+  const cred = await Credentials.findOne({
+    where: { id: clientId }
+  });
+
+  if (!cred) {
+    throw new Error("Credential not found");
+  }
+
+  let message: string;
+  const credData = cred.toJSON() as any;
+  
+  if (credData.capitalized !== 'INFLIGHT') {
+    await cred.update({
+      capitalized: 'INFLIGHT',
+      Active: true,
+      SeekAnswerPriority: true,
+      SeekAggregator: true,
+      SeekSubStartDate: new Date().toISOString()
+    });
+    message = "Campaign launched successfully!";
+  } else {
+    await cred.update({
+      capitalized: 'HOLD',
+      Active: false,
+      SeekAnswerPriority: false,
+      SeekAggregator: false,
+      SeekSubStartDate: null
+    });
+    message = "Campaign landed successfully!";
+  }
+
+  logger.info(`Campaign status updated: ${message} for client: ${clientId}`);
+
+  return {
+    success: true,
+    message,
+    clientId,
+    newStatus: credData.capitalized !== 'INFLIGHT' ? 'FLIGHT' : 'HOLD'
+  };
+};
+
+/**
+ * Get user documents with preferences for document review
+ * Returns user uploaded documents and profile preferences
+ */
+export const getDocumentReviewData = async (userId: string) => {
+  logger.info(`Fetching document review data for user: ${userId}`);
+
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  // Retrieve user uploaded documents
+  const userDocs = await Upload.findAll({
+    where: { userId, isDeleted: false }
+  });
+
+  // Retrieve user profile preferences
+  const userData = await User.findByPk(userId, { attributes: ['profileId', 'country'] });
+  
+  let userPreference: any = null;
+  if (userData && userData.profileId) {
+    userPreference = await Profile.findByPk(userData.profileId, { raw: true }) as any;
+    if (userPreference && !userPreference.country) {
+      userPreference.country = userData.country;
+    }
+  }
+
+  logger.info(`Document review data retrieved successfully for user: ${userId}`);
+
+  return {
+    userDocs: userDocs || [],
+    userPreference
+  };
 };
 
 /**

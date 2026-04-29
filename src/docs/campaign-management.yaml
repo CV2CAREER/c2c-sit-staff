@@ -253,6 +253,91 @@ paths:
         '200':
           description: User profile retrieved successfully
 
+  /v1/campaigns/users/{userId}/preferences:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get user job preferences
+      description: Retrieve user job preferences (primary, secondary, or complete profile)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID to get preferences for
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [primary, secondary]
+          description: Optional preference type filter
+      responses:
+        '200':
+          description: User preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User preferences retrieved successfully"
+                  data:
+                    type: object
+                    description: User preference fields
+        '404':
+          description: User or profile not found
+
+  /v1/campaigns/users/{userId}/document-review:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get document review data
+      description: Retrieve user uploaded documents and profile preferences for document review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: User ID to get document review data for
+      responses:
+        '200':
+          description: Document review data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Document review data retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      userDocs:
+                        type: array
+                        items:
+                          type: object
+                          description: User uploaded document
+                      userPreference:
+                        type: object
+                        description: User profile preferences
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
   /v1/campaigns/queue/{aggregator}/status:
     get:
       tags:
@@ -633,6 +718,49 @@ paths:
           description: Client not found or no samples to dispatch
         '500':
           description: Server error during dispatch
+
+  /v1/campaigns/clients/{clientId}/toggle-flight:
+    patch:
+      tags:
+        - Campaign Management
+      summary: Toggle campaign flight status (Land / Launch)
+      description: Toggles campaign status between INFLIGHT and HOLD, updates all associated fields
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client ID to toggle flight status for
+      responses:
+        '200':
+          description: Campaign status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Campaign launched successfully!"
+                  clientId:
+                    type: string
+                    description: Client ID
+                  newStatus:
+                    type: string
+                    enum: [INFLIGHT, HOLD]
+                    description: New campaign status
+        '401':
+          description: Unauthorized
+        '404':
+          description: Client not found
+        '500':
+          description: Server error
 
   /v1/campaigns/clients:
     get:

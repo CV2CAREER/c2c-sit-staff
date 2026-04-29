@@ -27,7 +27,10 @@ import {
   deleteCampaignClientsBulkController,
   softDeleteCampaignClientController,
   restoreCampaignClientController,
-  permanentDeleteCampaignClientController
+  permanentDeleteCampaignClientController,
+  getUserPreferences,
+  toggleCampaignFlight,
+  getDocumentReview
 } from "../../controllers/v1/campaign-management.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
@@ -52,6 +55,8 @@ campaignManagementRouterV1.get("/aggregators/user/:userId", getUserAggregatorsBy
 
 // User Profile
 campaignManagementRouterV1.get("/users/:userId/profile", getUserProfile);
+campaignManagementRouterV1.get("/users/:userId/preferences", getUserPreferences);
+campaignManagementRouterV1.get("/users/:userId/document-review", getDocumentReview);
 
 // Client Sample Queue
 campaignManagementRouterV1.get("/queue/:aggregator/status", getQueueStatus);
@@ -79,6 +84,7 @@ campaignManagementRouterV1.patch("/clients/:id", updateCampaignClientController)
 campaignManagementRouterV1.delete("/clients/:id", deleteCampaignClientController);
 campaignManagementRouterV1.delete("/clients/bulk", deleteCampaignClientsBulkController);
 campaignManagementRouterV1.patch("/clients/:clientId/dispatch-samples", dispatchClientSamples);
+campaignManagementRouterV1.patch("/clients/:clientId/toggle-flight", toggleCampaignFlight);
 campaignManagementRouterV1.patch("/clients/:id/soft-delete", softDeleteCampaignClientController);
 campaignManagementRouterV1.patch("/clients/:id/restore", restoreCampaignClientController);
 campaignManagementRouterV1.delete("/clients/:id/permanent", permanentDeleteCampaignClientController);
