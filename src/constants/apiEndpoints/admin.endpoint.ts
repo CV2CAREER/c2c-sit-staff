@@ -160,3 +160,9 @@ export const ADMIN_TEMPLATES = "/api/v1/admin/templates";
 export const ADMIN_TEMPLATE_NOTIFY = "/api/v1/admin/templates/notify-missing-info";
 export const ADMIN_TEMPLATE_NOTIFY_WHATSAPP = "/api/v1/admin/templates/notify-missing-info-whatsapp";
 export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";
+
+// Sales Operation Endpoints
+export const ADMIN_SALES_OPERATION = "/api/v1/admin/trackers/sales-operation";
+export const ADMIN_SALES_OPERATION_RESTORE = "/api/v1/admin/trackers/sales-operation/restore";
+export const ADMIN_SALES_OPERATION_HARD_DELETE = "/api/v1/admin/trackers/sales-operation/hard-delete";
+
