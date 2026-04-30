@@ -9,6 +9,7 @@ import { Users, DollarSign, CheckCircle, Clock, MessageSquare, Headphones } from
 import SalesReferralTable from "@/app/sales/dashboard/_components/SalesReferralTable";
 import { format } from "date-fns";
 import { Copy } from "lucide-react";
+import { TimeRangeSelector } from "@/components/ui/time-range-selector";
 import toast from "react-hot-toast";
 
 const CseDashboardPage = () => {
@@ -34,17 +35,23 @@ const CseDashboardPage = () => {
   const stats = userReferralsDomain.data as any;
   const isLoadingReferrals = userReferralsDomain.isLoading;
 
+  const referralsList = stats?.referrals || [];
+  
   const referralStats = [
     {
       title: "Total Referrals",
-      value: stats?.totalReferrals || 0,
-      icon: <Users size={20} />,
+      value: referralsList.length || 0,
+      icon: <Users size={20} className="text-blue-500" />,
     },
     {
-      title: "Total Earnings",
-      value: stats?.totalEarnings || 0,
-      icon: <DollarSign size={20} className="text-blue-500" />,
-      isCurrency: true,
+      title: "Total Paid Referrals",
+      value: referralsList.filter((r: any) => r.isUserSubscribed).length || 0,
+      icon: <DollarSign size={20} className="text-green-500" />,
+    },
+    {
+      title: "Total Unpaid Referrals",
+      value: referralsList.filter((r: any) => !r.isUserSubscribed).length || 0,
+      icon: <CheckCircle size={20} className="text-yellow-500" />,
     },
   ];
 
@@ -66,17 +73,14 @@ const CseDashboardPage = () => {
   return (
     <section className="flex flex-col gap-8 mt-6">
       {/* Welcome Banner */}
-      <section className="bg-gradient-to-r from-purple-600 to-blue-600 flex justify-between items-center flex-wrap gap-4 w-full text-white p-8 shadow-md rounded-2xl">
+      <section className="bg-gradient-to-r from-[#0066B2] from-[-11.61%] to-[#00BFF2] to-[103.59%] flex justify-between items-center flex-wrap gap-4 w-full text-white p-5 shadow-md rounded-sm">
         <div>
-          <h2 className="text-3xl font-bold">Welcome, {user?.firstName || "CSE"}!</h2>
-          <p className="text-purple-50 mt-1 text-lg">Manage your support sessions and track your referral bonuses.</p>
+          <h2 className="text-xl sm:text-2xl font-bold">
+            Welcome <br />
+            {user?.firstName} {user?.lastName}
+          </h2>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-xl border border-white/20 text-center">
-            <span className="block text-xs uppercase font-bold text-purple-200">Current Time</span>
-            <span className="text-xl font-mono">{format(new Date(), "HH:mm")}</span>
-          </div>
-        </div>
+        <TimeRangeSelector styles="bg-white border-none text-black" />
       </section>
 
       {/* Stats Summary */}

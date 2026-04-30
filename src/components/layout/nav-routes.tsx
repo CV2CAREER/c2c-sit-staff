@@ -11,6 +11,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAdminPersonaSwitchStore } from "@/store/switchPersonaStore";
 import { NavLink } from "@/constants/navLinks";
 import { ArrowLeftRight } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StaffNavRoutesProps {
   links: NavLink[];
@@ -22,10 +23,32 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
   const [activeGroupId, setActiveGroupId] = useState<number | undefined>();
   const { activeRole, setActiveRole } = useAdminPersonaSwitchStore();
   const router = useRouter();
+  const { user } = useAuth();
+  const userRole = user?.role;
 
   return (
     <>
       {links.map((link: NavLink) => {
+        // "Switch to Admin" link — only visible for admin users
+        if (link.name === "Switch to Admin") {
+          if (userRole !== "admin") return null;
+          const LIcon = link.icon;
+          return (
+            <div
+              key={link.name}
+              onClick={() => {
+                setActiveRole("admin");
+                if (onPress) onPress();
+                router.push("/admin/dashboard");
+              }}
+              className="flex flex-row gap-4 items-center my-1 rounded-md text-sm p-2 cursor-pointer text-gray-600 hover:bg-lightblue"
+            >
+              <LIcon />
+              <p>{link.name}</p>
+            </div>
+          );
+        }
+
         if (link.groupId && link.children) {
           const LParentIcon = link.icon;
           const isGroupActive = activeGroupId === link.groupId || 
@@ -97,19 +120,6 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
           );
         }
       })}
-
-      {activeRole !== "admin" && currPath?.includes("/admin") && (
-        <div
-          onClick={() => {
-            setActiveRole("admin");
-            router.push("/admin/dashboard");
-          }}
-          className="flex flex-row gap-4 items-center my-3 rounded-md text-[14px] p-2 cursor-pointer text-gray-600"
-        >
-          <ArrowLeftRight />
-          <p>Switch Back to Admin</p>
-        </div>
-      )}
     </>
   );
 };
