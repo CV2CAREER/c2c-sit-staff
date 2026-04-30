@@ -155,19 +155,38 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
   },
 ];
 
-// Placeholders for other personas - to be expanded
+export const ASSISTANT_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/assistant/dashboard", icon: House },
+];
+
+export const PARTNER_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/partner/dashboard", icon: House },
+  { name: "Profile", href: "/partner/profile", icon: User },
+];
+
 export const COACH_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/coach/dashboard", icon: House },
+  { name: "Scheduling", href: "/coach/scheduling", icon: Layers },
+  { name: "Grading", href: "/coach/grading", icon: Star },
+  { name: "Training Tracker", href: "/coach/training-tracker", icon: Presentation },
   { name: "Profile", href: "/coach/profile", icon: User },
 ];
 
-export const ASSISTANT_NAV_LINKS: NavLink[] = [
-  { name: "Home", href: "/assistant/dashboard", icon: House },
+export const SALES_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/sales/dashboard", icon: House },
+  { name: "Profile", href: "/sales/profile", icon: User },
+];
+
+export const CSE_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/cse/dashboard", icon: House },
+  { name: "Profile", href: "/cse/profile", icon: User },
 ];
 
 export const NAV_LINKS_BY_ROLE: Record<string, NavLink[]> = {
   admin: ADMIN_NAV_LINKS,
   coach: COACH_NAV_LINKS,
   assistant: ASSISTANT_NAV_LINKS,
-  // Add others as needed
+  sales: SALES_NAV_LINKS,
+  cse: CSE_NAV_LINKS,
+  partner: PARTNER_NAV_LINKS,
 };

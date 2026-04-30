@@ -131,6 +131,14 @@ export const ADMIN_TRAINING_TRACKER = "/api/v1/admin/training-tracker";
 export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/admin/training-tracker/sessions";
 export const ADMIN_COACHES_VARIANT = "/api/v1/coach";
 
+// Coach Specific Endpoints
+export const COACH_SESSIONS = "/api/v1/coach/sessions";
+export const COACH_SESSION_DETAIL = (id: string) => `/api/v1/coach/sessions/${id}`;
+export const COACH_SESSION_COMPLETE = (id: string) => `/api/v1/coach/sessions/${id}/complete`;
+export const COACH_ME = "/api/v1/coach/me";
+export const COACH_SCHEDULES = "/api/v1/schedules";
+export const COACH_SCHEDULE_DETAIL = (id: string) => `/api/v1/schedules/${id}`;
+
 // Admin CR Tracking Endpoints
 export const ADMIN_CR_TRACKING = "/api/v1/admin/trackers/cr";
 export const ADMIN_CR_TRACKING_OPTIONS = "/api/v1/admin/trackers/cr/options";
