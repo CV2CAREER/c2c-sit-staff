@@ -36,7 +36,7 @@ import {
 interface FormFieldDef {
   field: string;
   label: string;
-  type: "text" | "select";
+  type: "text" | "select" | "date";
   options?: string[];
 }
 
@@ -54,9 +54,9 @@ const FORM_FIELDS: FormFieldDef[] = [
   { field: "webPage", label: "Web Page", type: "text" },
   { field: "linkedinPage", label: "LinkedIn Page", type: "text" },
   { field: "followUpCallStatus", label: "Follow Up Call Status", type: "text" },
-  { field: "commsDispatchDate", label: "Comms Dispatch Date", type: "text" },
-  { field: "entryCreationDate", label: "Entry Creation Date", type: "text" },
-  { field: "lastContactDate", label: "Last Contact Date", type: "text" },
+  { field: "commsDispatchDate", label: "Comms Dispatch Date", type: "date" },
+  { field: "entryCreationDate", label: "Entry Creation Date", type: "date" },
+  { field: "lastContactDate", label: "Last Contact Date", type: "date" },
   { field: "verifiedEmail", label: "Verified Email", type: "text" },
   { field: "notes", label: "Notes", type: "text" },
 ];
@@ -127,6 +127,14 @@ function EntryForm({
                 ))}
               </SelectContent>
             </Select>
+          ) : f.type === "date" ? (
+            <Input
+              type="date"
+              disabled={isLoading}
+              value={values[f.field] || ""}
+              onChange={(e) => onChange(f.field, e.target.value)}
+              placeholder={f.label}
+            />
           ) : (
             <Input
               disabled={isLoading}
@@ -179,10 +187,31 @@ export default function SalesOperationComponent() {
   useEffect(() => {
     if (editRow) {
       const vals: Record<string, string> = {};
-      FORM_FIELDS.forEach((f) => { vals[f.field] = editRow[f.field] ?? ""; });
+      FORM_FIELDS.forEach((f) => {
+        const raw = editRow[f.field];
+        if (f.type === "date" && raw) {
+          vals[f.field] = new Date(raw).toISOString().slice(0, 10);
+        } else {
+          vals[f.field] = raw ?? "";
+        }
+      });
       setEditForm(vals);
     }
   }, [editRow]);
+
+  const normalizePayload = (payload: Record<string, string>) => {
+    const next: Record<string, any> = { ...payload };
+    const dateFields = ["commsDispatchDate", "entryCreationDate", "lastContactDate"];
+    dateFields.forEach((field) => {
+      const value = next[field];
+      next[field] = value ? new Date(value).toISOString() : null;
+    });
+    if (typeof next.verifiedEmail === "string") {
+      if (next.verifiedEmail.trim() === "") next.verifiedEmail = null;
+      else next.verifiedEmail = next.verifiedEmail.toLowerCase() === "true";
+    }
+    return next;
+  };
 
   // ── modifyArray ──
   // NOTE: editMode and openEdit are passed via helpers so Table's columnHeaders
@@ -225,7 +254,7 @@ export default function SalesOperationComponent() {
 
   const handleCreate = async () => {
     try {
-      await createMutation.mutateAsync(createForm);
+      await createMutation.mutateAsync(normalizePayload(createForm));
       setCreateOpen(false);
       setCreateForm(emptyForm);
     } catch { /* handled in hook */ }
@@ -234,7 +263,7 @@ export default function SalesOperationComponent() {
   const handleUpdate = async () => {
     if (!editRow) return;
     try {
-      await updateMutation.mutateAsync({ ...editForm, _id: editRow._id });
+      await updateMutation.mutateAsync({ ...normalizePayload(editForm), _id: editRow._id });
       setEditOpen(false);
       setEditRow(null);
     } catch { /* handled in hook */ }

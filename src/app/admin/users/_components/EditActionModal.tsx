@@ -48,7 +48,7 @@ const formSchema = z.object({
   country: z.string().optional(),
   heritage: z.string().optional(),
   communication: z.string().optional(),
-  role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc"]),
+  role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc", "technology", "cse", "customer", "test", "probono", "business"]),
   revenue: z.string().optional(),
   returnCount: z.number(),
   hasCoverLetter: z.boolean(),
@@ -375,7 +375,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                         >
                           <SelectTrigger>
                             <SelectValue
@@ -384,17 +384,15 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="admin">admin</SelectItem>
-                            <SelectItem value="client">client</SelectItem>
-                            <SelectItem value="guest">guest</SelectItem>
-                            <SelectItem value="partner">partner</SelectItem>
-                            <SelectItem value="sales">sales</SelectItem>
-                            <SelectItem value="coach">coach</SelectItem>
-                            {/* <SelectItem value="returnee">returnee</SelectItem>
-                            <SelectItem value="loyalist">loyalist</SelectItem>
-                            <SelectItem value="business">business</SelectItem>
-                            <SelectItem value="technology">technology</SelectItem> */}
-                            <SelectItem value="assistant">PC</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="client">Client</SelectItem>
+                            <SelectItem value="guest">Guest</SelectItem>
+                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="sales">Sales</SelectItem>
+                            <SelectItem value="coach">Coach</SelectItem>
+                            <SelectItem value="assistant">Assistant / PC</SelectItem>
+                            <SelectItem value="technology">Technology</SelectItem>
+                            <SelectItem value="cse">CSE</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
