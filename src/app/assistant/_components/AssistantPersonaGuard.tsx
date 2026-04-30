@@ -7,4 +7,4 @@ function Guard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export default withPersonaGuard(Guard, ["assistant", "tpc", "pc", "test"]);
+export default withPersonaGuard(Guard, ["assistant", "tpc", "pc", "test", "admin"]);

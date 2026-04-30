@@ -161,6 +161,8 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
 
 export const ASSISTANT_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/assistant/dashboard", icon: House },
+  { name: "Personal Info", href: "/assistant/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
 ];
 
 export const PARTNER_NAV_LINKS: NavLink[] = [
