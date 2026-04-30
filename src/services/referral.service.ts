@@ -257,14 +257,31 @@ export class ReferralService {
       });
 
       const totalReferrals = referrals.length;
-      const successfulReferrals = referrals.filter(r => r.status === 'APPROVED').length;
+      let totalPaidReferrals = 0;
+      let totalUnpaidReferrals = 0;
+      let totalEarnings = 0;
 
-      logger.info(`✅ User ${user.email} has ${totalReferrals} referrals (${successfulReferrals} approved)`);
+      referrals.forEach(ref => {
+        const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === 'paid' || ref.user?.isUserSubscribed === true;
+        
+        if (ref.status === 'APPROVED') {
+          totalPaidReferrals++;
+          if (isClient) {
+            totalEarnings += 50;
+          }
+        } else if (ref.status === 'PENDING') {
+          totalUnpaidReferrals++;
+        }
+      });
+
+      logger.info(`✅ User ${user.email} has ${totalReferrals} referrals ($${totalEarnings} earnings)`);
 
       return {
         referrals,
         totalReferrals,
-        totalSuccessfulReferrals: successfulReferrals
+        totalPaidReferrals,
+        totalUnpaidReferrals,
+        totalEarnings
       };
     } catch (error: any) {
       logger.error(`❌ Failed to fetch user referrals: ${error.message}`);
