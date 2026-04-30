@@ -58,14 +58,27 @@ class UserManagementService {
 
     // Allow updating all user fields
     const allowedFields = [
-      'firstName', 'middleName', 'lastName', 'gender', 
-      'email', 'customerClass', 'voiceNumber', 'whatsappNumber',
+      'firstName', 'middleName', 'lastName', 'gender',
+      'email', 'customerClass', 'phoneNumber', 'whatsappNumber',
       'country', 'heritage', 'communication', 'role',
       'returnCount', 'revenue', 'cl', 'cr',
       'socials', 'progress', 'isActive', 'isEmailVerified',
-      'planId', 'phone', 'address', 'city', 'state', 
+      'planId', 'phone', 'address', 'city', 'state',
       'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl'
     ];
+
+    // Map frontend field names to backend model columns
+    const fieldAliases: Record<string, string> = {
+      voiceNumber: 'phoneNumber',
+    };
+
+    // Remap aliased fields in updateData
+    for (const [alias, column] of Object.entries(fieldAliases)) {
+      if (updateData[alias] !== undefined && updateData[column] === undefined) {
+        updateData[column] = updateData[alias];
+        delete updateData[alias];
+      }
+    }
 
     // Only update fields that actually changed
     let hasChanges = false;

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import CvRevamp from "../../models/v1/cv-revamp.model";
-import { successResponse, errorResponse } from "../../utils/response";
+import ApiResponse from "../../utils/apiResponse";
 
 /**
  * Get all CV revamps or filter by docId/userId
@@ -18,10 +18,10 @@ export const getCvRevamps = async (req: Request, res: Response) => {
       .populate("userId", "firstName lastName email")
       .sort({ createdAt: -1 });
 
-    return successResponse(res, "CV revamps fetched successfully", revamps);
+    return res.status(200).json(ApiResponse.success({ message: "CV revamps fetched successfully", data: revamps }));
   } catch (error: any) {
     console.error("Error fetching CV revamps:", error);
-    return errorResponse(res, error.message || "Failed to fetch CV revamps", 500);
+    return res.status(500).json(ApiResponse.error({ message: error.message || "Failed to fetch CV revamps", statusCode: 500 }));
   }
 };
 
@@ -37,13 +37,13 @@ export const getCvRevampById = async (req: Request, res: Response) => {
       .populate("userId", "firstName lastName email");
 
     if (!revamp) {
-      return errorResponse(res, "CV revamp not found", 404);
+      return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
     }
 
-    return successResponse(res, "CV revamp fetched successfully", revamp);
+    return res.status(200).json(ApiResponse.success({ message: "CV revamp fetched successfully", data: revamp }));
   } catch (error: any) {
     console.error("Error fetching CV revamp:", error);
-    return errorResponse(res, error.message || "Failed to fetch CV revamp", 500);
+    return res.status(500).json(ApiResponse.error({ message: error.message || "Failed to fetch CV revamp", statusCode: 500 }));
   }
 };
 
@@ -61,7 +61,7 @@ export const createCvRevamp = async (req: Request, res: Response) => {
       // For now, we create a placeholder revamp record
       const existingRevamp = await CvRevamp.findOne({ sourceFile: cvId });
       if (existingRevamp) {
-        return successResponse(res, "CV revamp already exists", existingRevamp);
+        return res.status(200).json(ApiResponse.success({ message: "CV revamp already exists", data: existingRevamp }));
       }
     }
 
@@ -74,10 +74,10 @@ export const createCvRevamp = async (req: Request, res: Response) => {
       status: "pending",
     });
 
-    return successResponse(res, "CV revamp created successfully", revamp, 201);
+    return res.status(201).json(ApiResponse.success({ message: "CV revamp created successfully", data: revamp, statusCode: 201 }));
   } catch (error: any) {
     console.error("Error creating CV revamp:", error);
-    return errorResponse(res, error.message || "Failed to create CV revamp", 500);
+    return res.status(500).json(ApiResponse.error({ message: error.message || "Failed to create CV revamp", statusCode: 500 }));
   }
 };
 
@@ -89,12 +89,12 @@ export const updateCvRevampStatus = async (req: Request, res: Response) => {
     const { docId, action } = req.query;
 
     if (!docId) {
-      return errorResponse(res, "Document ID is required", 400);
+      return res.status(400).json(ApiResponse.error({ message: "Document ID is required", statusCode: 400 }));
     }
 
     const validActions = ["approved", "declined", "pending"];
     if (action && !validActions.includes(action as string)) {
-      return errorResponse(res, "Invalid action. Must be: approved, declined, or pending", 400);
+      return res.status(400).json(ApiResponse.error({ message: "Invalid action. Must be: approved, declined, or pending", statusCode: 400 }));
     }
 
     const revamp = await CvRevamp.findByIdAndUpdate(
@@ -104,13 +104,13 @@ export const updateCvRevampStatus = async (req: Request, res: Response) => {
     );
 
     if (!revamp) {
-      return errorResponse(res, "CV revamp not found", 404);
+      return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
     }
 
-    return successResponse(res, `CV revamp ${action || "approved"} successfully`, revamp);
+    return res.status(200).json(ApiResponse.success({ message: `CV revamp ${action || "approved"} successfully`, data: revamp }));
   } catch (error: any) {
     console.error("Error updating CV revamp status:", error);
-    return errorResponse(res, error.message || "Failed to update CV revamp status", 500);
+    return res.status(500).json(ApiResponse.error({ message: error.message || "Failed to update CV revamp status", statusCode: 500 }));
   }
 };
 
@@ -124,12 +124,12 @@ export const deleteCvRevamp = async (req: Request, res: Response) => {
     const revamp = await CvRevamp.findByIdAndDelete(id);
 
     if (!revamp) {
-      return errorResponse(res, "CV revamp not found", 404);
+      return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
     }
 
-    return successResponse(res, "CV revamp deleted successfully", revamp);
+    return res.status(200).json(ApiResponse.success({ message: "CV revamp deleted successfully", data: revamp }));
   } catch (error: any) {
     console.error("Error deleting CV revamp:", error);
-    return errorResponse(res, error.message || "Failed to delete CV revamp", 500);
+    return res.status(500).json(ApiResponse.error({ message: error.message || "Failed to delete CV revamp", statusCode: 500 }));
   }
 };
