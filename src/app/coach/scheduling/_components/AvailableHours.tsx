@@ -36,12 +36,12 @@ const AvailableHours = () => {
 
   const schedules = schedulesDomain.data || [];
 
-  const handleDateChange = (value: any, dateString: string | string[]) => {
-    setDate(typeof dateString === "string" ? dateString : dateString[0]);
+  const handleDateChange = (value: any, dateString: string | null) => {
+    setDate(dateString || "");
   };
 
-  const handleTimeChange = (slotIndex: number, timeType: keyof TimeSlot) => (value: any, timeString: string | string[]) => {
-    const time = typeof timeString === "string" ? timeString : timeString[0];
+  const handleTimeChange = (slotIndex: number, timeType: keyof TimeSlot) => (value: any, timeString: string | null) => {
+    const time = timeString || "";
     const newSlots = [...slots];
     newSlots[slotIndex][timeType] = time;
 
