@@ -26,4 +26,4 @@ function CseLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default withPersonaGuard(CseLayout, ["cse", "admin"]);
+export default withPersonaGuard(CseLayout, ["customer", "admin"]);
