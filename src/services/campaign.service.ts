@@ -893,6 +893,9 @@ export const getAggregatorsByUserId = async (userId: string) => {
 /**
  * AI Job Extraction Service
  */
+/**
+ * AI Job Extraction Service
+ */
 export const extractJobData = async (
   clientId: string,
   joblink: string,
@@ -906,85 +909,29 @@ export const extractJobData = async (
   if (!joblink) throw new Error("Job link is required");
   if (!pageContent) throw new Error("Page content is required");
 
-  let userRecord = null;
-  let credentialsRecord = null;
-
-  // FIRST: Try to find credentials by UUID (since clientId is credentials.id)
-  logger.info(`Looking up credentials by UUID: ${clientId}`);
-  credentialsRecord = await Credentials.findOne({
-    where: { id: clientId }, // This matches your UUID
+  // Look up user by credentials.id
+  const credentialsRecord = await Credentials.findOne({
+    where: { id: clientId },
     raw: true,
   });
 
-  if (credentialsRecord) {
-    logger.info(
-      `✓ Found credentials record with UUID: ${credentialsRecord.id}`,
-    );
-    logger.info(`  - Numeric _id: ${credentialsRecord._id}`);
-    logger.info(`  - clientId (user UUID): ${credentialsRecord.clientId}`);
-
-    // Get the associated user
-    userRecord = await User.findOne({
-      where: { id: credentialsRecord.clientId },
-      raw: true,
-    });
-
-    if (userRecord) {
-      logger.info(
-        `✓ Found associated user: ${userRecord.email} (${userRecord.id})`,
-      );
-    }
-  }
-
-  // If not found by credentials.id, try as users.id
-  if (!credentialsRecord) {
-    logger.info(`Not found as credentials.id, trying as users.id: ${clientId}`);
-    userRecord = await User.findOne({
-      where: { id: clientId },
-      raw: true,
-    });
-
-    if (userRecord) {
-      logger.info(`✓ Found user by UUID: ${userRecord.id}`);
-      credentialsRecord = await Credentials.findOne({
-        where: { clientId: userRecord.id },
-        raw: true,
-      });
-    }
-  }
-
-  // If still not found, try as numeric _id
-  if (!credentialsRecord && /^\d+$/.test(clientId)) {
-    logger.info(`Trying as numeric _id: ${clientId}`);
-    credentialsRecord = await Credentials.findOne({
-      where: { _id: parseInt(clientId) },
-      raw: true,
-    });
-
-    if (credentialsRecord) {
-      userRecord = await User.findOne({
-        where: { id: credentialsRecord.clientId },
-        raw: true,
-      });
-    }
-  }
-
   if (!credentialsRecord) {
     logger.error(`No credentials record found for ID: ${clientId}`);
-    throw new Error(`Client credentials not found with ID: ${clientId}`);
+    throw new Error(`Client not found with ID: ${clientId}`);
   }
 
+  // Get the associated user
+  const userRecord = await User.findOne({
+    where: { id: credentialsRecord.clientId },
+    raw: true,
+  });
+
   if (!userRecord) {
-    logger.error(
-      `No user found associated with credentials: ${credentialsRecord.id}`,
-    );
+    logger.error(`No user found for credentials: ${clientId}`);
     throw new Error(`User associated with credentials not found`);
   }
 
-  // Get the numeric _id for Flask API (this is what Flask expects)
-  const flaskClientId = credentialsRecord._id;
-
-  // Get full name from credentials JSONB or user fields
+  // Get full name
   let fullName = "";
   if (credentialsRecord.seekExternalCredentials) {
     try {
@@ -1014,15 +961,11 @@ export const extractJobData = async (
     va_email: user?.email || userRecord.email,
     job_url: joblink,
     page_content: pageContent,
-    client_id: flaskClientId, // ✅ Pass the numeric _id (e.g., 123, not UUID)
+    client_id: clientId, // ✅ Pass the UUID directly as string
   };
 
-  logger.info(`✅ SUCCESSFUL MAPPING:`);
-  logger.info(`   Input clientId (credentials.id UUID): ${clientId}`);
-  logger.info(`   Credentials._id (numeric): ${flaskClientId}`);
-  logger.info(`   User UUID: ${userRecord.id}`);
-  logger.info(`   User Email: ${userRecord.email}`);
-  logger.info(`   Flask expects client_id: ${flaskClientId} (number)`);
+  logger.info(`✅ Using credentials.id UUID: ${clientId}`);
+  logger.info(`   User: ${userRecord.email}`);
 
   // Call Flask AI Extraction API
   const axios = require("axios");
