@@ -277,7 +277,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       toast.dismiss(loadingToast);
       
       // Store the extracted job data and show edit modal
-      setExtractedJobData(result.data);
+      setExtractedJobData(result.data?.job_data || result.job_data || result.data);
       setShowEditModal(true);
       toast.success(`AI extraction completed! Please review the data.`);
 
