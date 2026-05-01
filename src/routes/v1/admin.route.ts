@@ -116,6 +116,18 @@ adminRouterV1.get(
   isUserAuthenticated,
   applicationsController,
 );
+adminRouterV1.patch(
+  "/applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  applicationsController,
+);
+adminRouterV1.delete(
+  "/applications",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  applicationsController,
+);
 adminRouterV1.use(
   "/ai",
   checkBlacklistedTokens,

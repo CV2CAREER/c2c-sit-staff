@@ -17,6 +17,12 @@ export const applicationsController = catchAsyncError(
       }
       return handleGetApplications(req, res);
     }
+    if (req.method === "PATCH") {
+      return handleUpdateApplication(req, res);
+    }
+    if (req.method === "DELETE") {
+      return handleDeleteApplication(req, res);
+    }
 
     throw new ErrorHandler("Method not allowed", 405);
   },
@@ -153,5 +159,98 @@ async function handleGetApplications(req: Request, res: Response) {
   } catch (error: any) {
     logger.error("GET applications error:", error);
     throw new ErrorHandler("Failed to fetch applications", 500);
+  }
+}
+
+async function handleUpdateApplication(req: Request, res: Response) {
+  const user = (req as any).user;
+
+  if (user?.role !== "admin" && user?.role !== "assistant") {
+    return res.apiError({
+      message: "You are not authorized to access this resource",
+      statusCode: 403,
+      name: "",
+    });
+  }
+
+  try {
+    const id = req.query.id as string;
+    const action = req.query.action as string | undefined;
+    const updatedByFName = req.query.updatedByFName as string | undefined;
+
+    if (!id) {
+      throw new ErrorHandler("ID is required", 400);
+    }
+
+    if (action === "restore" || action === "soft-delete") {
+      const [updatedCount] = await db.applications.update(
+        { isDeleted: action === "soft-delete" },
+        { where: { id } },
+      );
+
+      if (!updatedCount) {
+        throw new ErrorHandler("Application not found", 404);
+      }
+
+      return res.apiSuccess(
+        { updatedCount },
+        action === "soft-delete"
+          ? "Application moved to recycle bin"
+          : "Application restored successfully",
+      );
+    }
+
+    const payload = req.body ?? {};
+    if (!Object.keys(payload).length) {
+      throw new ErrorHandler("Data is required", 400);
+    }
+
+    const [updatedCount] = await db.applications.update(
+      { ...payload, updateBy: updatedByFName || "system" },
+      { where: { id } },
+    );
+
+    if (!updatedCount) {
+      throw new ErrorHandler("Application not found", 404);
+    }
+
+    return res.apiSuccess({ updatedCount }, "Application updated successfully");
+  } catch (error: any) {
+    logger.error("PATCH applications error:", error);
+    if (error instanceof ErrorHandler) throw error;
+    throw new ErrorHandler("Failed to update application", 500);
+  }
+}
+
+async function handleDeleteApplication(req: Request, res: Response) {
+  const user = (req as any).user;
+
+  if (user?.role !== "admin" && user?.role !== "assistant") {
+    return res.apiError({
+      message: "You are not authorized to access this resource",
+      statusCode: 403,
+      name: "",
+    });
+  }
+
+  try {
+    const id = req.query.id as string;
+    if (!id) {
+      throw new ErrorHandler("ID is required", 400);
+    }
+
+    const deletedCount = await db.applications.destroy({ where: { id } });
+    if (!deletedCount) {
+      throw new ErrorHandler("Application not found", 404);
+    }
+
+    return res.apiSuccess(
+      { deletedCount },
+      "Application has been deleted successfully!",
+    );
+  } catch (error: any) {
+    logger.error("DELETE applications error:", error);
+    if (error instanceof ErrorHandler) throw error;
+    throw new ErrorHandler("Failed to delete application", 500);
   }
 }
