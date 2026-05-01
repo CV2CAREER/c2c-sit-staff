@@ -5,23 +5,32 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useFetchData } from "@/hooks/useApi";
 import { useAuthStore } from "@/store/authStore";
 
-export interface IReferralPerson {
-  _id: string;
+export interface IReferralUser {
+  id: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
-  phoneNumber?: string;
-  referralStatus: "PENDING" | "APPROVED" | "REJECTED" | "CLAIMED";
+  role?: string;
+  paymentStatus?: string;
   isUserSubscribed?: boolean;
+}
+
+export interface IReferralPerson {
+  id: string;
+  userId: string;
+  referrer: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "DECLINED";
+  createdAt: string;
+  updatedAt: string;
+  user?: IReferralUser;
 }
 
 export interface IGetReferralsByEmailResponse {
   referrals: IReferralPerson[];
-  partnerReferrals: any[] | null;
   totalReferrals: number;
-  totalSuccessfulReferrals: number;
-  claimReferrals: IReferralPerson[];
-  data: IReferralPerson[];
+  totalPaidReferrals: number;
+  totalUnpaidReferrals: number;
+  totalEarnings: number;
 }
 
 // Table Column
@@ -30,11 +39,27 @@ const referralTableColumns: GridColDef[] = [
     field: "email",
     headerName: "Email",
     flex: 1,
+    valueGetter: (value, row) => row.user?.email || "N/A",
   },
   {
-    field: "referralStatus",
+    field: "name",
+    headerName: "Name",
+    flex: 1,
+    valueGetter: (value, row) =>
+      row.user?.firstName
+        ? `${row.user.firstName} ${row.user.lastName || ""}`.trim()
+        : "N/A",
+  },
+  {
+    field: "status",
     headerName: "Status",
     flex: 1,
+  },
+  {
+    field: "role",
+    headerName: "Role",
+    flex: 1,
+    valueGetter: (value, row) => row.user?.role || "guest",
   },
 ];
 
@@ -49,25 +74,22 @@ const CoachReferrals = () => {
     enabled: !!user?.id,
   });
 
-  const referralsData = data?.data?.data || [];
+  const referralsData = data?.data?.referrals || [];
   const statsCardsData = [
     {
       title: "Approved referrals",
-      value:
-        referralsData?.filter((ref) => ref.referralStatus === "APPROVED")
-          .length || 0,
+      value: referralsData?.filter((ref) => ref.status === "APPROVED").length || 0,
     },
     {
       title: "Pending referrals",
-      value:
-        referralsData?.filter((ref) => ref.referralStatus === "PENDING")
-          .length || 0,
+      value: referralsData?.filter((ref) => ref.status === "PENDING").length || 0,
     },
     {
       title: "Rejected referrals",
       value:
-        referralsData?.filter((ref) => ref.referralStatus === "REJECTED")
-          .length || 0,
+        referralsData?.filter(
+          (ref) => ref.status === "REJECTED" || ref.status === "DECLINED"
+        ).length || 0,
     },
   ];
 
@@ -108,7 +130,7 @@ const CoachReferrals = () => {
               },
             }}
             rows={referralsData}
-            getRowId={(row) => row._id}
+            getRowId={(row) => row.id}
             disableRowSelectionOnClick
             columns={referralTableColumns}
             loading={isLoading}
