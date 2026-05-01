@@ -5,7 +5,7 @@ import axios from "axios";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import { ADMIN_APPLICATIONS } from "@/constants/apiEndpoints/admin.endpoint";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 
 export type ApplicationState = "active" | "recycle";
 
