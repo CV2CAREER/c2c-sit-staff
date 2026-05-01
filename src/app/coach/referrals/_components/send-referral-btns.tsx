@@ -30,11 +30,11 @@ const SendReferralBtns = () => {
 
   /*---- Queries ----*/
   const { data: coachUserResponse } = useFetchData<ICoachResponse>({
-    queryKey: ["CoachUserData", user?.id],
+    queryKey: ["CoachUserData", user?._id],
     url: "/api/v1/users",
     method: "GET",
-    enabled: !!user?.id,
-    params: { userId: user?.id },
+    enabled: !!user?._id,
+    params: { userId: user?._id },
   });
 
   const {

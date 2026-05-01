@@ -68,10 +68,10 @@ const CoachReferrals = () => {
 
   /*---- Queries ----*/
   const { data, isLoading } = useFetchData<IGetReferralsByEmailResponse>({
-    queryKey: ["coach-referrals", user?.id],
+    queryKey: ["coach-referrals", user?._id],
     url: `/api/v1/coach/referrals`,
     method: "GET",
-    enabled: !!user?.id,
+    enabled: !!user?._id,
   });
 
   const referralsData = data?.data?.referrals || [];
