@@ -107,9 +107,9 @@ export const useJobsiteQueries = (options: AdminQueriesOptions) => {
 
   const clientJobsite = useFetchData<any>({
     method: "GET",
-    url: endpoints.ADMIN_CLIENT_JOBSITE,
+    url: endpoints.ADMIN_JOBSITE,
     queryKey: ["admin-client-jobsite", userId],
-    params: { action: "retrieve", userId },
+    params: { userId },
     enabled: fetchClientJobsite && !!userId,
   });
 
@@ -237,30 +237,29 @@ export const useJobsiteMutations = () => {
     }),
     generateJobsiteRowsMutation: useMutateData<any, { userId: string }>({
       method: "POST",
-      url: endpoints.ADMIN_CLIENT_JOBSITE,
+      url: endpoints.ADMIN_JOBSITE,
       mutationKey: ["admin-generate-jobsite-rows"],
-      onSuccess: () => {},
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-jobsite"] });
+      },
       onError: () => {},
     }),
-    triggerJobsiteMutation: useMutateData<any, { aggId: string; userId: string }>({
-      method: "GET",
-      url: endpoints.ADMIN_CLIENT_JOBSITE,
-      mutationKey: ["admin-trigger-jobsite"],
-      onSuccess: () => {},
-      onError: () => {},
-    }),
-    deleteJobsiteMutation: useMutateData<any, { aggId: string; userId: string }>({
+    deleteJobsiteMutation: useMutateData<any, { userId: string; aggId: string }>({
       method: "DELETE",
-      url: endpoints.ADMIN_CLIENT_JOBSITE,
+      url: (data) => `${endpoints.ADMIN_JOBSITE}?userId=${data.userId}&aggIds=${data.aggId}`,
       mutationKey: ["admin-delete-jobsite"],
-      onSuccess: () => {},
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-jobsite"] });
+      },
       onError: () => {},
     }),
-    updateJobsiteMutation: useMutateData<any, any>({
+    updateJobsiteMutation: useMutateData<any, { userId: string; aggId: string; [key: string]: any }>({
       method: "PUT",
-      url: endpoints.ADMIN_CLIENT_JOBSITE,
+      url: endpoints.ADMIN_JOBSITE,
       mutationKey: ["admin-update-jobsite"],
-      onSuccess: () => {},
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-client-jobsite"] });
+      },
       onError: () => {},
     }),
   };

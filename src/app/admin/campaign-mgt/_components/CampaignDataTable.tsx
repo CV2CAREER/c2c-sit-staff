@@ -527,6 +527,7 @@ const queryClient = useQueryClient();
                 loadingOverlay: LoadingSpinner,
               }
             }
+            showToolbar={true}
             rows={tableData}
             loading={isLoading}
             getRowId={(row) => row.id}

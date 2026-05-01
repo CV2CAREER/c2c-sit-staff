@@ -5,6 +5,12 @@ import {
   GridRowsProp,
   GridColDef,
   GridToolbar,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
+  GridToolbarContainer,
+  GridToolbarQuickFilter,
   GRID_CHECKBOX_SELECTION_COL_DEF,
 } from "@mui/x-data-grid-pro";
 import { UsersTableColType } from "@/types/admin"
@@ -36,6 +42,16 @@ import CustomModal from "@/components/CustomModal/CustomModal";
 import { IDateFilter } from "@/types/common";
 
 
+
+const UsersTableToolbar = () => (
+  <GridToolbarContainer>
+    <GridToolbarColumnsButton />
+    <GridToolbarFilterButton />
+    <GridToolbarDensitySelector />
+    <GridToolbarExport />
+    <GridToolbarQuickFilter debounceMs={500} />
+  </GridToolbarContainer>
+);
 
 /**
  * @title Users Management Data Table
@@ -356,6 +372,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                   },
                 }}
                 slots={{ toolbar: GridToolbar, loadingOverlay: LoadingSpinner, }}
+                showToolbar={true}
                 rows={tableData}
                 getRowId={(row) => row.id}
                 rowHeight={38}

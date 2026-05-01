@@ -45,6 +45,7 @@ const AdminUserJobPreferenceHistory = ({ userId }: { userId: string }) => {
                                 slots={{
                                     toolbar: GridToolbar,
                                 }}
+                                showToolbar={true}
                                 // onColumnOrderChange={(e) => {
                                 //     moveTo(tableName, e.column.field, e.targetIndex)
                                 // }}
