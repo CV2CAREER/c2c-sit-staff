@@ -5,6 +5,7 @@ import axios from "axios";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import { ADMIN_APPLICATIONS } from "@/constants/apiEndpoints/admin.endpoint";
+import { toast } from "sonner";
 
 export type ApplicationState = "active" | "recycle";
 
@@ -149,7 +150,13 @@ export const useApplicationTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      toast.success("Application moved to recycle bin.");
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to move application to recycle bin.");
+    },
   });
 
   const restoreApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput>({
@@ -166,7 +173,13 @@ export const useApplicationTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      toast.success("Application restored successfully.");
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to restore application.");
+    },
   });
 
   const deleteApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput>({
@@ -181,7 +194,13 @@ export const useApplicationTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      toast.success("Application deleted permanently.");
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to permanently delete application.");
+    },
   });
 
   const rows = applicationsQuery.data?.data ?? [];
