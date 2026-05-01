@@ -12,6 +12,7 @@ import {
   updateSchedule,
   deleteSchedule,
 } from "../../controllers/v1/schedule.controller";
+import { getCoachReferrals } from "../../controllers/v1/referral.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
@@ -89,6 +90,27 @@ coachRouterV1.get("/sessions", checkBlacklistedTokens, isUserAuthenticated, getC
 coachRouterV1.get("/sessions/:sessionId", checkBlacklistedTokens, isUserAuthenticated, getCoachSessionById);
 coachRouterV1.patch("/sessions/:sessionId/complete", checkBlacklistedTokens, isUserAuthenticated, markSessionCompleted);
 coachRouterV1.patch("/sessions/:sessionId/cancel", checkBlacklistedTokens, isUserAuthenticated, cancelSessionHandler);
+
+/**
+ * @swagger
+ * /v1/coach/referrals:
+ *   get:
+ *     summary: Get referrals for the authenticated coach
+ *     tags:
+ *       - Coach Referrals
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *         description: Coach email to filter referrals
+ *     responses:
+ *       200:
+ *         description: Referrals retrieved successfully
+ */
+coachRouterV1.get("/referrals", checkBlacklistedTokens, isUserAuthenticated, getCoachReferrals);
 
 /**
  * @swagger
