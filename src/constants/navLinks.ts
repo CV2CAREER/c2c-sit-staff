@@ -112,6 +112,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     children: [
       { name: "Job Discovery", href: "/admin/job-preference", icon: Binoculars },
       { name: "Applications", href: "/admin/job-applications", icon: FileUser },
+      { name: "JM Applications", href: "/admin/jm-applications", icon: FileUser },
     ],
   },
   {

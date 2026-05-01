@@ -28,14 +28,22 @@ const defaultFilter = { value: "all", label: "All" };
 
 const JobAppsAndQuestionsContext = createContext<JobAppsAndQuestionsContextType | undefined>(undefined);
 
-export function JobAppsAndQuestionsProvider({ children }: { children: React.ReactNode }) {
+export function JobAppsAndQuestionsProvider({ 
+  children,
+  initialSource = defaultFilter,
+  initialTable = "Applications"
+}: { 
+  children: React.ReactNode;
+  initialSource?: FilterOption;
+  initialTable?: "Applications" | "Questions";
+}) {
   const [activeDialog, setActiveDialog] = useState<DefaultActions | null>(null);
-  const [activeTable, setActiveTable] = useState<"Applications" | "Questions">("Applications");
+  const [activeTable, setActiveTable] = useState<"Applications" | "Questions">(initialTable);
   const [dataState, setDataState] = useState<"active" | "recycle">("active");
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 25 });
   const [appStatusFilter, setAppStatusFilter] = useState(defaultFilter);
   const [aggregatorFilter, setAggregatorFilter] = useState(defaultFilter);
-  const [sourceFilter, setSourceFilter] = useState(defaultFilter);
+  const [sourceFilter, setSourceFilter] = useState(initialSource);
 
   const tracker = useApplicationTracker({
     state: dataState,
