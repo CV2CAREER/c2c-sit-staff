@@ -5,7 +5,13 @@ import {
   getAllCoaches,
   getMyCoachProfile,
 } from "../../controllers/v1/coach.controller";
-import { getCoachSessions, markSessionCompleted, cancelSessionHandler, getCoachSessionById } from "../../controllers/v1/coach-session.controller";
+import { getCoachSessions, markSessionCompleted, cancelSessionHandler, getCoachSessionById, gradeSessionHandler } from "../../controllers/v1/coach-session.controller";
+import {
+  getSchedules,
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+} from "../../controllers/v1/schedule.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
@@ -86,6 +92,42 @@ coachRouterV1.patch("/sessions/:sessionId/cancel", checkBlacklistedTokens, isUse
 
 /**
  * @swagger
+ * /v1/coach/grade/{sessionId}:
+ *   post:
+ *     summary: Grade a completed session
+ *     tags:
+ *       - Coach Grading
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               score:
+ *                 type: number
+ *               maxScore:
+ *                 type: number
+ *               feedback:
+ *                 type: string
+ *               criteria:
+ *                 type: array
+ *     responses:
+ *       200:
+ *         description: Session graded successfully
+ */
+coachRouterV1.post("/grade/:sessionId", checkBlacklistedTokens, isUserAuthenticated, gradeSessionHandler);
+
+/**
+ * @swagger
  * /v1/coaches/me:
  *   get:
  *     summary: Get current user's coach profile
@@ -106,6 +148,91 @@ coachRouterV1.get(
   checkBlacklistedTokens,
   isUserAuthenticated,
   getMyCoachProfile,
+);
+
+/**
+ * Coach Schedule Routes
+ * Manage coach availability schedules
+ */
+
+/**
+ * @swagger
+ * /v1/coach/schedule:
+ *   get:
+ *     summary: Get coach schedules
+ *     tags:
+ *       - Coach Schedule
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Schedules retrieved successfully
+ */
+coachRouterV1.get(
+  "/schedule",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getSchedules,
+);
+
+/**
+ * @swagger
+ * /v1/coach/schedule:
+ *   post:
+ *     summary: Create a new schedule
+ *     tags:
+ *       - Coach Schedule
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Schedule created successfully
+ */
+coachRouterV1.post(
+  "/schedule",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  createSchedule,
+);
+
+/**
+ * @swagger
+ * /v1/coach/schedule/{id}:
+ *   patch:
+ *     summary: Update a schedule
+ *     tags:
+ *       - Coach Schedule
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Schedule updated successfully
+ */
+coachRouterV1.patch(
+  "/schedule/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  updateSchedule,
+);
+
+/**
+ * @swagger
+ * /v1/coach/schedule/{id}:
+ *   delete:
+ *     summary: Delete a schedule
+ *     tags:
+ *       - Coach Schedule
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Schedule deleted successfully
+ */
+coachRouterV1.delete(
+  "/schedule/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteSchedule,
 );
 
 export default coachRouterV1;

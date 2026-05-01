@@ -55,6 +55,9 @@ import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
 
+// Placement Controller routes
+import placementRouterV1 from "./routes/v1/placement.route";
+
 // Coaches
 import coachRouterV1 from "./routes/v1/coach.route"
 
@@ -213,6 +216,9 @@ app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);
+
+// Placement Controller routes
+app.use("/api/v1/placement", placementRouterV1);
 
 // Coach routes (must be under this section)
 app.use("/api/v1/coach", coachRouterV1);

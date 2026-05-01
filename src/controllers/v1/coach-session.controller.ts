@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
-import { getCoachSessionsData, completeSession, cancelSession, getSessionById } from "../../services/coach-session.service";
+import { getCoachSessionsData, completeSession, cancelSession, getSessionById, gradeSession } from "../../services/coach-session.service";
 
 const logger = getServiceLogger("coach-session-controller");
 
@@ -81,6 +81,26 @@ export const cancelSessionHandler = catchAsyncError(
     res.apiSuccess(
       session,
       "Session cancelled successfully"
+    );
+  }
+);
+
+/**
+ * Grade session
+ */
+export const gradeSessionHandler = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const coachId = req.user.id;
+    const { sessionId } = req.params;
+    const grading = req.body;
+
+    logger.info(`Grading session: ${sessionId} | Coach: ${coachId}`);
+
+    const session = await gradeSession(coachId, sessionId, grading);
+
+    res.apiSuccess(
+      session,
+      "Session graded successfully"
     );
   }
 );

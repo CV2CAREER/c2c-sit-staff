@@ -87,7 +87,9 @@ export const getCoachSessionsData = async (coachId: string, bypassCache = false)
     },
     completedSessions,
     pendingSessions,
-    activeBookings
+    activeBookings,
+    allSessions: allCoachSessions,
+    populatedSessions: allCoachSessions // Alias for frontend compatibility
   };
 
   // Store result in cache if Redis is available
@@ -285,6 +287,62 @@ Next steps: CSM should follow up with client to reschedule.`,
   });
 
   logger.info(`Session cancelled: ${sessionId} | Coach: ${coachId}`);
+
+  return session;
+};
+
+/**
+ * Grade a session
+ */
+export const gradeSession = async (
+  coachId: string,
+  sessionId: string,
+  grading: {
+    score?: number;
+    maxScore?: number;
+    feedback?: string;
+    criteria?: Array<{
+      name: string;
+      score: number;
+      maxScore: number;
+      feedback?: string;
+    }>;
+  }
+) => {
+  const session = await Session.findOne({
+    where: {
+      id: sessionId,
+      coachId
+    }
+  });
+
+  if (!session) {
+    throw new ErrorHandler("Session not found", 404);
+  }
+
+  if (session.sessionStatus !== SessionStatus.COMPLETED) {
+    throw new ErrorHandler("Can only grade completed sessions", 400);
+  }
+
+  // Build grading object
+  const gradingData = {
+    score: grading.score,
+    maxScore: grading.maxScore ?? 100,
+    feedback: grading.feedback,
+    gradedBy: coachId,
+    gradedAt: new Date(),
+    criteria: grading.criteria || []
+  };
+
+  await session.update({
+    grading: gradingData,
+    isGraded: true
+  });
+
+  // Invalidate cache for this coach
+  await invalidateCoachSessionCache(coachId);
+
+  logger.info(`Session graded: ${sessionId} | Coach: ${coachId} | Score: ${grading.score}`);
 
   return session;
 };

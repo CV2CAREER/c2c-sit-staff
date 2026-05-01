@@ -117,6 +117,11 @@ export class Session extends Model {
   @Column(DataType.JSONB)
   grading?: Grading;
 
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isGraded!: boolean;
+
   // Client (User) reference
   @ForeignKey(() => User)
   @AllowNull(true)
