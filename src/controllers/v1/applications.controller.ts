@@ -61,6 +61,7 @@ async function handleGetApplications(req: Request, res: Response) {
     return res.apiError({
       message: "You are not authorized to access this resource",
       statusCode: 403,
+      name: ""
     });
   }
 
