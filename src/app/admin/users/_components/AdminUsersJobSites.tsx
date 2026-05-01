@@ -1,37 +1,59 @@
-// import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api"
 import React, { useState } from "react"
+import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api"
 import { useAdminUserDetailContext } from "../context/userDetailContext"
 import AdminJobsiteRowGeneratorModal from "./AdminJobsiteRowGeneratorModal"
 import Table from "@/components/newTable/Table"
-import CustomButton from "@/components/CustomButton/CustomButton"
 import toast from 'react-hot-toast';
-// import { useQueryClient } from '@tanstack/react-query'
-// import UpdateJobsite from "./UpdateJobsite"
 
 
 const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     const [allowJobsiteEdit, setAllowJobsiteEdit] = useState(false)
     const [editingJobsite, setEditingJobsite] = useState<any>(null)
     const { user } = useAdminUserDetailContext()
-    const aggregators: any[] = [];
-    const isClientDataLoading = false;
 
-    function triggerJobsite() {
-        toast.success("Coming Soon! Jobsite feature is not available yet.")
+    const { clientJobsiteDomain } = useAdminQueries({ userId, fetchClientJobsite: true })
+    const { deleteJobsiteMutation, updateJobsiteMutation } = useAdminMutations()
+
+    const rawAggregators: any[] = clientJobsiteDomain?.data?.aggregators || []
+    const aggregators = rawAggregators.map((agg: any) => ({
+        ...agg,
+        id: agg.aggregatorId,
+    }))
+    const isClientDataLoading = clientJobsiteDomain?.isLoading
+
+    function handleDeleteJobsite(aggId: string) {
+        if (!aggId || deleteJobsiteMutation.isPending) return
+        
+        const loadingToast = toast.loading("Deleting jobsite...")
+        
+        deleteJobsiteMutation.mutate(
+            { userId, aggId },
+            {
+                onSuccess: () => {
+                    toast.success("Jobsite deleted successfully", { id: loadingToast })
+                },
+                onError: (err: any) => {
+                    toast.error(err?.message || "Failed to delete jobsite", { id: loadingToast })
+                },
+            }
+        )
     }
 
-    function handleDeleteJobsite() {
-        toast.success("Coming Soon! Jobsite feature is not available yet.")
-    }
-
-    function handleUpdateJobsite() {
-        toast.success("Coming Soon! Jobsite feature is not available yet.")
+    function handleUpdateJobsite(updatedRow: any) {
+        updateJobsiteMutation.mutate(
+            { userId, aggId: updatedRow.aggregatorId, ...updatedRow },
+            {
+                onSuccess: () => toast.success("Jobsite updated successfully"),
+                onError: (err: any) => toast.error(err?.message || "Failed to update jobsite"),
+            }
+        )
+        return updatedRow
     }
 
     const setupAliasmail = (username: string) => {
-        const emailPart = username?.split("@")[0]; // separate the email from the domain
-        const domain = username?.split("@")[1]?.split(".")[0]; // get the domain
-        const aliasEmail = emailPart + domain + "@cvtocareer.com"; // combine the email with the alias domain
+        const emailPart = username?.split("@")[0];
+        const domain = username?.split("@")[1]?.split(".")[0];
+        const aliasEmail = emailPart + domain + "@cvtocareer.com";
         return aliasEmail
     }
 
@@ -48,6 +70,7 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 type: 'jobsite',
                 cellClassName: 'el',
                 headerClassName: 'bg-[#80D7FF]',
+                renderCell: (params: any) => params?.row?.aggregator?.name ?? '-',
             },
             {
                 field: 'generatedEmail',
@@ -68,21 +91,6 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 cellClassName: 'el',
                 headerClassName: 'bg-[#80D7FF]',
             },
-            {
-                field: 'triggerJobsite',
-                headerName: 'Trigger Jobsite',
-                width: 300,
-                type: 'triggerJobsite',
-                cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF] text-black font-semibold',
-                renderCell: () => {
-                return (
-                    <CustomButton customBtnClass='h-[45px]' isSubmitting={false} isDisabled={false} title="Trigger Jobsite" handleClick={() => {
-                        triggerJobsite()
-                    }} />
-                );
-                }
-            },
         );
         return modifiedArr;
     }
@@ -95,6 +103,7 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                     <AdminJobsiteRowGeneratorModal
                         missingJobsiteRows={!aggregators?.length}
                         user={user}
+                        userId={userId}
                     />
                 </div>
 
@@ -114,26 +123,21 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                                 password: p?.password,
                                 username: p?.username,
                                 generatedEmail: p?.generatedEmail,
-                                id: p.aggregator?._id
+                                id: p.aggregator?.id
                             })
                             }}
                             checkBoxSelection={false}
                             handleDelete={handleDeleteJobsite}
-                            // onRowUpdate={handleUpdateJobsite}
+                            onRowUpdate={handleUpdateJobsite}
                             isLoading={isClientDataLoading}
                             hideXFlow={true}
                         />
                     ) : (
                         <div className="text-center py-8">
-                            {isClientDataLoading ? "Loading" : <p className="text-blue-400 text-lg font-medium">No job sites available</p>}
+                            {isClientDataLoading ? "Loading..." : <p className="text-blue-400 text-lg font-medium">No job sites available</p>}
                         </div>
                     )}
                 </div>
-                {
-                    // editingJobsite != null && (
-                    //     <UpdateJobsite visibility={editingJobsite !== null} toggleVisibility={() => setEditingJobsite(null)} data={editingJobsite} handleSubmit={handleUpdateJobsite} />
-                    // )
-                }
             </div>
         </div>
     )

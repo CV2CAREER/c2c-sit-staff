@@ -162,4 +162,5 @@ export interface AdminQueriesOptions {
   fetchUserReferrals?: boolean;
   fetchUserDocuments?: boolean;
   fetchUserProfileSafe?: boolean;
+  fetchUserProgress?: boolean;
 }

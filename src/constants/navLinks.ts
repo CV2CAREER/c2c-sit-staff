@@ -21,7 +21,11 @@ import {
   Newspaper, 
   Presentation, 
   Settings,
-  User
+  User,
+  Calendar,
+  Trophy,
+  Contact,
+  Headphones,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
@@ -108,6 +112,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     children: [
       { name: "Job Discovery", href: "/admin/job-preference", icon: Binoculars },
       { name: "Applications", href: "/admin/job-applications", icon: FileUser },
+      { name: "JM Applications", href: "/admin/jm-applications", icon: FileUser },
     ],
   },
   {
@@ -155,19 +160,46 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
   },
 ];
 
-// Placeholders for other personas - to be expanded
-export const COACH_NAV_LINKS: NavLink[] = [
-  { name: "Home", href: "/coach/dashboard", icon: House },
-  { name: "Profile", href: "/coach/profile", icon: User },
-];
-
 export const ASSISTANT_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/assistant/dashboard", icon: House },
+  { name: "Communication Templates", href: "/assistant/communication-templates", icon: Mail },
+  { name: "Personal Info", href: "/assistant/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
+];
+
+export const PARTNER_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/partner/dashboard", icon: House },
+  { name: "Personal Info", href: "/partner/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
+];
+
+export const COACH_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/coach/dashboard", icon: House },
+  { name: "Scheduling", href: "/coach/scheduling", icon: Calendar },
+  { name: "Grading", href: "/coach/grading", icon: Trophy },
+  { name: "Personal Info", href: "/coach/profile", icon: User },
+  { name: "Training Tracker", href: "/coach/training-tracker", icon: Contact },
+  { name: "Referrals", href: "/coach/referrals", icon: Users },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
+];
+
+export const SALES_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/sales/dashboard", icon: House },
+  { name: "Personal Info", href: "/sales/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
+];
+
+export const CSE_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/cse/dashboard", icon: House },
+  { name: "Personal Info", href: "/cse/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
 ];
 
 export const NAV_LINKS_BY_ROLE: Record<string, NavLink[]> = {
   admin: ADMIN_NAV_LINKS,
   coach: COACH_NAV_LINKS,
   assistant: ASSISTANT_NAV_LINKS,
-  // Add others as needed
+  sales: SALES_NAV_LINKS,
+  cse: CSE_NAV_LINKS,
+  partner: PARTNER_NAV_LINKS,
 };

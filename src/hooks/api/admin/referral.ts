@@ -149,6 +149,22 @@ export const useReferralMutations = () => {
     },
   });
 
+  const claimReferral = useMutation({
+    mutationKey: ["admin-claim-referral"],
+    mutationFn: async (payload: any) => {
+      const response = await axiosInstance.post(`${endpoints.ADMIN_REFERRAL}?action=claim`, payload);
+      return response.data;
+    },
+  });
+
+  const createReferral = useMutation({
+    mutationKey: ["admin-create-referral"],
+    mutationFn: async (payload: any) => {
+      const response = await axiosInstance.post(endpoints.ADMIN_REFERRAL, payload);
+      return response.data;
+    },
+  });
+
   return {
     updateReferralStatus,
     updatePaymentStatus,
@@ -157,5 +173,7 @@ export const useReferralMutations = () => {
     deleteReferral,
     hardDeleteReferral,
     restoreReferral,
+    claimReferral,
+    createReferral,
   };
 };

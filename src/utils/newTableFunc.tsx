@@ -127,6 +127,7 @@ export const modifyRowData = (
     default:
       return {
         ...el,
+        _id: el._id ?? el.id ?? index,
         SeekSubToExpireDays: (() => {
           const t = moment(el.SeekSubStartDate)
             .add(Number(el.SeekSubDurDays), "days")

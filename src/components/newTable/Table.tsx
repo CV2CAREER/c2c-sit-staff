@@ -260,7 +260,7 @@ const Table = ({
       });
     }
 
-    modifiedArr = modifyArray(modifiedArr);
+    modifiedArr = modifyArray(modifiedArr, helpers);
 
     if (removeCpan) {
       modifiedArr = modifiedArr.filter((el) => el.field !== "action");

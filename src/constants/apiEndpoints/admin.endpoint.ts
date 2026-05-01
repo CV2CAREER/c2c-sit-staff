@@ -97,6 +97,7 @@ export const ADMIN_USER_PREFERENCES_HISTORY = (userId: string) => `/api/v1/user-
 export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management/users/${userId}/referrals`;
 export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;
 export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
+export const ADMIN_USER_PROGRESS = (userId: string) => `/api/v1/user-management/users/${userId}/progress`;
 
 // User Campaign Management Page - Temidayo
 export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients";
@@ -127,9 +128,17 @@ export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/v1/admin/ai/${norma
 export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/ai/cv-ai/style`;
 
 // Admin Training Tracker Endpoints
-export const ADMIN_TRAINING_TRACKER = "/api/v1/admin/training-tracker";
-export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/admin/training-tracker/sessions";
+export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
+export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/training-tracker/sessions";
 export const ADMIN_COACHES_VARIANT = "/api/v1/coach";
+
+// Coach Specific Endpoints
+export const COACH_SESSIONS = "/api/v1/coach/sessions";
+export const COACH_SESSION_DETAIL = (id: string) => `/api/v1/coach/sessions/${id}`;
+export const COACH_SESSION_COMPLETE = (id: string) => `/api/v1/coach/sessions/${id}/complete`;
+export const COACH_ME = "/api/v1/coach/me";
+export const COACH_SCHEDULES = "/api/v1/schedules";
+export const COACH_SCHEDULE_DETAIL = (id: string) => `/api/v1/schedules/${id}`;
 
 // Admin CR Tracking Endpoints
 export const ADMIN_CR_TRACKING = "/api/v1/admin/trackers/cr";
@@ -160,3 +169,10 @@ export const ADMIN_TEMPLATES = "/api/v1/admin/templates";
 export const ADMIN_TEMPLATE_NOTIFY = "/api/v1/admin/templates/notify-missing-info";
 export const ADMIN_TEMPLATE_NOTIFY_WHATSAPP = "/api/v1/admin/templates/notify-missing-info-whatsapp";
 export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";
+
+// Sales Operation Endpoints
+export const ADMIN_SALES_OPERATION = "/api/v1/sales-operation";
+
+// Jobsite v2 Endpoints
+export const ADMIN_JOBSITE = "/api/v1/jobsite";
+

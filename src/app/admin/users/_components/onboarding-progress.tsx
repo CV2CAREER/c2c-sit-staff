@@ -6,8 +6,8 @@ import { IoMdTime } from "react-icons/io";
 import { Stepper, Step } from "@material-tailwind/react";
 import { Chip } from "@heroui/chip";
 import { LucideVerified } from "lucide-react";
-import { IUserDetail } from "@/types/user.types";
 import { useAdminUserDetailContext } from "../context/userDetailContext";
+import { useAdminQueries } from "@/hooks/api/admin.api";
 
 const milestoneLabels = [
   { id: 0, label: "Email Verification" },
@@ -23,16 +23,32 @@ const milestoneLabels = [
   { id: 10, label: "Job Applications" },
 ];
 
-export default function OnBoardingProgress() {
-  const [userDetails, setUserDetails] = React.useState<IUserDetail | null>(null);
-  const { user } = useAdminUserDetailContext()
+export default function OnBoardingProgress({ userId }: { userId: string }) {
+  const { user } = useAdminUserDetailContext();
+  const { userProgressDomain } = useAdminQueries({ userId, fetchUserProgress: true });
+  const progressData = userProgressDomain?.data;
+
+  const userInfoForStepper = React.useMemo(() => ({
+    ...(user as any),
+    progress: progressData?.progress ?? (user as any)?.progress,
+    updatedAt: progressData?.updatedAt ?? (user as any)?.updatedAt,
+  }), [user, progressData]);
+
+  const formattedUpdatedAt = progressData?.updatedAt
+    ? new Date(progressData.updatedAt).toLocaleString()
+    : null;
 
   return (
     <section className="flex flex-col gap-3 bg-white rounded-md p-4 shadow-lg">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Onboarding Progress</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold">Onboarding Progress</h2>
+          {formattedUpdatedAt && (
+            <span className="text-xs text-gray-400">Updated: {formattedUpdatedAt}</span>
+          )}
+        </div>
         {/* @ts-ignore - API response structure has nested user property */}
-        {(user as any)?.user.isEmailVerified ? (
+        {(user as any)?.user?.isEmailVerified ? (
           <Chip
             size="sm"
             color="success"
@@ -54,7 +70,7 @@ export default function OnBoardingProgress() {
       </div>
 
       <div className="">
-        <OnboardingStatusBarStepper userInfo={user} />
+        <OnboardingStatusBarStepper userInfo={userInfoForStepper} />
       </div>
     </section>
   );
@@ -64,7 +80,6 @@ export default function OnBoardingProgress() {
 function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
   const [currentStep, setCurrentStep] = React.useState<number>(0);
 
-  // Helper function to check if any aggregator is verified
   const isAnyAggregatorVerified = (aggregators: any[] | undefined): boolean => {
     if (!aggregators || !Array.isArray(aggregators)) return false;
     return aggregators.some((agg) => agg?.isVerified === true);
@@ -82,9 +97,7 @@ function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
       const documentUploaded = userInfo?.isDocumentUploaded ?? false;
       const documentApproved = userInfo?.isDocumentApproved ?? false;
       const userSubscribed = userInfo?.isUserSubscribed ? true: userInfo?.plan ? true : false;
-      const planChosen = userInfo?.selectedPlan ? true : false; // Using selectedPlan instead of plan
-      const isSampleDispatchedValue: string =
-        userInfo?.isSampleDispatched || "";
+      const planChosen = userInfo?.selectedPlan ? true : false;
       const isAggregatorVerified: boolean = isAnyAggregatorVerified(
         userInfo?.profile && typeof userInfo.profile === "object"
           ? (userInfo.profile as any)?.aggregators
@@ -99,7 +112,7 @@ function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
       ) {
         setCurrentStep(10)
       } else if(
-        userInfo === "Preparatory Session Accepted" || userInfo.progress === "Preparatory Session Declined"
+        userInfo.progress === "Preparatory Session Accepted" || userInfo.progress === "Preparatory Session Declined"
       ){
         setCurrentStep(9)
       } else if(
@@ -111,7 +124,7 @@ function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
       ){
         setCurrentStep(7)
       } else if(
-        userInfo.progress === "Preference Inserted"
+        userInfo.progress === "Preference Inserted" || userInfo.progress === "Preferences Updated"
       ){
         setCurrentStep(6)
       } else if(

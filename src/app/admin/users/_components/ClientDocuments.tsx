@@ -66,6 +66,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                columns={
                  generateClientDocumentsColumns(rows as any[]) as GridColDef[]
                }
+              showToolbar={true}
               paginationMode="server"
               rowCount={0}
               pagination

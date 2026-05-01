@@ -76,6 +76,7 @@ const jobApplicationsColumns: GridColDef[] = [
   { field: "updateBy", headerName: "Update By", flex: 1, minWidth: 200 },
   { field: "ApplicationSubmittedBy", headerName: "Application Submitted By", flex: 1, minWidth: 200 },
   { field: "isDeleted", headerName: "Is Deleted", flex: 1, minWidth: 200 },
+  { field: "MatchLevel", headerName: "Match Level", flex: 1, minWidth: 200 },
 ];
 
 export default jobApplicationsColumns;

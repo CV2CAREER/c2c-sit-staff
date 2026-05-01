@@ -129,7 +129,7 @@ const AdminUserReferralTable = ({ userData }: { userData: any }) => {
         {referralData?.length > 0 && (
           <Table
             allowDelete={false}
-            data={data}
+            data={referralData}
             helpers={{ handleUpdateReferral }}
             modifyArray={modifyArray}
             tableName='REFERRAL_DATA'
@@ -138,7 +138,7 @@ const AdminUserReferralTable = ({ userData }: { userData: any }) => {
         {partnerReferrals?.length > 0 && (
           <Table
             allowDelete={false}
-            data={data}
+            data={partnerReferrals}
             helpers={{ handleUpdateReferral }}
             modifyArray={modifyArray}
             tableName='PARTNER_REFERRAL'
