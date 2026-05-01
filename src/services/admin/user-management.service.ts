@@ -834,6 +834,37 @@ class UserManagementService {
   }
 
   /**
+   * Get user progress by user ID
+   * @param userId ID of user
+   */
+  async getUserProgress(userId: string) {
+    if (!isUuid(userId)) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    logger.info(`Retrieving progress for user ID: ${userId}`);
+
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'firstName', 'lastName', 'email', 'progress', 'role', 'updatedAt']
+    });
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    logger.info(`Progress retrieved for user ID: ${userId}`);
+
+    return {
+      userId: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      progress: user.progress,
+      updatedAt: user.updatedAt
+    };
+  }
+
+  /**
    * Get user profile by user ID (excludes sensitive data)
    * @param userId ID of user
    */

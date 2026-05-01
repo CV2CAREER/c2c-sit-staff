@@ -48,6 +48,7 @@ import slackManageRouterV1 from "./routes/v1/slack-manage.route";
 import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
 import userManagementRouterV1 from "./routes/v1/user-management.route"
 import uploadRouterV1 from "./routes/v1/upload.route"
+import jobsiteRouterV1 from "./routes/v1/jobsite.route"
 import campaignManagementRouterV1 from "./routes/v1/campaign-management.route";
 
 // Assistant routes
@@ -206,6 +207,7 @@ app.use("/api/v1/slack-manage", slackManageRouterV1);
 app.use("/api/v1/user-management", userManagementRouterV1)
 app.use("/api/v1/uploads", uploadRouterV1)
 app.use("/api/v1/campaigns", campaignManagementRouterV1);
+app.use("/api/v1/jobsite", jobsiteRouterV1);
 
 
 // Assistant routes (must be after auth middleware to get user info)

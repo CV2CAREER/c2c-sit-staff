@@ -741,7 +741,7 @@ paths:
       summary: Get user profile (safe)
       description: |
         Get user profile with all sensitive data automatically excluded.
-        
+
         Accessible only by Admin and Assistant roles.
         Automatically removes passwords, tokens and other sensitive fields.
       operationId: getUserProfile
@@ -777,5 +777,109 @@ paths:
           description: Invalid user ID
         '403':
           description: Insufficient permissions
+        '404':
+          description: User not found
+
+  /v1/user-management/users/{userId}/progress:
+    get:
+      tags:
+        - User Management
+      summary: Get user progress
+      description: |
+        Get the current progress stage of a specific user.
+
+        Accessible only by Admin and Assistant roles.
+        Returns the user's progress enum value alongside basic identifying info.
+      operationId: getUserProgress
+      parameters:
+        - name: userId
+          in: path
+          description: UUID of user
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User progress retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                        format: uuid
+                        example: "b3f1c2d4-e5a6-7890-bcde-f01234567890"
+                      firstName:
+                        type: string
+                        example: "Jane"
+                      lastName:
+                        type: string
+                        example: "Doe"
+                      email:
+                        type: string
+                        format: email
+                        example: "jane.doe@example.com"
+                      role:
+                        type: string
+                        example: "client"
+                      progress:
+                        type: string
+                        enum:
+                          - "Onboarding"
+                          - "Email Verified"
+                          - "Documents Accepted"
+                          - "Documents Declined"
+                          - "CV/Resume Uplifted"
+                          - "Payment Initiated"
+                          - "Plan Selected"
+                          - "Followed on Socials"
+                          - "Payment Confirmed"
+                          - "Login Credentials Verified"
+                          - "Sample Results Dispatched"
+                          - "Sample Results Accepted"
+                          - "Preferences Updated"
+                          - "Preparatory Session Accepted"
+                          - "Preparatory Session Declined"
+                          - "Application Commenced"
+                          - "Application Hold"
+                          - "Application Expired"
+                          - "Offer Notification Received"
+                          - "Campaign Ended"
+                          - "Prospect"
+                        example: "Payment Confirmed"
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-04-30T10:23:00.000Z"
+              examples:
+                progress_success:
+                  summary: Progress retrieved
+                  value:
+                    success: true
+                    message: "User progress retrieved successfully"
+                    statusCode: 200
+                    data:
+                      userId: "b3f1c2d4-e5a6-7890-bcde-f01234567890"
+                      firstName: "Jane"
+                      lastName: "Doe"
+                      email: "jane.doe@example.com"
+                      role: "client"
+                      progress: "Payment Confirmed"
+                      updatedAt: "2026-04-30T10:23:00.000Z"
+        '400':
+          description: Invalid user ID
+        '403':
+          description: Insufficient permissions (Admin/Assistant only)
         '404':
           description: User not found
