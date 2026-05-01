@@ -53,7 +53,26 @@ const AIEditModal: React.FC<{
     setEditedData((prev: JobData) => ({ ...prev, [field]: value }));
   };
 
-  if (!jobData) return null;
+  // Don't return null, show loading state instead
+  if (!jobData) {
+    return (
+      <Modal
+        title="Review & Edit Job Data"
+        open={visible}
+        onCancel={onClose}
+        footer={null}
+        width={800}
+        centered
+      >
+        <div className="p-4">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading job data...</p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -254,43 +273,68 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
   /**
    * This function calls the AI extraction API to get job data
    */
- const processWithAI = async () => {
-  if (!isLink || !pageContent) {
-    return toast.error("Please provide both Job Link and Page Content");
-  }
+  const processWithAI = async () => {
+    if (!isLink || !pageContent) {
+      return toast.error("Please provide both Job Link and Page Content");
+    }
 
-  const validFormat = isValidURLFormat(isLink);
-  if (!validFormat) {
-    return toast.error("Provided URL is not a valid URL. Please check and retry");
-  }
+    const validFormat = isValidURLFormat(isLink);
+    if (!validFormat) {
+      return toast.error("Provided URL is not a valid URL. Please check and retry");
+    }
 
-  setAiProcessing(true);
-  const loadingToast = toast.loading('Extracting job data with AI...');
+    setAiProcessing(true);
+    const loadingToast = toast.loading('Extracting job data with AI...');
 
-  try {
-    const result = await extractCampaignJobsMutation.mutateAsync({
-      clientId: clientId,
-      joblink: isLink,
-      pageContent: pageContent
-    });
-    
-    toast.dismiss(loadingToast);
-    
-    // Fix: Access job_data from the correct path
-    const jobData = result.data?.job_data || result.data;
-    
-    // Store the extracted job data and show edit modal
-    setExtractedJobData(jobData);
-    setShowEditModal(true);
-    toast.success(`AI extraction completed! Please review the data.`);
+    try {
+      const result = await extractCampaignJobsMutation.mutateAsync({
+        clientId: clientId,
+        joblink: isLink,
+        pageContent: pageContent
+      });
+      
+      toast.dismiss(loadingToast);
+      
+      // Debug logging
+      console.log('=== API Response ===');
+      console.log('Full result:', result);
+      
+      // Extract job data from the response
+      let jobData = null;
+      
+      if (result?.data?.job_data) {
+        jobData = result.data.job_data;
+        console.log('Found job_data in result.data.job_data:', jobData);
+      } else if (result?.job_data) {
+        jobData = result.job_data;
+        console.log('Found job_data in result.job_data:', jobData);
+      } else if (result?.data) {
+        jobData = result.data;
+        console.log('Using result.data as job_data:', jobData);
+      } else {
+        jobData = result;
+        console.log('Using result as job_data:', jobData);
+      }
+      
+      if (jobData && (jobData.job_title || jobData.company)) {
+        // Store the extracted job data and show edit modal
+        setExtractedJobData(jobData);
+        setShowEditModal(true);
+        toast.success(`AI extraction completed! Please review the data.`);
+        console.log('Modal should now open. showEditModal set to true');
+      } else {
+        console.error('Invalid job data structure:', jobData);
+        toast.error('Failed to extract job data. Invalid response format.');
+      }
 
-  } catch (error: any) {
-    toast.dismiss(loadingToast);
-    toast.error(error?.response?.data?.message || 'Failed to process with AI');
-  } finally {
-    setAiProcessing(false);
-  }
-};
+    } catch (error: any) {
+      console.error('=== AI Extraction Error ===', error);
+      toast.dismiss(loadingToast);
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to process with AI');
+    } finally {
+      setAiProcessing(false);
+    }
+  };
 
   /**
    * This function saves the edited job data to the database
@@ -300,23 +344,29 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
     const loadingToast = toast.loading('Saving to database...');
 
     try {
-      await saveCampaignJobsMutation.mutateAsync({
+      const result = await saveCampaignJobsMutation.mutateAsync({
         clientId,
         joblink: isLink,
-        jobData: Array.isArray(editedData) ? editedData : [editedData]
+        jobData: editedData
       });
       
       toast.dismiss(loadingToast);
-      toast.success('Application saved successfully');
-      setPageContent('');
-      setExtractedJobData(null);
-      setShowEditModal(false);
-      if (setReload) setReload();
-      onClose();
+      
+      if (result?.data?.status === 'success' || result?.status === 'success') {
+        toast.success('Application saved successfully');
+        setPageContent('');
+        setExtractedJobData(null);
+        setShowEditModal(false);
+        if (setReload) setReload();
+        onClose();
+      } else {
+        toast.error(result?.data?.message || result?.message || 'Failed to save application');
+      }
 
     } catch (error: any) {
+      console.error('=== Save Error ===', error);
       toast.dismiss(loadingToast);
-      toast.error(error?.response?.data?.message || 'Failed to save application');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to save application');
     } finally {
       setLoading(false);
     }
@@ -427,7 +477,10 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       {/* Editable AI Preview Modal */}
       <AIEditModal
         visible={showEditModal}
-        onClose={() => setShowEditModal(false)}
+        onClose={() => {
+          console.log('Closing modal');
+          setShowEditModal(false);
+        }}
         onConfirm={saveEditedJobData}
         jobData={extractedJobData}
         loading={loading}
