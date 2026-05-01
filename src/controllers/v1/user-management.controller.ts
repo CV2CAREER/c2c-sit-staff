@@ -310,6 +310,24 @@ export const getUserUploadedDocuments = catchAsyncError(
 );
 
 /**
+ * Get user progress
+ */
+export const getUserProgress = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+    const { userId } = req.params;
+
+    logger.info(`Processing request to get progress for user ID: ${userId}`);
+
+    const result = await userManagementService.getUserProgress(userId);
+
+    logger.info(`User progress retrieved successfully for ID: ${userId}`);
+
+    res.apiSuccess(result, "User progress retrieved successfully");
+  },
+);
+
+/**
  * Get user profile (exclude sensitive data)
  */
 export const getUserProfile = catchAsyncError(

@@ -17,6 +17,7 @@ import {
   getUserReferrals,
   getUserUploadedDocuments,
   getUserProfile,
+  getUserProgress,
 } from "../../controllers/v1/user-management.controller";
 
 const userManagementRouterV1 = Router();
@@ -99,6 +100,11 @@ userManagementRouterV1.get(
 // Get user profile (exclude sensitive data)
 userManagementRouterV1.get(
   "/users/:userId/profile", getUserProfile
+);
+
+// Get user progress
+userManagementRouterV1.get(
+  "/users/:userId/progress", getUserProgress
 );
 
 export default userManagementRouterV1;

@@ -1,0 +1,354 @@
+# OpenAPI Specification for Jobsite (User Aggregator) Endpoints
+
+paths:
+  /v1/jobsite:
+    get:
+      tags:
+        - Jobsite
+      summary: Retrieve or trigger user jobsites
+      description: |
+        Dual-purpose GET endpoint controlled by the `action` query parameter.
+
+        - `action=retrieve` — Returns all aggregator (jobsite) links on the user's primary
+          profile, each populated with full Aggregator details.
+        - `action=trigger` — Triggers a title sync (`updateTitlesV2`) and adds the user to
+          the client sample test queue (`runTestClientSamples`) for the specified aggregator.
+
+        Accessible only by Admin and Assistant roles.
+      operationId: getJobsite
+      parameters:
+        - name: action
+          in: query
+          required: false
+          description: "`retrieve` (default) or `trigger`"
+          schema:
+            type: string
+            enum: [retrieve, trigger]
+            default: retrieve
+        - name: userId
+          in: query
+          required: true
+          description: UUID of the target user
+          schema:
+            type: string
+            format: uuid
+        - name: aggId
+          in: query
+          required: false
+          description: UUID of the aggregator — required when `action=trigger`
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+              examples:
+                retrieve_success:
+                  summary: action=retrieve
+                  value:
+                    success: true
+                    message: "Jobsites retrieved successfully"
+                    statusCode: 200
+                    data:
+                      aggregators:
+                        - aggregatorId: "agg-uuid-001"
+                          username: "jane.doe@seek.com"
+                          generatedEmail: "jane123@alias.com"
+                          isVerified: true
+                          aggregator:
+                            id: "agg-uuid-001"
+                            name: "seek"
+                            isEnabled: true
+                            config: {}
+                trigger_success:
+                  summary: action=trigger
+                  value:
+                    success: true
+                    message: "Triggered successfully"
+                    statusCode: 200
+                    data:
+                      message: "Triggered successfully"
+        '400':
+          description: Missing or invalid query parameters
+        '403':
+          description: Insufficient permissions (Admin/Assistant only)
+        '404':
+          description: User, profile, or aggregator not found
+
+    post:
+      tags:
+        - Jobsite
+      summary: Auto-assign jobsites to a user based on their country
+      description: |
+        Automatically assigns the correct set of job boards (aggregators) to a user's primary
+        profile based on their registered country, using the following geographic groups:
+
+        - **Global** — LinkedIn, Indeed, Jora, EscapeCity
+        - **Australia** — Seek, WorkforceAustralia, CareerOne, Adzuna, MichaelPage, Randstad
+        - **United Kingdom** — Monster, Jobserve, Reed, NHSJobs, CVLibrary
+        - **Canada** — Adecco, JobBank
+
+        The endpoint automatically:
+        1. Generates an email alias for the user via the Google Apps Script alias service.
+        2. Calls `updateAggregator` to filter and assign the correct job boards.
+        3. Only adds aggregators the user does not already have — existing entries are preserved.
+
+        **Request body requires only `userId`.**
+
+        Accessible only by Admin and Assistant roles.
+      operationId: upsertJobsite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  description: UUID of the target user
+            example:
+              userId: "user-uuid-123"
+      responses:
+        '200':
+          description: Jobsites assigned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Jobsite and aggregator successfully updated"
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "Jobsite and aggregator successfully updated"
+                      generatedEmail:
+                        type: string
+                        description: Email alias created or derived for the user
+                        example: "janedoegmail@cvtocareer.com"
+                      assignedJobsites:
+                        type: array
+                        description: Names of job boards newly added to the user's profile
+                        items:
+                          type: string
+                        example: ["seek", "careerone", "adzuna"]
+              examples:
+                australia_user:
+                  summary: Australian user assigned
+                  value:
+                    success: true
+                    message: "Jobsite and aggregator successfully updated"
+                    statusCode: 200
+                    data:
+                      message: "Jobsite and aggregator successfully updated"
+                      generatedEmail: "janedoegmail@cvtocareer.com"
+                      assignedJobsites: ["seek", "workforceaustralia", "careerone", "adzuna"]
+                no_new_jobsites:
+                  summary: All jobsites already assigned
+                  value:
+                    success: true
+                    message: "Jobsite and aggregator successfully updated"
+                    statusCode: 200
+                    data:
+                      message: "Jobsite and aggregator successfully updated"
+                      generatedEmail: "janedoegmail@cvtocareer.com"
+                      assignedJobsites: []
+        '400':
+          description: Missing or invalid userId
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User not found
+
+    put:
+      tags:
+        - Jobsite
+      summary: Update fields on an existing jobsite link
+      description: |
+        Patches specific fields (username, password, generatedEmail, isVerified, etc.) on
+        the aggregator link identified by `aggId` within the user's primary profile.
+
+        `aggregatorId` in the request body is ignored to prevent reassignment.
+
+        Accessible only by Admin and Assistant roles.
+      operationId: updateJobsite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - aggId
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                  description: UUID of the target user
+                aggId:
+                  type: string
+                  format: uuid
+                  description: aggregatorId of the link to update
+                username:
+                  type: string
+                  description: Updated username / login email
+                password:
+                  type: string
+                  description: Updated password
+                generatedEmail:
+                  type: string
+                  description: Updated generated email alias
+                isVerified:
+                  type: boolean
+                  description: Updated verification status
+            example:
+              userId: "user-uuid-123"
+              aggId: "agg-uuid-001"
+              username: "updated.email@seek.com"
+              isVerified: true
+      responses:
+        '200':
+          description: Jobsite link updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Jobsite updated"
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      aggregators:
+                        type: array
+                        items:
+                          type: object
+        '400':
+          description: Missing userId or aggId
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: User, profile, or jobsite link not found
+
+    delete:
+      tags:
+        - Jobsite
+      summary: Delete one or more jobsite links from a user's profile
+      description: |
+        Removes aggregator link(s) from the user's primary profile by `aggregatorId`.
+
+        - Use `aggId` to remove a single jobsite.
+        - Use `aggIds` (comma-separated) to remove multiple jobsites in one request.
+        - Both can be combined — duplicates are handled safely.
+
+        Accessible only by Admin and Assistant roles.
+      operationId: deleteJobsite
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: UUID of the target user
+          schema:
+            type: string
+            format: uuid
+        - name: aggId
+          in: query
+          required: false
+          description: aggregatorId of a single jobsite to remove
+          schema:
+            type: string
+            format: uuid
+        - name: aggIds
+          in: query
+          required: false
+          description: Comma-separated list of aggregatorIds to remove
+          schema:
+            type: string
+            example: "agg-uuid-001,agg-uuid-002"
+      responses:
+        '200':
+          description: Jobsite(s) deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Deleted successfully"
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    properties:
+                      aggregators:
+                        type: array
+                        description: Remaining aggregator links after deletion
+                        items:
+                          type: object
+              examples:
+                single_delete:
+                  summary: Delete one jobsite
+                  value:
+                    success: true
+                    message: "Deleted successfully"
+                    statusCode: 200
+                    data:
+                      aggregators: []
+                bulk_delete:
+                  summary: Delete multiple jobsites
+                  value:
+                    success: true
+                    message: "Deleted successfully"
+                    statusCode: 200
+                    data:
+                      aggregators:
+                        - aggregatorId: "agg-uuid-003"
+                          username: "user@linkedin.com"
+                          isVerified: true
+        '400':
+          description: Missing userId, or neither aggId nor aggIds provided
+        '403':
+          description: Insufficient permissions (Admin/Assistant only)
+        '404':
+          description: User or profile not found
