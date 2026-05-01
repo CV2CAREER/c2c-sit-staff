@@ -254,40 +254,43 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
   /**
    * This function calls the AI extraction API to get job data
    */
-  const processWithAI = async () => {
-    if (!isLink || !pageContent) {
-      return toast.error("Please provide both Job Link and Page Content");
-    }
+ const processWithAI = async () => {
+  if (!isLink || !pageContent) {
+    return toast.error("Please provide both Job Link and Page Content");
+  }
 
-    const validFormat = isValidURLFormat(isLink);
-    if (!validFormat) {
-      return toast.error("Provided URL is not a valid URL. Please check and retry");
-    }
+  const validFormat = isValidURLFormat(isLink);
+  if (!validFormat) {
+    return toast.error("Provided URL is not a valid URL. Please check and retry");
+  }
 
-    setAiProcessing(true);
-    const loadingToast = toast.loading('Extracting job data with AI...');
+  setAiProcessing(true);
+  const loadingToast = toast.loading('Extracting job data with AI...');
 
-    try {
-      const result = await extractCampaignJobsMutation.mutateAsync({
-        clientId: clientId,
-        joblink: isLink,
-        pageContent: pageContent
-      });
-      
-      toast.dismiss(loadingToast);
-      
-      // Store the extracted job data and show edit modal
-      setExtractedJobData(result.data?.job_data || result.job_data || result.data);
-      setShowEditModal(true);
-      toast.success(`AI extraction completed! Please review the data.`);
+  try {
+    const result = await extractCampaignJobsMutation.mutateAsync({
+      clientId: clientId,
+      joblink: isLink,
+      pageContent: pageContent
+    });
+    
+    toast.dismiss(loadingToast);
+    
+    // Fix: Access job_data from the correct path
+    const jobData = result.data?.job_data || result.data;
+    
+    // Store the extracted job data and show edit modal
+    setExtractedJobData(jobData);
+    setShowEditModal(true);
+    toast.success(`AI extraction completed! Please review the data.`);
 
-    } catch (error: any) {
-      toast.dismiss(loadingToast);
-      toast.error(error?.response?.data?.message || 'Failed to process with AI');
-    } finally {
-      setAiProcessing(false);
-    }
-  };
+  } catch (error: any) {
+    toast.dismiss(loadingToast);
+    toast.error(error?.response?.data?.message || 'Failed to process with AI');
+  } finally {
+    setAiProcessing(false);
+  }
+};
 
   /**
    * This function saves the edited job data to the database
