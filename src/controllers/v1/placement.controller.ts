@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ClientsAssignedService } from "../../services/assistant/clients-assigned.service";
 import catchAsyncError from "../../utils/catchAsyncError";
+import ErrorHandler from "../../utils/errorHandler";
 
 /**
  * Placement Controller
@@ -15,7 +16,7 @@ export class PlacementController {
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.apiError({ message: "Unauthorized - User not authenticated", statusCode: 401 });
+      return res.apiError(new ErrorHandler("Unauthorized - User not authenticated", 401));
     }
 
     const result = await ClientsAssignedService.getAssignedClients(userId);
