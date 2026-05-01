@@ -26,9 +26,7 @@ async function handleGetApplicationsCount(req: Request, res: Response) {
   try {
     const aggregator = req.query.aggregator as string;
     const source = req.query.source as string;
-    const status = req.query.status as string;
-
-    const baseWhere: any = { isDeleted: 0 };
+    const baseWhere: any = { isDeleted: false };
 
     if (aggregator && aggregator !== "all") baseWhere.Internal_Jobsite = aggregator;
     if (source && source !== "all") baseWhere.Run_Source = source;
@@ -76,7 +74,7 @@ async function handleGetApplications(req: Request, res: Response) {
     const source = req.query.source as string;
     const recycle = req.query.recycle === "true" || req.query.active === "false";
 
-    const where: any = { isDeleted: recycle ? 1 : 0 };
+    const where: any = { isDeleted: recycle };
 
     /* ---------------- filters ---------------- */
     if (req.query.client) {
