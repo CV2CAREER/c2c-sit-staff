@@ -4,7 +4,7 @@ import { User } from "../models/v1/user.model";
 import { Referrer } from "../models/v1/referrer.model";
 import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
-import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
+import { PaymentStatus, SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
 
 const logger = getServiceLogger("referral-service");
 
@@ -21,7 +21,7 @@ export class ReferralService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'firstName', 'lastName', 'paymentStatus', 'businessName']
+            attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'businessName']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -52,7 +52,7 @@ export class ReferralService {
 
         const record = referralMap.get(referrerId);
         
-        const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === 'paid' || ref.user?.isUserSubscribed === true;
+        const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
 
         record.referredUsers.push({
           email: ref.user?.email,
@@ -252,19 +252,36 @@ export class ReferralService {
       // Referrer field stores EMAIL not user ID
       const referrals = await Referrer.findAll({
         where: { referrer: user.email },
-        include: [{ model: User, as: 'user', attributes: ['id', 'email', 'firstName', 'lastName', 'role'] }],
+        include: [{ model: User, as: 'user', attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed'] }],
         order: [['createdAt', 'DESC']]
       });
 
       const totalReferrals = referrals.length;
-      const successfulReferrals = referrals.filter(r => r.status === 'APPROVED').length;
+      let totalPaidReferrals = 0;
+      let totalUnpaidReferrals = 0;
+      let totalEarnings = 0;
 
-      logger.info(`✅ User ${user.email} has ${totalReferrals} referrals (${successfulReferrals} approved)`);
+      referrals.forEach(ref => {
+        const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
+        
+        if (ref.status === 'APPROVED') {
+          totalPaidReferrals++;
+          if (isClient) {
+            totalEarnings += 50;
+          }
+        } else if (ref.status === 'PENDING') {
+          totalUnpaidReferrals++;
+        }
+      });
+
+      logger.info(`✅ User ${user.email} has ${totalReferrals} referrals ($${totalEarnings} earnings)`);
 
       return {
         referrals,
         totalReferrals,
-        totalSuccessfulReferrals: successfulReferrals
+        totalPaidReferrals,
+        totalUnpaidReferrals,
+        totalEarnings
       };
     } catch (error: any) {
       logger.error(`❌ Failed to fetch user referrals: ${error.message}`);

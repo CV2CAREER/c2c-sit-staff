@@ -68,10 +68,24 @@ export const updateSalesOperation = catchAsyncError(async (req: any, res: Respon
  */
 export const deleteSalesOperation = catchAsyncError(async (req: any, res: Response) => {
   try {
-    const { id } = req.query as { id: string };
+    const { id, hard, undo } = req.query as {
+      id: string;
+      hard?: string;
+      undo?: string;
+    };
 
     if (!id) {
       return res.apiError(new ErrorHandler("Sales operation ID is required", 400));
+    }
+
+    if (undo === "true") {
+      await SalesOperationService.restore(req, id, req.user);
+      return res.apiSuccess({}, "Sales operation restored successfully", 200);
+    }
+
+    if (hard === "true") {
+      await SalesOperationService.hardDelete(req, id, req.user);
+      return res.apiSuccess({}, "Sales operation permanently deleted successfully", 200);
     }
 
     await SalesOperationService.delete(req, id, req.user);

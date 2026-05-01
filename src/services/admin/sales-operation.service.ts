@@ -182,6 +182,74 @@ export class SalesOperationService {
   }
 
   /**
+   * Restore a soft-deleted sales operation
+   */
+  static async restore(req: any, id: string, user: any) {
+    try {
+      const host = req.headers.host || req.headers.origin || "localhost";
+      const operation = await SalesOperation.findByPk(id);
+
+      if (!operation) {
+        throw new Error("Sales operation not found");
+      }
+
+      await operation.update({
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        updatedBy: user.id,
+      });
+
+      const message = `
+♻️ *Sales Operation RESTORED* ♻️
+• Restored by: ${user.email}
+• Operation ID: ${id}
+• Client Name: ${operation.name}
+      `;
+      await this.notifySlack(host, "Restored", message, user);
+
+      logger.info(`✅ Sales operation ${id} restored by ${user.email}`);
+      return true;
+    } catch (error: any) {
+      logger.error(`❌ Failed to restore sales operation: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Permanently delete a sales operation
+   */
+  static async hardDelete(req: any, id: string, user: any) {
+    try {
+      const host = req.headers.host || req.headers.origin || "localhost";
+      const operation = await SalesOperation.findByPk(id);
+
+      if (!operation) {
+        throw new Error("Sales operation not found");
+      }
+
+      const operationName = operation.name;
+      const operationExec = operation.salesExecutive;
+      await operation.destroy();
+
+      const message = `
+🗑️ *Sales Operation PERMANENTLY DELETED* 🗑️
+• Deleted by: ${user.email}
+• Operation ID: ${id}
+• Client Name: ${operationName}
+• Sales Executive: ${operationExec}
+      `;
+      await this.notifySlack(host, "Hard Deleted", message, user);
+
+      logger.info(`✅ Sales operation ${id} hard deleted by ${user.email}`);
+      return true;
+    } catch (error: any) {
+      logger.error(`❌ Failed to hard delete sales operation: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Export Sales Operation data as CSV
    * Can filter by ID
    */
