@@ -47,9 +47,17 @@ class DatabaseAdapter {
           };
         }
         if (prop === "update") {
-          return async (options: any) => {
-            const { where, data } = options;
-            return (target as any).update(data, { where });
+          return async (valuesOrOptions: any, optionsOrUndefined?: any) => {
+            // Support both Sequelize native format: update(values, options)
+            // and Prisma-style format: update({ where, data })
+            if (optionsOrUndefined !== undefined) {
+              // Sequelize native format: update(values, options)
+              return (target as any).update(valuesOrOptions, optionsOrUndefined);
+            } else {
+              // Prisma-style format: update({ where, data })
+              const { where, data } = valuesOrOptions;
+              return (target as any).update(data, { where });
+            }
           };
         }
         if (prop === "count") {

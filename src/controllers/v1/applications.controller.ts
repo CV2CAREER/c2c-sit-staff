@@ -183,21 +183,35 @@ async function handleUpdateApplication(req: Request, res: Response) {
     }
 
     if (action === "restore" || action === "soft-delete") {
-      const [updatedCount] = await db.applications.update(
-        { isDeleted: action === "soft-delete" },
-        { where: { id } },
-      );
+      try {
+        const [updatedCount] = await db.applications.update(
+          { isDeleted: action === "soft-delete" },
+          { where: { id } },
+        );
 
-      if (!updatedCount) {
-        throw new ErrorHandler("Application not found", 404);
+        if (!updatedCount) {
+          throw new ErrorHandler("Application not found", 404);
+        }
+
+        return res.apiSuccess(
+          { updatedCount },
+          action === "soft-delete"
+            ? "Application moved to recycle bin"
+            : "Application restored successfully",
+        );
+      } catch (updateError: any) {
+        logger.error("PATCH applications soft-delete/restore error:", {
+          error: updateError,
+          message: updateError.message,
+          stack: updateError.stack,
+          id,
+          action,
+        });
+        throw new ErrorHandler(
+          `Failed to ${action === "soft-delete" ? "soft-delete" : "restore"} application: ${updateError.message}`,
+          500,
+        );
       }
-
-      return res.apiSuccess(
-        { updatedCount },
-        action === "soft-delete"
-          ? "Application moved to recycle bin"
-          : "Application restored successfully",
-      );
     }
 
     const payload = req.body ?? {};
