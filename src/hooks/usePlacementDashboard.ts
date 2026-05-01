@@ -1,5 +1,5 @@
 import { useFetchData } from "@/hooks/useApi";
-import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
+import * as placementEndpoints from "@/constants/apiEndpoints/placement.endpoint";
 
 export interface PlacementApplication {
   id: string;
@@ -19,8 +19,8 @@ export interface PlacementDashboardData {
 export function usePlacementDashboard(fetchDashboard = true) {
   const dashboard = useFetchData<PlacementDashboardData>({
     method: "GET",
-    url: endpoints.ASSISTANT_CLIENTS_ASSIGNED,
-    queryKey: ["assistant-dashboard-data"],
+    url: placementEndpoints.PLACEMENT_SUMMARY,
+    queryKey: ["placement-dashboard-summary"],
     enabled: fetchDashboard,
   });
 
