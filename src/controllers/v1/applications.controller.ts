@@ -12,6 +12,9 @@ const logger = getServiceLogger("applications-controller");
 export const applicationsController = catchAsyncError(
   async (req: Request, res: Response) => {
     if (req.method === "GET") {
+      if (req.query.dataCount === "true") {
+        return handleGetApplicationsCount(req, res);
+      }
       return handleGetApplications(req, res);
     }
 
@@ -19,31 +22,60 @@ export const applicationsController = catchAsyncError(
   },
 );
 
+async function handleGetApplicationsCount(req: Request, res: Response) {
+  try {
+    const aggregator = req.query.aggregator as string;
+    const source = req.query.source as string;
+    const status = req.query.status as string;
+
+    const baseWhere: any = { isDeleted: 0 };
+
+    if (aggregator && aggregator !== "all") baseWhere.Internal_Jobsite = aggregator;
+    if (source && source !== "all") baseWhere.Run_Source = source;
+
+    const [successful, failed] = await Promise.all([
+      db.applications.count({ where: { ...baseWhere, Status: "Successful" } }),
+      db.applications.count({ where: { ...baseWhere, Status: "Failed" } }),
+    ]);
+
+    return res.apiSuccess(
+      {
+        successful,
+        failed,
+      },
+      "Application counts fetched successfully",
+    );
+  } catch (error: any) {
+    logger.error("GET applications count error:", error);
+    throw new ErrorHandler("Failed to fetch application counts", 500);
+  }
+}
+
 async function handleGetApplications(req: Request, res: Response) {
-  const redisClient = await getConnectedRedis();
+  const user = (req as any).user;
+
+  /* -------------------------------------------------------------------------- */
+  /* AUTH CHECK                                                                 */
+  /* -------------------------------------------------------------------------- */
+  if (user?.role !== "admin" && user?.role !== "assistant") {
+    return res.apiError({
+      message: "You are not authorized to access this resource",
+      statusCode: 403,
+    });
+  }
 
   try {
-    const skip = Number(req.query.skip) || 0;
-    const limit = Math.min(Number(req.query.limit) || 50, 100); // cap for performance
-    const active = req.query.active === "true";
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(Number(req.query.limit) || 25, 500);
+    const skip = (page - 1) * limit;
+
     const dataOption = req.query.dataOption as string;
     const aggregator = req.query.aggregator as string;
+    const status = req.query.status as string;
+    const source = req.query.source as string;
+    const recycle = req.query.recycle === "true" || req.query.active === "false";
 
-    const where: any = {};
-
-    /* ---------------- Redis cached unique count (optional) ---------------- */
-    let uniqueCount = 0;
-
-    if (redisClient) {
-      try {
-        const redisData = await redisClient.get("uniqueJobIdCounts");
-        if (redisData) {
-          uniqueCount = JSON.parse(redisData).uniqueCount;
-        }
-      } catch (err) {
-        logger.warn("Redis unavailable, skipping cache lookup");
-      }
-    }
+    const where: any = { isDeleted: recycle ? 1 : 0 };
 
     /* ---------------- filters ---------------- */
     if (req.query.client) {
@@ -54,59 +86,69 @@ async function handleGetApplications(req: Request, res: Response) {
       where.client_id = Number(req.query.userId);
     }
 
-    if (aggregator && dataOption !== "questions") {
+    if (aggregator && aggregator !== "all") {
       where.Internal_Jobsite = aggregator;
     }
 
-    where.isDeleted = active ? 0 : 1;
-
-    if (dataOption === "sample_results") {
-      where.Status = { [Op.notIn]: ["Successful", "Failed"] };
-    } else {
-      where.Status = { [Op.in]: ["Successful", "Failed"] };
+    if (source && source !== "all") {
+      where.Run_Source = source;
     }
 
-    /* ---------------- optimized select ---------------- */
-    const selectedFields = [
-      "id",
-      "Client",
-      "Timestamp",
-      "Internal_Jobsite",
-      "External_Jobsite",
-      "All_Words",
-      "Status",
-      "Application_Mode",
-      "Category",
-      "Job_Title",
-      "JobId",
-      "Location",
-      "Job_Type",
-      "Date_Advertised",
-      "Requestor",
-      "Sample_Type",
-      "ApplicationSubmittedBy",
-      "MatchLevel",
-    ];
+    // Status filtering logic
+    if (status && status !== "all") {
+      if (status === "failed") {
+        where.Status = "Failed";
+      } else if (status === "successful") {
+        where.Status = "Successful";
+      } else if (status === "sample") {
+        where.Sample_Type = { [Op.in]: ["Sample", "Sample Test"] };
+      }
+    } else {
+      // If status is "all" or not provided:
+      // Show Successful and Failed by default for standard view
+      // But if we want "ALL", we should probably not filter.
+      // Given the requirement "fetch all applications", I will allow all statuses when status is "all".
+      if (dataOption === "sample_results") {
+        where.Status = { [Op.notIn]: ["Successful", "Failed"] };
+      } else if (dataOption === "questions") {
+        where.Question = { [Op.not]: null };
+      }
+      // Otherwise, no Status filter means "All"
+    }
 
     /* ---------------- parallel queries ---------------- */
     const [rows, total] = await Promise.all([
       db.applications.findAll({
         where,
-        attributes: selectedFields,
         order: [["id", "DESC"]],
         offset: skip,
         limit,
-        subQuery: false, // performance boost
+        raw: true,
       }),
       db.applications.count({ where }),
     ]);
+
+    const uniqueCount = await db.applications.count({
+      where,
+      distinct: true,
+      col: "JobId",
+    });
 
     logger.info(
       `Applications fetched: ${total} total, ${rows.length} in this page`,
     );
 
-    res.apiSuccess(
-      { applications: rows, totalCount: total, uniqueCount },
+    return res.apiSuccess(
+      {
+        data: rows,
+        pagination: {
+          totalCount: total,
+          currentPage: page,
+          pageSize: limit,
+          totalPages: Math.ceil(total / limit),
+        },
+        uniqueCount,
+      },
       "Applications fetched successfully",
     );
   } catch (error: any) {
