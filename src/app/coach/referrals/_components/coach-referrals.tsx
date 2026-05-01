@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useFetchData } from "@/hooks/useApi";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/store/user.store";
 
 export interface IReferralUser {
   id: string;

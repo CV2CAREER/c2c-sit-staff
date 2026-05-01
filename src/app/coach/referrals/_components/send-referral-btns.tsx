@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useFetchData } from "@/hooks/useApi";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore } from "@/store/user.store";
 
 /*---- Interfaces & Types ----*/
 interface ICoachUserData {
