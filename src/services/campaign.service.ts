@@ -6,8 +6,17 @@ import { Profile } from "../models/v1/profile.model";
 import { Upload } from "../models/v1/upload.model";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
-import { SlackChannel, SlackNode, SlackProvider, SlackSeverity, SlackEventType } from "../utils/enum";
-import { getEnvironmentFromHost, getSlackIdByEmail } from "../utils/slack-helpers";
+import {
+  SlackChannel,
+  SlackNode,
+  SlackProvider,
+  SlackSeverity,
+  SlackEventType,
+} from "../utils/enum";
+import {
+  getEnvironmentFromHost,
+  getSlackIdByEmail,
+} from "../utils/slack-helpers";
 import { hopeUserIdExists } from "../utils/user-helper";
 import { getConnectedRedis } from "../config/redis";
 import { Op, Sequelize } from "sequelize";
@@ -21,47 +30,86 @@ const mailDirectory = path.resolve(__dirname, "../views/emails");
  * Aggregator status field mapping
  */
 const statusField: Record<string, string> = {
-  'jobbank': 'JobBank_Aggregator',
-  'seek': 'Seek_Aggregator',
-  'adecco': 'Adecco_Aggregator',
-  'indeed': 'Indeed_Aggregator',
-  'linkedin': 'LinkedIn_Aggregator',
-  'adzuna': 'Adzuna_Aggregator',
-  'escapecity': 'EscapeCity_Aggregator',
-  'reed': 'Reed_Aggregator',
-  'careerone': 'CareerOne_Aggregator',
-  'jora': 'Jora_Aggregator',
-  'randstad': 'Randstad_Aggregator',
-  'michaelpage': 'Michael_Page_Aggregator',
+  jobbank: "JobBank_Aggregator",
+  seek: "Seek_Aggregator",
+  adecco: "Adecco_Aggregator",
+  indeed: "Indeed_Aggregator",
+  linkedin: "LinkedIn_Aggregator",
+  adzuna: "Adzuna_Aggregator",
+  escapecity: "EscapeCity_Aggregator",
+  reed: "Reed_Aggregator",
+  careerone: "CareerOne_Aggregator",
+  jora: "Jora_Aggregator",
+  randstad: "Randstad_Aggregator",
+  michaelpage: "Michael_Page_Aggregator",
 };
 
 /**
  * Extract active aggregator credentials from credentials object
  */
-export const extractAggregatorCredentials = (obj: {[key: string]: string}) => {
+export const extractAggregatorCredentials = (obj: {
+  [key: string]: string;
+}) => {
   const aggregatorKeyMap = [
-    { name: 'SEEK', email: 'Alias_Email', password: 'Alias_Password', active: 'SEEK_Aggregator' },
-    { name: 'Adecco', email: 'Alias_Email', password: 'Alias_Password', active: 'Adecco_Aggregator' },
-    { name: 'Adzuna', email: 'Alias_Email', password: 'Alias_Password', active: 'Adzuna_Aggregator' },
-    { name: 'CareerOne', email: 'Alias_Email', password: 'Alias_Password', active: 'CareerOne_Aggregator' },
-    { name: 'LinkedIn', email: 'Alias_Email', password: 'Alias_Password', active: 'Linkedin_Aggregator' },
-    { name: 'Jora', email: 'Alias_Email', password: 'Alias_Password', active: 'Jora_Aggregator' }
+    {
+      name: "SEEK",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "SEEK_Aggregator",
+    },
+    {
+      name: "Adecco",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "Adecco_Aggregator",
+    },
+    {
+      name: "Adzuna",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "Adzuna_Aggregator",
+    },
+    {
+      name: "CareerOne",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "CareerOne_Aggregator",
+    },
+    {
+      name: "LinkedIn",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "Linkedin_Aggregator",
+    },
+    {
+      name: "Jora",
+      email: "Alias_Email",
+      password: "Alias_Password",
+      active: "Jora_Aggregator",
+    },
   ];
 
-  return aggregatorKeyMap.reduce((acc, curr) => {
-    const email = obj[curr.email];
-    const password = obj[curr.password];
-    if (email && password) {
-      acc.push({ email, password, name: curr.name });
-    }
-    return acc;
-  }, [] as ({email: string; password: string; name: string;})[]);
+  return aggregatorKeyMap.reduce(
+    (acc, curr) => {
+      const email = obj[curr.email];
+      const password = obj[curr.password];
+      if (email && password) {
+        acc.push({ email, password, name: curr.name });
+      }
+      return acc;
+    },
+    [] as { email: string; password: string; name: string }[],
+  );
 };
 
 /**
  * Send job preference update notifications to user and admin
  */
-export const sendPreferenceNotifications = async (userId: string, triggeredBy: string, host: string) => {
+export const sendPreferenceNotifications = async (
+  userId: string,
+  triggeredBy: string,
+  host: string,
+) => {
   logger.info(`Processing preference notifications for user ID: ${userId}`);
 
   if (!userId) {
@@ -69,33 +117,48 @@ export const sendPreferenceNotifications = async (userId: string, triggeredBy: s
     throw new Error("User ID is required");
   }
 
-  const userAccount = await Credentials.findOne({ where: { id: userId }, raw: true });
+  const userAccount = await Credentials.findOne({
+    where: { id: userId },
+    raw: true,
+  });
 
   if (!userAccount) {
     logger.warn("User account not found");
     throw new Error("User account not found");
   }
 
-  const user = await User.findOne({ where: { id: userAccount.clientId }, raw: true });
+  const user = await User.findOne({
+    where: { id: userAccount.clientId },
+    raw: true,
+  });
   const firstname = user?.firstName || "User";
   const email = user?.email || "unknown email";
 
   // Send notification email to the user
   await sendMail({
     email: email,
-    subject: 'Update on Your Job Preferences',
-    templateName: 'DispatchPreference.ejs',
+    subject: "Update on Your Job Preferences",
+    templateName: "DispatchPreference.ejs",
     templateDir: mailDirectory,
-    templateData: { firstname, email, link: 'dashboard/profile/job-references' }
+    templateData: {
+      firstname,
+      email,
+      link: "dashboard/profile/job-references",
+    },
   });
 
   // Send notification email to delivery team admins
   await sendMail({
     email: "deliveryteam@cvtocareer.com",
-    subject: 'User Notification of Updated Job Preferences',
-    templateName: 'AdminNotificationTemplate.ejs',
+    subject: "User Notification of Updated Job Preferences",
+    templateName: "AdminNotificationTemplate.ejs",
     templateDir: mailDirectory,
-    templateData: { firstname, email, link: '/admin-dashboard/manage-accounts', triggeredBy }
+    templateData: {
+      firstname,
+      email,
+      link: "/admin-dashboard/manage-accounts",
+      triggeredBy,
+    },
   });
 
   // Send Slack notification
@@ -112,23 +175,28 @@ export const sendPreferenceNotifications = async (userId: string, triggeredBy: s
     body: `A User, ${firstname} (${email}), has been notified of updated job preferences.
 *Success*: Notification email sent specifically for preference updates.
 *Immediate Impact*: User is informed that their preferences have been updated and can review them.
-*Next Step*: Admin to monitor for user feedback or further preference changes.`
+*Next Step*: Admin to monitor for user feedback or further preference changes.`,
   });
 
-  logger.info(`Preference notifications sent successfully for user: ${firstname} (${email})`);
+  logger.info(
+    `Preference notifications sent successfully for user: ${firstname} (${email})`,
+  );
 
   return {
     emailSent: true,
     slackNotificationSent: true,
     recipient: email,
-    user: { email, firstname }
+    user: { email, firstname },
   };
 };
 
 /**
  * Dispatch jobsite credentials to client user
  */
-export const dispatchClientCredentials = async (clientId: string, host: string) => {
+export const dispatchClientCredentials = async (
+  clientId: string,
+  host: string,
+) => {
   logger.info(`Processing credentials dispatch for client ID: ${clientId}`);
 
   // Fetch client credentials
@@ -146,7 +214,7 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
   }
 
   const credentials = extractAggregatorCredentials(client.toJSON());
-  
+
   if (!credentials.length) {
     logger.warn(`No credentials found for client: ${clientId}`);
     throw new Error("No credential(s) set for client");
@@ -155,13 +223,13 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
   // Send credentials email to user
   await sendMail({
     email: clientUser.email,
-    subject: 'Your Jobsites Credentials',
-    templateName: 'DispatchCredentials.ejs',
+    subject: "Your Jobsites Credentials",
+    templateName: "DispatchCredentials.ejs",
     templateDir: mailDirectory,
-    templateData: { 
+    templateData: {
       firstname: clientUser.firstName,
-      credentials 
-    }
+      credentials,
+    },
   });
 
   // Send Slack notification
@@ -178,10 +246,12 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
     body: `Jobsite credentials have been dispatched to user ${clientUser.firstName} ${clientUser.lastName}.
 *Success*: Email containing ${credentials.length} aggregator credentials sent.
 *Immediate Impact*: User can now access and manage their jobsite accounts.
-*Next Step*: Monitor for user support requests regarding login issues.`
+*Next Step*: Monitor for user support requests regarding login issues.`,
   });
 
-  logger.info(`Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`);
+  logger.info(
+    `Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`,
+  );
 
   return {
     credentialsDispatched: credentials.length,
@@ -189,27 +259,31 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
     user: {
       id: clientUser.id,
       email: clientUser.email,
-      firstName: clientUser.firstName
-    }
+      firstName: clientUser.firstName,
+    },
   };
 };
 
 /**
  * Generate and set external password for user credentials
  */
-export const generateExternalPassword = async (userId: string, host: string) => {
+export const generateExternalPassword = async (
+  userId: string,
+  host: string,
+) => {
   logger.info(`Generating external password for user ID: ${userId}`);
 
   // Generate secure random password
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
     for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return password;
   };
-  
+
   const generatedPassword = generatePassword();
 
   // Find user credentials
@@ -227,14 +301,16 @@ export const generateExternalPassword = async (userId: string, host: string) => 
   }
 
   // Update with generated password
-  await Credentials.update(
-    { ExternalPassword: generatedPassword } as any,
-    { where: { id: userId } }
+  await Credentials.update({ ExternalPassword: generatedPassword } as any, {
+    where: { id: userId },
+  });
+
+  const userFullName =
+    credentialsData.Full_Name || credentialsData.fullName || userId;
+
+  logger.info(
+    `External password generated successfully for user: ${userFullName} (${userId})`,
   );
-
-  const userFullName = credentialsData.Full_Name || credentialsData.fullName || userId;
-
-  logger.info(`External password generated successfully for user: ${userFullName} (${userId})`);
 
   // Send Slack notification
   const location = getEnvironmentFromHost(host);
@@ -250,21 +326,25 @@ export const generateExternalPassword = async (userId: string, host: string) => 
     body: `Jobsite password for user ${userFullName} has been generated successfully.
 *Success*: ExternalPassword field updated in database with auto-generated password.
 *Immediate Impact*: User can now be dispatched with credentials for automated applications.
-*Next Step*: Proceed with credential dispatch if ready.`
+*Next Step*: Proceed with credential dispatch if ready.`,
   });
 
   return {
     passwordGenerated: true,
     userId,
     userFullName,
-    password: generatedPassword
+    password: generatedPassword,
   };
 };
 
 /**
  * Get user aggregators with status
  */
-export const getUserAggregators = async (clientId: string, internalJobSites: any[] = [], externalJobSites: any[] = []) => {
+export const getUserAggregators = async (
+  clientId: string,
+  internalJobSites: any[] = [],
+  externalJobSites: any[] = [],
+) => {
   logger.info(`Fetching aggregators for client ID: ${clientId}`);
 
   // Find user credentials
@@ -286,7 +366,7 @@ export const getUserAggregators = async (clientId: string, internalJobSites: any
 
   // Find profile
   const profile = await Profile.findByPk(user.profileId);
-  
+
   if (!profile) {
     throw new Error("Profile not found");
   }
@@ -307,7 +387,7 @@ export const getUserAggregators = async (clientId: string, internalJobSites: any
 
   // Fetch aggregators
   const aggregators = await Aggregator.findAll({
-    where: { id: aggregatorIds }
+    where: { id: aggregatorIds },
   });
 
   const credData = cred.toJSON() as any;
@@ -317,22 +397,23 @@ export const getUserAggregators = async (clientId: string, internalJobSites: any
     const results: { name: string; imageUrl: string; status: boolean }[] = [];
 
     for (const jobSite of jobSites) {
-      if (!jobSite.value || jobSite.value === 'all') {
+      if (!jobSite.value || jobSite.value === "all") {
         continue;
       }
 
       const statusKey = statusField[jobSite.value.toLowerCase()];
       const status = credData[statusKey] || false;
-      
+
       const matchingAggregator = aggregators.find(
-        (agg: any) => agg.name && agg.name.toLowerCase() === jobSite.value.toLowerCase()
+        (agg: any) =>
+          agg.name && agg.name.toLowerCase() === jobSite.value.toLowerCase(),
       );
 
       if (matchingAggregator) {
         results.push({
           name: matchingAggregator.name,
-          imageUrl: matchingAggregator.picture?.fileUrl || '',
-          status
+          imageUrl: matchingAggregator.picture?.fileUrl || "",
+          status,
         });
       }
     }
@@ -343,19 +424,26 @@ export const getUserAggregators = async (clientId: string, internalJobSites: any
   const internalResults = matchAggregators(internalJobSites);
   const externalResults = matchAggregators(externalJobSites);
 
-  logger.info(`Found ${internalResults.length} internal and ${externalResults.length} external aggregators for client: ${clientId}`);
+  logger.info(
+    `Found ${internalResults.length} internal and ${externalResults.length} external aggregators for client: ${clientId}`,
+  );
 
   return {
     internal: internalResults,
-    external: externalResults
+    external: externalResults,
   };
 };
 
 /**
  * Toggle aggregator status for client
  */
-export const toggleAggregatorStatus = async (clientId: string, jobSite: string) => {
-  logger.info(`Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`);
+export const toggleAggregatorStatus = async (
+  clientId: string,
+  jobSite: string,
+) => {
+  logger.info(
+    `Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`,
+  );
 
   // Find user credentials
   const cred = await Credentials.findOne({ where: { clientId: clientId } });
@@ -373,17 +461,18 @@ export const toggleAggregatorStatus = async (clientId: string, jobSite: string) 
   const newStatus = !currentStatus;
 
   // Update status
-  await Credentials.update(
-    { [statusKey]: newStatus } as any,
-    { where: { id: clientId } }
-  );
+  await Credentials.update({ [statusKey]: newStatus } as any, {
+    where: { id: clientId },
+  });
 
-  logger.info(`Aggregator status updated for ${jobSite}: ${currentStatus} -> ${newStatus}`);
+  logger.info(
+    `Aggregator status updated for ${jobSite}: ${currentStatus} -> ${newStatus}`,
+  );
 
   return {
     jobSite,
     previousStatus: currentStatus,
-    newStatus
+    newStatus,
   };
 };
 
@@ -397,10 +486,10 @@ export const getUserProfileDetails = async (userId: string) => {
   const user = await User.findByPk(userId, {
     include: [
       {
-        association: 'activePlan',
-        attributes: ['id', 'userId', 'title', 'expiresAt']
-      }
-    ]
+        association: "activePlan",
+        attributes: ["id", "userId", "title", "expiresAt"],
+      },
+    ],
   });
 
   if (!user) {
@@ -413,7 +502,7 @@ export const getUserProfileDetails = async (userId: string) => {
   const profile = await Profile.findByPk(user.profile);
 
   const userData = user.toJSON() as any;
-  const profileData = profile ? profile.toJSON() as any : {};
+  const profileData = profile ? (profile.toJSON() as any) : {};
 
   // Application Statistics
   const totalApplications = profileData.totalApplications || 0;
@@ -425,20 +514,25 @@ export const getUserProfileDetails = async (userId: string) => {
     name: `${user.firstName} ${user.lastName}`,
     email: user.email,
     plan: userData.plan || userData.planName || null,
-    plans: userData.activePlan ? {
-      userId: userData.activePlan.userId,
-      title: userData.activePlan.title,
-      selectedAt: userData.activePlan.selectedAt,
-      isActive: userData.activePlan.isActive,
-      raw: userData.activePlan.raw
-    } : null,
+    plans: userData.activePlan
+      ? {
+          userId: userData.activePlan.userId,
+          title: userData.activePlan.title,
+          selectedAt: userData.activePlan.selectedAt,
+          isActive: userData.activePlan.isActive,
+          raw: userData.activePlan.raw,
+        }
+      : null,
     craft: profileData.craft || profileData.profession || null,
     statistics: {
       totalApplications,
       successfulApplications,
       failedApplications,
-      successRate: totalApplications > 0 ? Math.round((successfulApplications / totalApplications) * 100) : 0
-    }
+      successRate:
+        totalApplications > 0
+          ? Math.round((successfulApplications / totalApplications) * 100)
+          : 0,
+    },
   };
 
   logger.info(`Successfully retrieved profile details for user: ${user.email}`);
@@ -450,15 +544,18 @@ export const getUserProfileDetails = async (userId: string) => {
  * Client Sample Queue Redis key constants
  */
 const CLIENT_SAMPLE_QUEUE_KEY = (agg: string, environment: string) => {
-  if (environment === '_TEST') {
+  if (environment === "_TEST") {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_QUEUE_TEST`;
   } else {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_QUEUE`;
   }
 };
 
-const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (agg: string, environment: string) => {
-  if (environment === '_TEST') {
+const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (
+  agg: string,
+  environment: string,
+) => {
+  if (environment === "_TEST") {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING_TEST`;
   } else {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING`;
@@ -469,23 +566,34 @@ const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (agg: string, environment: string) 
  * Extract base value from queue element
  */
 const extractValueFromQueueElement = (element: string): string => {
-  return element.split(':;')[0];
+  return element.split(":;")[0];
 };
 
 /**
  * Get client sample queue status
  */
-export const getClientSampleQueueStatus = async (agg: string, environment: string) => {
-  logger.info(`Fetching queue status for aggregator: ${agg}, environment: ${environment}`);
-  
+export const getClientSampleQueueStatus = async (
+  agg: string,
+  environment: string,
+) => {
+  logger.info(
+    `Fetching queue status for aggregator: ${agg}, environment: ${environment}`,
+  );
+
   const redis = await getConnectedRedis();
   if (!redis) {
     throw new Error("Redis connection unavailable");
   }
 
-  const isTestEnvironment = environment === '_TEST';
-  const currentKey = CLIENT_SAMPLE_CURRENT_PROCESSING_KEY(agg, isTestEnvironment ? environment : '');
-  const queueKey = CLIENT_SAMPLE_QUEUE_KEY(agg, isTestEnvironment ? environment : '');
+  const isTestEnvironment = environment === "_TEST";
+  const currentKey = CLIENT_SAMPLE_CURRENT_PROCESSING_KEY(
+    agg,
+    isTestEnvironment ? environment : "",
+  );
+  const queueKey = CLIENT_SAMPLE_QUEUE_KEY(
+    agg,
+    isTestEnvironment ? environment : "",
+  );
 
   const current = await redis.get(currentKey);
   let result = await redis.lrange(queueKey as string, 0, -1);
@@ -495,24 +603,28 @@ export const getClientSampleQueueStatus = async (agg: string, environment: strin
 
   return {
     result,
-    current
+    current,
   };
 };
 
 /**
  * Remove item from client sample queue
  */
-export const removeFromClientSampleQueue = async (queue: string, input: string, environment: string) => {
+export const removeFromClientSampleQueue = async (
+  queue: string,
+  input: string,
+  environment: string,
+) => {
   logger.info(`Removing item from queue: ${queue}, value: ${input}`);
-  
+
   const redis = await getConnectedRedis();
   if (!redis) {
     throw new Error("Redis connection unavailable");
   }
 
   let queueKey;
-  if(queue.includes("_stage") && environment === "TEST"){
-    const prosQueueKey = queue?.replace(/_/g, '').replace(/stage/gi, '');
+  if (queue.includes("_stage") && environment === "TEST") {
+    const prosQueueKey = queue?.replace(/_/g, "").replace(/stage/gi, "");
     queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, "_TEST");
   } else {
     queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, "_LIVE");
@@ -522,8 +634,8 @@ export const removeFromClientSampleQueue = async (queue: string, input: string, 
 
   if (values.length === 0) {
     return {
-        deleted: 0,
-        message: 'The queue is empty'
+      deleted: 0,
+      message: "The queue is empty",
     };
   }
 
@@ -539,52 +651,58 @@ export const removeFromClientSampleQueue = async (queue: string, input: string, 
 
   return {
     deleted: result,
-    message: `Deleted ${result} occurrence(s) of "${input}" from queue`
+    message: `Deleted ${result} occurrence(s) of "${input}" from queue`,
   };
 };
 
 /**
  * Add item to client sample queue
  */
-export const addToClientSampleQueue = async (queue: string, environment: string, aggregator?: string, clientId?: string, input?: string) => {
+export const addToClientSampleQueue = async (
+  queue: string,
+  environment: string,
+  aggregator?: string,
+  clientId?: string,
+  input?: string,
+) => {
   logger.info(`Adding item to queue: ${queue}`);
-  
+
   const redis = await getConnectedRedis();
   if (!redis) {
     throw new Error("Redis connection unavailable");
   }
 
   let queueKey;
-  if(queue.includes("_stage") && environment === "TEST"){
-    const prosQueueKey = queue?.replace(/_/g, '').replace(/stage/gi, '');
+  if (queue.includes("_stage") && environment === "TEST") {
+    const prosQueueKey = queue?.replace(/_/g, "").replace(/stage/gi, "");
     queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, "_TEST");
   } else {
     queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, "_LIVE");
   }
 
-  let finalInput: string = input || '';
+  let finalInput: string = input || "";
 
   // If no input provided, lookup client alias email from database
-  if(!finalInput && clientId && aggregator) {
+  if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ['seekEmail'],
+      attributes: ["seekEmail"],
     });
-    
+
     if (!cred) {
       throw new Error("Client not found");
     }
-    
+
     const credData = cred.toJSON() as any;
     const aliasEmail = credData.seekEmail;
-    
+
     if (!aliasEmail) {
       throw new Error("Alias email not found for the client");
     }
-    
+
     const inputObject = {
-      email : aliasEmail,
-      process: aggregator.includes("stage") ? 'staging' : 'production'
+      email: aliasEmail,
+      process: aggregator.includes("stage") ? "staging" : "production",
     };
 
     finalInput = JSON.stringify(inputObject);
@@ -600,7 +718,7 @@ export const addToClientSampleQueue = async (queue: string, environment: string,
     return {
       saved: false,
       queue: values,
-      message: `Element already exists in the queue`
+      message: `Element already exists in the queue`,
     };
   }
 
@@ -611,7 +729,7 @@ export const addToClientSampleQueue = async (queue: string, environment: string,
   return {
     saved: true,
     queue: [...values, finalInput],
-    message: `Element added to queue successfully`
+    message: `Element added to queue successfully`,
   };
 };
 
@@ -622,37 +740,45 @@ export const addToClientSampleQueue = async (queue: string, environment: string,
 /**
  * Get aggregator records for campaign sheets
  */
-export const getCampaignAggregatorData = async (clientId: string, active: boolean = true) => {
+export const getCampaignAggregatorData = async (
+  clientId: string,
+  active: boolean = true,
+) => {
   logger.info(`Fetching campaign aggregator data for client: ${clientId}`);
 
   const whereClause = {
     userId: clientId,
-    isDeleted: !active
+    isDeleted: !active,
   };
 
   const totalCount = await Aggregator.count({ where: whereClause });
   const records = await Aggregator.findAll({ where: whereClause });
 
-  logger.info(`Retrieved ${records.length} aggregator records for client: ${clientId}`);
+  logger.info(
+    `Retrieved ${records.length} aggregator records for client: ${clientId}`,
+  );
 
   return {
     records,
-    totalCount
+    totalCount,
   };
 };
 
 /**
  * Soft delete or restore aggregator record
  */
-export const toggleAggregatorRecordStatus = async (recordId: number, action: "soft-delete" | "restore") => {
+export const toggleAggregatorRecordStatus = async (
+  recordId: number,
+  action: "soft-delete" | "restore",
+) => {
   logger.info(`Toggling aggregator record: ${recordId}, action: ${action}`);
 
   const updateClause = {
-    isDeleted: action === "soft-delete"
+    isDeleted: action === "soft-delete",
   };
 
   await Aggregator.update(updateClause, {
-    where: { id: recordId }
+    where: { id: recordId },
   });
 
   logger.info(`Successfully ${action} record: ${recordId}`);
@@ -661,24 +787,30 @@ export const toggleAggregatorRecordStatus = async (recordId: number, action: "so
     success: true,
     recordId,
     action,
-    newStatus: updateClause.isDeleted
+    newStatus: updateClause.isDeleted,
   };
 };
 
 /**
  * Copy aggregator records between staging and production
  */
-export const syncAggregatorRecords = async (clientId: string, syncType: "override" | "increment", fromStage: boolean) => {
-  logger.info(`Syncing aggregator records for client: ${clientId}, type: ${syncType}, fromStage: ${fromStage}`);
+export const syncAggregatorRecords = async (
+  clientId: string,
+  syncType: "override" | "increment",
+  fromStage: boolean,
+) => {
+  logger.info(
+    `Syncing aggregator records for client: ${clientId}, type: ${syncType}, fromStage: ${fromStage}`,
+  );
 
   // Get source records
   const sourceRecords = await Aggregator.findAll({
     where: {
       userId: clientId,
       isStage: fromStage,
-      isDeleted: false
+      isDeleted: false,
     },
-    raw: true
+    raw: true,
   });
 
   if (sourceRecords.length === 0) {
@@ -686,7 +818,7 @@ export const syncAggregatorRecords = async (clientId: string, syncType: "overrid
     return {
       success: true,
       recordsSynced: 0,
-      message: "No records found to sync"
+      message: "No records found to sync",
     };
   }
 
@@ -695,33 +827,35 @@ export const syncAggregatorRecords = async (clientId: string, syncType: "overrid
     await Aggregator.destroy({
       where: {
         userId: clientId,
-        isStage: !fromStage
-      }
+        isStage: !fromStage,
+      },
     });
     logger.info(`Cleared existing target records for override`);
   }
 
   // Prepare records for target environment
-  const targetRecords = sourceRecords.map(record => ({
+  const targetRecords = sourceRecords.map((record) => ({
     ...record,
     id: undefined,
     isStage: !fromStage,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
   }));
 
   // Bulk create records in target
   await Aggregator.bulkCreate(targetRecords, {
-    ignoreDuplicates: syncType === "increment"
+    ignoreDuplicates: syncType === "increment",
   });
 
-  logger.info(`Successfully synced ${targetRecords.length} records for client: ${clientId}`);
+  logger.info(
+    `Successfully synced ${targetRecords.length} records for client: ${clientId}`,
+  );
 
   return {
     success: true,
     recordsSynced: targetRecords.length,
     syncType,
-    fromStage
+    fromStage,
   };
 };
 
@@ -734,27 +868,37 @@ export const getAggregatorsByUserId = async (userId: string) => {
   const aggregators = await Aggregator.findAll({
     where: {
       userId: userId,
-      isDeleted: false
+      isDeleted: false,
     },
-    order: [['createdAt', 'DESC']]
+    order: [["createdAt", "DESC"]],
   });
 
-  logger.info(`Found ${aggregators.length} aggregator records for user: ${userId}`);
+  logger.info(
+    `Found ${aggregators.length} aggregator records for user: ${userId}`,
+  );
 
   return {
     success: true,
     count: aggregators.length,
-    records: aggregators
+    records: aggregators,
   };
 };
 
 /**
  * AI Job Extraction Service
- * 
+ *
  * Accepts job link and page content, forwards to external AI service
  * Returns extracted job data for user review before saving
  */
-export const extractJobData = async (clientId: string, joblink: string, pageContent: string, user: any) => {
+/**
+ * AI Job Extraction Service
+ */
+export const extractJobData = async (
+  clientId: string,
+  joblink: string,
+  pageContent: string,
+  user: any,
+) => {
   logger.info(`Processing AI job extraction for client: ${clientId}`);
 
   // Validate required fields
@@ -762,71 +906,162 @@ export const extractJobData = async (clientId: string, joblink: string, pageCont
   if (!joblink) throw new Error("Job link is required");
   if (!pageContent) throw new Error("Page content is required");
 
-  // Validate that user exists
-  logger.info(`Looking up user with ID: ${clientId}`);
-  
-  const userExists = await User.findOne({
-    where: { id: clientId },
-    raw: true
+  let userRecord = null;
+  let credentialsRecord = null;
+
+  // FIRST: Try to find credentials by UUID (since clientId is credentials.id)
+  logger.info(`Looking up credentials by UUID: ${clientId}`);
+  credentialsRecord = await Credentials.findOne({
+    where: { id: clientId }, // This matches your UUID
+    raw: true,
   });
 
-  logger.info(`User lookup result:`, userExists);
+  if (credentialsRecord) {
+    logger.info(
+      `✓ Found credentials record with UUID: ${credentialsRecord.id}`,
+    );
+    logger.info(`  - Numeric _id: ${credentialsRecord._id}`);
+    logger.info(`  - clientId (user UUID): ${credentialsRecord.clientId}`);
 
-  if (!userExists) {
-    throw new Error(`Client not found with ID: ${clientId}`);
+    // Get the associated user
+    userRecord = await User.findOne({
+      where: { id: credentialsRecord.clientId },
+      raw: true,
+    });
+
+    if (userRecord) {
+      logger.info(
+        `✓ Found associated user: ${userRecord.email} (${userRecord.id})`,
+      );
+    }
   }
 
-  if (userExists.isDeleted) {
-    throw new Error(`Client account is deleted: ${clientId}`);
+  // If not found by credentials.id, try as users.id
+  if (!credentialsRecord) {
+    logger.info(`Not found as credentials.id, trying as users.id: ${clientId}`);
+    userRecord = await User.findOne({
+      where: { id: clientId },
+      raw: true,
+    });
+
+    if (userRecord) {
+      logger.info(`✓ Found user by UUID: ${userRecord.id}`);
+      credentialsRecord = await Credentials.findOne({
+        where: { clientId: userRecord.id },
+        raw: true,
+      });
+    }
   }
 
-  const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+  // If still not found, try as numeric _id
+  if (!credentialsRecord && /^\d+$/.test(clientId)) {
+    logger.info(`Trying as numeric _id: ${clientId}`);
+    credentialsRecord = await Credentials.findOne({
+      where: { _id: parseInt(clientId) },
+      raw: true,
+    });
 
-  let environment = process.env.NODE_ENV || 'development';
-  if (environment === 'preview') {
-    environment = 'staging';
+    if (credentialsRecord) {
+      userRecord = await User.findOne({
+        where: { id: credentialsRecord.clientId },
+        raw: true,
+      });
+    }
+  }
+
+  if (!credentialsRecord) {
+    logger.error(`No credentials record found for ID: ${clientId}`);
+    throw new Error(`Client credentials not found with ID: ${clientId}`);
+  }
+
+  if (!userRecord) {
+    logger.error(
+      `No user found associated with credentials: ${credentialsRecord.id}`,
+    );
+    throw new Error(`User associated with credentials not found`);
+  }
+
+  // Get the numeric _id for Flask API (this is what Flask expects)
+  const flaskClientId = credentialsRecord._id;
+
+  // Get full name from credentials JSONB or user fields
+  let fullName = "";
+  if (credentialsRecord.seekExternalCredentials) {
+    try {
+      const externalCreds =
+        typeof credentialsRecord.seekExternalCredentials === "string"
+          ? JSON.parse(credentialsRecord.seekExternalCredentials)
+          : credentialsRecord.seekExternalCredentials;
+      fullName = externalCreds.Full_Name || externalCreds.fullName || "";
+    } catch (e) {
+      logger.warn(`Failed to parse seekExternalCredentials: ${e}`);
+    }
+  }
+
+  if (!fullName) {
+    fullName =
+      `${userRecord.firstName || ""} ${userRecord.lastName || ""}`.trim();
+  }
+
+  let environment = process.env.NODE_ENV || "development";
+  if (environment === "preview") {
+    environment = "staging";
   }
 
   const requestData = {
     environment,
-    submitted_by: fullName,
-    va_email: user?.email || '',
+    submitted_by: fullName || "System",
+    va_email: user?.email || userRecord.email,
     job_url: joblink,
     page_content: pageContent,
-    client_id: clientId,
+    client_id: flaskClientId, // ✅ Pass the numeric _id (e.g., 123, not UUID)
   };
 
-  logger.info(`AI Extraction Payload for user: ${clientId} (${user?.email || ''})`, requestData);
+  logger.info(`✅ SUCCESSFUL MAPPING:`);
+  logger.info(`   Input clientId (credentials.id UUID): ${clientId}`);
+  logger.info(`   Credentials._id (numeric): ${flaskClientId}`);
+  logger.info(`   User UUID: ${userRecord.id}`);
+  logger.info(`   User Email: ${userRecord.email}`);
+  logger.info(`   Flask expects client_id: ${flaskClientId} (number)`);
 
   // Call Flask AI Extraction API
-  const axios = require('axios');
+  const axios = require("axios");
   const flaskResponse = await axios.post(
-    `http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`, 
+    `http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`,
     requestData,
-    { timeout: 60000 }
+    { timeout: 60000 },
   );
 
   if (!flaskResponse.data.success) {
-    throw new Error(flaskResponse.data.message || 'Failed to extract job data from the provided content.');
+    throw new Error(
+      flaskResponse.data.message ||
+        "Failed to extract job data from the provided content.",
+    );
   }
 
   logger.info(`AI extraction completed successfully for client: ${clientId}`);
 
   return {
     success: true,
-    message: 'AI extraction completed. Please review and edit the data before saving.',
+    message:
+      "AI extraction completed. Please review and edit the data before saving.",
     job_data: flaskResponse.data.job_data,
-    requires_confirmation: true
+    requires_confirmation: true,
   };
 };
 
 /**
  * Save Edited Job Application Service
- * 
+ *
  * Accepts edited job data after user review
  * Forwards to external application API to save to database
  */
-export const saveEditedJob = async (clientId: string, joblink: string, jobData: any, user: any) => {
+export const saveEditedJob = async (
+  clientId: string,
+  joblink: string,
+  jobData: any,
+  user: any,
+) => {
   logger.info(`Saving edited job application for client: ${clientId}`);
 
   // Validate required fields
@@ -836,21 +1071,21 @@ export const saveEditedJob = async (clientId: string, joblink: string, jobData: 
 
   // Validate that client exists
   const clientExists = await User.findOne({
-    where: { 
-      id: clientId, 
-      isDeleted: false 
-    }
+    where: {
+      id: clientId,
+      isDeleted: false,
+    },
   });
 
   if (!clientExists) {
     throw new Error(`Client not found with ID: ${clientId}`);
   }
 
-  const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+  const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
 
-  let environment = process.env.NODE_ENV || 'development';
-  if (environment === 'preview') {
-    environment = 'staging';
+  let environment = process.env.NODE_ENV || "development";
+  if (environment === "preview") {
+    environment = "staging";
   }
 
   // Prepare data for Flask API
@@ -858,7 +1093,7 @@ export const saveEditedJob = async (clientId: string, joblink: string, jobData: 
     environment,
     client_id: clientId,
     submitted_by: fullName,
-    vaEmail: user?.email || '',
+    vaEmail: user?.email || "",
     job_data: {
       job_title: jobData.job_title,
       company: jobData.company,
@@ -867,45 +1102,60 @@ export const saveEditedJob = async (clientId: string, joblink: string, jobData: 
       job_id: jobData.job_id,
       job_type: jobData.job_type,
       country: jobData.country,
-      internal_jobsite: jobData.internal_jobsite || 'C2C',
+      internal_jobsite: jobData.internal_jobsite || "C2C",
       external_jobsite: jobData.external_jobsite,
     },
   };
 
   // Log payload with user information
-  logger.info(`Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`, requestData);
+  logger.info(
+    `Save Application Payload for user: ${user?.id || "N/A"} (${user?.email || ""})`,
+    requestData,
+  );
 
   // Call Flask Save Application API
-  const axios = require('axios');
+  const axios = require("axios");
   const flaskResponse = await axios.post(
-    `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`, 
+    `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
     requestData,
-    { timeout: 30000 }
+    { timeout: 30000 },
   );
 
   if (!flaskResponse.data.success) {
-    throw new Error(flaskResponse.data.message || 'Failed to save application to database.');
+    throw new Error(
+      flaskResponse.data.message || "Failed to save application to database.",
+    );
   }
 
   logger.info(`Job application saved successfully for client: ${clientId}`);
 
   return {
     success: true,
-    message: 'Application saved successfully to database.',
-    data: flaskResponse.data
+    message: "Application saved successfully to database.",
+    data: flaskResponse.data,
   };
 };
 
 /**
  * Assign or Unassign VA to client profile
  */
-export const assignVAToClient = async (credId: string, vaEmail: string | null, host: string) => {
-  logger.info(`Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`);
+export const assignVAToClient = async (
+  credId: string,
+  vaEmail: string | null,
+  host: string,
+) => {
+  logger.info(
+    `Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`,
+  );
 
-
-  if (!vaEmail || vaEmail.trim() === 'Unassigned' || vaEmail.trim() === 'Unassign' || vaEmail.trim() === 'unassign') {
+  if (
+    !vaEmail ||
+    vaEmail.trim() === "Unassigned" ||
+    vaEmail.trim() === "Unassign" ||
+    vaEmail.trim() === "unassign"
+  ) {
     logger.info(`Unassigning VA for credId=${credId}`);
-    
+
     const targetCred = await Credentials.findOne({ where: { id: credId } });
     if (!targetCred) {
       logger.warn(`Client profile not found for credId=${credId}`);
@@ -914,14 +1164,18 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 
     let targetVa = null;
     let tagName = "Previously assigned VA";
-    
+
     // Only lookup VA if there is actually an existing assigned email
     if (targetCred.AssignedPCEmail) {
-      targetVa = await User.findOne({ where: { email: targetCred.AssignedPCEmail } });
-      
+      targetVa = await User.findOne({
+        where: { email: targetCred.AssignedPCEmail },
+      });
+
       if (targetVa) {
         const slackId = await getSlackIdByEmail(targetCred.AssignedPCEmail);
-        tagName = slackId ? `<@${slackId}>` : `${targetVa.firstName} ${targetVa.lastName}`;
+        tagName = slackId
+          ? `<@${slackId}>`
+          : `${targetVa.firstName} ${targetVa.lastName}`;
       } else {
         logger.warn(`TPA not found for email=${targetCred.AssignedPCEmail}`);
         tagName = targetCred.AssignedPCName || targetCred.AssignedPCEmail;
@@ -932,32 +1186,32 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 *Success*: ${tagName} has been unassigned specifically from this client profile.
 *Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
 *Next Step*: TPA to hand over any pending items if applicable.`;
-    
+
     await SlackService.notify({
-      location: getEnvironmentFromHost(host || ''),
-      host: host || '',
+      location: getEnvironmentFromHost(host || ""),
+      host: host || "",
       node: SlackNode.HUMAN_RESOURCE,
       provider: SlackProvider.HUBSTAFF,
       severity: SlackSeverity.INFO,
       trigger: `VA unassigned from client`,
       type: SlackEventType.USER_TRIGGERED,
       channel: SlackChannel.VA,
-      body: message
+      body: message,
     });
 
     await Credentials.update(
-      { 
+      {
         AssignedPCName: null,
-        AssignedPCEmail: null
+        AssignedPCEmail: null,
       } as any,
-      { where: { id: credId } }
+      { where: { id: credId } },
     );
-    
+
     logger.info(`VA unassigned successfully for credId=${credId}`);
-    
+
     return {
       success: true,
-      message: "TPA unassigned successfully"
+      message: "TPA unassigned successfully",
     };
   }
 
@@ -974,31 +1228,33 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
   }
 
   await Credentials.update(
-    { 
-      AssignedPCEmail: vaEmail, 
-      AssignedPCName: `${targetVa?.firstName} ${targetVa?.lastName}` 
+    {
+      AssignedPCEmail: vaEmail,
+      AssignedPCName: `${targetVa?.firstName} ${targetVa?.lastName}`,
     } as any,
-    { where: { id: credId } }
+    { where: { id: credId } },
   );
 
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
-  const tagName = slackId ? `<@${slackId}>` : `${targetVa?.firstName} ${targetVa?.lastName}`;
-  
+  const tagName = slackId
+    ? `<@${slackId}>`
+    : `${targetVa?.firstName} ${targetVa?.lastName}`;
+
   const message = `VA Assignment for ${targetCred?.AssignedPCName}.
 *Success*: ${tagName} has been assigned to this client profile.
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
-  
+
   await SlackService.notify({
-    location: getEnvironmentFromHost(host || ''),
-    host: host || '',
+    location: getEnvironmentFromHost(host || ""),
+    host: host || "",
     node: SlackNode.HUMAN_RESOURCE,
     provider: SlackProvider.HUBSTAFF,
     severity: SlackSeverity.INFO,
     trigger: `VA assigned to client`,
     type: SlackEventType.USER_TRIGGERED,
     channel: SlackChannel.VA,
-    body: message
+    body: message,
   });
 
   logger.info(`VA assigned successfully for credId=${credId} to ${vaEmail}`);
@@ -1007,12 +1263,12 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
     success: true,
     message: "TPA updated successfully",
     vaName: `${targetVa?.firstName} ${targetVa?.lastName}`,
-    vaEmail: vaEmail
+    vaEmail: vaEmail,
   };
 };
 
-type FilterType = 'date' | 'range' | 'first' | 'custom';
-type Samples = 'successful' | 'unattended' | 'all';
+type FilterType = "date" | "range" | "first" | "custom";
+type Samples = "successful" | "unattended" | "all";
 
 interface TriggerOptions {
   filterType: FilterType;
@@ -1029,7 +1285,10 @@ interface TriggerOptions {
 /**
  * Submit job match processing request to Redis queue
  */
-export const submitJobMatchRequest = async (options: TriggerOptions, requestorId?: string) => {
+export const submitJobMatchRequest = async (
+  options: TriggerOptions,
+  requestorId?: string,
+) => {
   logger.info(`Submitting job match request for client: ${options.clientId}`);
 
   const redis = await getConnectedRedis();
@@ -1039,20 +1298,20 @@ export const submitJobMatchRequest = async (options: TriggerOptions, requestorId
 
   const payload: TriggerOptions = {
     ...options,
-    requestor: requestorId || ''
+    requestor: requestorId || "",
   };
 
-  const redisQueue = 'JOB_MATCH';
+  const redisQueue = "JOB_MATCH";
   const redisValue = JSON.stringify(payload);
 
   await redis.lpush(redisQueue, redisValue);
-  
+
   logger.info(`Job match request added to Redis queue: ${redisQueue}`);
 
   return {
     success: true,
-    message: 'Job match submitted for processing',
-    payload
+    message: "Job match submitted for processing",
+    payload,
   };
 };
 
@@ -1063,8 +1322,15 @@ export const submitJobMatchRequest = async (options: TriggerOptions, requestorId
 /**
  * Get campaign clients list with filters
  */
-export const getCampaignClients = async (active: string = 'true', searchQuery?: string, page: number = 1, limit: number = 20) => {
-  logger.info(`Fetching campaign clients, active: ${active}, search: ${searchQuery || 'none'}, page: ${page}, limit: ${limit}`);
+export const getCampaignClients = async (
+  active: string = "true",
+  searchQuery?: string,
+  page: number = 1,
+  limit: number = 20,
+) => {
+  logger.info(
+    `Fetching campaign clients, active: ${active}, search: ${searchQuery || "none"}, page: ${page}, limit: ${limit}`,
+  );
 
   let whereClause: any = {};
 
@@ -1084,23 +1350,32 @@ export const getCampaignClients = async (active: string = 'true', searchQuery?: 
       [Op.or]: [
         // Search inside seekExternalCredentials JSON fields
         Sequelize.where(
-          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'First_Name'`)),
+          Sequelize.fn(
+            "LOWER",
+            Sequelize.literal(`"seekExternalCredentials"->>'First_Name'`),
+          ),
           Op.like,
-          searchTerm.toLowerCase()
+          searchTerm.toLowerCase(),
         ),
         Sequelize.where(
-          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'Last_Name'`)),
+          Sequelize.fn(
+            "LOWER",
+            Sequelize.literal(`"seekExternalCredentials"->>'Last_Name'`),
+          ),
           Op.like,
-          searchTerm.toLowerCase()
+          searchTerm.toLowerCase(),
         ),
         Sequelize.where(
-          Sequelize.fn('LOWER', Sequelize.literal(`"seekExternalCredentials"->>'Full_Name'`)),
+          Sequelize.fn(
+            "LOWER",
+            Sequelize.literal(`"seekExternalCredentials"->>'Full_Name'`),
+          ),
           Op.like,
-          searchTerm.toLowerCase()
+          searchTerm.toLowerCase(),
         ),
         // Also search top level fields
         { seekEmail: { [Op.iLike]: searchTerm } },
-      ]
+      ],
     };
   }
 
@@ -1111,19 +1386,21 @@ export const getCampaignClients = async (active: string = 'true', searchQuery?: 
     order: [["createdAt", "DESC"]],
     limit: limit,
     offset: offset,
-    raw: true
+    raw: true,
   });
 
   const totalCount = await Credentials.count({ where: whereClause });
 
-  logger.info(`Found ${campaigns.length} campaign clients (total: ${totalCount})`);
+  logger.info(
+    `Found ${campaigns.length} campaign clients (total: ${totalCount})`,
+  );
 
   return {
     campaigns,
     totalCount,
     currentPage: page,
     totalPages: Math.ceil(totalCount / limit),
-    limit
+    limit,
   };
 };
 
@@ -1148,7 +1425,7 @@ export const getCampaignClientById = async (clientId: string) => {
   let applicationCounts = {
     totalApplications: 0,
     successfulApplications: 0,
-    failedApplications: 0
+    failedApplications: 0,
   };
 
   if (user && user.profileId) {
@@ -1158,7 +1435,7 @@ export const getCampaignClientById = async (clientId: string) => {
       applicationCounts = {
         totalApplications: profileData.totalApplications || 0,
         successfulApplications: profileData.successfulApplications || 0,
-        failedApplications: profileData.failedApplications || 0
+        failedApplications: profileData.failedApplications || 0,
       };
     }
   }
@@ -1166,7 +1443,7 @@ export const getCampaignClientById = async (clientId: string) => {
   // Combine client data with application counts
   return {
     ...clientData,
-    ...applicationCounts
+    ...applicationCounts,
   };
 };
 
@@ -1176,15 +1453,20 @@ export const getCampaignClientById = async (clientId: string) => {
  * @param preferenceType Optional preference type: 'primary' | 'secondary'
  * @returns Requested preference fields or complete profile including both primary and secondary fields
  */
-export const getUserPreferencesByUserId = async (userId: string, preferenceType?: 'primary' | 'secondary') => {
-  logger.info(`Fetching ${preferenceType || 'all'} user preferences for user ID: ${userId}`);
+export const getUserPreferencesByUserId = async (
+  userId: string,
+  preferenceType?: "primary" | "secondary",
+) => {
+  logger.info(
+    `Fetching ${preferenceType || "all"} user preferences for user ID: ${userId}`,
+  );
 
   if (!userId) {
     throw new Error("User ID is required");
   }
 
   const user = await User.findOne({ where: { id: userId } });
-  
+
   if (!user) {
     throw new Error("User not found");
   }
@@ -1194,26 +1476,28 @@ export const getUserPreferencesByUserId = async (userId: string, preferenceType?
   }
 
   // Fetch profile and cast to any to bypass TypeScript field checking
-  const profile = await Profile.findByPk(user.profileId, { raw: true }) as any;
+  const profile = (await Profile.findByPk(user.profileId, {
+    raw: true,
+  })) as any;
 
   if (!profile) {
     throw new Error("Profile not found for user");
   }
 
   // If specific preference type requested, return only those fields
-  if (preferenceType === 'primary') {
+  if (preferenceType === "primary") {
     return {
       userId,
-      preferenceType: 'primary',
-      profile
+      preferenceType: "primary",
+      profile,
     };
   }
 
-  if (preferenceType === 'secondary') {
+  if (preferenceType === "secondary") {
     return {
       userId,
-      preferenceType: 'secondary',
-      profile
+      preferenceType: "secondary",
+      profile,
     };
   }
 
@@ -1233,7 +1517,7 @@ export const landOrLaunchCampaign = async (clientId: string) => {
   }
 
   const cred = await Credentials.findOne({
-    where: { id: clientId }
+    where: { id: clientId },
   });
 
   if (!cred) {
@@ -1242,23 +1526,23 @@ export const landOrLaunchCampaign = async (clientId: string) => {
 
   let message: string;
   const credData = cred.toJSON() as any;
-  
-  if (credData.capitalized !== 'INFLIGHT') {
+
+  if (credData.capitalized !== "INFLIGHT") {
     await cred.update({
-      capitalized: 'INFLIGHT',
+      capitalized: "INFLIGHT",
       Active: true,
       SeekAnswerPriority: true,
       SeekAggregator: true,
-      SeekSubStartDate: new Date().toISOString()
+      SeekSubStartDate: new Date().toISOString(),
     });
     message = "Campaign launched successfully!";
   } else {
     await cred.update({
-      capitalized: 'HOLD',
+      capitalized: "HOLD",
       Active: false,
       SeekAnswerPriority: false,
       SeekAggregator: false,
-      SeekSubStartDate: null
+      SeekSubStartDate: null,
     });
     message = "Campaign landed successfully!";
   }
@@ -1269,7 +1553,7 @@ export const landOrLaunchCampaign = async (clientId: string) => {
     success: true,
     message,
     clientId,
-    newStatus: credData.capitalized !== 'INFLIGHT' ? 'FLIGHT' : 'HOLD'
+    newStatus: credData.capitalized !== "INFLIGHT" ? "FLIGHT" : "HOLD",
   };
 };
 
@@ -1286,25 +1570,31 @@ export const getDocumentReviewData = async (userId: string) => {
 
   // Retrieve user uploaded documents
   const userDocs = await Upload.findAll({
-    where: { userId, isDeleted: false }
+    where: { userId, isDeleted: false },
   });
 
   // Retrieve user profile preferences
-  const userData = await User.findByPk(userId, { attributes: ['profileId', 'country'] });
-  
+  const userData = await User.findByPk(userId, {
+    attributes: ["profileId", "country"],
+  });
+
   let userPreference: any = null;
   if (userData && userData.profileId) {
-    userPreference = await Profile.findByPk(userData.profileId, { raw: true }) as any;
+    userPreference = (await Profile.findByPk(userData.profileId, {
+      raw: true,
+    })) as any;
     if (userPreference && !userPreference.country) {
       userPreference.country = userData.country;
     }
   }
 
-  logger.info(`Document review data retrieved successfully for user: ${userId}`);
+  logger.info(
+    `Document review data retrieved successfully for user: ${userId}`,
+  );
 
   return {
     userDocs: userDocs || [],
-    userPreference
+    userPreference,
   };
 };
 
@@ -1324,8 +1614,14 @@ export const createCampaignClient = async (data: any) => {
 /**
  * Update campaign client record
  */
-export const updateCampaignClient = async (id: string, data: any, requestorName?: string) => {
-  logger.info(`Updating campaign client: ${id} for data: ${JSON.stringify(data)}`);
+export const updateCampaignClient = async (
+  id: string,
+  data: any,
+  requestorName?: string,
+) => {
+  logger.info(
+    `Updating campaign client: ${id} for data: ${JSON.stringify(data)}`,
+  );
 
   if (!data || Object.keys(data).length === 0) {
     throw new Error("Data is required for update");
@@ -1362,7 +1658,7 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
   // Use static update() to bypass dirty checking - ensures ALL provided fields are updated
   // This fixes boolean/number type mismatch issues (0 vs false, 1 vs true)
   await Credentials.update(updateData, {
-    where: { id }
+    where: { id },
   });
 
   // Fetch updated record to return
@@ -1404,7 +1700,7 @@ export const softDeleteCampaignClient = async (id: string) => {
 
   const response = await Credentials.update(
     { isDeleted: true },
-    { where: { id } }
+    { where: { id } },
   );
 
   logger.info(`Soft deleted campaign client: ${id}`);
@@ -1424,7 +1720,7 @@ export const restoreCampaignClient = async (id: string) => {
 
   const response = await Credentials.update(
     { isDeleted: false },
-    { where: { id } }
+    { where: { id } },
   );
 
   logger.info(`Restored campaign client: ${id}`);
@@ -1444,7 +1740,7 @@ export const permanentDeleteCampaignClient = async (id: string) => {
 
   const response = await Credentials.destroy({
     where: { id },
-    force: true
+    force: true,
   });
 
   logger.info(`PERMANENTLY deleted campaign client: ${id}`);
@@ -1474,13 +1770,16 @@ export const deleteCampaignClientsBulk = async (ids: string[]) => {
 /**
  * Dispatch sample job results to client
  */
-export const dispatchSampleResults = async (clientId: string, host?: string) => {
+export const dispatchSampleResults = async (
+  clientId: string,
+  host?: string,
+) => {
   logger.info(`Dispatching sample results for client: ${clientId}`);
 
   // Find user
-  const user = await User.findOne({ 
+  const user = await User.findOne({
     where: { id: clientId },
-    raw: true 
+    raw: true,
   });
 
   if (!user) {
@@ -1489,7 +1788,7 @@ export const dispatchSampleResults = async (clientId: string, host?: string) => 
 
   // Find credentials record
   const credentials = await Credentials.findOne({
-    where: { clientId: clientId }
+    where: { clientId: clientId },
   });
 
   if (!credentials) {
@@ -1498,31 +1797,31 @@ export const dispatchSampleResults = async (clientId: string, host?: string) => 
 
   // Find sample test applications
   const Application = require("../models/v1/application.model").Application;
-  
+
   const sampleApps = await Application.findAll({
-    where: { 
-      client_id: credentials.id, 
-      Sample_Type: 'Sample Test', 
-      isDeleted: false
+    where: {
+      client_id: credentials.id,
+      Sample_Type: "Sample Test",
+      isDeleted: false,
     },
     limit: 10,
-    order: [['createdAt', 'DESC']],
-    raw: true
+    order: [["createdAt", "DESC"]],
+    raw: true,
   });
 
-  if(!sampleApps || sampleApps.length === 0) {
+  if (!sampleApps || sampleApps.length === 0) {
     throw new Error("No samples to dispatch");
   }
 
   // Update sample status from Test to Live
   const updateResult = await Application.update(
-    { Sample_Type: 'Sample' },
+    { Sample_Type: "Sample" },
     {
       where: {
         client_id: credentials.id,
-        Sample_Type: 'Sample Test',
+        Sample_Type: "Sample Test",
       },
-    }
+    },
   );
 
   if (updateResult[0] === 0) {
@@ -1536,45 +1835,45 @@ export const dispatchSampleResults = async (clientId: string, host?: string) => 
       isSampleDispatched: true,
       isSampleAccepted: false,
       isSampleResultsAccepted: false,
-      progress: "Sample Results Dispatched"
+      progress: "Sample Results Dispatched",
     },
     {
-      where: { userId: clientId }
-    }
+      where: { userId: clientId },
+    },
   );
 
   // Send client notification email
   await sendMail({
     email: user.email,
-    subject: 'Your Sample Results are Ready for Review',
-    templateName: 'DispatchPreference.ejs',
+    subject: "Your Sample Results are Ready for Review",
+    templateName: "DispatchPreference.ejs",
     templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/dashboard/view-preference`,
-      results: sampleApps
-    }
+      results: sampleApps,
+    },
   });
 
   // Send admin notification email
   await sendMail({
     email: "deliveryteam@cvtocareer.com",
     subject: `${user.firstName} ${user.lastName} Sample Results are Ready for Review`,
-    templateName: 'AdminNotificationTemplate.ejs',
+    templateName: "AdminNotificationTemplate.ejs",
     templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/admin/campaign-mgt/client/${clientId}`,
-      email: user.email
-    }
+      email: user.email,
+    },
   });
 
   // Send Slack notification
-  const location = getEnvironmentFromHost(host || '');
-  
+  const location = getEnvironmentFromHost(host || "");
+
   await SlackService.notify({
     location,
-    host: host || '',
+    host: host || "",
     node: SlackNode.MESSAGING,
     provider: SlackProvider.SENDGRID,
     severity: SlackSeverity.INFO,
@@ -1584,15 +1883,17 @@ export const dispatchSampleResults = async (clientId: string, host?: string) => 
     body: `${user.firstName} has been notified of their sample test results for review.
 *Success*: Sample results successfully dispatched to the user.
 *Immediate Impact*: User can now review and provide feedback on the samples.
-*Next Step*: Admin to wait for user acceptance or feedback.`
+*Next Step*: Admin to wait for user acceptance or feedback.`,
   });
 
-  logger.info(`Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`);
+  logger.info(
+    `Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`,
+  );
 
   return {
     success: true,
     message: "Samples dispatched successfully",
     samplesCount: sampleApps.length,
-    updatedRecords: updateResult[0]
+    updatedRecords: updateResult[0],
   };
 };
