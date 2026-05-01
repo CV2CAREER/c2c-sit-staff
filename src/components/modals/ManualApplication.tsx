@@ -53,7 +53,7 @@ const AIEditModal: React.FC<{
     setEditedData((prev: JobData) => ({ ...prev, [field]: value }));
   };
 
-  // Don't return null, show loading state instead
+  // Show loading state while waiting for data
   if (!jobData) {
     return (
       <Modal
@@ -287,7 +287,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
     const loadingToast = toast.loading('Extracting job data with AI...');
 
     try {
-      const result = await extractCampaignJobsMutation.mutateAsync({
+      const result: any = await extractCampaignJobsMutation.mutateAsync({
         clientId: clientId,
         joblink: isLink,
         pageContent: pageContent
@@ -295,40 +295,34 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       
       toast.dismiss(loadingToast);
       
-      // Debug logging
-      console.log('=== API Response ===');
-      console.log('Full result:', result);
-      
-      // Extract job data from the response
+      // Extract job data from the response - handles multiple formats
       let jobData = null;
       
+      // Try different response structures
       if (result?.data?.job_data) {
         jobData = result.data.job_data;
-        console.log('Found job_data in result.data.job_data:', jobData);
       } else if (result?.job_data) {
         jobData = result.job_data;
-        console.log('Found job_data in result.job_data:', jobData);
       } else if (result?.data) {
         jobData = result.data;
-        console.log('Using result.data as job_data:', jobData);
+      } else if (result?.job_title || result?.company) {
+        jobData = result;
       } else {
         jobData = result;
-        console.log('Using result as job_data:', jobData);
       }
       
+      console.log('Extracted job data:', jobData);
+      
       if (jobData && (jobData.job_title || jobData.company)) {
-        // Store the extracted job data and show edit modal
         setExtractedJobData(jobData);
         setShowEditModal(true);
         toast.success(`AI extraction completed! Please review the data.`);
-        console.log('Modal should now open. showEditModal set to true');
       } else {
-        console.error('Invalid job data structure:', jobData);
         toast.error('Failed to extract job data. Invalid response format.');
       }
 
     } catch (error: any) {
-      console.error('=== AI Extraction Error ===', error);
+      console.error('AI Extraction Error:', error);
       toast.dismiss(loadingToast);
       toast.error(error?.response?.data?.message || error?.message || 'Failed to process with AI');
     } finally {
@@ -344,7 +338,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
     const loadingToast = toast.loading('Saving to database...');
 
     try {
-      const result = await saveCampaignJobsMutation.mutateAsync({
+      const result: any = await saveCampaignJobsMutation.mutateAsync({
         clientId,
         joblink: isLink,
         jobData: editedData
@@ -364,7 +358,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       }
 
     } catch (error: any) {
-      console.error('=== Save Error ===', error);
+      console.error('Save Error:', error);
       toast.dismiss(loadingToast);
       toast.error(error?.response?.data?.message || error?.message || 'Failed to save application');
     } finally {
@@ -477,10 +471,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       {/* Editable AI Preview Modal */}
       <AIEditModal
         visible={showEditModal}
-        onClose={() => {
-          console.log('Closing modal');
-          setShowEditModal(false);
-        }}
+        onClose={() => setShowEditModal(false)}
         onConfirm={saveEditedJobData}
         jobData={extractedJobData}
         loading={loading}
