@@ -97,6 +97,7 @@ export const ADMIN_USER_PREFERENCES_HISTORY = (userId: string) => `/api/v1/user-
 export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management/users/${userId}/referrals`;
 export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;
 export const ADMIN_USER_PROFILE_SAFE = (userId: string) => `/api/v1/user-management/users/${userId}/profile`;
+export const ADMIN_USER_PROGRESS = (userId: string) => `/api/v1/user-management/users/${userId}/progress`;
 
 // User Campaign Management Page - Temidayo
 export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients";
@@ -171,4 +172,7 @@ export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";
 
 // Sales Operation Endpoints
 export const ADMIN_SALES_OPERATION = "/api/v1/sales-operation";
+
+// Jobsite v2 Endpoints
+export const ADMIN_JOBSITE = "/api/v1/jobsite";
 

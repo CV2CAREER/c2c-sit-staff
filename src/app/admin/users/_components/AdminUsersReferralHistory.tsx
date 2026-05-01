@@ -29,6 +29,7 @@ const AdminUsersReferralHistory = ({ userId }: { userId: string }) => {
             <div style={{ height: 400, width: '100%' }}>
                 <StyledDataGridPro
                     columns={columns}
+                    showToolbar={true}
                     rows={referralHistory?.referrals?.map((row: any) => ({
                         ...row.user,
                         referralStatus: row.status,

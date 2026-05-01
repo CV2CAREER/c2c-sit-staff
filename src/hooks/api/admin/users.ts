@@ -27,6 +27,7 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     fetchUserReferrals = false,
     fetchUserDocuments = false,
     fetchUserProfileSafe = false,
+    fetchUserProgress = false,
 
     
     startDate = "",
@@ -199,6 +200,13 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
     url: userId ? endpoints.ADMIN_USER_PROFILE_SAFE(userId) : "",
     queryKey: ["admin-user-profile-safe", userId],
     enabled: fetchUserProfileSafe && !!userId,
+  });
+
+  const userProgress = useFetchData<any>({
+    method: "GET",
+    url: userId ? endpoints.ADMIN_USER_PROGRESS(userId) : "",
+    queryKey: ["admin-user-progress", userId],
+    enabled: fetchUserProgress && !!userId,
   });
 
   // Transform the analytics data into the expected persona count format
@@ -434,6 +442,13 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       isSuccess: userProfileSafe.isSuccess,
       isError: userProfileSafe.isError,
       error: userProfileSafe.error,
+    },
+    userProgressDomain: {
+      data: userProgress.data?.data,
+      isLoading: userProgress.isLoading,
+      isSuccess: userProgress.isSuccess,
+      isError: userProgress.isError,
+      error: userProgress.error,
     },
   }), [
     usersCount.data, usersCount.isLoading, usersCount.isSuccess, usersCount.isError, usersCount.error,

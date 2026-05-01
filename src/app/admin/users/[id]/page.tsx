@@ -6,6 +6,7 @@ import { AdminUserDetailProvider, useAdminUserDetailContext } from "../context/u
 import TriggerApplicationAction from "../_components/ApplicationAction";
 import ClientDocument from "../_components/ClientDocuments";
 import AdminProfileInfo from "../_components/AdminUsersProfileInfo";
+import AdminUsersJobSites from "../_components/AdminUsersJobSites";
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
@@ -19,8 +20,8 @@ function UserDetailsContent({ userId }: { userId: string }) {
     const [isUserId, setIsUserId] = useState<string | null>(null);
     const currentUserId = isUserId || userId;
 
-    const { 
-      userDetailDomain: userData,
+    const {
+        userDetailDomain: userData,
     } = useAdminQueries({
         userId: currentUserId,
     });
@@ -52,14 +53,14 @@ function UserDetailsContent({ userId }: { userId: string }) {
         );
     }
 
-
     return (
         <main className="flex flex-col gap-6 mt-6 w-full">
             <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
-            <OnBoardingProgress/>
+            <OnBoardingProgress userId={currentUserId}/>
             {/* <OnboardingStatus/> */}
             <TriggerApplicationAction/>
             <ClientDocument userId={currentUserId} />
+            <AdminUsersJobSites userId={currentUserId}/>
             <AdminProfileInfo userId={currentUserId}/>
             <AdminUsersJobPreferences userId={currentUserId}/>
             <AdminUserJobPreferenceHistory userId={currentUserId} />

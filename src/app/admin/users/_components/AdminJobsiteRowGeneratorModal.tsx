@@ -10,10 +10,11 @@ import toast from "react-hot-toast";
 
 interface AdminJobsiteRowGeneratorModalProps {
     user: any;
+    userId: string;
     missingJobsiteRows: boolean;
 }
 
-const AdminJobsiteRowGeneratorModal = ({ user, missingJobsiteRows = false }: AdminJobsiteRowGeneratorModalProps) => {
+const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = false }: AdminJobsiteRowGeneratorModalProps) => {
     const { isOpen, setIsOpen, handleClose, modalRef } = useModal();
     const { generateJobsiteRowsMutation } = useAdminMutations();
     const [isSuccess, setIsSuccess] = useState(false);
@@ -24,7 +25,7 @@ const AdminJobsiteRowGeneratorModal = ({ user, missingJobsiteRows = false }: Adm
         setError(null);
 
         generateJobsiteRowsMutation.mutate(
-            { userId: user?._id },
+            { userId },
             {
                 onSuccess: (response: any) => {
                     if (response.success) {
@@ -78,14 +79,14 @@ const AdminJobsiteRowGeneratorModal = ({ user, missingJobsiteRows = false }: Adm
                                         <FiUser className="text-blue-600 text-lg" />
                                     </div>
                                     <div>
-                                        <h4 className="font-medium text-gray-800">{`${user?.firstName} ${user?.lastName}`}</h4>
+                                        <h4 className="font-medium text-gray-800">{`${user?.user?.firstName ?? user?.firstName ?? ''} ${user?.user?.lastName ?? user?.lastName ?? ''}`}</h4>
                                         <div className="flex items-center text-sm text-gray-500 mt-1">
                                             <FiMail className="mr-2" />
-                                            {user?.email}
+                                            {user?.user?.email ?? user?.email}
                                         </div>
-                                        {user?.country && (
+                                        {(user?.user?.country ?? user?.country) && (
                                             <div className="text-sm text-gray-500 mt-1">
-                                                Country: {user?.country}
+                                                Country: {user?.user?.country ?? user?.country}
                                             </div>
                                         )}
                                     </div>
@@ -121,7 +122,7 @@ const AdminJobsiteRowGeneratorModal = ({ user, missingJobsiteRows = false }: Adm
                                         <div>
                                             <h4 className="font-medium text-green-800">Success!</h4>
                                             <p className="text-sm text-green-600 mt-1">
-                                                Jobsite rows created successfully for {`${user?.firstName} ${user?.lastName}`}.
+                                                Jobsite rows created successfully for {`${user?.user?.firstName ?? user?.firstName ?? ''} ${user?.user?.lastName ?? user?.lastName ?? ''}`}.
                                             </p>
                                         </div>
                                     </div>

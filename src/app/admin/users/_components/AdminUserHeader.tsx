@@ -118,9 +118,6 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
             <div className="rounded-full w-2 mx-4 h-2 bg-career-blue-800" />
             <p className="text-14 text-career-gray-200 capitalize">{profileUser?.plan ?? userData?.data?.plan}</p>
           </div>
-          <p className="text-career-gray-200 mt-1">
-            {profileUser?.email ?? userData?.data?.email}
-          </p>
           <p className="text-career-gray-200 mt-1 capitalize">{profileUser?.role ?? userData?.data?.role}</p>
         </div>
       </div>
