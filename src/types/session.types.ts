@@ -70,6 +70,7 @@ export interface SessionCreationAttributes {
   meetingLink?: string;
   scheduleId?: string;
   grading?: Grading;
+  isGraded?: boolean;
   clientId?: string;
   coachId?: string;
   timezone?: string;

@@ -102,3 +102,26 @@ export const getUserReferrals = catchAsyncError(
     }
   }
 );
+
+/**
+ * ⚡ GET /v1/coach/referrals
+ * Get referrals for authenticated coach by email
+ */
+export const getCoachReferrals = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        return res.apiError(new ErrorHandler("User authentication required", 401));
+      }
+
+      const result = await ReferralService.getUserReferrals(userId);
+
+      res.apiSuccess({ data: result.referrals }, "Coach referrals retrieved successfully");
+    } catch (error: any) {
+      logger.error(`Failed to fetch coach referrals: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
