@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "antd";
 import toast from "react-hot-toast";
-import { Loader2, Save, Trash2, CheckCircle } from "lucide-react";
+import { Loader2, Save, Trash2, CheckCircle, ArrowLeft, Star } from "lucide-react";
+import GradingForm from "./GradingForm";
 
 export default function ManageSession() {
   const { sessionId } = useParams() as { sessionId: string };
@@ -89,15 +90,26 @@ export default function ManageSession() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {session.client?.firstName} {session.client?.lastName}
-          </h2>
-          <p className="text-gray-500 font-medium">
-            {format(new Date(session.time?.startTime || new Date()), "PPP")} | {format(new Date(session.time?.startTime || new Date()), "p")} - {format(new Date(session.time?.endTime || new Date()), "p")}
-          </p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+            <ArrowLeft size={20} />
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {session.client?.firstName} {session.client?.lastName}
+            </h2>
+            <p className="text-gray-500 font-medium">
+              {format(new Date(session.time?.startTime || new Date()), "PPP")} | {format(new Date(session.time?.startTime || new Date()), "p")} - {format(new Date(session.time?.endTime || new Date()), "p")}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+           {session.isGraded && (
+             <div className="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold border border-yellow-100">
+               <Star size={14} className="fill-yellow-700" />
+               GRADED
+             </div>
+           )}
            <Badge 
              status={session.sessionStatus === 'completed' ? 'success' : session.sessionStatus === 'canceled' ? 'error' : 'processing'} 
              text={session.sessionStatus?.toUpperCase()} 
@@ -181,6 +193,17 @@ export default function ManageSession() {
           </CardContent>
         </Card>
       </div>
+
+      {session.sessionStatus === 'completed' && (
+        <GradingForm 
+          sessionId={sessionId} 
+          initialGrading={session.grading}
+          onSuccess={() => {
+            // Refetch session detail to update UI
+            sessionDetailDomain.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

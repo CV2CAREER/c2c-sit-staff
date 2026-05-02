@@ -10,7 +10,9 @@ export default function ReferralLinkClient() {
   const isMounted = useRef(true);
 
   const referralLink = useMemo(() => {
-    return `${process.env.NEXT_PUBLIC_CLIENT_URL}/register?ref=${user?.email}-partner`;
+    const baseUrl = process.env.NEXT_PUBLIC_CLIENT_URL || 
+                    (typeof window !== "undefined" ? window.location.origin.replace(":3000", ":3001") : "");
+    return `${baseUrl}/register?ref=${user?.email}-partner`;
   }, [user?.email]);
 
   const copyToClipboard = async () => {

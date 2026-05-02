@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useFetchData } from "../useApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
-import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
+import * as coachEndpoints from "@/constants/apiEndpoints/coach.endpoint";
 
 interface CoachQueriesOptions {
   fetchSessions?: boolean;
@@ -23,7 +23,7 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
 
   const sessions = useFetchData<any>({
     method: "GET",
-    url: endpoints.COACH_SESSIONS,
+    url: coachEndpoints.COACH_SESSIONS,
     params: { limit },
     queryKey: ["coach-sessions", limit],
     enabled: fetchSessions,
@@ -31,21 +31,21 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
 
   const sessionDetail = useFetchData<any>({
     method: "GET",
-    url: sessionId ? endpoints.COACH_SESSION_DETAIL(sessionId) : "",
+    url: sessionId ? coachEndpoints.COACH_SESSION_DETAIL(sessionId) : "",
     queryKey: ["coach-session-detail", sessionId],
     enabled: !!sessionId,
   });
 
   const coachProfile = useFetchData<any>({
     method: "GET",
-    url: endpoints.COACH_ME,
+    url: coachEndpoints.COACH_ME,
     queryKey: ["coach-profile"],
     enabled: fetchProfile,
   });
 
   const schedules = useFetchData<any>({
     method: "GET",
-    url: endpoints.COACH_SCHEDULES,
+    url: coachEndpoints.COACH_SCHEDULE,
     queryKey: ["coach-schedules"],
     enabled: fetchSchedules,
   });
@@ -89,7 +89,7 @@ export const useCoachMutations = () => {
   const completeSession = useMutation({
     mutationKey: ["coach-complete-session"],
     mutationFn: async (sessionId: string) => {
-      const response = await axiosInstance.patch(endpoints.COACH_SESSION_COMPLETE(sessionId));
+      const response = await axiosInstance.patch(coachEndpoints.COACH_SESSION_COMPLETE(sessionId));
       return response.data;
     },
     onSuccess: () => {
@@ -100,7 +100,7 @@ export const useCoachMutations = () => {
   const createSchedule = useMutation({
     mutationKey: ["coach-create-schedule"],
     mutationFn: async (payload: any) => {
-      const response = await axiosInstance.post(endpoints.COACH_SCHEDULES, payload);
+      const response = await axiosInstance.post(coachEndpoints.COACH_SCHEDULE, payload);
       return response.data;
     },
     onSuccess: () => {
@@ -111,7 +111,7 @@ export const useCoachMutations = () => {
   const deleteSchedule = useMutation({
     mutationKey: ["coach-delete-schedule"],
     mutationFn: async (id: string) => {
-      const response = await axiosInstance.delete(`${endpoints.COACH_SCHEDULE_DETAIL(id)}`);
+      const response = await axiosInstance.delete(coachEndpoints.COACH_SCHEDULE_DETAIL(id));
       return response.data;
     },
     onSuccess: () => {
@@ -122,10 +122,33 @@ export const useCoachMutations = () => {
   const updateSession = useMutation({
     mutationKey: ["coach-update-session"],
     mutationFn: async (payload: { id: string; additionalInfo?: string; meetingLink?: string }) => {
-      const response = await axiosInstance.patch(endpoints.COACH_SESSION_DETAIL(payload.id), {
+      const response = await axiosInstance.patch(coachEndpoints.COACH_SESSION_DETAIL(payload.id), {
         additionalInfo: payload.additionalInfo,
         meetingLink: payload.meetingLink,
       });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coach-sessions"] });
+    },
+  });
+
+  const gradeSession = useMutation({
+    mutationKey: ["coach-grade-session"],
+    mutationFn: async (payload: {
+      sessionId: string;
+      score?: number;
+      maxScore?: number;
+      feedback?: string;
+      criteria?: Array<{
+        name: string;
+        score: number;
+        maxScore: number;
+        feedback?: string;
+      }>;
+    }) => {
+      const { sessionId, ...grading } = payload;
+      const response = await axiosInstance.post(coachEndpoints.COACH_GRADE_SESSION(sessionId), grading);
       return response.data;
     },
     onSuccess: () => {
@@ -138,5 +161,6 @@ export const useCoachMutations = () => {
     deleteSchedule,
     updateSession,
     completeSession,
+    gradeSession,
   };
 };

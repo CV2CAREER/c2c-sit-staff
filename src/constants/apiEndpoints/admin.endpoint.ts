@@ -128,8 +128,8 @@ export const ADMIN_PROMPTS_VCS = (basePath: string) => `/api/v1/admin/ai/${norma
 export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/ai/cv-ai/style`;
 
 // Admin Training Tracker Endpoints
-export const ADMIN_TRAINING_TRACKER = "/api/v1/admin/training-tracker";
-export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/admin/training-tracker/sessions";
+export const ADMIN_TRAINING_TRACKER = "/api/v1/training-tracker";
+export const ADMIN_TRAINING_TRACKER_SESSION = "/api/v1/training-tracker/sessions";
 export const ADMIN_COACHES_VARIANT = "/api/v1/coach";
 
 // Coach Specific Endpoints

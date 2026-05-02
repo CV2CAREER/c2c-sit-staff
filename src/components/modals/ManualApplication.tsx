@@ -53,7 +53,26 @@ const AIEditModal: React.FC<{
     setEditedData((prev: JobData) => ({ ...prev, [field]: value }));
   };
 
-  if (!jobData) return null;
+  // Show loading state while waiting for data
+  if (!jobData) {
+    return (
+      <Modal
+        title="Review & Edit Job Data"
+        open={visible}
+        onCancel={onClose}
+        footer={null}
+        width={800}
+        centered
+      >
+        <div className="p-4">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading job data...</p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -268,7 +287,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
     const loadingToast = toast.loading('Extracting job data with AI...');
 
     try {
-      const result = await extractCampaignJobsMutation.mutateAsync({
+      const result: any = await extractCampaignJobsMutation.mutateAsync({
         clientId: clientId,
         joblink: isLink,
         pageContent: pageContent
@@ -276,14 +295,36 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       
       toast.dismiss(loadingToast);
       
-      // Store the extracted job data and show edit modal
-      setExtractedJobData(result.data);
-      setShowEditModal(true);
-      toast.success(`AI extraction completed! Please review the data.`);
+      // Extract job data from the response - handles multiple formats
+      let jobData = null;
+      
+      // Try different response structures
+      if (result?.data?.job_data) {
+        jobData = result.data.job_data;
+      } else if (result?.job_data) {
+        jobData = result.job_data;
+      } else if (result?.data) {
+        jobData = result.data;
+      } else if (result?.job_title || result?.company) {
+        jobData = result;
+      } else {
+        jobData = result;
+      }
+      
+      console.log('Extracted job data:', jobData);
+      
+      if (jobData && (jobData.job_title || jobData.company)) {
+        setExtractedJobData(jobData);
+        setShowEditModal(true);
+        toast.success(`AI extraction completed! Please review the data.`);
+      } else {
+        toast.error('Failed to extract job data. Invalid response format.');
+      }
 
     } catch (error: any) {
+      console.error('AI Extraction Error:', error);
       toast.dismiss(loadingToast);
-      toast.error(error?.response?.data?.message || 'Failed to process with AI');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to process with AI');
     } finally {
       setAiProcessing(false);
     }
@@ -297,23 +338,29 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
     const loadingToast = toast.loading('Saving to database...');
 
     try {
-      await saveCampaignJobsMutation.mutateAsync({
+      const result: any = await saveCampaignJobsMutation.mutateAsync({
         clientId,
         joblink: isLink,
-        jobData: Array.isArray(editedData) ? editedData : [editedData]
+        jobData: editedData
       });
       
       toast.dismiss(loadingToast);
-      toast.success('Application saved successfully');
-      setPageContent('');
-      setExtractedJobData(null);
-      setShowEditModal(false);
-      if (setReload) setReload();
-      onClose();
+      
+      if (result?.data?.status === 'success' || result?.status === 'success') {
+        toast.success('Application saved successfully');
+        setPageContent('');
+        setExtractedJobData(null);
+        setShowEditModal(false);
+        if (setReload) setReload();
+        onClose();
+      } else {
+        toast.error(result?.data?.message || result?.message || 'Failed to save application');
+      }
 
     } catch (error: any) {
+      console.error('Save Error:', error);
       toast.dismiss(loadingToast);
-      toast.error(error?.response?.data?.message || 'Failed to save application');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to save application');
     } finally {
       setLoading(false);
     }
