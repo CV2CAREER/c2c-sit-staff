@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { SingleValue } from "react-select";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface VACellProps {
     data: null | any
@@ -12,10 +13,11 @@ interface VACellProps {
 export const VACell = ({ data = null } : VACellProps) => {
     const [selected, setSelected] = useState<any>(null);
     const [unassign, setUnassign] = useState(data?.VaEmail);
+    const queryClient = useQueryClient();
 
     const { pcsDomain: { data: vaData, isError } } = useAdminQueries({ fetchPCs: true });
     const vas = Array.isArray(vaData) ? vaData : ((vaData as any)?.items ?? []);
-    
+
     const { assignVaMutation } = useAdminMutations();
 
     useEffect(() => {
@@ -42,6 +44,8 @@ export const VACell = ({ data = null } : VACellProps) => {
                 credId,
                 vaEmail: VaEmail || null,
             });
+
+            queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
 
             toast.success(
                 VaEmail

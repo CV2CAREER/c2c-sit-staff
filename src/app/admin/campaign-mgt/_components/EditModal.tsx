@@ -117,90 +117,85 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
     .getData()
     .map((country) => ({ ...country, value: country.label }));
 
+  // Helper: read a field from the client object, falling back to seekExternalCredentials
+  // JSONB for fields that are stored there (First_Name, Plan, Country, etc.)
+  const getField = (key: string) => {
+    const top = (client as any)[key];
+    if (top !== undefined && top !== null) return top;
+    return (client as any)?.seekExternalCredentials?.[key] ?? null;
+  };
+
   // Form Definition
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      Full_Name: client.Full_Name,
-      First_Name: client.First_Name,
-      Middle_Name: client.Middle_Name,
-      Last_Name: client.Last_Name,
-      Plan: client.Plan,
-      ReturnCount: Number(client.ReturnCount),
-      Order: client.Order,
-      SeekSubStartDate: client.SeekSubStartDate,
-      Assurance: client.Assurance,
-      SeekWeeklyMax: client.SeekWeeklyMax,
-      SeekSubDurDays: client.SeekSubDurDays,
-      GraceDuration: client.GraceDuration,
-      Capitalized: client.Capitalized,
-      Country: client.Country,
+      Full_Name: getField("Full_Name"),
+      First_Name: getField("First_Name"),
+      Middle_Name: getField("Middle_Name"),
+      Last_Name: getField("Last_Name"),
+      Plan: getField("Plan"),
+      ReturnCount: Number(getField("ReturnCount")) || null,
+      Order: getField("Order"),
+      SeekSubStartDate: getField("SeekSubStartDate"),
+      Assurance: getField("Assurance"),
+      SeekWeeklyMax: getField("SeekWeeklyMax"),
+      SeekSubDurDays: getField("SeekSubDurDays"),
+      GraceDuration: getField("GraceDuration"),
+      Capitalized: getField("Capitalized"),
+      Country: getField("Country"),
       Active: client.Active ?? false,
       SeekAnswerPriority: client.SeekAnswerPriority ?? false,
-      Seek_Aggregator: client.Seek_Aggregator ?? false,
-      Linkedin_Aggregator: client.Linkedin_Aggregator ?? false,
-      Jobserve_Aggregator: client.Jobserve_Aggregator ?? false,
-      EscapeCity_Aggregator: client.EscapeCity_Aggregator ?? false,
-      WorkforceAustralia_Aggregator: client.WorkforceAustralia_Aggregator ?? false,
-      Indeed_Aggregator: client.Indeed_Aggregator ?? false,
-      Monster_Aggregator: client.Monster_Aggregator ?? false,
-      Jora_Aggregator: client.Jora_Aggregator ?? false,
-      Adzuna_Aggregator: client.Adzuna_Aggregator ?? false,
-      CareerOne_Aggregator: client.CareerOne_Aggregator ?? false,
-      Reed_Aggregator: client.Reed_Aggregator ?? false,
-      Adecco_Aggregator: client.Adecco_Aggregator ?? 0,
-      CVLibrary_Aggregator: client.CVLibrary_Aggregator ?? false,
-      NHSJobs_Aggregator: client.NHSJobs_Aggregator ?? false,
-      Throttle_Listing: client.Throttle_Listing ?? false,
-      Throttle_Duration: client.Throttle_Duration ?? null,
-      Batch: client.Batch ?? null,
-      Craft: client.Craft ?? null,
-      Status: client.Status ?? null,
-      Alias_Email: client.Alias_Email ?? null,
-      Alias_Password: client.Alias_Password ?? null,
-      VaName: client.VaName ?? null
+      Seek_Aggregator: getField("Seek_Aggregator") ?? false,
+      Linkedin_Aggregator: getField("Linkedin_Aggregator") ?? false,
+      Jobserve_Aggregator: getField("Jobserve_Aggregator") ?? false,
+      EscapeCity_Aggregator: getField("EscapeCity_Aggregator") ?? false,
+      WorkforceAustralia_Aggregator: getField("WorkforceAustralia_Aggregator") ?? false,
+      Indeed_Aggregator: getField("Indeed_Aggregator") ?? false,
+      Monster_Aggregator: getField("Monster_Aggregator") ?? false,
+      Jora_Aggregator: getField("Jora_Aggregator") ?? false,
+      Adzuna_Aggregator: getField("Adzuna_Aggregator") ?? false,
+      CareerOne_Aggregator: getField("CareerOne_Aggregator") ?? false,
+      Reed_Aggregator: getField("Reed_Aggregator") ?? false,
+      Adecco_Aggregator: getField("Adecco_Aggregator") ?? 0,
+      CVLibrary_Aggregator: getField("CVLibrary_Aggregator") ?? false,
+      NHSJobs_Aggregator: getField("NHSJobs_Aggregator") ?? false,
+      Throttle_Listing: getField("Throttle_Listing") ?? false,
+      Throttle_Duration: getField("Throttle_Duration") ?? null,
+      Batch: getField("Batch") ?? null,
+      Craft: getField("Craft") ?? null,
+      Status: getField("Status") ?? null,
+      Alias_Email: getField("Alias_Email") ?? null,
+      Alias_Password: getField("Alias_Password") ?? null,
+      VaName: getField("VaName") ?? null
     },
   });
 
   // Submit handler
   const onSubmit = (values: CampaignFormValues) => {
-    // Check if the data from the form is different from the current values
+    // Build a diff: only fields whose value changed relative to the original client data
     const updatedData = Object.entries(values).reduce(
-  (acc: Partial<z.infer<typeof formSchema>>, [key, value]) => {
-    const typedKey = key as keyof z.infer<typeof formSchema>;
-    const currentValue = client[typedKey];
-    let processedValue: typeof value | undefined = value; 
+      (acc: Partial<z.infer<typeof formSchema>>, [key, value]) => {
+        const typedKey = key as keyof z.infer<typeof formSchema>;
+        // currentValue may live at top level or inside seekExternalCredentials JSONB
+        const currentValue = getField(key);
 
-    if (typeof processedValue === "string") {
-      processedValue = processedValue.trim();
-    }
-
-    if (processedValue === null) {
-        processedValue = undefined;
-    }
-
-    if (processedValue !== currentValue && processedValue !== "" && processedValue !== " ") {
-      if (processedValue !== undefined || formSchema.shape[typedKey]?.isOptional()) {
-         if (typedKey in formSchema.shape) {
-            // @ts-ignore
-            acc[typedKey] = processedValue as any;
+        let processedValue: typeof value | undefined = value;
+        if (typeof processedValue === "string") {
+          processedValue = processedValue.trim() as any;
         }
-      }
-    }
+        // Treat empty string as "no change"
+        if (processedValue === "" || processedValue === null) {
+          return acc;
+        }
 
-    // Only add to updatedData if the value is different and not empty
-    if (value !== currentValue && value !== "" && value !== " ") {
-      if (typedKey in formSchema.shape) {
-        // Properly handle null values for TypeScript
-        const safeValue = value === null ? undefined : value;
-        (acc as any)[typedKey] = safeValue;
-      }
-    }
+        if (processedValue !== currentValue && typedKey in formSchema.shape) {
+          (acc as any)[typedKey] = processedValue;
+        }
 
-      return acc;
-    },
-    {} as Partial<z.infer<typeof formSchema>>
-  );
+        return acc;
+      },
+      {} as Partial<z.infer<typeof formSchema>>
+    );
 
     // If there are no changes, return early
     if (Object.keys(updatedData).length === 0) {
@@ -416,7 +411,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormControl>
                         <DatePicker
                           format="DD-MM-YYYY"
-                          value={field.value ? moment(field.value, "DD-MM-YYYY") : null}
+                          value={field.value ? moment(field.value, ["DD-MM-YYYY", moment.ISO_8601]) : null}
                           onChange={(dateMoment: moment.Moment | null) => {
                             field.onChange(dateMoment ? dateMoment.format("DD-MM-YYYY") : null);
                           }}

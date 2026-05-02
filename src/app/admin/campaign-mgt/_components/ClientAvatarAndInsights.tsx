@@ -53,7 +53,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
       
       const mapped = clientDataArray
         ?.map((data: any) => ({
-          Full_Name: `${data.seekExternalCredentials?.Full_Name}` || `${data.seekExternalCredentials?.Last_Name} ${data.seekExternalCredentials?.First_Name}` || "",
+          Full_Name: `${data.seekExternalCredentials?.First_Name} ${data.seekExternalCredentials?.Middle_Name} ${data.seekExternalCredentials?.Last_Name}` || `${data.seekExternalCredentials?.Full_Name}`,
           id: data.id,
           _id: data.id,
         }))

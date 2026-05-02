@@ -225,43 +225,83 @@ const queryClient = useQueryClient();
 
   const rows: GridRowsProp<CampaignTableColType> = React.useMemo(() => {
     if (!rowsData || !Array.isArray(rowsData)) return [];
-    
-    // Map client fields from GET /v1/campaigns/clients response to match table column schema
-    return rowsData.map((client: any) => ({
-      // Map exactly the field names the table expects from the new API response
-      id: client.id,
-      CustomerId: client.seekExternalCredentials?.CustomerId || client.clientId,
-      Full_Name: client.seekExternalCredentials?.Full_Name || client.seekEmail,
-      First_Name: client.seekExternalCredentials?.First_Name,
-      Middle_Name: client.seekExternalCredentials?.Middle_Name,
-      Last_Name: client.seekExternalCredentials?.Last_Name,
-      Email: client.seekEmail,
-      PhoneNumber: client.phoneNumber || '',
-      Plan: client.seekExternalCredentials?.Plan,
-      ReturnCount: client.returnCount || 0,
-      Country: client.seekExternalCredentials?.Country || client.currentCity,
-      Active: client.seekExternalCredentials?.Active,
-      isEmailVerified: client.isEmailVerified || true,
-      isDocumentUploaded: client.isDocumentUploaded || false,
-      isDocumentApproved: client.isDocumentApproved || false,
-      isUserSubscribed: true,
-      campaignActive: !client.isDeleted,
-      progress: client.progress || 0,
-      applicationStatus: client.applicationStatus || 'Active',
-      paymentStatus: client.paymentStatus || 'Paid',
-      updateBy: client.AssignedPCName,
-      createdAt: client.createdAt,
-      updatedAt: client.updatedAt,
-      Capitalized: !client.isDeleted ? 'INFLIGHT' : '',
-      AssignedPCName: client.AssignedPCName,
-      AssignedPCEmail: client.AssignedPCEmail,
-      CampaignEnd: client.seekExternalCredentials?.CampaignEnd,
-      SeekSubEndDate: client.seekExternalCredentials?.SeekSubEndDate,
-      SeekSubDurDays: client.seekExternalCredentials?.SeekSubDurDays,
-      
-      // Pass through all original client properties for action buttons
-      ...client,
-    }));
+
+    return rowsData.map((client: any) => {
+      // Shorthand for the credentials JSONB so we don't repeat optional chaining
+      const cred = client.seekExternalCredentials ?? {};
+
+      return {
+        // Spread raw API response first so action buttons and any extra fields are available
+        ...client,
+
+        // ── Identity ──────────────────────────────────────────────
+        id: client.id,
+        clientId: client.clientId,
+        CustomerId: client.clientId || cred.CustomerId,
+
+        // ── Personal info (seekExternalCredentials) ───────────────
+        Full_Name: `${cred.First_Name} ${cred.Middle_Name} ${cred.Last_Name}` || cred.Full_Name,
+        First_Name: cred.First_Name ?? null,
+        Middle_Name: cred.Middle_Name ?? null,
+        Last_Name: cred.Last_Name ?? null,
+
+        // ── Contact ───────────────────────────────────────────────
+        Email: client.seekEmail,
+        Alias_Email: cred.Alias_Email ?? null,
+        Alias_Password: cred.Alias_Password ?? null,
+        ExternalPassword: client.seekPassword || null,
+
+        // ── Plan & location ───────────────────────────────────────
+        Plan: cred.Plan ?? null,
+        Country: client.currentCity ?? null,
+        ReturnCount: client.returnCount ?? 0,
+        Batch: cred.Batch ?? null,
+        Craft: cred.Craft ?? null,
+
+        // ── Campaign status (top-level) ───────────────────────────
+        Active: client.Active ?? false,
+        SeekAnswerPriority: client.SeekAnswerPriority ?? false,
+        // API sends "capitalized" (lowercase) – table column key is "Capitalized"
+        Capitalized: client.capitalized ?? null,
+        campaignActive: !client.isDeleted,
+        isDeleted: client.isDeleted,
+
+        // ── Subscription dates (mixed: top-level + credentials) ───
+        SeekSubStartDate: client.SeekSubStartDate ?? null,
+        SeekSubEndDate: cred.SeekSubEndDate ?? null,
+        SeekSubDurDays: cred.SeekSubDurDays ?? null,
+        CampaignEnd: cred.CampaignEnd ?? null,
+
+        // ── Aggregators ───────────────────────────────────────────
+        // Seek is tracked at top-level (SeekAggregator); all others live in credentials
+        Seek_Aggregator: client.SeekAggregator ?? false,
+        Linkedin_Aggregator: cred.Linkedin_Aggregator ?? false,
+        Jobserve_Aggregator: cred.Jobserve_Aggregator ?? false,
+        EscapeCity_Aggregator: cred.EscapeCity_Aggregator ?? false,
+        WorkforceAustralia_Aggregator: cred.WorkforceAustralia_Aggregator ?? false,
+        Indeed_Aggregator: cred.Indeed_Aggregator ?? false,
+        Monster_Aggregator: cred.Monster_Aggregator ?? false,
+        Jora_Aggregator: cred.Jora_Aggregator ?? false,
+        Adzuna_Aggregator: cred.Adzuna_Aggregator ?? false,
+        CareerOne_Aggregator: cred.CareerOne_Aggregator ?? false,
+        Reed_Aggregator: cred.Reed_Aggregator ?? false,
+        Adecco_Aggregator: cred.Adecco_Aggregator ?? 0,
+        CVLibrary_Aggregator: cred.CVLibrary_Aggregator ?? false,
+        NHSJobs_Aggregator: cred.NHSJobs_Aggregator ?? false,
+        Throttle_Listing: cred.Throttle_Listing ?? false,
+
+        // ── PC assignment (AssignVA + EditModal need VaName / VaEmail) ─
+        VaName: client.AssignedPCName ?? null,
+        VaEmail: client.AssignedPCEmail ?? null,
+        AssignedPCName: client.AssignedPCName ?? null,
+        AssignedPCEmail: client.AssignedPCEmail ?? null,
+        updateBy: client.AssignedPCName ?? null,
+
+        // ── Metadata ──────────────────────────────────────────────
+        createdAt: client.createdAt,
+        updatedAt: client.updatedAt,
+      };
+    });
   }, [rowsData]);
 
   useEffect(() => {
