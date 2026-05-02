@@ -125,4 +125,8 @@ export class Credentials extends Model {
   @AllowNull(true)
   @Column(DataType.STRING(128))
   SeekSubStartDate?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(255))
+  updatedBy?: string;
 }

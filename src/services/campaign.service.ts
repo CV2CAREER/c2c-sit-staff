@@ -17,23 +17,6 @@ import { credential } from "firebase-admin";
 const logger = getServiceLogger("campaign-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
 
-/**
- * Aggregator status field mapping
- */
-const statusField: Record<string, string> = {
-  'jobbank': 'JobBank_Aggregator',
-  'seek': 'Seek_Aggregator',
-  'adecco': 'Adecco_Aggregator',
-  'indeed': 'Indeed_Aggregator',
-  'linkedin': 'LinkedIn_Aggregator',
-  'adzuna': 'Adzuna_Aggregator',
-  'escapecity': 'EscapeCity_Aggregator',
-  'reed': 'Reed_Aggregator',
-  'careerone': 'CareerOne_Aggregator',
-  'jora': 'Jora_Aggregator',
-  'randstad': 'Randstad_Aggregator',
-  'michaelpage': 'Michael_Page_Aggregator',
-};
 
 /**
  * Extract active aggregator credentials from credentials object
@@ -51,7 +34,8 @@ export const extractAggregatorCredentials = (obj: {[key: string]: string}) => {
   return aggregatorKeyMap.reduce((acc, curr) => {
     const email = obj[curr.email];
     const password = obj[curr.password];
-    if (email && password) {
+    const isActive = obj[curr.active];
+    if (email && password && isActive && isActive !== 'false') {
       acc.push({ email, password, name: curr.name });
     }
     return acc;
@@ -145,8 +129,10 @@ export const dispatchClientCredentials = async (clientId: string, host: string) 
     throw new Error("Client customer ID not set");
   }
 
-  const credentials = extractAggregatorCredentials(client.toJSON());
-  
+  const clientJson = client.toJSON() as any;
+  const credentialsSource = { ...clientJson, ...(clientJson.seekExternalCredentials || {}) };
+  const credentials = extractAggregatorCredentials(credentialsSource);
+
   if (!credentials.length) {
     logger.warn(`No credentials found for client: ${clientId}`);
     throw new Error("No credential(s) set for client");
@@ -219,20 +205,21 @@ export const generateExternalPassword = async (userId: string, host: string) => 
     throw new Error("User not found");
   }
 
-  // Check if password already exists
   const credentialsData = userCredentials.toJSON() as any;
-  if (credentialsData.ExternalPassword) {
+  const existingJsonb = credentialsData.seekExternalCredentials || {};
+
+  // ExternalPassword lives inside the seekExternalCredentials JSONB column
+  if (existingJsonb.ExternalPassword) {
     logger.warn(`External password already exists for user: ${userId}`);
     throw new Error("External password already exists");
   }
 
-  // Update with generated password
-  await Credentials.update(
-    { ExternalPassword: generatedPassword } as any,
-    { where: { id: userId } }
-  );
+  // Merge the new password into the existing JSONB object and save via instance update
+  await userCredentials.update({
+    seekExternalCredentials: { ...existingJsonb, ExternalPassword: generatedPassword }
+  } as any);
 
-  const userFullName = credentialsData.Full_Name || credentialsData.fullName || userId;
+  const userFullName = existingJsonb.Full_Name || existingJsonb.fullName || userId;
 
   logger.info(`External password generated successfully for user: ${userFullName} (${userId})`);
 
@@ -267,87 +254,56 @@ export const generateExternalPassword = async (userId: string, host: string) => 
 export const getUserAggregators = async (clientId: string, internalJobSites: any[] = [], externalJobSites: any[] = []) => {
   logger.info(`Fetching aggregators for client ID: ${clientId}`);
 
-  // Find user credentials
-  const cred = await Credentials.findOne({ where: { clientId: clientId } });
-  if (!cred) {
-    throw new Error("User not found");
-  }
+  const profile = await Profile.findOne({ where: { userId: clientId, name: "primary" } });
+  if (!profile) return { aggregators: [], internal: [], external: [] };
 
-  // Find associated user
-  const user = await User.findOne({ where: { id: clientId } });
-  if (!user) {
-    throw new Error("User not found");
-  }
+  const links: any[] = profile.aggregators || [];
+  if (links.length === 0) return { aggregators: [], internal: [], external: [] };
 
-  // Check for user profile
-  if (!user.profileId) {
-    throw new Error("User profile not found");
-  }
-
-  // Find profile
-  const profile = await Profile.findByPk(user.profileId);
-  
-  if (!profile) {
-    throw new Error("Profile not found");
-  }
-
-  // Check for aggregators
-  if (!profile.aggregators || !Array.isArray(profile.aggregators)) {
-    return { internal: [], external: [] };
-  }
-
-  // Get aggregator IDs
-  const aggregatorIds = profile.aggregators
-    .map((agg: any) => agg.aggregator)
-    .filter((id: any) => id);
-
-  if (aggregatorIds.length === 0) {
-    return { internal: [], external: [] };
-  }
-
-  // Fetch aggregators
-  const aggregators = await Aggregator.findAll({
-    where: { id: aggregatorIds }
+  // Batch-fetch all referenced global aggregator templates
+  const aggregatorIds = links.map((l: any) => l.aggregatorId).filter(Boolean);
+  const aggRecords = await Aggregator.findAll({
+    where: { id: aggregatorIds },
+    attributes: ["id", "name", "picture", "isEnabled", "config"]
   });
+  const aggMap = new Map(aggRecords.map((a) => [a.id, a.toJSON()]));
 
-  const credData = cred.toJSON() as any;
+  // Populate each link with its aggregator template data
+  const populated = links.map((link: any) => ({
+    ...link,
+    aggregator: aggMap.get(link.aggregatorId) || null
+  }));
 
-  // Helper function to match aggregators with job sites
+  logger.info(`Found ${populated.length} aggregators for client: ${clientId}`);
+
+  // If no job site filter provided, return all populated aggregators
+  if (internalJobSites.length === 0 && externalJobSites.length === 0) {
+    return { aggregators: populated };
+  }
+
+  // Filter and categorize by provided job sites
   const matchAggregators = (jobSites: any[]) => {
-    const results: { name: string; imageUrl: string; status: boolean }[] = [];
-
+    const results: { name: string; imageUrl: string; status: boolean; aggregatorId: string }[] = [];
     for (const jobSite of jobSites) {
-      if (!jobSite.value || jobSite.value === 'all') {
-        continue;
-      }
-
-      const statusKey = statusField[jobSite.value.toLowerCase()];
-      const status = credData[statusKey] || false;
-      
-      const matchingAggregator = aggregators.find(
-        (agg: any) => agg.name && agg.name.toLowerCase() === jobSite.value.toLowerCase()
+      if (!jobSite.value || jobSite.value === 'all') continue;
+      const match = populated.find(
+        (p: any) => p.aggregator?.name?.toLowerCase() === jobSite.value.toLowerCase()
       );
-
-      if (matchingAggregator) {
+      if (match) {
         results.push({
-          name: matchingAggregator.name,
-          imageUrl: matchingAggregator.picture?.fileUrl || '',
-          status
+          name: match.aggregator.name,
+          imageUrl: match.aggregator.picture?.fileUrl || '',
+          status: match.isEnabled ?? match.aggregator.isEnabled ?? false,
+          aggregatorId: match.aggregatorId
         });
       }
     }
-
     return results;
   };
 
-  const internalResults = matchAggregators(internalJobSites);
-  const externalResults = matchAggregators(externalJobSites);
-
-  logger.info(`Found ${internalResults.length} internal and ${externalResults.length} external aggregators for client: ${clientId}`);
-
   return {
-    internal: internalResults,
-    external: externalResults
+    internal: matchAggregators(internalJobSites),
+    external: matchAggregators(externalJobSites)
   };
 };
 
@@ -357,34 +313,39 @@ export const getUserAggregators = async (clientId: string, internalJobSites: any
 export const toggleAggregatorStatus = async (clientId: string, jobSite: string) => {
   logger.info(`Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`);
 
-  // Find user credentials
-  const cred = await Credentials.findOne({ where: { clientId: clientId } });
-  if (!cred) {
-    throw new Error("Credentials not found");
-  }
+  const profile = await Profile.findOne({ where: { userId: clientId, name: "primary" } });
+  if (!profile) throw new Error("Profile not found for this client");
 
-  const statusKey = statusField[jobSite.toLowerCase()];
-  if (!statusKey) {
-    throw new Error("Invalid job site");
-  }
+  const links: any[] = profile.aggregators || [];
+  if (links.length === 0) throw new Error("No aggregators found for this client");
 
-  const credData = cred.toJSON() as any;
-  const currentStatus = credData[statusKey];
-  const newStatus = !currentStatus;
+  // Batch-fetch all referenced aggregators to match by name
+  const aggregatorIds = links.map((l: any) => l.aggregatorId).filter(Boolean);
+  const aggRecords = await Aggregator.findAll({
+    where: { id: aggregatorIds },
+    attributes: ["id", "name"]
+  });
 
-  // Update status
-  await Credentials.update(
-    { [statusKey]: newStatus } as any,
-    { where: { id: clientId } }
+  const targetAgg = aggRecords.find(
+    (a) => a.name.toLowerCase() === jobSite.toLowerCase()
+  );
+  if (!targetAgg) throw new Error("Aggregator not found for this client");
+
+  const matchedIdx = links.findIndex((l: any) => l.aggregatorId === targetAgg.id);
+  if (matchedIdx === -1) throw new Error("Aggregator link not found in profile");
+
+  const previousStatus = links[matchedIdx].isEnabled ?? false;
+  const newStatus = !previousStatus;
+
+  const updatedLinks = links.map((l: any, i: number) =>
+    i === matchedIdx ? { ...l, isEnabled: newStatus } : l
   );
 
-  logger.info(`Aggregator status updated for ${jobSite}: ${currentStatus} -> ${newStatus}`);
+  await profile.update({ aggregators: updatedLinks });
 
-  return {
-    jobSite,
-    previousStatus: currentStatus,
-    newStatus
-  };
+  logger.info(`Aggregator status updated for ${jobSite}: ${previousStatus} -> ${newStatus}`);
+
+  return { jobSite, previousStatus, newStatus };
 };
 
 /**
@@ -764,20 +725,30 @@ export const extractJobData = async (clientId: string, joblink: string, pageCont
 
   // Validate that user exists
   logger.info(`Looking up user with ID: ${clientId}`);
-  
-  const userExists = await User.findOne({
+
+  const userExist = await Credentials.findOne({
     where: { id: clientId },
+    raw: true
+  });
+
+  if (!userExist) {
+    logger.warn(`User not found in credentials for ID: ${clientId}`);
+    throw new Error("User not found");
+  }
+
+  const userExists = await User.findOne({
+    where: { id: userExist.clientId },
     raw: true
   });
 
   logger.info(`User lookup result:`, userExists);
 
   if (!userExists) {
-    throw new Error(`Client not found with ID: ${clientId}`);
+    throw new Error(`Client not found in user table with ID: ${userExist.clientId}`);
   }
 
   if (userExists.isDeleted) {
-    throw new Error(`Client account is deleted: ${clientId}`);
+    throw new Error(`Client account is deleted: ${userExist.clientId}`);
   }
 
   const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
@@ -793,7 +764,7 @@ export const extractJobData = async (clientId: string, joblink: string, pageCont
     va_email: user?.email || '',
     job_url: joblink,
     page_content: pageContent,
-    client_id: clientId,
+    client_id: userExists.id,
   };
 
   logger.info(`AI Extraction Payload for user: ${clientId} (${user?.email || ''})`, requestData);
@@ -899,7 +870,7 @@ export const saveEditedJob = async (clientId: string, joblink: string, jobData: 
 /**
  * Assign or Unassign VA to client profile
  */
-export const assignVAToClient = async (credId: string, vaEmail: string | null, host: string) => {
+export const assignVAToClient = async (credId: string, vaEmail: string | null, host: string, updatedBy?: string) => {
   logger.info(`Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`);
 
 
@@ -933,25 +904,19 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 *Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
 *Next Step*: TPA to hand over any pending items if applicable.`;
     
-    await SlackService.notify({
-      location: getEnvironmentFromHost(host || ''),
-      host: host || '',
-      node: SlackNode.HUMAN_RESOURCE,
-      provider: SlackProvider.HUBSTAFF,
-      severity: SlackSeverity.INFO,
-      trigger: `VA unassigned from client`,
-      type: SlackEventType.USER_TRIGGERED,
-      channel: SlackChannel.VA,
-      body: message
-    });
+    // await SlackService.notify({
+    //   location: getEnvironmentFromHost(host || ''),
+    //   host: host || '',
+    //   node: SlackNode.HUMAN_RESOURCE,
+    //   provider: SlackProvider.HUBSTAFF,
+    //   severity: SlackSeverity.INFO,
+    //   trigger: `VA unassigned from client`,
+    //   type: SlackEventType.USER_TRIGGERED,
+    //   channel: SlackChannel.VA,
+    //   body: message
+    // });
 
-    await Credentials.update(
-      { 
-        AssignedPCName: null,
-        AssignedPCEmail: null
-      } as any,
-      { where: { id: credId } }
-    );
+    await targetCred.update({ AssignedPCName: null, AssignedPCEmail: null } as any);
     
     logger.info(`VA unassigned successfully for credId=${credId}`);
     
@@ -973,33 +938,30 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
     throw new Error("TPA not found");
   }
 
-  await Credentials.update(
-    { 
-      AssignedPCEmail: vaEmail, 
-      AssignedPCName: `${targetVa?.firstName} ${targetVa?.lastName}` 
-    } as any,
-    { where: { id: credId } }
-  );
+  await targetCred.update({
+    AssignedPCEmail: vaEmail,
+    AssignedPCName: `${targetVa.firstName} ${targetVa.lastName}`
+  } as any);
 
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
   const tagName = slackId ? `<@${slackId}>` : `${targetVa?.firstName} ${targetVa?.lastName}`;
   
-  const message = `VA Assignment for ${targetCred?.AssignedPCName}.
+  const message = `VA Assignment for ${targetCred?.AssignedPCName }.
 *Success*: ${tagName} has been assigned to this client profile.
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
   
-  await SlackService.notify({
-    location: getEnvironmentFromHost(host || ''),
-    host: host || '',
-    node: SlackNode.HUMAN_RESOURCE,
-    provider: SlackProvider.HUBSTAFF,
-    severity: SlackSeverity.INFO,
-    trigger: `VA assigned to client`,
-    type: SlackEventType.USER_TRIGGERED,
-    channel: SlackChannel.VA,
-    body: message
-  });
+  // await SlackService.notify({
+  //   location: getEnvironmentFromHost(host || ''),
+  //   host: host || '',
+  //   node: SlackNode.HUMAN_RESOURCE,
+  //   provider: SlackProvider.HUBSTAFF,
+  //   severity: SlackSeverity.INFO,
+  //   trigger: `VA assigned to client`,
+  //   type: SlackEventType.USER_TRIGGERED,
+  //   channel: SlackChannel.VA,
+  //   body: message
+  // });
 
   logger.info(`VA assigned successfully for credId=${credId} to ${vaEmail}`);
 
@@ -1114,12 +1076,31 @@ export const getCampaignClients = async (active: string = 'true', searchQuery?: 
     raw: true
   });
 
+  // Fetch user profiles and their aggregators for each client
+  const campaignsWithAggregators: any[] = [];
+  
+  for (const client of campaigns) {
+    try {
+      let aggregators: any[] = [];
+      if (client.clientId) {
+        aggregators = await Aggregator.findAll({
+          where: { userId: client.clientId, isDeleted: false },
+          raw: true
+        });
+      }
+      campaignsWithAggregators.push({ ...client, aggregators });
+    } catch (err) {
+      logger.warn(`Could not fetch aggregators for client ${client.id}:`, err);
+      campaignsWithAggregators.push({ ...client, aggregators: [] });
+    }
+  }
+
   const totalCount = await Credentials.count({ where: whereClause });
 
   logger.info(`Found ${campaigns.length} campaign clients (total: ${totalCount})`);
 
   return {
-    campaigns,
+    campaigns: campaignsWithAggregators,
     totalCount,
     currentPage: page,
     totalPages: Math.ceil(totalCount / limit),
@@ -1163,10 +1144,18 @@ export const getCampaignClientById = async (clientId: string) => {
     }
   }
 
-  // Combine client data with application counts
+  let aggregators: any[] = [];
+  if (clientData.clientId) {
+    aggregators = await Aggregator.findAll({
+      where: { userId: clientData.clientId, isDeleted: false },
+      raw: true
+    });
+  }
+
   return {
     ...clientData,
-    ...applicationCounts
+    ...applicationCounts,
+    aggregators
   };
 };
 
@@ -1323,9 +1312,14 @@ export const createCampaignClient = async (data: any) => {
 
 /**
  * Update campaign client record
+ *
+ * Most editable fields (First_Name, Last_Name, Plan, Country, aggregator flags, etc.)
+ * are stored inside the seekExternalCredentials JSONB column. Only a handful of fields
+ * exist as direct columns on the Credentials model. This function routes each incoming
+ * field to the right destination so the update actually persists.
  */
 export const updateCampaignClient = async (id: string, data: any, requestorName?: string) => {
-  logger.info(`Updating campaign client: ${id} for data: ${JSON.stringify(data)}`);
+  logger.info(`Updating campaign client: ${id}`);
 
   if (!data || Object.keys(data).length === 0) {
     throw new Error("Data is required for update");
@@ -1339,12 +1333,11 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
     throw new Error("Client not found");
   }
 
-  // Use ONLY the fields that were actually provided for update
-  // Handle nested data payload structure (if fields are inside .data property)
+  // Handle nested data payload structure (fields may be inside a .data wrapper)
   const actualData = data.data || data;
   const updateData = { ...actualData };
 
-  // IMPORTANT: Never update clientId foreign key or immutable fields!
+  // Never touch immutable / foreign-key fields
   delete updateData.clientId;
   delete updateData.id;
   delete updateData.createdAt;
@@ -1356,20 +1349,81 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
     }
   }
 
-  // Add audit field
-  updateData.updatedBy = requestorName || "System";
+  // Pull out non-column fields before processing
+  const { aggregators: aggregatorUpdates, updatedBy: _updatedBy, updatedAt: _updatedAt, ...fieldsToUpdate } = updateData;
 
-  // Use static update() to bypass dirty checking - ensures ALL provided fields are updated
-  // This fixes boolean/number type mismatch issues (0 vs false, 1 vs true)
-  await Credentials.update(updateData, {
-    where: { id }
-  });
+  // Fields that exist as direct columns on the Credentials model
+  const DIRECT_COLUMN_FIELDS = new Set([
+    'Active',
+    'SeekAnswerPriority',
+    'SeekSubStartDate',
+    'seekEmail',
+    'seekPassword',
+    'seekCredentialsTest',
+    'seekCredentialsTestDate',
+    'currentCity',
+    'onboardingDate',
+    'criteriaReviewCompleted',
+    'referrer',
+    'blacklisted',
+    'seekLoginType',
+    'AssignedPCName',
+    'AssignedPCEmail',
+  ]);
 
-  // Fetch updated record to return
+  // Form field names that must be renamed to match the actual Credentials column name
+  const COLUMN_NAME_MAP: Record<string, string> = {
+    'Capitalized': 'capitalized',   // form sends PascalCase, column is camelCase
+    'Seek_Aggregator': 'SeekAggregator', // form uses underscore, column does not
+  };
+
+  const directUpdates: Record<string, any> = {};
+  const jsonbUpdates: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(fieldsToUpdate)) {
+    if (COLUMN_NAME_MAP[key] !== undefined) {
+      // Rename and write to the direct column
+      directUpdates[COLUMN_NAME_MAP[key]] = value;
+      // Also mirror into JSONB so read queries that pull from seekExternalCredentials stay consistent
+      jsonbUpdates[key] = value;
+    } else if (DIRECT_COLUMN_FIELDS.has(key)) {
+      directUpdates[key] = value;
+    } else {
+      // Everything else (First_Name, Last_Name, Plan, Country, all aggregator booleans,
+      // Alias_Email, Alias_Password, Batch, Craft, Status, VaName, Assurance, etc.)
+      // is stored in the seekExternalCredentials JSONB column
+      jsonbUpdates[key] = value;
+    }
+  }
+
+  // Merge JSONB updates into the existing seekExternalCredentials object
+  if (Object.keys(jsonbUpdates).length > 0) {
+    const existingData = userInfo.toJSON() as any;
+    const existingJsonb = existingData.seekExternalCredentials || {};
+    directUpdates.seekExternalCredentials = { ...existingJsonb, ...jsonbUpdates };
+  }
+
+  // Apply the update
+  if (Object.keys(directUpdates).length > 0) {
+    await userInfo.update(directUpdates as any, {
+      fields: Object.keys(directUpdates)
+    });
+  }
+
+  // Update aggregator records if provided
+  if (aggregatorUpdates && Array.isArray(aggregatorUpdates) && aggregatorUpdates.length > 0 && userInfo.clientId) {
+    for (const aggUpdate of aggregatorUpdates) {
+      const { id: aggId, userId: _userId, createdAt: _aggCreatedAt, ...aggFields } = aggUpdate;
+      if (aggId) {
+        await Aggregator.update(aggFields, {
+          where: { id: aggId, userId: userInfo.clientId }
+        });
+      }
+    }
+  }
+
   const updatedRecord = await Credentials.findByPk(id);
-
   logger.info(`Updated campaign client: ${id}`);
-
   return updatedRecord!.toJSON();
 };
 

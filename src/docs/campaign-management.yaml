@@ -97,10 +97,40 @@ paths:
                     type: string
                     example: "Aggregators retrieved successfully"
                   data:
-                    type: array
-                    items:
-                      type: object
-                      description: Aggregator object with status
+                    type: object
+                    properties:
+                      aggregators:
+                        type: array
+                        description: Populated aggregator links from the user's primary profile
+                        items:
+                          type: object
+                          properties:
+                            aggregatorId:
+                              type: string
+                              example: "a1b2c3d4-0000-0000-0000-000000000001"
+                            isEnabled:
+                              type: boolean
+                              example: true
+                            generatedEmail:
+                              type: string
+                              example: "john.doe.alias@example.com"
+                            aggregator:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                name:
+                                  type: string
+                                  example: "SEEK"
+                                picture:
+                                  type: object
+                                  properties:
+                                    fileUrl:
+                                      type: string
+                                isEnabled:
+                                  type: boolean
+                                config:
+                                  type: object
         '401':
           description: Unauthorized
         '404':
@@ -164,6 +194,52 @@ paths:
       responses:
         '200':
           description: Aggregators retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Aggregators retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      internal:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              example: "SEEK"
+                            imageUrl:
+                              type: string
+                              example: "https://example.com/seek.png"
+                            status:
+                              type: boolean
+                              example: true
+                            aggregatorId:
+                              type: string
+                              example: "a1b2c3d4-0000-0000-0000-000000000001"
+                      external:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              example: "LinkedIn"
+                            imageUrl:
+                              type: string
+                            status:
+                              type: boolean
+                              example: false
+                            aggregatorId:
+                              type: string
 
   /v1/campaigns/aggregators/toggle:
     patch:
@@ -189,6 +265,31 @@ paths:
       responses:
         '200':
           description: Aggregator status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Aggregator status updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      jobSite:
+                        type: string
+                        example: "SEEK"
+                      previousStatus:
+                        type: boolean
+                        example: false
+                      newStatus:
+                        type: boolean
+                        example: true
+        '404':
+          description: Profile or aggregator not found
 
   /v1/campaigns/aggregators/user/{userId}:
     get:

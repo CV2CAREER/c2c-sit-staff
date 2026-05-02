@@ -300,10 +300,14 @@ export const saveJob = catchAsyncError(async (req: Request, res: Response) => {
   export const assignVA = catchAsyncError(async (req: Request, res: Response) => {
     logger.info("Processing VA assignment request");
     
-    const { VaEmail, credId } = req.body;
+    const { vaEmail, credId } = req.body;
     const host = req.get('host') || '';
+    const authenticatedUser = (req as any).user;
+    const updatedByName = authenticatedUser 
+      ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}` 
+      : undefined;
     
-    const result = await assignVAToClient(credId, VaEmail, host);
+    const result = await assignVAToClient(credId, vaEmail, host, updatedByName);
     
     res.status(200).json(result);
   });
