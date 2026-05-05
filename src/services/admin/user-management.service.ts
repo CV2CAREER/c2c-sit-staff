@@ -13,6 +13,7 @@ import { Role, UploadStatus } from "../../utils/enum";
 import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
+import { Credentials } from "../../models/v1/credentials.model";
 
 const logger = getServiceLogger("user-management-service");
 
@@ -895,6 +896,12 @@ class UserManagementService {
 
     const userData = user.toJSON();
 
+    // Get referrer email from the referral model, if the user was referred
+    const referral = await Referrer.findOne({
+      where: { userId }
+    });
+    const referrerEmail = referral?.referrer || null;
+
     // Exclude sensitive fields
     const { 
       password, 
@@ -909,7 +916,29 @@ class UserManagementService {
     logger.info(`User profile retrieved for ID: ${userId}`);
     
     return {
-      profile: safeProfile
+      profile: safeProfile,
+      referrerEmail
+    };
+  }
+
+  /**
+   * Get all users with INFLIGHT campaigns for Dashboard display
+   */
+  async getInflightUsers() {
+    logger.info(`Retrieving users with INFLIGHT campaigns`);
+
+    const inflightCredentials = await Credentials.findAll({
+      where: {
+        capitalized: "INFLIGHT",
+        isDeleted: false
+      }
+    });
+
+    logger.info(`Retrieved ${inflightCredentials.length} users with INFLIGHT campaigns`);
+
+    return {
+      inflightCredentials,
+      count: inflightCredentials.length
     };
   }
 }

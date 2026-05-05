@@ -6,6 +6,7 @@ import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootst
 import { getSequelize, resetSequelize } from "../utils/sequelize";
 import { NODE_ENV } from "./env";
 // import {Credentials} from "../models/v1/credentials.model";
+// import { Aggregator } from "../models/v1/aggregator.model";
 import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
 import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 import { AccessLevelService } from "../services/admin/access-level.service";
@@ -69,6 +70,7 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await Credentials.sync({ alter: true });                      // example of altering existing table
+        // await Aggregator.sync({ alter: true });                       // example of altering existing table
         // await UserPreferenceHistory.sync({ force: false });         // new table
 
         await ensureTrainingTrackerSessions();
