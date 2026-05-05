@@ -570,7 +570,7 @@ export const useUsersMutations = () => {
       },
     }),
     dispatchSampleMutation: useMutateData<any, { clientId: string }>({
-      method: "POST",
+      method: "PATCH",
       url: (params) => endpoints.ADMIN_DISPATCH_SAMPLE(params.clientId),
       mutationKey: ["admin-dispatch-sample"],
       onSuccess: () => {
