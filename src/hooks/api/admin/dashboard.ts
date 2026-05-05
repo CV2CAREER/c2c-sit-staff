@@ -125,7 +125,7 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
 
   const inflightClientsList = useFetchData<any>({
     method: "GET",
-    url: `${endpoints.ADMIN_USERS}?variant=inflight&page=${inflightPage}&limit=${inflightLimit}`,
+    url: "/api/v1/user-management/users/inflight",
     queryKey: ["admin-inflight-clients", inflightPage, inflightLimit],
     enabled: fetchInflightClientsList,
   });

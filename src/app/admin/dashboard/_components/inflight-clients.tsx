@@ -12,64 +12,67 @@ export default function InFlightClients() {
     inflightLimit: pagination.pageSize
   });
 
-  const { data: clientsData = [], isLoading } = inflightClientsListDomain;
+  const { data: clientsData = {}, isLoading } = inflightClientsListDomain;
   
-const modifyArray = () => [
-   {
-     field: "Full_Name",
-     headerName: "Full Name",
-     width: 250,
-   },
-   {
-     field: "Alias_Email",
-     headerName: "Alias Email",
-     width: 200,
-   },
-   {
-     field: "SeekSubStartDate",
-     headerName: "Subscription Start",
-     width: 200,
-   },
-   {
-     field: "Assurance",
-     headerName: "Assurance",
-     width: 200,
-   },
-   {
-     field: "SeekSubEndDate",
-     headerName: "Subscription End",
-     width: 200,
-   },
-   {
-     field: "VaName",
-     headerName: "PC Assigned",
-     width: 200,
-   },
-   {
-     field: "status",
-     headerName: "Status",
-     width: 150,
-   },
- ];
+  const modifyArray = () => [
+    {
+      field: "Full_Name",
+      headerName: "Full Name",
+      width: 250,
+    },
+    {
+      field: "Alias_Email",
+      headerName: "Alias Email",
+      width: 200,
+    },
+    {
+      field: "SeekSubStartDate",
+      headerName: "Subscription Start",
+      width: 200,
+    },
+    {
+      field: "Assurance",
+      headerName: "Assurance",
+      width: 200,
+    },
+    {
+      field: "SeekSubEndDate",
+      headerName: "Subscription End",
+      width: 200,
+    },
+    {
+      field: "VaName",
+      headerName: "PC Assigned",
+      width: 200,
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 150,
+    },
+  ];
+  
   const transformedClientData = useMemo(() => {
-   const items = clientsData?.items || [];
-   if (Array.isArray(items)) {
-     return items.map((item: any, index: number) => {
-       return {
-         id: item?.id || index,
-         Full_Name: item?.firstName ? `${item.firstName} ${item.lastName}` : "Unknown",
-         Alias_Email: item?.email || "N/A",
-         SeekSubStartDate: item?.createdAt ? new Date(item.createdAt).toLocaleDateString() : "N/A",
-         SeekSubEndDate: "N/A", 
-         Assurance: item?.role || "N/A",
-         VaName: "Unassigned", 
-         status: item?.isActive !== undefined ? (item.isActive ? "Active" : "Inactive") : "Unknown",
-       };
-     });
-   } else {
-     return [];
-   }
- }, [clientsData]);
+    const items = clientsData?.inflightCredentials || [];
+    if (Array.isArray(items)) {
+      return items.map((item: any, index: number) => {
+        const external = item.seekExternalCredentials || {};
+        return {
+          id: item?.id || index,
+          Full_Name: external.Full_Name || "Unknown",
+          Alias_Email: external.Alias_Email || item?.seekEmail || "N/A",
+          SeekSubStartDate: item?.SeekSubStartDate ? new Date(item.SeekSubStartDate).toLocaleDateString() : "N/A",
+          Assurance: item?.assurance || "N/A",
+          SeekSubEndDate: external.SeekSubEndDate || "N/A",
+          VaName: item?.AssignedPCName || "Unassigned",
+          status: item?.capitalized || "Unknown",
+        };
+      });
+    } else {
+      return [];
+    }
+  }, [clientsData]);
+
  
   return (
     <section className="py-6">
@@ -85,7 +88,7 @@ const modifyArray = () => [
             disableRowSelectionOnClick
             rows={transformedClientData}
             columns={modifyArray()}
-            rowCount={transformedClientData.length}
+            rowCount={clientsData?.count ?? transformedClientData.length}
             getRowClassName={() => 'custom-row-class'}
             rowReordering
           />

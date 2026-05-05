@@ -65,7 +65,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   }, [allUserData]);
 
   // const plan = clientCampaignData?.data?.plan || null;
-  const clientFullName = singleClientData?.seekExternalCredentials?.Full_Name || singleClientData?.name || clientCampaignData?.data?.name || "";
+  const clientFullName = `${singleClientData?.seekExternalCredentials?.First_Name} ${singleClientData?.seekExternalCredentials?.Middle_Name} ${singleClientData?.seekExternalCredentials?.Last_Name}` || singleClientData?.name || clientCampaignData?.data?.name || "";
   const clientCraft = singleClientData?.seekExternalCredentials?.Craft || singleClientData?.craft || clientCampaignData?.data?.craft || "";
 
   useEffect(() => {

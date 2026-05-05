@@ -11,17 +11,7 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
     const user = userProfileSafeDomain?.data?.profile;
     const loading = userProfileSafeDomain.isLoading;
     const getReferrer = () => {
-        try {
-            const referrer = user?.referrer;
-            if (typeof referrer === 'string') {
-                return referrer;
-            } else if (typeof referrer === 'object' && referrer !== null) {
-                return referrer.referrer ?? 'N/A';
-            }
-            return 'N/A';
-        } catch  {
-            return 'N/A';
-        }
+        return userProfileSafeDomain?.data?.referrerEmail ?? 'N/A';
     };
     const data = [
         {

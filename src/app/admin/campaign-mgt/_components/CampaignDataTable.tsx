@@ -249,7 +249,7 @@ const queryClient = useQueryClient();
         Email: client.seekEmail,
         Alias_Email: cred.Alias_Email ?? null,
         Alias_Password: cred.Alias_Password ?? null,
-        ExternalPassword: client.seekPassword || null,
+        ExternalPassword: cred.ExternalPassword || null,
 
         // ── Plan & location ───────────────────────────────────────
         Plan: cred.Plan ?? null,
