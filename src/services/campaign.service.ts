@@ -331,34 +331,40 @@ export const getUserAggregators = async (
 ) => {
   logger.info(`Fetching aggregators for client ID: ${clientId}`);
 
-  const profile = await Profile.findOne({ where: { userId: clientId, name: "primary" } });
-  if (!profile) return { aggregators: [], internal: [], external: [] };
+  // clientId may be a Credentials UUID — resolve it to the actual User UUID via the FK
+  let userId = clientId;
+  const cred = await Credentials.findOne({ where: { id: clientId }, attributes: ['clientId'] });
+  if (cred?.clientId) {
+    userId = cred.clientId;
+    logger.info(`Resolved clientId ${clientId} → userId ${userId}`);
+  }
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error("User not found");
+
+  const profile = await Profile.findOne({ where: { userId, name: "primary" } });
+  if (!profile) return { aggregators: [] };
 
   const links: any[] = profile.aggregators || [];
-  if (links.length === 0) return { aggregators: [], internal: [], external: [] };
 
-  // Batch-fetch all referenced global aggregator templates
-  const aggregatorIds = links.map((l: any) => l.aggregatorId).filter(Boolean);
-  const aggRecords = await Aggregator.findAll({
-    where: { id: aggregatorIds },
-    attributes: ["id", "name", "picture", "isEnabled", "config"]
-  });
-  const aggMap = new Map(aggRecords.map((a) => [a.id, a.toJSON()]));
-
-  // Populate each link with its aggregator template data
-  const populated = links.map((link: any) => ({
-    ...link,
-    aggregator: aggMap.get(link.aggregatorId) || null
-  }));
+  // Mirrors getUserJobsites: per-link findByPk so each link gets its full aggregator template
+  const populated = await Promise.all(
+    links.map(async (link: any) => {
+      const agg = await Aggregator.findByPk(link.aggregatorId, {
+        attributes: ["id", "name", "picture", "isEnabled", "config"],
+      });
+      return { ...link, aggregator: agg ? agg.toJSON() : null };
+    })
+  );
 
   logger.info(`Found ${populated.length} aggregators for client: ${clientId}`);
 
-  // If no job site filter provided, return all populated aggregators
+  // No job site filter — return all (same shape as getUserJobsites)
   if (internalJobSites.length === 0 && externalJobSites.length === 0) {
     return { aggregators: populated };
   }
 
-  // Filter and categorize by provided job sites
+  // With job site filter — also split into internal/external buckets
   const matchAggregators = (jobSites: any[]) => {
     const results: { name: string; imageUrl: string; status: boolean; aggregatorId: string }[] = [];
     for (const jobSite of jobSites) {
@@ -371,21 +377,17 @@ export const getUserAggregators = async (
           name: match.aggregator.name,
           imageUrl: match.aggregator.picture?.fileUrl || '',
           status: match.isEnabled ?? match.aggregator.isEnabled ?? false,
-          aggregatorId: match.aggregatorId
+          aggregatorId: match.aggregatorId,
         });
       }
     }
     return results;
   };
 
-  const internalResults = matchAggregators(internalJobSites);
-  const externalResults = matchAggregators(externalJobSites);
-
-  logger.info(`Found ${internalResults.length} internal and ${externalResults.length} external aggregators for client: ${clientId}`);
-
   return {
-    internal: internalResults,
-    external: externalResults
+    aggregators: populated,
+    internal: matchAggregators(internalJobSites),
+    external: matchAggregators(externalJobSites),
   };
 };
 
@@ -400,34 +402,45 @@ export const toggleAggregatorStatus = async (
     `Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`,
   );
 
-  const profile = await Profile.findOne({ where: { userId: clientId, name: "primary" } });
+  // clientId may be a Credentials UUID — resolve it to the actual User UUID via the FK
+  let userId = clientId;
+  const cred = await Credentials.findOne({ where: { id: clientId }, attributes: ['clientId'] });
+  if (cred?.clientId) {
+    userId = cred.clientId;
+  }
+
+  const profile = await Profile.findOne({ where: { userId, name: "primary" } });
   if (!profile) throw new Error("Profile not found for this client");
 
   const links: any[] = profile.aggregators || [];
   if (links.length === 0) throw new Error("No aggregators found for this client");
 
-  // Batch-fetch all referenced aggregators to match by name
-  const aggregatorIds = links.map((l: any) => l.aggregatorId).filter(Boolean);
-  const aggRecords = await Aggregator.findAll({
-    where: { id: aggregatorIds },
-    attributes: ["id", "name"]
-  });
-
-  const targetAgg = aggRecords.find(
-    (a) => a.name.toLowerCase() === jobSite.toLowerCase()
+  // Mirrors updateUserJobsite: populate each link with findByPk so we can match by name
+  // and use the aggregator's own isEnabled as the default when the link hasn't been toggled yet
+  const populated = await Promise.all(
+    links.map(async (link: any) => {
+      const agg = await Aggregator.findByPk(link.aggregatorId, {
+        attributes: ["id", "name", "isEnabled"],
+      });
+      return { ...link, aggregator: agg ? agg.toJSON() : null };
+    })
   );
-  if (!targetAgg) throw new Error("Aggregator not found for this client");
 
-  const matchedIdx = links.findIndex((l: any) => l.aggregatorId === targetAgg.id);
-  if (matchedIdx === -1) throw new Error("Aggregator link not found in profile");
+  const matchedIdx = populated.findIndex(
+    (p) => p.aggregator?.name?.toLowerCase() === jobSite.toLowerCase()
+  );
+  if (matchedIdx === -1) throw new Error("Aggregator not found for this client");
 
-  const previousStatus = links[matchedIdx].isEnabled ?? false;
+  // Use link-level isEnabled first; fall back to the aggregator template's value
+  const previousStatus =
+    populated[matchedIdx].isEnabled ?? populated[matchedIdx].aggregator?.isEnabled ?? true;
   const newStatus = !previousStatus;
 
   const updatedLinks = links.map((l: any, i: number) =>
     i === matchedIdx ? { ...l, isEnabled: newStatus } : l
   );
 
+  // Mirrors updateUserJobsite: write the whole updated links array back to the profile
   await profile.update({ aggregators: updatedLinks });
 
   logger.info(`Aggregator status updated for ${jobSite}: ${previousStatus} -> ${newStatus}`);
@@ -848,9 +861,6 @@ export const getAggregatorsByUserId = async (userId: string) => {
  *
  * Accepts job link and page content, forwards to external AI service
  * Returns extracted job data for user review before saving
- */
-/**
- * AI Job Extraction Service
  */
 /**
  * AI Job Extraction Service
@@ -1748,23 +1758,23 @@ export const dispatchSampleResults = async (
 ) => {
   logger.info(`Dispatching sample results for client: ${clientId}`);
 
+  // Find credentials record
+  const credentials = await Credentials.findOne({
+    where: { id: clientId },
+  });
+
+  if (!credentials) {
+    throw new Error("Client credentials not found");
+  }
+
   // Find user
   const user = await User.findOne({
-    where: { id: clientId },
+    where: { id: credentials.clientId },
     raw: true,
   });
 
   if (!user) {
     throw new Error("User not found");
-  }
-
-  // Find credentials record
-  const credentials = await Credentials.findOne({
-    where: { clientId: clientId },
-  });
-
-  if (!credentials) {
-    throw new Error("Client credentials not found");
   }
 
   // Find sample test applications

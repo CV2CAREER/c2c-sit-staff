@@ -165,13 +165,6 @@ const updateAggregator = async (
  * @param userId User MongoDB ID
  * @returns Populated user profile document
  */
-/**
- * Optimized profile find or create implementation
- * Automatically creates profile if it doesn't exist for user
- * 
- * @param userId User ID
- * @returns User profile document
- */
 async function findOrCreateProfile(userId: string) {
   const user = await User.findByPk(userId);
   if (!user) throw new Error("User not found");

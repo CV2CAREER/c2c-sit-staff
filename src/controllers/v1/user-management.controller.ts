@@ -347,3 +347,23 @@ export const getUserProfile = catchAsyncError(
     );
   },
 );
+
+/**
+ * Get all users with INFLIGHT campaigns
+ */
+export const getInflightUsers = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAuthorized(req);
+
+    logger.info(`Processing request to get all users with INFLIGHT campaigns`);
+
+    const result = await userManagementService.getInflightUsers();
+
+    logger.info(`Retrieved ${result.count} users with INFLIGHT campaigns`);
+
+    res.apiSuccess(
+      result,
+      "Users with INFLIGHT campaigns retrieved successfully",
+    );
+  },
+);

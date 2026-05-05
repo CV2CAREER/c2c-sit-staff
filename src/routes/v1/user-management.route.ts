@@ -18,6 +18,7 @@ import {
   getUserUploadedDocuments,
   getUserProfile,
   getUserProgress,
+  getInflightUsers,
 } from "../../controllers/v1/user-management.controller";
 
 const userManagementRouterV1 = Router();
@@ -105,6 +106,11 @@ userManagementRouterV1.get(
 // Get user progress
 userManagementRouterV1.get(
   "/users/:userId/progress", getUserProgress
+);
+
+// Get all users with INFLIGHT campaigns
+userManagementRouterV1.get(
+  "/users/inflight", getInflightUsers
 );
 
 export default userManagementRouterV1;
