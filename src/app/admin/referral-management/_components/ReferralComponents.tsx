@@ -94,6 +94,7 @@ const ReferralComponent = () => {
 
   useEffect(() => {
     setPaginationData({ page: 0, pageSize: 10 });
+    setShowDeleted(false);
   }, [variance]);
 
   const tableName = `Refferal_${variance}_${showDeleted ? "deleted" : ""}`;
@@ -179,15 +180,11 @@ const ReferralComponent = () => {
           }))
         : [];
 
-      const filteredByDeletedState = normalizedUsers.filter((u: any) =>
-        showDeleted ? isDeletedReferral(u) : !isDeletedReferral(u)
-      );
-
-      setUsers(filteredByDeletedState);
+      setUsers(normalizedUsers);
       setRowCount(
-        typeof totalCount === "number" && filteredByDeletedState.length > 0
+        typeof totalCount === "number" && totalCount > 0
           ? totalCount
-          : filteredByDeletedState.length
+          : normalizedUsers.length
       );
     } else if (referralsListDomain.isError && !referralsListDomain.isLoading) {
       setUsers([]);
@@ -422,6 +419,23 @@ const ReferralComponent = () => {
             {props.row.createdAt ? new Date(props.row.createdAt).toLocaleDateString() : "N/A"}
           </div>
         );
+      }
+
+      if (showDeleted) {
+        modifiedArr.unshift({
+          field: "restore",
+          headerName: "Restore",
+          width: 100,
+          headerClassName: "bg-[#80D7FF]",
+          renderCell: (params: any) => (
+            <div
+              onClick={() => handleRestore(params.row["id"] || params.row["_id"])}
+              className="cursor-pointer hover:text-blue-600 transition-colors"
+            >
+              <RestoreFromTrashIcon />
+            </div>
+          ),
+        });
       }
     }
 
@@ -691,7 +705,7 @@ const ReferralComponent = () => {
 
     const loadingToast = toast.loading("Saving changes...");
     try {
-      if (variance === "claim" && editForm.status) {
+      if (editForm.status) {
         await updateReferralStatus.mutateAsync({
           id,
           variance,
@@ -717,12 +731,6 @@ const ReferralComponent = () => {
   };
 
   const handleDelete = async (id: string) => {
-    // Safety check for aggregated view
-    if (variance === "all") {
-      toast.error("Delete not available in aggregated view. Switch to individual tabs.");
-      return;
-    }
-
     try {
       const loadingToast = toast.loading("Recycling claim..");
       const res = await deleteReferral.mutateAsync({ id, variance });
@@ -745,11 +753,6 @@ const ReferralComponent = () => {
   };
 
   const handleDeleteMultiple = async (selectedIds: any) => {
-    if (variance === "all") {
-      toast.error("Bulk delete is unavailable in aggregated view.");
-      return;
-    }
-
     const ids = (Array.isArray(selectedIds) ? selectedIds : []).filter(Boolean);
     if (ids.length === 0) return;
 
@@ -805,8 +808,7 @@ const ReferralComponent = () => {
             Edit Referral
           </DialogTitle>
           <div className="space-y-4">
-            {variance === "claim" && (
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Status</label>
                 <Select
                   value={editForm.status || "PENDING"}
@@ -824,7 +826,6 @@ const ReferralComponent = () => {
                   </SelectContent>
                 </Select>
               </div>
-            )}
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">Payment Status</label>
               <Select
@@ -922,7 +923,7 @@ const ReferralComponent = () => {
       {!userIsLoading && !queryString && !Object.keys(user).length && (
         <div className="">
           <Table
-            allowDelete={variance !== "all"} // Disable delete for aggregated view
+            allowDelete={true}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             data={users}
@@ -931,19 +932,17 @@ const ReferralComponent = () => {
             modifyArray={modifyArray}
             tableName={tableName}
             editMode={editMode}
-            handleDelete={variance !== "all" ? (showDeleted ? handleHardDelete : handleDelete) : undefined} // Only pass handler for non-aggregated
+            handleDelete={showDeleted ? handleHardDelete : handleDelete}
             handleDeleteMultiple={handleDeleteMultiple}
             handleSelection={handleSelection}
-            actions={variance !== "all" ? [
+            actions={[
               {
                 label: showDeleted ? "Show Active" : "Show Deleted",
-                handler: () => {
-                  setShowDeleted(!showDeleted);
-                },
+                handler: () => setShowDeleted(!showDeleted),
                 isChecked: showDeleted,
               },
-            ] : []}
-            checkBoxSelection={variance !== "all"}
+            ]}
+            checkBoxSelection={true}
             paginationData={paginationData}
             rowCount={rowCount}
             setPaginationData={setPaginationData}

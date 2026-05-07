@@ -36,10 +36,10 @@ export const useReferralQueries = (options: ReferralQueriesOptions) => {
     method: "GET",
     url: endpoints.ADMIN_REFERRAL,
     params: isAggregated
-      ? { page, pageSize }
+      ? { page, pageSize, isDeleted: archived }
       : { variance, isDeleted: archived, page, pageSize },
     queryKey: isAggregated
-      ? ["admin-aggregated-referrals", page, pageSize]
+      ? ["admin-aggregated-referrals", page, pageSize, archived]
       : ["admin-referrals", variance, archived, page, pageSize],
     enabled: fetchReferrals,
   });
