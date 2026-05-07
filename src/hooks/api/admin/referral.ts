@@ -30,11 +30,17 @@ export const useReferralQueries = (options: ReferralQueriesOptions) => {
     referrerId = "",
   } = options;
 
+  const isAggregated = variance === "all";
+
   const referralsList = useFetchData<IReferralSummary>({
     method: "GET",
     url: endpoints.ADMIN_REFERRAL,
-    params: { variance, archived, page, pageSize },
-    queryKey: ["admin-referrals", variance, archived, page, pageSize],
+    params: isAggregated
+      ? { page, pageSize }
+      : { variance, isDeleted: archived, page, pageSize },
+    queryKey: isAggregated
+      ? ["admin-aggregated-referrals", page, pageSize]
+      : ["admin-referrals", variance, archived, page, pageSize],
     enabled: fetchReferrals,
   });
 
@@ -127,24 +133,24 @@ export const useReferralMutations = () => {
 
   const deleteReferral = useMutation({
     mutationKey: ["admin-delete-referral"],
-    mutationFn: async (payload: { id: string; variance: string }) => {
-      const response = await axiosInstance.delete(`${endpoints.ADMIN_REFERRAL}?id=${payload.id}&variance=${payload.variance}`);
+    mutationFn: async (payload: { id: string; variance?: string }) => {
+      const response = await axiosInstance.delete(`${endpoints.ADMIN_REFERRAL}/${payload.id}`);
       return response.data;
     },
   });
 
   const hardDeleteReferral = useMutation({
     mutationKey: ["admin-hard-delete-referral"],
-    mutationFn: async (payload: { id: string; variance: string }) => {
-      const response = await axiosInstance.delete(`${endpoints.ADMIN_REFERRAL}?id=${payload.id}&hard=true&variance=${payload.variance}`);
+    mutationFn: async (payload: { id: string; variance?: string }) => {
+      const response = await axiosInstance.delete(`${endpoints.ADMIN_REFERRAL}/${payload.id}/permanent`);
       return response.data;
     },
   });
 
   const restoreReferral = useMutation({
     mutationKey: ["admin-restore-referral"],
-    mutationFn: async (payload: { id: string; variance: string }) => {
-      const response = await axiosInstance.delete(`${endpoints.ADMIN_REFERRAL}?id=${payload.id}&undo=true&variance=${payload.variance}`);
+    mutationFn: async (payload: { id: string; variance?: string }) => {
+      const response = await axiosInstance.patch(`${endpoints.ADMIN_REFERRAL}/${payload.id}/restore`);
       return response.data;
     },
   });
