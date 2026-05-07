@@ -56,7 +56,6 @@ const ReferralComponent = () => {
     pageSize: 10,
   });
   const [rowCount, setRowCount] = useState(0);
-  const [isVarianceAll, setIsVarianceAll] = useState<boolean>(false);
   const [clickedUserRefs, setClickedUserRefs] = useState("");
   const [clickedUserId, setClickedUserId] = useState("");
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -95,6 +94,7 @@ const ReferralComponent = () => {
 
   useEffect(() => {
     setPaginationData({ page: 0, pageSize: 10 });
+    setShowDeleted(false);
   }, [variance]);
 
   const tableName = `Refferal_${variance}_${showDeleted ? "deleted" : ""}`;
@@ -166,22 +166,31 @@ const ReferralComponent = () => {
       const totalCount = responseData?.total || 0;
 
       const normalizedUsers = Array.isArray(usersArray)
-        ? usersArray.filter((u: any) => u.details !== null)
+        ? usersArray.map((u: any) => ({
+            ...u,
+            id: u.referralId || u.id || u._id,
+            // Flatten nested user object (claim view)
+            ...(u.user
+              ? {
+                  userName: `${u.user.firstName || ""} ${u.user.lastName || ""}`.trim(),
+                  userEmail: u.user.email || "",
+                  userProfileId: u.user.id || "",
+                }
+              : {}),
+          }))
         : [];
 
-      const filteredByDeletedState = normalizedUsers.filter((u: any) =>
-        showDeleted ? isDeletedReferral(u) : !isDeletedReferral(u)
-      );
-
-      setIsVarianceAll(variance === "all");
-      setUsers(filteredByDeletedState);
+      setUsers(normalizedUsers);
       setRowCount(
-        typeof totalCount === "number" && filteredByDeletedState.length > 0
+        typeof totalCount === "number" && totalCount > 0
           ? totalCount
-          : filteredByDeletedState.length
+          : normalizedUsers.length
       );
+    } else if (referralsListDomain.isError && !referralsListDomain.isLoading) {
+      setUsers([]);
+      toast.error("Failed to load referrals. Please try again.");
     }
-  }, [referralsListDomain.data, variance, showDeleted, referralsListDomain.isLoading, referralsListDomain.isFetching]);
+  }, [referralsListDomain.data, referralsListDomain.isError, variance, showDeleted, referralsListDomain.isLoading, referralsListDomain.isFetching]);
 
   // Sync referredUsersDetailsDomain
   useEffect(() => {
@@ -197,10 +206,6 @@ const ReferralComponent = () => {
        toast.error("Failed to load referred users details");
     }
   }, [referredUsersDetailsDomain.data, referredUsersDetailsDomain.isError, referredUsersDetailsDomain.isLoading, referredUsersDetailsDomain.isFetching, clickedUserId]);
-
-  useEffect(() => {
-    // console.log("isvarianceAll", isVarianceAll);
-  }, [isVarianceAll]);
 
   const handleShowUserRef = (email: string, fullName: string) => {
     setUser({ email, fullName });
@@ -257,478 +262,396 @@ const ReferralComponent = () => {
         el.field !== "returnCount" &&
         el.field !== "permissions" &&
         el.field !== "userSessionsMilestones" &&
-        el.field !== "createdAt" &&
         el.field !== "isActive" &&
         el.field !== "progress" &&
         el.field !== "promotionalCount" &&
         el.field !== "numberOfFreePromo" &&
         el.field !== "numberOfReferralsBeforePromo" &&
         el.field !== "numberOfFreePromoCount" &&
-        el.field !== "status" &&
         el.field !== "note" &&
         el.field !== "nominatedDeveloper" &&
         el.field !== "lastUpdatedBy" &&
-        el.field !== "source"
+        el.field !== "source" &&
+        el.field !== "id" &&
+        el.field !== "referralId" &&
+        el.field !== "referredUserId"
     );
 
-    if (variance == "all" && isVarianceAll) {
+    if (variance == "all") {
+      // Flat referral records — hide referrerName (API populates it with referred user's name)
+      modifiedArr = modifiedArr.filter((f) => f.field !== "referrerName");
 
-      // Referrer Name field
-      const referrerField = modifiedArr.find(
-        (field) => field.field === "referrerName"
-      );
-      if (referrerField) {
-        referrerField.headerName = "Referrer Name";
-        referrerField.width = 200;
-        referrerField.renderCell = (props) => {
-          const name = props.row.referrerName;
-          const isEmail = name && name.includes('@');
-
-          // ✅ FIX: Handle both string IDs and populated objects
-          let linkId = null;
-          if (props.row.userId) {
-            // If userId is an object (populated), get its _id
-            linkId = typeof props.row.userId === 'object'
-              ? props.row.userId._id || props.row.userId.id
-              : props.row.userId;
-          }
-
-          // Fallback to _id if userId doesn't exist
-          if (!linkId) {
-            linkId = props.row.id;
-          }
-
-          /*
-          console.log("Referrer link debug:", {
-            name,
-            linkId,
-            rawUserId: props.row.userId,
-            rowId: props.row.id
-          });
-          */
-
-          // ✅ Create link if we have a valid linkId
-          if (linkId) {
-            return (
-              <Link
-                href={`/admin/users/${linkId}`}
-                className="text-blue-600 font-medium hover:underline cursor-pointer"
-              >
-                {isEmail ? "Unknown User" : name || "N/A"}
-              </Link>
-            );
-          } else {
-            // If no userId, display as plain text
-            return (
-              <div className="text-gray-600">
-                {isEmail ? "Unknown User" : name || "N/A"}
-              </div>
-            );
-          }
-        };
-      }
-
-      // 3. ✅ UPDATED: Referral Code field (was Referrer Email)
-      const referralCodeField = modifiedArr.find(
-        (field) => field.field === "referralCode"
-      );
-      if (referralCodeField) {
-        referralCodeField.headerName = "Referral Code";
-        referralCodeField.width = 200;
-        referralCodeField.renderCell = (props) => {
-          return (
-            <div className="text-blue-600 font-medium cursor-pointer">
-              {props.row.referralCode || "N/A"}
-            </div>
-          );
-        };
-      }
-
-      const userIdField = modifiedArr.find(
-        (field) => field.field === "userId"
-      );
-      if (userIdField) {
-        userIdField.headerName = "User ID";
-        userIdField.width = 200;
-        userIdField.renderCell = (props) => {
-          let userId = props.row.userId;
-
-          // Handle both string IDs and populated objects
-          if (typeof userId === 'object' && userId !== null) {
-            userId = userId._id || userId.id;
-          }
-
-          return (
-            <div className="font-mono text-sm text-gray-700">
-              {userId || "N/A"}
-            </div>
-          );
-        };
-      }
-
-      // ✅ NEW: Business Name field
-      const businessNameField = modifiedArr.find(
-        (field) => field.field === "businessName"
-      );
-      if (businessNameField) {
-        businessNameField.headerName = "Business Name";
-        businessNameField.width = 200;
-        businessNameField.renderCell = (props) => {
-          return (
-            <div className="truncate">
-              {props.row.businessName || "N/A"}
-            </div>
-          );
-        };
-      }
-
-      // 4. ✅ NEW: Referrer Email field
-      const referrerEmailField = modifiedArr.find(
-        (field) => field.field === "referrerEmail"
-      );
+      // Referrer Email
+      const referrerEmailField = modifiedArr.find((f) => f.field === "referrerEmail");
       if (referrerEmailField) {
         referrerEmailField.headerName = "Referrer Email";
-        referrerEmailField.width = 250;
-        referrerEmailField.renderCell = (props) => {
-          const email = props.row.referrerEmail;
+        referrerEmailField.width = 230;
+        referrerEmailField.renderCell = (props) => (
+          <div className="text-blue-600 font-medium truncate">{props.row.referrerEmail || "N/A"}</div>
+        );
+      }
 
-          // Only display if it's actually an email (contains @)
-          if (!email || !email.includes('@')) {
-            return <div className="text-gray-400 text-center">-</div>;
-          }
+      // Referral Code
+      const referralCodeField = modifiedArr.find((f) => f.field === "referralCode");
+      if (referralCodeField) {
+        referralCodeField.headerName = "Referral Code";
+        referralCodeField.width = 220;
+        referralCodeField.renderCell = (props) => (
+          <div className="text-gray-700 truncate">{props.row.referralCode || "N/A"}</div>
+        );
+      }
 
-          return (
-            <div className="text-blue-600 font-medium">
-              {email}
-            </div>
+      // Referred Name — link to their profile via referredUserId
+      const referredNameField = modifiedArr.find((f) => f.field === "referredName");
+      if (referredNameField) {
+        referredNameField.headerName = "Referred User";
+        referredNameField.width = 180;
+        referredNameField.renderCell = (props) => {
+          const userId = props.row.referredUserId;
+          const name = props.row.referredName || "Unknown";
+          return userId ? (
+            <Link href={`/admin/users/${userId}`} className="text-blue-600 font-medium hover:underline cursor-pointer">
+              {name}
+            </Link>
+          ) : (
+            <div className="text-gray-600">{name}</div>
           );
         };
       }
 
-      // ✅ NEW: Payment Status field
-      const paymentStatusField = modifiedArr.find(
-        (field) => field.field === "paymentStatus"
-      );
-      if (paymentStatusField) {
-        paymentStatusField.headerName = "Payment Status";
-        paymentStatusField.width = 150;
-        paymentStatusField.renderCell = (props) => {
-          const status = props.row.paymentStatus || "unpaid";
-          const colorClass =
-            status === "paid" ? "bg-green-100 text-green-800" :
-              status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                "bg-red-100 text-red-800";
-
-          return (
-            <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${colorClass}`}>
-              {status}
-            </span>
-          );
-        };
+      // Referred Email
+      const referredEmailField = modifiedArr.find((f) => f.field === "referredEmail");
+      if (referredEmailField) {
+        referredEmailField.headerName = "Referred Email";
+        referredEmailField.width = 230;
+        referredEmailField.renderCell = (props) => (
+          <div className="text-gray-700 truncate">{props.row.referredEmail || "N/A"}</div>
+        );
       }
 
-      // Referral Count field
-      const countField = modifiedArr.find((field) => field.field === "count");
-      if (countField) {
-        countField.headerName = "Referral Count";
-        countField.width = 120;
-        countField.renderCell = (props) => {
-          return (
-            <div className="font-semibold text-center w-full text-blue-600">
-              {props.row.count || 0}
-            </div>
-          );
-        };
-      }
-
-      // ✅ UPDATED: Total Amount Owed field (changed header name)
-      const amountField = modifiedArr.find(
-        (field) => field.field === "totalAmountOwed"
-      );
-      if (amountField) {
-        amountField.headerName = "Total Amount Owed"; // ✅ Changed from "Amount Owed"
-        amountField.width = 150;
-        amountField.renderCell = (props) => {
-          const amount = props.row.totalAmountOwed || 0;
-          return (
-            <div className="font-semibold text-green-600">
-              ${amount.toFixed(2)}
-            </div>
-          );
-        };
-      }
-
-      // Type field
-      const typeField = modifiedArr.find((field) => field.field === "type");
-      if (typeField) {
-        typeField.headerName = "Referral Type";
-        typeField.width = 150;
-        typeField.renderCell = (props) => {
-          const type = props.row.type;
-
-          // Map the type to display labels
-          const typeLabels: Record<string, string> = {
-            PARTNER_REFERRAL: "Partner",
-            SALES_REFERRAL: "Sales Consultant",
-            CLAIM_REFERRAL: "Claim",
-            REGULAR_REFERRAL: "User",
-            USER_REFERRAL: "User",
-          };
-
-          const displayType = typeLabels[type] || type || "N/A";
-
-          return (
-            <span className={`px-2 py-1 rounded text-xs font-medium ${displayType === 'Partner' ? 'bg-purple-100 text-purple-800' :
-                displayType === 'Sales Consultant' ? 'bg-blue-100 text-blue-800' :
-                  displayType === 'Claim' ? 'bg-orange-100 text-orange-800' :
-                    displayType === 'User' ? 'bg-green-100 text-green-800' :
-                      'bg-gray-100 text-gray-800'
-              }`}>
-              {displayType}
-            </span>
-          );
-        };
-      }
-
-      // Status field
-      const statusField = modifiedArr.find((field) => field.field === "status");
+      // Status
+      const statusField = modifiedArr.find((f) => f.field === "status");
       if (statusField) {
         statusField.headerName = "Status";
-        statusField.width = 130;
+        statusField.width = 120;
         statusField.renderCell = (props) => {
-          const status = props.row.status || "AGGREGATED";
+          const status = props.row.status || "CLAIMED";
           const colorClass =
             status === "APPROVED" ? "bg-green-100 text-green-800" :
-              status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
-                status === "REJECTED" ? "bg-red-100 text-red-800" :
-                  "bg-blue-100 text-blue-800";
-
+            status === "CLAIMED"  ? "bg-blue-100 text-blue-800" :
+            status === "PENDING"  ? "bg-yellow-100 text-yellow-800" :
+            status === "REJECTED" ? "bg-red-100 text-red-800" :
+            "bg-gray-100 text-gray-800";
           return (
-            <span className={`px-2 py-1 rounded text-xs font-medium ${colorClass}`}>
-              {status}
-            </span>
+            <span className={`px-2 py-1 rounded text-xs font-medium ${colorClass}`}>{status}</span>
           );
         };
       }
 
-      // Referred Users field
-      const usersReferred = modifiedArr.find(
-        (field) => field.field === "usersReferred" || field.field === "referredUsers"
-      );
+      // Role
+      const roleField = modifiedArr.find((f) => f.field === "role");
+      if (roleField) {
+        roleField.headerName = "Role";
+        roleField.width = 110;
+        roleField.renderCell = (props) => (
+          <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 capitalize">
+            {props.row.role || "N/A"}
+          </span>
+        );
+      }
 
-      if (usersReferred) {
-        usersReferred.field = "referredUsers";
-        usersReferred.headerName = "Referred Users";
-        usersReferred.width = 200;
-        usersReferred.renderCell = (props) => {
-          const referredUsers = props.row.referredUsers || [];
-          const userId = props.row.userId;
+      // Is Client
+      const isClientField = modifiedArr.find((f) => f.field === "isClient");
+      if (isClientField) {
+        isClientField.headerName = "Client";
+        isClientField.width = 90;
+        isClientField.renderCell = (props) => (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${props.row.isClient ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+            {props.row.isClient ? "Yes" : "No"}
+          </span>
+        );
+      }
 
+      // Payment Status
+      const paymentStatusField = modifiedArr.find((f) => f.field === "paymentStatus");
+      if (paymentStatusField) {
+        paymentStatusField.headerName = "Payment Status";
+        paymentStatusField.width = 140;
+        paymentStatusField.renderCell = (props) => {
+          const status = (props.row.paymentStatus || "Unpaid").toLowerCase();
+          const colorClass =
+            status === "paid"    ? "bg-green-100 text-green-800" :
+            status === "pending" ? "bg-yellow-100 text-yellow-800" :
+            "bg-red-100 text-red-800";
           return (
-            <>
-              <div
-                onClick={() => {
-                  if (clickedUserRefs === props.row.id) {
-                    setClickedUserRefs("");
-                    setDetailedReferredUsers([]);
-                  } else {
-                    setClickedUserRefs(props.row.id);
-                    // Fetch detailed information when modal opens
-                    if (userId) {
-                      fetchReferredUsersDetails(userId);
-                    }
-                  }
-                }}
-                className="cursor-pointer text-blue-600 hover:underline font-medium"
-              >
-                {Array.isArray(referredUsers) && referredUsers.length > 0
-                  ? `${referredUsers.length} user${referredUsers.length > 1 ? 's' : ''}`
-                  : "No users"}
-              </div>
-
-              <Dialog
-                open={clickedUserRefs === props.row.id}
-                onOpenChange={(open: boolean) => {
-                  if (!open) {
-                    setClickedUserRefs("");
-                    setDetailedReferredUsers([]);
-                  }
-                }}
-              >
-                <DialogContent className="max-w-3xl max-h-[80vh]">
-                  <DialogTitle className="text-lg font-semibold border-b pb-3">
-                    Referred Users - {props.row.referrerName}
-                  </DialogTitle>
-
-                  {loadingDetails ? (
-                    <div className="flex justify-center items-center py-10">
-                      <FiLoader className="animate-spin h-8 w-8 text-blue-600" />
-                    </div>
-                  ) : (
-                    <List
-                      sx={{
-                        maxHeight: "500px",
-                        overflowY: "auto",
-                      }}
-                    >
-                      {detailedReferredUsers.length > 0 ? (
-                        detailedReferredUsers.map((user: any, i: number) => (
-                          <div
-                            key={i}
-                            className="p-4 border-b hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="font-semibold text-base text-gray-900">
-                                  {user.fullName}
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {user.email}
-                                </div>
-                                <div className="flex gap-2 mt-2">
-                                  {/* Referral Type Badge */}
-                                  <span className={`inline-block px-2 py-1 text-xs rounded font-medium ${user.referralType === 'PARTNER_REFERRAL' ? 'bg-purple-100 text-purple-800' :
-                                    user.referralType === 'SALES_REFERRAL' ? 'bg-indigo-100 text-indigo-800' :
-                                      user.referralType === 'CLAIM_REFERRAL' ? 'bg-blue-100 text-blue-800' :
-                                        user.referralType === 'REGULAR_REFERRAL' ? 'bg-teal-100 text-teal-800' :
-                                          'bg-green-100 text-green-800'
-                                    }`}>
-                                    {user.referralType.replace('_', ' ')}
-                                  </span>
-
-                                  {/* Status Badge */}
-                                  <span className={`inline-block px-2 py-1 text-xs rounded font-medium ${user.referralStatus === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                    user.referralStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                      user.referralStatus === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                                        'bg-gray-100 text-gray-800'
-                                    }`}>
-                                    {user.referralStatus}
-                                  </span>
-
-                                  {/* Role Badge */}
-                                  {user.role && (
-                                    <span className="inline-block px-2 py-1 text-xs rounded font-medium bg-gray-100 text-gray-800 capitalize">
-                                      {user.role}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* User Link */}
-                              {user.id && (
-                                <Link
-                                  href={`/admin/users/${user.id}`}
-                                  className="ml-4 text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                >
-                                  View Profile →
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-10 text-gray-500">
-                          No referred users found
-                        </div>
-                      )}
-                    </List>
-                  )}
-                </DialogContent>
-              </Dialog>
-            </>
+            <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${colorClass}`}>{status}</span>
           );
         };
       }
 
-      // 🚫 ONLY SHOW DELETE/RESTORE/APPROVE ACTIONS FOR NON-AGGREGATED VIEWS
+      // Amount Owed
+      const amountOwedField = modifiedArr.find((f) => f.field === "amountOwed");
+      if (amountOwedField) {
+        amountOwedField.headerName = "Amount Owed";
+        amountOwedField.width = 130;
+        amountOwedField.renderCell = (props) => (
+          <div className="font-semibold text-green-600">${(props.row.amountOwed || 0).toFixed(2)}</div>
+        );
+      }
+
+      // Business Name
+      const businessNameField = modifiedArr.find((f) => f.field === "businessName");
+      if (businessNameField) {
+        businessNameField.headerName = "Business Name";
+        businessNameField.width = 180;
+        businessNameField.renderCell = (props) => (
+          <div className="truncate">{props.row.businessName || "—"}</div>
+        );
+      }
+
+      // Created At
+      const createdAtField = modifiedArr.find((f) => f.field === "createdAt");
+      if (createdAtField) {
+        createdAtField.headerName = "Date";
+        createdAtField.width = 120;
+        createdAtField.renderCell = (props) => (
+          <div className="text-sm text-gray-600">
+            {props.row.createdAt ? new Date(props.row.createdAt).toLocaleDateString() : "N/A"}
+          </div>
+        );
+      }
+
+      if (showDeleted) {
+        modifiedArr.unshift({
+          field: "restore",
+          headerName: "Restore",
+          width: 100,
+          headerClassName: "bg-[#80D7FF]",
+          renderCell: (params: any) => (
+            <div
+              onClick={() => handleRestore(params.row["id"] || params.row["_id"])}
+              className="cursor-pointer hover:text-blue-600 transition-colors"
+            >
+              <RestoreFromTrashIcon />
+            </div>
+          ),
+        });
+      }
     }
 
     if (variance !== "all") {
-        if (!showDeleted) {
-          modifiedArr.unshift({
-            field: "editReferral",
-            headerName: "Edit",
-            width: 90,
+      // Only hide the raw nested object and its internal helper field
+      modifiedArr = modifiedArr.filter(
+        (f) => f.field !== "user" && f.field !== "userProfileId"
+      );
+
+      // Referrer
+      const referrerField = modifiedArr.find((f) => f.field === "referrer");
+      if (referrerField) {
+        referrerField.headerName = "Referrer";
+        referrerField.width = 230;
+        referrerField.renderCell = (props) => (
+          <div className="text-blue-600 font-medium truncate">{props.row.referrer || "N/A"}</div>
+        );
+      }
+
+      // User Name (flattened from nested user object)
+      const userNameField = modifiedArr.find((f) => f.field === "userName");
+      if (userNameField) {
+        userNameField.headerName = "User Name";
+        userNameField.width = 180;
+        userNameField.renderCell = (props) => {
+          const profileId = props.row.userId;
+          const name = props.row.userName || "Unknown";
+          return profileId ? (
+            <Link href={`/admin/users/${profileId}`} className="text-blue-600 font-medium hover:underline cursor-pointer">
+              {name}
+            </Link>
+          ) : (
+            <div className="text-gray-600">{name}</div>
+          );
+        };
+      }
+
+      // User Email (flattened)
+      const userEmailField = modifiedArr.find((f) => f.field === "userEmail");
+      if (userEmailField) {
+        userEmailField.headerName = "User Email";
+        userEmailField.width = 230;
+        userEmailField.renderCell = (props) => (
+          <div className="text-gray-700 truncate">{props.row.userEmail || "N/A"}</div>
+        );
+      }
+
+      // User ID
+      const userIdField = modifiedArr.find((f) => f.field === "userId");
+      if (userIdField) {
+        userIdField.headerName = "User ID";
+        userIdField.width = 150;
+        userIdField.renderCell = (props) => (
+          <Link href={`/admin/users/${props.row.userId}`} className="font-mono text-xs text-blue-600 hover:underline truncate">
+            {props.row.userId || "N/A"}
+          </Link>
+        );
+      }
+
+      // Status badge
+      const statusField = modifiedArr.find((f) => f.field === "status");
+      if (statusField) {
+        statusField.headerName = "Status";
+        statusField.width = 120;
+        statusField.renderCell = (props) => {
+          const status = props.row.status || "CLAIMED";
+          const colorClass =
+            status === "APPROVED" ? "bg-green-100 text-green-800" :
+            status === "CLAIMED"  ? "bg-blue-100 text-blue-800" :
+            status === "PENDING"  ? "bg-yellow-100 text-yellow-800" :
+            status === "REJECTED" ? "bg-red-100 text-red-800" :
+            "bg-gray-100 text-gray-800";
+          return (
+            <span className={`px-2 py-1 rounded text-xs font-medium ${colorClass}`}>{status}</span>
+          );
+        };
+      }
+
+      // Payment Status (referralStatus field)
+      const referralStatusField = modifiedArr.find((f) => f.field === "referralStatus");
+      if (referralStatusField) {
+        referralStatusField.headerName = "Payment Status";
+        referralStatusField.width = 140;
+        referralStatusField.renderCell = (props) => {
+          const status = (props.row.referralStatus || "Unpaid").toLowerCase();
+          const colorClass =
+            status === "paid"    ? "bg-green-100 text-green-800" :
+            status === "pending" ? "bg-yellow-100 text-yellow-800" :
+            "bg-red-100 text-red-800";
+          return (
+            <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${colorClass}`}>{status}</span>
+          );
+        };
+      }
+
+      // Is Deleted badge
+      const isDeletedField = modifiedArr.find((f) => f.field === "isDeleted");
+      if (isDeletedField) {
+        isDeletedField.headerName = "Deleted";
+        isDeletedField.width = 90;
+        isDeletedField.renderCell = (props) => (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${props.row.isDeleted ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+            {props.row.isDeleted ? "Yes" : "No"}
+          </span>
+        );
+      }
+
+      // Updated By
+      const updatedByField = modifiedArr.find((f) => f.field === "updatedBy");
+      if (updatedByField) {
+        updatedByField.headerName = "Updated By";
+        updatedByField.width = 180;
+        updatedByField.renderCell = (props) => (
+          <div className="text-gray-600 truncate">{props.row.updatedBy || "—"}</div>
+        );
+      }
+
+      // Created At
+      const createdAtField = modifiedArr.find((f) => f.field === "createdAt");
+      if (createdAtField) {
+        createdAtField.headerName = "Created";
+        createdAtField.width = 120;
+        createdAtField.renderCell = (props) => (
+          <div className="text-sm text-gray-600">
+            {props.row.createdAt ? new Date(props.row.createdAt).toLocaleDateString() : "N/A"}
+          </div>
+        );
+      }
+
+      // Updated At
+      const updatedAtField = modifiedArr.find((f) => f.field === "updatedAt");
+      if (updatedAtField) {
+        updatedAtField.headerName = "Updated";
+        updatedAtField.width = 120;
+        updatedAtField.renderCell = (props) => (
+          <div className="text-sm text-gray-600">
+            {props.row.updatedAt ? new Date(props.row.updatedAt).toLocaleDateString() : "N/A"}
+          </div>
+        );
+      }
+
+      if (!showDeleted) {
+        modifiedArr.unshift({
+          field: "editReferral",
+          headerName: "Edit",
+          width: 90,
+          headerClassName: "bg-[#80D7FF]",
+          renderCell: (params: any) => (
+            <button
+              disabled={!editMode}
+              onClick={() => openEditModal(params.row)}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                editMode
+                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Edit
+            </button>
+          ),
+        });
+      }
+
+      if (showDeleted) {
+        modifiedArr.unshift({
+          field: "restore",
+          headerName: "Restore",
+          width: 100,
+          headerClassName: "bg-[#80D7FF]",
+          renderCell: (params: any) => (
+            <div
+              onClick={() => handleRestore(params.row["id"] || params.row["_id"])}
+              className="cursor-pointer hover:text-blue-600 transition-colors"
+            >
+              <RestoreFromTrashIcon />
+            </div>
+          ),
+        });
+      }
+
+      if (variance === "claim" && !showDeleted) {
+        modifiedArr.unshift(
+          {
+            field: "approveClaim",
+            headerName: "Approve Claim",
+            width: 150,
+            headerClassName: "bg-[#80D7FF]",
+            renderCell: (params: any) => {
+              const id = params.row["id"] || params.row["_id"];
+              return (
+                <button
+                  onClick={() => handleAcceptClaim(id)}
+                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded w-full transition-colors"
+                >
+                  Approve
+                </button>
+              );
+            },
+          },
+          {
+            field: "declineClaim",
+            headerName: "Decline Claim",
+            width: 150,
             headerClassName: "bg-[#80D7FF]",
             renderCell: (params: any) => (
               <button
-                disabled={!editMode}
-                onClick={() => openEditModal(params.row)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  editMode
-                    ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
+                onClick={() => handleDeclineClaim(params.row["id"] || params.row["_id"])}
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded w-full transition-colors"
               >
-                Edit
+                Decline
               </button>
             ),
-          });
-        }
-
-        // Restore button for deleted items
-        if (showDeleted) {
-          modifiedArr.unshift({
-            field: "restore",
-            headerName: "Restore",
-            width: 100,
-            headerClassName: "bg-[#80D7FF]",
-            renderCell: (params: any) => {
-              return (
-                <div
-                  onClick={() => {
-                    handleRestore(params.row["id"] || params.row["_id"]);
-                  }}
-                  className="cursor-pointer hover:text-blue-600 transition-colors"
-                >
-                  <RestoreFromTrashIcon />
-                </div>
-              );
-            },
-          });
-        }
-
-        // Approve/Decline buttons for claim referrals
-        if (variance === "claim" && !showDeleted) {
-          modifiedArr.unshift(
-            {
-              field: "approveClaim",
-              headerName: "Approve Claim",
-              width: 150,
-              headerClassName: "bg-[#80D7FF]",
-              renderCell: (params: any) => {
-                const id = params.row["id"] || params.row["_id"];
-                return (
-                  <button
-                    onClick={() => handleAcceptClaim(id)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded w-full transition-colors"
-                  >
-                    Approve
-                  </button>
-                );
-              },
-            },
-            {
-              field: "declineClaim",
-              headerName: "Decline Claim",
-              width: 150,
-              headerClassName: "bg-[#80D7FF]",
-              renderCell: (params: any) => {
-                return (
-                  <button
-                    onClick={() =>
-                      handleDeclineClaim(params.row["id"] || params.row["_id"])
-                    }
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded w-full transition-colors"
-                  >
-                    Decline
-                  </button>
-                );
-              },
-            }
-          );
-        }
+          }
+        );
       }
+    }
 
       return modifiedArr;
   }
@@ -782,7 +705,7 @@ const ReferralComponent = () => {
 
     const loadingToast = toast.loading("Saving changes...");
     try {
-      if (variance === "claim" && editForm.status) {
+      if (editForm.status) {
         await updateReferralStatus.mutateAsync({
           id,
           variance,
@@ -808,12 +731,6 @@ const ReferralComponent = () => {
   };
 
   const handleDelete = async (id: string) => {
-    // Safety check for aggregated view
-    if (variance === "all") {
-      toast.error("Delete not available in aggregated view. Switch to individual tabs.");
-      return;
-    }
-
     try {
       const loadingToast = toast.loading("Recycling claim..");
       const res = await deleteReferral.mutateAsync({ id, variance });
@@ -836,11 +753,6 @@ const ReferralComponent = () => {
   };
 
   const handleDeleteMultiple = async (selectedIds: any) => {
-    if (variance === "all") {
-      toast.error("Bulk delete is unavailable in aggregated view.");
-      return;
-    }
-
     const ids = (Array.isArray(selectedIds) ? selectedIds : []).filter(Boolean);
     if (ids.length === 0) return;
 
@@ -896,8 +808,7 @@ const ReferralComponent = () => {
             Edit Referral
           </DialogTitle>
           <div className="space-y-4">
-            {variance === "claim" && (
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Status</label>
                 <Select
                   value={editForm.status || "PENDING"}
@@ -915,7 +826,6 @@ const ReferralComponent = () => {
                   </SelectContent>
                 </Select>
               </div>
-            )}
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium">Payment Status</label>
               <Select
@@ -1013,7 +923,7 @@ const ReferralComponent = () => {
       {!userIsLoading && !queryString && !Object.keys(user).length && (
         <div className="">
           <Table
-            allowDelete={variance !== "all"} // Disable delete for aggregated view
+            allowDelete={true}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             data={users}
@@ -1022,19 +932,17 @@ const ReferralComponent = () => {
             modifyArray={modifyArray}
             tableName={tableName}
             editMode={editMode}
-            handleDelete={variance !== "all" ? (showDeleted ? handleHardDelete : handleDelete) : undefined} // Only pass handler for non-aggregated
+            handleDelete={showDeleted ? handleHardDelete : handleDelete}
             handleDeleteMultiple={handleDeleteMultiple}
             handleSelection={handleSelection}
             actions={[
               {
                 label: showDeleted ? "Show Active" : "Show Deleted",
-                handler: () => {
-                  setShowDeleted(!showDeleted);
-                },
+                handler: () => setShowDeleted(!showDeleted),
                 isChecked: showDeleted,
               },
             ]}
-            checkBoxSelection={variance !== "all"}
+            checkBoxSelection={true}
             paginationData={paginationData}
             rowCount={rowCount}
             setPaginationData={setPaginationData}
