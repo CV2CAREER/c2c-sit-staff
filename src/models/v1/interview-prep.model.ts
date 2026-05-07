@@ -71,6 +71,14 @@ export class InterviewPrepQuestionAnswer extends Model {
   @Column(DataType.JSONB)
   interview!: Array<any>;
 
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  updatedBy?: string;
+
   @CreatedAt
   createdAt!: Date;
 

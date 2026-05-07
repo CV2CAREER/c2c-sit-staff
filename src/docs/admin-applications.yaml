@@ -1,42 +1,324 @@
+# OpenAPI Specification for Admin Applications Endpoints
+
 paths:
   /v1/admin/applications:
     get:
       tags:
         - Admin Applications
-      summary: Get applications
+      summary: Get all applications
+      description: |
+        Fetch all application records with optional filtering by isDeleted, status, source, and aggregator.
+        Defaults to returning only non-deleted records when isDeleted is omitted.
+        Returns paginated results along with a uniqueCount of distinct JobIds.
+      operationId: getApplications
       security:
         - bearerAuth: []
         - cookieAuth: []
       parameters:
-        - in: query
-          name: skip
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
           schema:
             type: integer
-        - in: query
-          name: limit
+            default: 1
+            minimum: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of records per page
           schema:
             type: integer
-        - in: query
-          name: active
+            default: 15
+            minimum: 1
+            maximum: 500
+        - name: isDeleted
+          in: query
+          required: false
+          description: |
+            Filter by soft-delete status.
+            Omit to return only active records (isDeleted = false).
+            Pass `true` to return only deleted records.
           schema:
             type: boolean
-        - in: query
-          name: client
-          schema:
-            type: integer
-        - in: query
-          name: userId
-          schema:
-            type: integer
-        - in: query
-          name: aggregator
+        - name: status
+          in: query
+          required: false
+          description: |
+            Filter by application Status field.
+            Pass `all` or omit to return all statuses.
           schema:
             type: string
-        - in: query
-          name: dataOption
+            example: Successful
+        - name: source
+          in: query
+          required: false
+          description: |
+            Filter by Run_Source field (e.g. the bot run source).
+            Pass `all` or omit to return all sources.
           schema:
             type: string
-            enum: [sample_results, questions]
+            example: Seek
+        - name: aggregator
+          in: query
+          required: false
+          description: |
+            Filter by Internal_Jobsite field (the aggregator/jobsite name).
+            Pass `all` or omit to return all aggregators.
+          schema:
+            type: string
+            example: LinkedIn
       responses:
         "200":
-          description: Applications fetched
+          description: Applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Applications retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ApplicationRecord"
+                      pagination:
+                        type: object
+                        properties:
+                          totalCount:
+                            type: integer
+                            description: Total records matching the filters
+                          currentPage:
+                            type: integer
+                          pageSize:
+                            type: integer
+                          totalPages:
+                            type: integer
+                      uniqueCount:
+                        type: integer
+                        description: Count of distinct JobIds matching the filters
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/admin/applications/{applicationId}:
+    delete:
+      tags:
+        - Admin Applications
+      summary: Soft-delete an application
+      description: |
+        Sets isDeleted = true on the application record.
+        Sends a Slack notification to the CSM team.
+        Returns 500 if the application is already deleted.
+      operationId: softDeleteApplication
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: UUID of the application to soft-delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Application deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Application ID is required
+        "401":
+          description: Unauthorized
+        "500":
+          description: Application not found or already deleted
+
+  /v1/admin/applications/{applicationId}/restore:
+    patch:
+      tags:
+        - Admin Applications
+      summary: Restore a soft-deleted application
+      description: |
+        Sets isDeleted = false on the application record.
+        Sends a Slack notification to the CSM team.
+        Returns 500 if the application is not currently deleted.
+      operationId: restoreApplication
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: UUID of the application to restore
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Application restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Application ID is required
+        "401":
+          description: Unauthorized
+        "500":
+          description: Application not found or not in deleted state
+
+  /v1/admin/applications/{applicationId}/permanent:
+    delete:
+      tags:
+        - Admin Applications
+      summary: Permanently delete an application
+      description: |
+        Irreversibly removes the application record from the database.
+        Sends a Slack notification to the CSM team.
+        This action cannot be undone.
+      operationId: permanentDeleteApplication
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          description: UUID of the application to permanently delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Application permanently deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Application ID is required
+        "401":
+          description: Unauthorized
+        "500":
+          description: Application not found
+
+components:
+  schemas:
+    ApplicationRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        Client:
+          type: string
+        Timestamp:
+          type: string
+        Internal_Jobsite:
+          type: string
+          description: Aggregator / internal jobsite name
+        External_Jobsite:
+          type: string
+        Country:
+          type: string
+        All_Words:
+          type: string
+        Status:
+          type: string
+          description: Application outcome (e.g. Successful, Failed)
+        Category:
+          type: string
+        Job_Title:
+          type: string
+        JobId:
+          type: string
+        Location:
+          type: string
+        Job_Type:
+          type: string
+        Advertiser:
+          type: string
+        Screenshot:
+          type: string
+        Classification:
+          type: string
+        Date_Advertised:
+          type: string
+        Run_Source:
+          type: string
+          description: Source/bot that ran the application
+        SelectionType:
+          type: string
+          enum: [Auto, Manual, Hybrid]
+        Application_Source:
+          type: string
+          enum: [Generic, Seek, Indeed, LinkedIn, Jora, CareerOne, Other]
+        Application_Mode:
+          type: string
+          enum: [Attended, Unattended]
+        Sample_Type:
+          type: string
+          nullable: true
+        ApplicationSubmittedBy:
+          type: string
+          nullable: true
+        MatchLevel:
+          type: string
+          nullable: true
+        FailedCount:
+          type: integer
+          nullable: true
+        bot_responsible:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+          description: Foreign key to User
+        isDeleted:
+          type: boolean
+        updateBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        user:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            firstName:
+              type: string
+            lastName:
+              type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Operation completed successfully"

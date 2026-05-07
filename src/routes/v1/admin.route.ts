@@ -52,7 +52,8 @@ import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.contro
 import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
 import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
-import { applicationsController } from "@/controllers/v1/applications.controller";
+import applicationRouterV1 from "./application.route";
+import interviewPrepRouterV1 from "./interview-prep.route";
 import { jcTriggerController } from "@/controllers/v1/jc-trigger.controller";
 import {
   getJobPreferencesController,
@@ -108,27 +109,11 @@ adminRouterV1.put(
   "/jc-triggers",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  jcTriggerController,
+  jcTriggerController, 
 );
 
-adminRouterV1.get(
-  "/applications",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  applicationsController,
-);
-adminRouterV1.patch(
-  "/applications",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  applicationsController,
-);
-adminRouterV1.delete(
-  "/applications",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  applicationsController,
-);
+adminRouterV1.use("/applications", applicationRouterV1);
+adminRouterV1.use("/interview-prep", interviewPrepRouterV1);
 adminRouterV1.use(
   "/ai",
   checkBlacklistedTokens,
