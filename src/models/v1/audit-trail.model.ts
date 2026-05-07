@@ -27,7 +27,7 @@ export class AuditTrail extends Model {
 
   @AllowNull(false)
   @Index
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   actorUserId!: string;
 
   @AllowNull(true)

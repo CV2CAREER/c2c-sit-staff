@@ -44,7 +44,7 @@ export class CRTracking extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   createdBy?: string;
 
   @AllowNull(true)
@@ -97,7 +97,7 @@ export class CRTracking extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updatedBy?: string;
 
   @AllowNull(true)
@@ -181,7 +181,7 @@ export class CRTracking extends Model {
   
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   deletedBy?: string;
 
   @ForeignKey(() => CROwner)

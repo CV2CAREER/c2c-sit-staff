@@ -89,11 +89,13 @@ export enum SampleDispatchedStatus {
 export enum RevenueStatus {
   CAPITALIZED = "Capitalized",
   REFUNDED = "Refunded",
+  PAID = "Paid",
   UNPAID = "Unpaid",
 }
 
 export enum ReferrerStatus {
   PENDING = "PENDING",
+  CLAIMED = "CLAIMED",
   APPROVED = "APPROVED",
   REJECTED = "REJECTED",
 }

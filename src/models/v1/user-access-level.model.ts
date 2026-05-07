@@ -28,7 +28,7 @@ export class UserAccessLevel extends Model {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Index("idx_user_access_levels_user_access_unique")
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, "userId")

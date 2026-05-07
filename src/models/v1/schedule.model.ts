@@ -63,7 +63,7 @@ export class Schedule extends Model {
   // Coach reference - only coaches can have schedules
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   coachId!: string;
 
   @BelongsTo(() => User, "coachId")

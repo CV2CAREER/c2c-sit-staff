@@ -22,7 +22,7 @@ import { SeekExternalCredentials } from "../../types/credentials.types";
 export class Credentials extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(true)
@@ -71,7 +71,7 @@ export class Credentials extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   clientId?: string;
 
   @BelongsTo(() => User, {

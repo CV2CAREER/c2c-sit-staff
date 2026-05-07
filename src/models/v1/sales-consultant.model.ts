@@ -28,7 +28,7 @@ export class SalesConsultant extends Model {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Unique // One sales consultant record per user
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {

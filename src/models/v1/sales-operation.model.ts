@@ -115,15 +115,15 @@ export class SalesOperation extends Model {
   deletedAt?: Date;
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   createdBy?: string;
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updatedBy?: string;
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   deletedBy?: string;
 
   @BelongsTo(() => User, "createdBy")

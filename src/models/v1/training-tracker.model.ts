@@ -42,7 +42,7 @@ export class TrainingTracker extends Model {
   id!: string;
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, { foreignKey: "userId", targetKey: "id" })
@@ -58,7 +58,7 @@ export class TrainingTracker extends Model {
 
   @ForeignKey(() => User)
   @AllowNull
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   pcId!: string;
 
   @BelongsTo(() => User, { foreignKey: "pcId", targetKey: "id" })
@@ -173,6 +173,6 @@ export class TrainingTracker extends Model {
   @Column(DataType.DATE)
   deletedAt!: Date;
 
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   deletedBy!: string;
 }

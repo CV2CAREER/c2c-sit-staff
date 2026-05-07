@@ -38,7 +38,7 @@ export class CRTrackingHistory extends Model {
   crTracking?: CRTracking;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   userId?: string;
 
@@ -56,17 +56,17 @@ export class CRTrackingHistory extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   performedBy?: string;
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   nilNotifiedBy?: string;
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   nilUpdatedBy?: string;
 
   @CreatedAt

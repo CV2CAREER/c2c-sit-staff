@@ -14,7 +14,7 @@ import {
   Unique,
 } from "sequelize-typescript";
 import { User } from "./user.model";
-import { ReferrerStatus } from "../../utils/enum";
+import { ReferrerStatus, RevenueStatus } from "../../utils/enum";
 
 @Table({
   tableName: "referrers",
@@ -29,7 +29,7 @@ export class Referrer extends Model {
   // Foreign key to users table (one-to-many )
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {
@@ -47,6 +47,20 @@ export class Referrer extends Model {
   @Default(ReferrerStatus.PENDING)
   @Column(DataType.ENUM(...Object.values(ReferrerStatus)))
   status!: ReferrerStatus;
+
+  @AllowNull
+  @Default(RevenueStatus.UNPAID)
+  @Column(DataType.ENUM(...Object.values(RevenueStatus)))
+  referralStatus!: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  updatedBy?: string;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
 
   @CreatedAt
   createdAt!: Date;

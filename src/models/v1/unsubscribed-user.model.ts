@@ -19,7 +19,7 @@ export class UnsubscribedUser extends Model {
 
   @ForeignKey(() => User)
   @Column({
-    type: DataType.UUID,
+    type: DataType.STRING,
     allowNull: false,
     unique: true,
     onDelete: 'CASCADE',

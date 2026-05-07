@@ -34,7 +34,7 @@ export class AdminControl extends Model {
   questionAnswerMode!: QuestionAnswerMode;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updatedByUserId?: string | null;
 
   @CreatedAt

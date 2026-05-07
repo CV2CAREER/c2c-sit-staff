@@ -128,7 +128,7 @@ export class Application extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   client_id?: string;
 
   @BelongsTo(() => User, "client_id")
