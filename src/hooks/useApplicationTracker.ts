@@ -125,7 +125,7 @@ export const useApplicationTracker = ({
     },
   });
 
-  const restoreApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput>({
+  const restoreApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput, string>({
     mutationKey: ["application-tracker-restore"],
     mutationFn: async ({ id }) => {
       try {
@@ -147,7 +147,7 @@ export const useApplicationTracker = ({
     },
   });
 
-  const deleteApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput>({
+  const deleteApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput, string>({
     mutationKey: ["application-tracker-delete"],
     mutationFn: async ({ id }) => {
       try {
