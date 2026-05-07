@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
-import CvRevamp from "../../models/v1/cv-revamp.model";
+import { Op } from "sequelize";
+import { CvRevamp } from "../../models/v1/cv-revamp.model";
+import { Upload } from "../../models/v1/upload.model";
+import { User } from "../../models/v1/user.model";
 import ApiResponse from "../../utils/apiResponse";
 
 /**
@@ -10,13 +13,17 @@ export const getCvRevamps = async (req: Request, res: Response) => {
     const { docId, userId } = req.query;
 
     const filter: Record<string, any> = {};
-    if (docId) filter._id = docId;
+    if (docId) filter.id = docId;
     if (userId) filter.userId = userId;
 
-    const revamps = await CvRevamp.find(filter)
-      .populate("sourceFile", "fileName url")
-      .populate("userId", "firstName lastName email")
-      .sort({ createdAt: -1 });
+    const revamps = await CvRevamp.findAll({
+      where: filter,
+      include: [
+        { model: Upload, as: 'upload', attributes: ['fileName', 'url'] },
+        { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
 
     return res.status(200).json(ApiResponse.success({ message: "CV revamps fetched successfully", data: revamps }));
   } catch (error: any) {
@@ -32,9 +39,12 @@ export const getCvRevampById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const revamp = await CvRevamp.findById(id)
-      .populate("sourceFile", "fileName url")
-      .populate("userId", "firstName lastName email");
+    const revamp = await CvRevamp.findByPk(id, {
+      include: [
+        { model: Upload, as: 'upload', attributes: ['fileName', 'url'] },
+        { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email'] }
+      ]
+    });
 
     if (!revamp) {
       return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
@@ -57,22 +67,20 @@ export const createCvRevamp = async (req: Request, res: Response) => {
 
     // Handle legacy query-based creation
     if (cvId && create === "true") {
-      // In legacy system, this triggers CV revamp generation
-      // For now, we create a placeholder revamp record
-      const existingRevamp = await CvRevamp.findOne({ sourceFile: cvId });
+      const existingRevamp = await CvRevamp.findOne({ where: { uploadId: cvId } });
       if (existingRevamp) {
         return res.status(200).json(ApiResponse.success({ message: "CV revamp already exists", data: existingRevamp }));
       }
     }
 
     const revamp = await CvRevamp.create({
-      sourceFile: sourceFile || cvId,
+      uploadId: sourceFile || cvId,
       userId,
       fullName,
       url,
       fileName,
       status: "pending",
-    });
+    } as any);
 
     return res.status(201).json(ApiResponse.success({ message: "CV revamp created successfully", data: revamp, statusCode: 201 }));
   } catch (error: any) {
@@ -97,15 +105,13 @@ export const updateCvRevampStatus = async (req: Request, res: Response) => {
       return res.status(400).json(ApiResponse.error({ message: "Invalid action. Must be: approved, declined, or pending", statusCode: 400 }));
     }
 
-    const revamp = await CvRevamp.findByIdAndUpdate(
-      docId,
-      { status: action || "approved" },
-      { new: true }
-    );
+    const revamp = await CvRevamp.findByPk(docId as string);
 
     if (!revamp) {
       return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
     }
+
+    await revamp.update({ status: action || "approved" });
 
     return res.status(200).json(ApiResponse.success({ message: `CV revamp ${action || "approved"} successfully`, data: revamp }));
   } catch (error: any) {
@@ -121,11 +127,13 @@ export const deleteCvRevamp = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const revamp = await CvRevamp.findByIdAndDelete(id);
+    const revamp = await CvRevamp.findByPk(id as string);
 
     if (!revamp) {
       return res.status(404).json(ApiResponse.error({ message: "CV revamp not found", statusCode: 404 }));
     }
+
+    await revamp.destroy();
 
     return res.status(200).json(ApiResponse.success({ message: "CV revamp deleted successfully", data: revamp }));
   } catch (error: any) {
