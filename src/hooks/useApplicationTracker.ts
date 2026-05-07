@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useFetchData } from "./useApi";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
@@ -24,19 +25,11 @@ type ApplicationListPayload = {
   data: ApplicationRecord[];
   pagination?: {
     totalCount?: number;
+    currentPage?: number;
+    pageSize?: number;
+    totalPages?: number;
   };
-  metrics?: {
-    successful?: number;
-    failed?: number;
-    successCount?: number;
-    failedCount?: number;
-  };
-  counts?: {
-    successful?: number;
-    failed?: number;
-    successCount?: number;
-    failedCount?: number;
-  };
+  uniqueCount?: number;
 };
 
 type ApplicationMutationInput = {
@@ -48,29 +41,11 @@ const toApiError = (error: unknown): ApiError => {
   if (axios.isAxiosError(error) && error.response?.data) {
     return error.response.data as ApiError;
   }
-
   return {
     success: false,
     message: error instanceof Error ? error.message : "Unexpected error",
     data: null,
     statusCode: 500,
-  };
-};
-
-const unwrap = <T,>(response: ApiSuccess<T>) => response.data;
-
-const normalizeCounts = (payload: ApplicationListPayload | null | undefined) => {
-  const counts = payload?.metrics ?? payload?.counts ?? {};
-
-  return {
-    successful:
-      counts.successful ??
-      counts.successCount ??
-      0,
-    failed:
-      counts.failed ??
-      counts.failedCount ??
-      0,
   };
 };
 
@@ -87,75 +62,66 @@ export const useApplicationTracker = ({
 }) => {
   const queryClient = useQueryClient();
 
-  const applicationsQuery = useQuery<ApplicationListPayload, ApiError>({
-    queryKey: ["application-tracker", state, filters, page, pageSize],
-    queryFn: async () => {
-      try {
-        const response = await axiosInstance.get<ApiSuccess<ApplicationListPayload>>(ADMIN_APPLICATIONS, {
-          params: {
-            state,
-            page: page + 1,
-            limit: pageSize,
-            active: state === "active",
-            recycle: state === "recycle",
-            status: filters.status,
-            aggregator: filters.aggregator,
-            source: filters.source,
-          },
-        });
+  const baseParams = {
+    isDeleted: state !== "active",
+    ...(filters.aggregator !== "all" && { aggregator: filters.aggregator.toLowerCase() }),
+    ...(filters.source !== "all" && { source: filters.source }),
+  };
 
-        return unwrap(response.data);
-      } catch (error) {
-        throw toApiError(error);
-      }
+  const applicationsQuery = useFetchData<ApplicationListPayload>({
+    method: "GET",
+    url: ADMIN_APPLICATIONS,
+    params: {
+      ...baseParams,
+      page: page + 1,
+      pageSize,
+      ...(filters.status !== "all" && { status: filters.status }),
     },
+    queryKey: ["application-tracker", state, filters, page, pageSize],
+    enabled: true,
   });
 
-  const countersQuery = useQuery<{ successful: number; failed: number }, ApiError>({
-    queryKey: ["application-tracker-counts", filters],
-    queryFn: async () => {
-      try {
-        const response = await axiosInstance.get<ApiSuccess<ApplicationListPayload>>(ADMIN_APPLICATIONS, {
-          params: {
-            dataCount: true,
-            status: filters.status,
-            aggregator: filters.aggregator,
-            source: filters.source,
-          },
-        });
+  const successfulCountQuery = useFetchData<ApplicationListPayload>({
+    method: "GET",
+    url: ADMIN_APPLICATIONS,
+    params: { ...baseParams, page: 1, pageSize: 1, status: "successful" },
+    queryKey: ["application-tracker-count-successful", state, filters.aggregator, filters.source],
+    enabled: true,
+    staleEarly: true,
+  });
 
-        return normalizeCounts(unwrap(response.data));
-      } catch (error) {
-        throw toApiError(error);
-      }
-    },
+  const failedCountQuery = useFetchData<ApplicationListPayload>({
+    method: "GET",
+    url: ADMIN_APPLICATIONS,
+    params: { ...baseParams, page: 1, pageSize: 1, status: "failed" },
+    queryKey: ["application-tracker-count-failed", state, filters.aggregator, filters.source],
+    enabled: true,
+    staleEarly: true,
   });
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["application-tracker"] });
-    void queryClient.invalidateQueries({ queryKey: ["application-tracker-counts"] });
   };
 
-  const softDeleteApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput>({
+  const softDeleteApplication = useMutation<ApiSuccess<unknown>, ApiError, ApplicationMutationInput, string>({
     mutationKey: ["application-tracker-soft-delete"],
     mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_APPLICATIONS, {
-          isDeleted: true,
-        }, {
-          params: { id, action: "soft-delete" },
-        });
+        const response = await axiosInstance.delete<ApiSuccess<unknown>>(`${ADMIN_APPLICATIONS}/${id}`);
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: () => {
-      toast.success("Application moved to recycle bin.");
+    onMutate: () => {
+      return toast.loading("Moving application to recycle bin...");
+    },
+    onSuccess: (_data, _vars, toastId) => {
+      toast.success("Application moved to recycle bin.", { id: toastId });
       invalidate();
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to move application to recycle bin.");
+    onError: (error, _vars, toastId) => {
+      toast.error(error.message || "Failed to move application to recycle bin.", { id: toastId });
     },
   });
 
@@ -163,22 +129,21 @@ export const useApplicationTracker = ({
     mutationKey: ["application-tracker-restore"],
     mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_APPLICATIONS, {
-          isDeleted: false,
-        }, {
-          params: { id, action: "restore" },
-        });
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(`${ADMIN_APPLICATIONS}/${id}/restore`);
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: () => {
-      toast.success("Application restored successfully.");
+    onMutate: () => {
+      return toast.loading("Restoring application...");
+    },
+    onSuccess: (_data, _vars, toastId) => {
+      toast.success("Application restored successfully.", { id: toastId });
       invalidate();
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to restore application.");
+    onError: (error, _vars, toastId) => {
+      toast.error(error.message || "Failed to restore application.", { id: toastId });
     },
   });
 
@@ -186,26 +151,32 @@ export const useApplicationTracker = ({
     mutationKey: ["application-tracker-delete"],
     mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.delete<ApiSuccess<unknown>>(ADMIN_APPLICATIONS, {
-          params: { id },
-        });
+        const response = await axiosInstance.delete<ApiSuccess<unknown>>(`${ADMIN_APPLICATIONS}/${id}/permanent`);
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: () => {
-      toast.success("Application deleted permanently.");
+    onMutate: () => {
+      return toast.loading("Permanently deleting application...");
+    },
+    onSuccess: (_data, _vars, toastId) => {
+      toast.success("Application deleted permanently.", { id: toastId });
       invalidate();
     },
-    onError: (error) => {
-      toast.error(error.message || "Failed to permanently delete application.");
+    onError: (error, _vars, toastId) => {
+      toast.error(error.message || "Failed to permanently delete application.", { id: toastId });
     },
   });
 
-  const rows = applicationsQuery.data?.data ?? [];
-  const totalCount = applicationsQuery.data?.pagination?.totalCount ?? rows.length;
-  const counts = countersQuery.data ?? normalizeCounts(applicationsQuery.data);
+  // useFetchData returns ApiSuccess<T>, so .data is the ApiSuccess wrapper
+  // and .data.data is the ApplicationListPayload inner object
+  const rows = applicationsQuery.data?.data?.data ?? [];
+  const totalCount = applicationsQuery.data?.data?.pagination?.totalCount ?? rows.length;
+  const counts = {
+    successful: successfulCountQuery.data?.data?.pagination?.totalCount ?? 0,
+    failed: failedCountQuery.data?.data?.pagination?.totalCount ?? 0,
+  };
 
   return {
     rows,

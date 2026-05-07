@@ -11,6 +11,7 @@ export const ADMIN_USERS = "/api/v1/admin/users";
 export const ADMIN_USERS_FULL_NAME = "/api/v1/admin/users/full-name";
 export const ADMIN_AGGREGATORS = "/api/v1/aggregator";
 export const ADMIN_APPLICATIONS = "/api/v1/admin/applications";
+export const ADMIN_QUESTIONS = "/api/v1/admin/interview-prep";
 export const ADMIN_FOLLOWERS = "/api/v1/analytics/followers";
 export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
