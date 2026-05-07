@@ -13,7 +13,9 @@ import {
   UpdatedAt,
   HasOne,
   HasMany,
+  BeforeCreate,
 } from "sequelize-typescript";
+import { Op } from "sequelize";
 import {
   ApplicationStatus,
   CustomerClass,
@@ -61,8 +63,7 @@ import { Plan } from "./plan.model";
 })
 export class User extends Model {
   @PrimaryKey
-  @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(true)
@@ -427,4 +428,24 @@ export class User extends Model {
   // Soft delete timestamp (replaces isDeleted boolean)
   @Column(DataType.DATE)
   deletedAt?: Date;
+
+  @BeforeCreate
+  static async generateId(instance: User, options: any) {
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const maxId = await User.max('id', {
+      where: {
+        id: {
+          [Op.like]: `${today}%`
+        }
+      },
+      transaction: options.transaction
+    });
+    let nextNum = 1;
+    if (maxId) {
+      const numPart = (maxId as string).slice(8);
+      nextNum = parseInt(numPart, 10) + 1;
+    }
+    const padded = nextNum.toString().padStart(3, '0');
+    instance.id = today + padded;
+  }
 }

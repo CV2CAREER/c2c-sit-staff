@@ -32,7 +32,7 @@ export class SystemConfig extends Model {
   value!: Record<string, any>;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updatedByUserId?: string | null;
 
   @CreatedAt

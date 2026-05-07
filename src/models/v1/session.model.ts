@@ -125,7 +125,7 @@ export class Session extends Model {
   // Client (User) reference
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   clientId?: string;
 
   @BelongsTo(() => User, "clientId")
@@ -134,7 +134,7 @@ export class Session extends Model {
   // Coach (User) reference
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   coachId?: string;
 
   @BelongsTo(() => User, "coachId")
@@ -217,7 +217,7 @@ export class Session extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   validatedBy?: string;
 
   @BelongsTo(() => User, "validatedBy")

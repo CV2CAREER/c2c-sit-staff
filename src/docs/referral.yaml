@@ -7,8 +7,8 @@ paths:
         - Referrals
       summary: Get aggregated referrals
       description: |
-        Fetch all aggregated referrals grouped by referrer.
-        Returns aggregated list with total referrals and amount owed.
+        Fetch all individual referral records (one per referred user, not grouped by referrer).
+        Supports filtering by deleted status and claim status.
       operationId: getReferrals
       security:
         - bearerAuth: []
@@ -31,10 +31,23 @@ paths:
         - name: variance
           in: query
           required: false
-          description: Filter mode
+          description: Filter mode — "claim" filters by CLAIMED status
           schema:
             type: string
             enum: [claim]
+        - name: isDeleted
+          in: query
+          required: false
+          description: Filter by deleted status. When omitted, only non-deleted records are returned. Pass `true` to return only deleted records.
+          schema:
+            type: boolean
+        - name: claimStatus
+          in: query
+          required: false
+          description: Filter by referral claim status (e.g. PENDING, CLAIMED, APPROVED, REJECTED)
+          schema:
+            type: string
+            enum: [PENDING, CLAIMED, APPROVED, REJECTED]
       responses:
         "200":
           description: Referrals retrieved successfully
@@ -57,6 +70,10 @@ paths:
                         items:
                           type: object
                           properties:
+                            referralId:
+                              type: string
+                              format: uuid
+                              description: Referral record ID
                             referrerEmail:
                               type: string
                               format: email
@@ -67,24 +84,45 @@ paths:
                             referralCode:
                               type: string
                               description: Referral code
-                            userId:
+                            referredUserId:
                               type: string
                               format: uuid
+                              description: Referred user ID
+                            referredEmail:
+                              type: string
+                              format: email
+                              description: Email of referred user
+                            referredName:
+                              type: string
+                              description: Full name of referred user
+                            status:
+                              type: string
+                              description: Referral claim status (PENDING, CLAIMED, APPROVED, REJECTED)
+                            role:
+                              type: string
+                              description: Role of referred user
+                            isClient:
+                              type: boolean
+                              description: Whether referred user is a paying client
                             paymentStatus:
                               type: string
                               example: "paid"
                             businessName:
                               type: string
-                            count:
-                              type: integer
-                              description: Total number of referrals
-                            totalAmountOwed:
+                            amountOwed:
                               type: number
                               format: float
-                              description: Total amount owed to referrer
-                            referredUsers:
-                              type: array
-                              description: List of referred users
+                              description: Amount owed for this referral ($50 if approved + client)
+                            updatedBy:
+                              type: string
+                              nullable: true
+                              description: Name/email of admin who last approved or declined
+                            isDeleted:
+                              type: boolean
+                              description: Soft-delete flag
+                            createdAt:
+                              type: string
+                              format: date-time
                       total:
                         type: integer
                         description: Total number of records
@@ -182,6 +220,129 @@ paths:
                   message:
                     type: string
                     example: "Referral declined successfully"
+        "400":
+          description: Invalid referral ID
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/referrals/{referralId}:
+    delete:
+      tags:
+        - Referrals
+      summary: Soft-delete a referral record
+      description: |
+        Soft-delete a referral record by setting isDeleted to true.
+        Automatically sends Slack notification to CSM team.
+      operationId: deleteReferral
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: referralId
+          in: path
+          required: true
+          description: ID of referral to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Referral deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Referral deleted successfully"
+        "400":
+          description: Invalid referral ID
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/referrals/{referralId}/restore:
+    patch:
+      tags:
+        - Referrals
+      summary: Restore a soft-deleted referral record
+      description: |
+        Restore a soft-deleted referral record by setting isDeleted to false.
+        Automatically sends Slack notification to CSM team.
+      operationId: restoreReferral
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: referralId
+          in: path
+          required: true
+          description: ID of referral to restore
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Referral restored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Referral restored successfully"
+        "400":
+          description: Invalid referral ID or referral is not deleted
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/referrals/{referralId}/permanent:
+    delete:
+      tags:
+        - Referrals
+      summary: Permanently delete a referral record
+      description: |
+        Permanently remove a referral record from the database.
+        Automatically sends Slack notification to CSM team.
+      operationId: permanentDeleteReferral
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: referralId
+          in: path
+          required: true
+          description: ID of referral to permanently delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Referral permanently deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Referral permanently deleted"
         "400":
           description: Invalid referral ID
         "401":

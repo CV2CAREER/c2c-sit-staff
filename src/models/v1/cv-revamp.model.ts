@@ -1,50 +1,76 @@
-import mongoose, { Schema, Document } from "mongoose";
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  PrimaryKey,
+  Default,
+  AllowNull,
+  CreatedAt,
+  UpdatedAt,
+  ForeignKey,
+  BelongsTo,
+} from "sequelize-typescript";
+import { User } from "./user.model";
+import { Upload } from "./upload.model";
 
-export interface ICvRevamp extends Document {
-  sourceFile: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  fullName: string;
-  url: string;
-  status: "pending" | "approved" | "declined";
-  fileName?: string;
-  createdAt: Date;
-  updatedAt: Date;
+/**
+ * Status Enum
+ */
+export enum CvStatus {
+  PENDING = "pending",
+  APPROVED = "approved",
+  DECLINED = "declined",
 }
 
-const cvRevampSchema = new Schema<ICvRevamp>(
-  {
-    sourceFile: {
-      type: Schema.Types.ObjectId,
-      ref: "upload",
-    },
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "user",
-      required: true,
-    },
-    fullName: {
-      type: String,
-      required: true,
-    },
-    url: {
-      type: String,
-      required: true,
-    },
-    status: {
-      type: String,
-      enum: ["pending", "approved", "declined"],
-      default: "pending",
-    },
-    fileName: {
-      type: String,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+@Table({
+  tableName: "cv_revamps",
+  timestamps: true,
+})
+export class CvRevamp extends Model {
+  @PrimaryKey
+  @Default(DataType.UUIDV4)
+  @Column(DataType.UUID)
+  id!: string;
 
-const CvRevamp =
-  mongoose.models?.CvRevamp || mongoose.model<ICvRevamp>("CvRevamp", cvRevampSchema);
+  // Reference to uploaded file
+  @ForeignKey(() => Upload)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  uploadId?: string;
 
-export default CvRevamp;
+  @BelongsTo(() => Upload, "uploadId")
+  upload?: Upload;
+
+  // User reference
+  @ForeignKey(() => User)
+  @AllowNull(false)
+  @Column(DataType.STRING)
+  userId!: string;
+
+  @BelongsTo(() => User, "userId")
+  user?: User;
+
+  @AllowNull(false)
+  @Column(DataType.STRING)
+  fullName!: string;
+
+  @AllowNull(false)
+  @Column(DataType.STRING)
+  url!: string;
+
+  @AllowNull(false)
+  @Default(CvStatus.PENDING)
+  @Column(DataType.ENUM(...Object.values(CvStatus)))
+  status!: CvStatus;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  fileName?: string;
+
+  @CreatedAt
+  createdAt!: Date;
+
+  @UpdatedAt
+  updatedAt!: Date;
+}

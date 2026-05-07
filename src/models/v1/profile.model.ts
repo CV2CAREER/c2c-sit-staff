@@ -43,7 +43,7 @@ export class Profile extends Model {
   @Unique("unique_user_profile_type")
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {

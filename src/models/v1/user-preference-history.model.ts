@@ -53,7 +53,7 @@ export class UserPreferenceHistory extends Model {
   @ForeignKey(() => Profile)
   @AllowNull(false)
   @Index
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   profileId!: string;
 
   @BelongsTo(() => Profile, {

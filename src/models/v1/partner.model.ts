@@ -28,7 +28,7 @@ export class Partner extends Model {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Unique // One partner record per user
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {

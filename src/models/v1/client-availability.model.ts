@@ -58,7 +58,7 @@ export class ClientAvailability extends Model {
   // Client reference
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   clientId!: string;
 
   @BelongsTo(() => User, "clientId")

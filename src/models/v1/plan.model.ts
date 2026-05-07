@@ -32,7 +32,7 @@ export class Plan extends Model {
   // Foreign key to users table
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {

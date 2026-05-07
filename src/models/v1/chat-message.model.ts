@@ -43,7 +43,7 @@ export class SupportConversation extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   senderId?: string;
 
   @BelongsTo(() => User, "senderId")

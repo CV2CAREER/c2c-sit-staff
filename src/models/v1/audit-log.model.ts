@@ -12,7 +12,6 @@ import {
   BelongsTo,
 } from "sequelize-typescript";
 import { User } from "./user.model";
-import { Role } from "../../utils/enum";
 import { v4 as uuidv4 } from "uuid";
 
 @Table({
@@ -41,7 +40,7 @@ export class AuditLog extends Model {
   userFullName?: string;
 
   @ForeignKey(() => User)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User)

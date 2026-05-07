@@ -42,11 +42,11 @@ export class Aggregator extends Model {
   isEnabled!: boolean;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updatedByUserId?: string | null;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId?: string | null;
 
   @AllowNull(false)

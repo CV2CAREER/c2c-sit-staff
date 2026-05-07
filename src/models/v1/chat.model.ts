@@ -47,7 +47,7 @@ export class Chat extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   clientId?: string;
 
   @BelongsTo(() => User, "clientId")

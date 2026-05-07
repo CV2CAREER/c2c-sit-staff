@@ -36,11 +36,11 @@ export class PassKeyVault extends Model {
   key!: string;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   createdBy?: string;
 
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   updateBy?: string;
 
   @CreatedAt

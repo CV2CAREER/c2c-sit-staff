@@ -28,7 +28,7 @@ export class SupportSession extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   customerId?: string;
 
   @BelongsTo(() => User, "customerId")
@@ -36,7 +36,7 @@ export class SupportSession extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   assignedStaffId?: string;
 
   @BelongsTo(() => User, "assignedStaffId")

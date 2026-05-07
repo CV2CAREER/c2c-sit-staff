@@ -40,7 +40,7 @@ export class InterviewPrepQuestionAnswer extends Model {
 
   @ForeignKey(() => User)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, "userId")
