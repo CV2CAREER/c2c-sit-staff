@@ -8,10 +8,42 @@ export function JobPrefDataTableActionDialogs({ appOrQuestionId }: { appOrQuesti
   const {
     activeDialog,
     setActiveDialog,
+    activeTable,
     tracker,
+    questionsTracker,
   } = useJobAppsAndQuestionsData();
 
+  const isQuestions = activeTable === "Questions";
+  const label = isQuestions ? "question" : "application";
+
   const close = () => setActiveDialog(null);
+
+  const handleSoftDelete = () => {
+    if (isQuestions) {
+      questionsTracker.softDeleteQuestion.mutate({ id: appOrQuestionId });
+    } else {
+      tracker.softDeleteApplication.mutate({ id: appOrQuestionId });
+    }
+    close();
+  };
+
+  const handleRestore = () => {
+    if (isQuestions) {
+      questionsTracker.restoreQuestion.mutate({ id: appOrQuestionId });
+    } else {
+      tracker.restoreApplication.mutate({ id: appOrQuestionId });
+    }
+    close();
+  };
+
+  const handleDelete = () => {
+    if (isQuestions) {
+      questionsTracker.deleteQuestion.mutate({ id: appOrQuestionId });
+    } else {
+      tracker.deleteApplication.mutate({ id: appOrQuestionId });
+    }
+    close();
+  };
 
   return (
     <>
@@ -19,11 +51,9 @@ export function JobPrefDataTableActionDialogs({ appOrQuestionId }: { appOrQuesti
         <DialogOverlay />
         <DialogContent>
           <DialogTitle>Are you sure?</DialogTitle>
-          <DialogDescription>This application will be moved to the recycle bin.</DialogDescription>
+          <DialogDescription>This {label} will be moved to the recycle bin.</DialogDescription>
           <DialogFooter>
-            <Button variant="destructive" onClick={() => { tracker.softDeleteApplication.mutate({ id: appOrQuestionId }); close(); }}>
-              Confirm
-            </Button>
+            <Button variant="destructive" onClick={handleSoftDelete}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -32,11 +62,9 @@ export function JobPrefDataTableActionDialogs({ appOrQuestionId }: { appOrQuesti
         <DialogOverlay />
         <DialogContent>
           <DialogTitle>Are you sure?</DialogTitle>
-          <DialogDescription>This application will be restored to active data.</DialogDescription>
+          <DialogDescription>This {label} will be restored to active data.</DialogDescription>
           <DialogFooter>
-            <Button onClick={() => { tracker.restoreApplication.mutate({ id: appOrQuestionId }); close(); }}>
-              Confirm
-            </Button>
+            <Button onClick={handleRestore}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -45,11 +73,9 @@ export function JobPrefDataTableActionDialogs({ appOrQuestionId }: { appOrQuesti
         <DialogOverlay />
         <DialogContent>
           <DialogTitle>Are you sure?</DialogTitle>
-          <DialogDescription>This application will be deleted permanently.</DialogDescription>
+          <DialogDescription>This {label} will be deleted permanently.</DialogDescription>
           <DialogFooter>
-            <Button variant="destructive" onClick={() => { tracker.deleteApplication.mutate({ id: appOrQuestionId }); close(); }}>
-              Confirm
-            </Button>
+            <Button variant="destructive" onClick={handleDelete}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
