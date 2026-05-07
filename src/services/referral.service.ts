@@ -58,7 +58,7 @@ export class ReferralService {
           status: ref.status,
           role: ref.user?.role || 'N/A',
           isClient,
-          paymentStatus: ref.user?.paymentStatus || 'unpaid',
+          paymentStatus: ref.referralStatus || 'unpaid',
           businessName: ref.user?.businessName || '',
           amountOwed: ref.status === 'CLAIMED' && isClient ? 10 : 0,
           updatedBy: ref.updatedBy || null,
