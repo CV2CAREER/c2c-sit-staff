@@ -167,6 +167,10 @@ export class Application extends Model {
   isDeleted!: boolean;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
+  updatedBy?: string;
+
+  @AllowNull(true)
   @Column(DataType.STRING(128))
   InternalJobsite?: string;
 
