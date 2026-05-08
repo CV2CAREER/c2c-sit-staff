@@ -42,7 +42,7 @@ export default function CommunicationTemplatesPage() {
   } = useCommunicationTemplates({ recycleBin });
 
   const selectedUser = useMemo(
-    () => usersDomain.data.find((user) => user._id === selectedUserId),
+    () => usersDomain.data.find((user) => user.id === selectedUserId),
     [usersDomain.data, selectedUserId],
   );
 
@@ -429,7 +429,7 @@ export default function CommunicationTemplatesPage() {
               >
                 <option value="">Select client</option>
                 {usersDomain.data.map((user) => (
-                  <option key={user._id} value={user._id}>
+                  <option key={user.id} value={user.id}>
                     {[user.firstName, user.middleName, user.lastName]
                       .filter(Boolean)
                       .join(" ")}{" "}
