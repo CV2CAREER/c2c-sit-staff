@@ -74,6 +74,7 @@ export const ADMIN_UPDATE_USER_PREFERENCES = "/api/v1/admin/users/update-prefere
 export const ADMIN_PROFILE_HISTORY = (userId: string) => `/api/v1/admin/profile-history/${userId}`;
 export const ADMIN_REFERRAL = "/api/v1/referrals";
 export const ADMIN_AGGREGATED_REFERRALS = "/api/v1/referrals";
+
 export const ADMIN_REFERRAL_HISTORY = "/api/v1/admin/referral";
 export const ADMIN_REGEX_QUEUE = "/api/v1/admin/regexqueue";
 export const ADMIN_NOTIFY_ADMIN = "/api/v1/notify-admin";

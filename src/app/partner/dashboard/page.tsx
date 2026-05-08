@@ -1,54 +1,67 @@
 "use client";
-
+import React from "react";
 import {
   Card,
-  CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
+  CardContent,
 } from "@/components/ui/card";
-import { useAuthStore } from "@/store/user.store";
-import { usePartnerDashboard } from "@/hooks/usePartnerDashboard";
 import ReferralLinkClient from "./_components/ReferralLinkClient";
+import ClaimReferralDialog from "./_components/ClaimReferralDialog";
+import SendReferralDialog from "./_components/SendReferralDialog";
+import SendBulkReferralsDialog from "./_components/SendBulkReferralsDialog";
 import ReferralTable from "./_components/ReferralTable";
+import { useAuth } from "@/hooks/useAuth";
+import { usePartnerSummary } from "@/hooks/usePartnerDashboard";
 
-export default function PartnerDashboardPage() {
-  const user = useAuthStore((state) => state.user);
+const DashboardPage = () => {
+  const { user } = useAuth();
   const userId = user?._id ?? "";
-  const firstName = user?.firstName || "";
-  const lastName = user?.lastName || "";
+  const firstName = user?.firstName ?? "";
+  const lastName = user?.lastName ?? "";
 
-  const {
-    partnerDashboardDomain: { data: referrals, stats, isLoading },
-  } = usePartnerDashboard(userId);
+  const { summary, referralLink, referredUsers, isLoading } = usePartnerSummary();
 
-  const statCards = [
-    { title: "Total referral", value: stats.totalReferrals },
-    { title: "Invited referral", value: stats.invitedReferrals },
-    { title: "Registered referral", value: stats.registeredReferrals },
-    { title: "Paid referral", value: stats.paidReferrals },
-    { title: "Total Referral earnings", value: `$${stats.totalReferralEarnings}` },
+  const statsCards = [
+    { title: "Total referral", value: summary.totalReferrals },
+    { title: "Invited referral", value: summary.invitedReferrals },
+    { title: "Registered referral", value: summary.registeredReferrals },
+    { title: "Paid referral", value: summary.paidReferrals },
+    { title: "Total Referral earnings", value: `$${summary.totalEarnings}` },
   ];
 
+  const tableRows = referredUsers.map((u) => ({
+    _id: u.referralId,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    email: u.email,
+    isUserSubscribed: u.isUserSubscribed,
+    status: u.status,
+    createdAt: u.createdAt,
+  }));
+
   return (
-    <section className="mt-8 flex flex-col gap-8">
-      <Card className="flex flex-col items-start justify-between gap-6 p-5 md:flex-row md:items-center">
+    <section className="flex flex-col gap-8 mt-8">
+      {/* Header Section */}
+      <Card className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-xl font-semibold leading-tight text-black sm:text-2xl">
+          <h1 className="text-xl sm:text-2xl font-semibold text-black leading-tight">
             Welcome,
             <br />
             {firstName} {lastName}
           </h1>
         </div>
-        <ReferralLinkClient />
+        {referralLink && <ReferralLinkClient referralLink={referralLink} />}
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        {statCards.map((item) => (
-          <Card key={item.title} className="text-center">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {statsCards.map((item, idx) => (
+          <Card key={idx} className="text-center">
             <CardHeader>
               <CardDescription>{item.title}</CardDescription>
-              <CardTitle className="text-3xl font-bold text-black sm:text-4xl">
+              <CardTitle className="text-3xl sm:text-4xl font-bold text-black">
                 {isLoading ? "..." : item.value}
               </CardTitle>
             </CardHeader>
@@ -56,8 +69,22 @@ export default function PartnerDashboardPage() {
         ))}
       </div>
 
-      {referrals.length > 0 ? (
-        <ReferralTable referrals={referrals} />
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-3 justify-start">
+        <ClaimReferralDialog refUserId={userId} />
+        <SendReferralDialog refUserId={userId} referralLink={referralLink} />
+        <SendBulkReferralsDialog />
+        <button
+          className="bg-[#E0E0E0] text-gray-600 px-4 py-2 rounded-md font-medium cursor-not-allowed flex-1 min-w-[150px] max-w-xs text-center"
+          disabled
+        >
+          Request Drawdown
+        </button>
+      </div>
+
+      {/* Referrals Table */}
+      {tableRows.length > 0 ? (
+        <ReferralTable referrals={tableRows} />
       ) : (
         <Card className="text-center">
           <CardHeader>
@@ -65,7 +92,7 @@ export default function PartnerDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-500">No referrals yet</p>
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="text-gray-400 text-sm mt-1">
               Share your referral link to start earning
             </p>
           </CardContent>
@@ -73,4 +100,6 @@ export default function PartnerDashboardPage() {
       )}
     </section>
   );
-}
+};
+
+export default DashboardPage;

@@ -1,10 +1,13 @@
-"use client";
-
-import React from "react";
-import PersonaProfile from "@/components/PersonaProfile";
+import ProfileAvatarHeader from "./_components/ProfileAvatarHeader";
+import EditProfile from "./_components/EditProfile";
 
 const PartnerProfilePage = () => {
-  return <PersonaProfile title="Partner Portal" />;
+  return (
+    <section className="flex flex-col gap-8 mt-8">
+      <ProfileAvatarHeader />
+      <EditProfile />
+    </section>
+  );
 };
 
 export default PartnerProfilePage;

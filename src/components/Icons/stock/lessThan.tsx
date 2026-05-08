@@ -1,0 +1,45 @@
+/* eslint-disable max-len */
+import React from 'react';
+/**
+ *
+ * @param {Object} props Component props
+ * @return {React.Component} React component
+ */
+const SVG = (props: any): unknown => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <mask
+      id="mask0_1962_1550"
+      maskUnits="userSpaceOnUse"
+      x="0"
+      y="0"
+      width="24"
+      height="24"
+    >
+      <rect
+        x="0.5"
+        y="0.5"
+        width="23"
+        height="23"
+        fill="#D9D9D9"
+        stroke="#131414"
+      />
+    </mask>
+    <g mask="url(#mask0_1962_1550)">
+      <path
+        d="M16 21.9823L6.01768 12L16 2.01768L17.7573 3.775L9.54116 11.9912L9.53232 12L9.54116 12.0088L17.7573 20.225L16 21.9823Z"
+        fill="#797979"
+        stroke="#797979"
+        strokeWidth="0.025"
+      />
+    </g>
+  </svg>
+);
+
+export default SVG;
