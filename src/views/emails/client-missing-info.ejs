@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: "Poppins", sans-serif; color: #474747; width: 100%; background-color: #fff; line-height: 1.6; }
+      .header { background: linear-gradient(90deg, #004174 0%, #00568f 100%); width: 100%; height: 112px; text-align: center; display: table; }
+      .header-content { display: table-cell; vertical-align: middle; }
+      .header img { width: 149px; height: 32px; }
+      .content { font-family: "Poppins", sans-serif; padding: 32px 20px; max-width: 600px; margin: 0 auto; }
+      .title { font-size: 20px; font-weight: 600; color: #004174; margin-bottom: 24px; }
+      .body-content p { margin-bottom: 16px; }
+      .alert-box { background-color: #fff8e1; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 4px; margin: 24px 0; }
+      .alert-box p { margin: 0; font-weight: 500; }
+      .btn { display: inline-block; margin-top: 24px; padding: 14px 28px; background-color: #004174; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; }
+      .url-note { margin-top: 12px; font-size: 13px; color: #6b7280; word-break: break-all; }
+      .signature { margin-top: 32px; }
+      .footer { background-color: #f9f9f9; padding: 32px 16px; text-align: center; }
+      .footer-logo img { width: 35px; height: 25px; margin-bottom: 16px; }
+      .social-links { margin: 16px auto; }
+      .social-links a { text-decoration: none; vertical-align: middle; display: inline-block; padding: 0 6px; }
+      .social-links img { width: 24px; height: 24px; border: 0; }
+      .copyright { margin: 16px auto; font-size: 13px; color: #6b7280; }
+      .footer-links a { text-decoration: none; color: #a3a3a3; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-content">
+        <img src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801" alt="CV To Career" />
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="title">Action Required: Missing Profile Information</h1>
+
+      <div class="body-content">
+        <p>Dear <strong><%= name %></strong>,</p>
+
+        <p>
+          Our team has reviewed your profile and noticed that some important information is missing.
+          To continue processing your application and ensure the best possible results, we need you
+          to provide the following:
+        </p>
+
+        <div class="alert-box">
+          <p>Missing: <strong><%= missingField %></strong></p>
+        </div>
+
+        <% if (jobUrl) { %>
+        <p>
+          This information is required in relation to the following job opportunity:
+          <a href="<%= jobUrl %>" style="color: #004174;"><%= jobUrl %></a>
+        </p>
+        <% } %>
+
+        <p>
+          Please click the button below to update your profile with the required information.
+          This link will take you directly to the relevant section of your account.
+        </p>
+
+        <a href="<%= updateMissingInfoUrl %>" class="btn">Update My Profile</a>
+
+        <p class="url-note">
+          Or copy this link into your browser:<br />
+          <%= updateMissingInfoUrl %>
+        </p>
+
+        <p style="margin-top: 24px;">
+          If you have any questions or need assistance, please don't hesitate to reach out to
+          our support team at <a href="mailto:deliveryteam@cvtocareer.com" style="color: #004174;">deliveryteam@cvtocareer.com</a>.
+        </p>
+
+        <div class="signature">
+          <p>Kind regards,<br />The CVtoCAREER Team</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-logo">
+        <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/laigusbucket/bea7d3a092f0710b014b1f203.png?GoogleAccessId=firebase-adminsdk-f76vf%40cvtocareer-394713.iam.gserviceaccount.com&Expires=4070905200&Signature=gWB9jqmAcwN9nLbugMdOj%2FD0BROrGRX4a8qnGa9cZGuOkc0Z2M9itk0pzUtoUtyedrxv%2B2hO%2BFqDqlduJ6J7WqVBAJ3wQ17oe72S5BwTvRXEY3Q7OM%2B9wuxsFsSwgrtfldf79sly6nIJQCXqb94FDFL661YxCbeGN%2BIq0j2volsUvmKtParJXXLo3LO%2BBmOms1nVf6HHldXbD%2FfMno5f%2FB8wj%2FLDF%2FvMk5LfTsISh0kSOXmvfRNQvktImOAH2rTt%2B6ejVByGrxstPLhViGGI0BSIWEOn0oFaihxHK3Lo%2B3T0WePp5Q0PoYFrERpTtGReyZFGIVc%2Bs%2B9PReVzHoL86g%3D%3D" alt="CVtoCAREER" />
+      </div>
+      <div class="social-links">
+        <a href="https://facebook.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png" alt="Facebook" /></a>
+        <a href="https://x.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png" alt="X" /></a>
+        <a href="https://youtube.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png" alt="YouTube" /></a>
+        <a href="mailto:deliveryteam@cvtocareer.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png" alt="Email" /></a>
+        <a href="https://instagram.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png" alt="Instagram" /></a>
+        <a href="https://linkedin.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png" alt="LinkedIn" /></a>
+      </div>
+      <p class="copyright">© <%= currentYear %> CVtoCAREER. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="https://cvtocareer.com/privacy-policy">Privacy Policy</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="https://cvtocareer.com">Web</a>
+      </div>
+    </div>
+  </body>
+</html>

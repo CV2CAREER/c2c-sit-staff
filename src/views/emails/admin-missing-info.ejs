@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: "Poppins", sans-serif; color: #474747; width: 100%; background-color: #fff; line-height: 1.6; }
+      .header { background: linear-gradient(90deg, #004174 0%, #00568f 100%); width: 100%; height: 112px; text-align: center; display: table; }
+      .header-content { display: table-cell; vertical-align: middle; }
+      .header img { width: 149px; height: 32px; }
+      .content { padding: 32px 20px; max-width: 600px; margin: 0 auto; }
+      .title { font-size: 18px; font-weight: 600; color: #004174; margin-bottom: 20px; }
+      .body-content p { margin-bottom: 14px; }
+      .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+      .info-table td { padding: 10px 14px; border: 1px solid #e5e7eb; font-size: 14px; }
+      .info-table td:first-child { background-color: #f3f4f6; font-weight: 600; width: 35%; }
+      .footer { background-color: #f9f9f9; padding: 24px 16px; text-align: center; }
+      .copyright { font-size: 13px; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-content">
+        <img src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801" alt="CV To Career" />
+      </div>
+    </div>
+
+    <div class="content">
+      <h1 class="title">New Missing Info Request Created</h1>
+
+      <div class="body-content">
+        <p>A missing information notification has been sent to a client. Details below:</p>
+
+        <table class="info-table">
+          <tr>
+            <td>Client Name</td>
+            <td><%= clientName %></td>
+          </tr>
+          <tr>
+            <td>Client Email</td>
+            <td><%= clientEmail %></td>
+          </tr>
+          <tr>
+            <td>Missing Field</td>
+            <td><%= missingField %></td>
+          </tr>
+          <% if (jobUrl) { %>
+          <tr>
+            <td>Job URL</td>
+            <td><a href="<%= jobUrl %>" style="color: #004174; word-break: break-all;"><%= jobUrl %></a></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td>Update Link</td>
+            <td><a href="<%= updateMissingInfoUrl %>" style="color: #004174; word-break: break-all;"><%= updateMissingInfoUrl %></a></td>
+          </tr>
+          <tr>
+            <td>Triggered By</td>
+            <td><%= triggeredBy %></td>
+          </tr>
+          <tr>
+            <td>Channel</td>
+            <td><%= channel %></td>
+          </tr>
+        </table>
+
+        <p>This is an automated notification. No action is required unless follow-up is needed.</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p class="copyright">© <%= currentYear %> CVtoCAREER. Internal notification — do not share.</p>
+    </div>
+  </body>
+</html>

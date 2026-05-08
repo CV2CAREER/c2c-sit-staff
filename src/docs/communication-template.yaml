@@ -1,0 +1,500 @@
+# Communication Template API Documentation
+# Endpoints for managing communication templates used in email and WhatsApp notifications
+
+paths:
+  /v1/communication-template:
+    get:
+      tags:
+        - Communication Template
+      summary: List all communication templates
+      description: Retrieves all communication templates. Optionally filter by deleted status.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [all, deleted]
+          description: Filter by template status. Pass "deleted" to list soft-deleted templates only.
+          example: "all"
+      responses:
+        '200':
+          description: Templates fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Templates fetched successfully"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CommunicationTemplate'
+        '401':
+          description: Unauthorized - invalid or missing token
+
+    post:
+      tags:
+        - Communication Template
+      summary: Create or duplicate a communication template
+      description: Creates a new template from the request body, or duplicates an existing template when query param `request=duplicate` is provided.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: request
+          schema:
+            type: string
+            enum: [duplicate]
+          description: Set to "duplicate" to duplicate an existing template by templateName
+          example: "duplicate"
+        - in: query
+          name: templateName
+          schema:
+            type: string
+          description: Required when duplicating - the name of the existing template to duplicate
+          example: "Welcome Email"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - templateName
+                - persona
+                - subject
+                - body
+              properties:
+                templateName:
+                  type: string
+                  description: Name of the template
+                  example: "Welcome Email"
+                persona:
+                  type: string
+                  description: Persona this template is for (e.g. client, coach)
+                  example: "client"
+                subject:
+                  type: string
+                  description: Email/notification subject line
+                  example: "Welcome to CV2Career!"
+                body:
+                  type: string
+                  description: Template body content
+                  example: "Dear {{name}}, welcome to our platform..."
+      responses:
+        '201':
+          description: Template created/duplicated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Template created successfully"
+                  data:
+                    $ref: '#/components/schemas/CommunicationTemplate'
+        '400':
+          description: Bad request - missing required fields
+        '401':
+          description: Unauthorized - invalid or missing token
+
+    patch:
+      tags:
+        - Communication Template
+      summary: Update, soft-delete, or restore a template
+      description: Updates template fields, or performs a soft-delete/restore action via the `action` query parameter.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: action
+          schema:
+            type: string
+            enum: [soft-delete, restore]
+          description: Action to perform. "soft-delete" moves to recycle bin, "restore" recovers it.
+          example: "soft-delete"
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Template UUID to act on (alternative to body id)
+        - in: query
+          name: templateName
+          schema:
+            type: string
+          description: Template name to act on (alternative to id)
+        - in: query
+          name: template
+          schema:
+            type: string
+          description: Template name (alternative to templateName)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: Template ID (required for update)
+                  example: "a1b2c3d4-1234-5678-9abc-def012345678"
+                templateName:
+                  type: string
+                  description: Updated template name
+                  example: "Welcome Email v2"
+                persona:
+                  type: string
+                  description: Updated persona
+                  example: "client"
+                subject:
+                  type: string
+                  description: Updated subject line
+                  example: "Welcome to CV2Career - Get Started!"
+                body:
+                  type: string
+                  description: Updated body content
+                  example: "Hi {{name}}, let's get you started..."
+      responses:
+        '200':
+          description: Template updated, soft-deleted, or restored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Template updated successfully"
+                  data:
+                    $ref: '#/components/schemas/CommunicationTemplate'
+        '400':
+          description: Bad request - missing id or required fields
+        '401':
+          description: Unauthorized - invalid or missing token
+        '404':
+          description: Template not found
+
+    delete:
+      tags:
+        - Communication Template
+      summary: Permanently delete a template (hard delete)
+      description: Irreversibly removes a template from the database. Use with caution.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: string
+          description: Template UUID to permanently delete
+        - in: query
+          name: templateName
+          schema:
+            type: string
+          description: Template name to permanently delete
+        - in: query
+          name: template
+          schema:
+            type: string
+          description: Template name (alternative to templateName)
+      responses:
+        '200':
+          description: Template permanently deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Template deleted successfully"
+                  data:
+                    type: object
+                    example: {}
+        '401':
+          description: Unauthorized - invalid or missing token
+        '404':
+          description: Template not found
+
+  /v1/communication-template/notify-missing-info:
+    post:
+      tags:
+        - Communication Template
+      summary: Send a missing info notification (email or WhatsApp)
+      description: |
+        Sends a missing information notification to a client user.
+
+        **Email mode (default):**
+        - Sends a branded email to the client with a one-time update link (`updateMissingInfoUrl`).
+        - Sends an internal notification email to the admin team.
+        - Fires a Slack alert to the CRY_WOLF channel (non-blocking).
+
+        **WhatsApp mode:**
+        - Queues a WhatsApp message via JustCall using the client's `whatsappNumber`.
+
+        The `missingInfoType` must be one of the predefined keys. The service maps it to a
+        human-readable label (`missingFieldLabel`) included in all notifications.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - missingInfoType
+                - missingInfoUrl
+              properties:
+                userId:
+                  type: string
+                  description: UUID of the client user to notify
+                  example: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                missingInfoType:
+                  type: string
+                  description: Predefined missing info key — mapped to a human-readable label
+                  enum:
+                    - Date_of_birth
+                    - your_address
+                    - preferred_personal_pronouns
+                    - referral_information
+                  example: "Date_of_birth"
+                missingInfoUrl:
+                  type: string
+                  description: Job listing URL related to the missing information
+                  example: "https://seek.com.au/job/12345678"
+                mode:
+                  type: string
+                  enum: [email, whatsapp]
+                  default: email
+                  description: Notification channel
+                  example: "email"
+            examples:
+              email_mode:
+                summary: Send via email
+                value:
+                  userId: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                  missingInfoType: "Date_of_birth"
+                  missingInfoUrl: "https://seek.com.au/job/12345678"
+                  mode: "email"
+              whatsapp_mode:
+                summary: Send via WhatsApp
+                value:
+                  userId: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                  missingInfoType: "your_address"
+                  missingInfoUrl: "https://seek.com.au/job/87654321"
+                  mode: "whatsapp"
+      responses:
+        '200':
+          description: Notification sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Notification sent successfully"
+                  data:
+                    type: object
+                    properties:
+                      userId:
+                        type: string
+                        example: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                      email:
+                        type: string
+                        example: "client@example.com"
+                      mode:
+                        type: string
+                        example: "email"
+                      missingInfoType:
+                        type: string
+                        example: "Date_of_birth"
+                      missingFieldLabel:
+                        type: string
+                        description: Human-readable label derived from missingInfoType
+                        example: "Date of birth"
+                      updateMissingInfoUrl:
+                        type: string
+                        description: >
+                          One-time link sent to the client to update the missing info.
+                          Present for email mode only.
+                        example: "https://app.cvtocareer.com/missing-info/550e8400-e29b-41d4-a716-446655440000"
+                      notifiedAt:
+                        type: string
+                        format: date-time
+                        example: "2026-05-08T12:00:00.000Z"
+              examples:
+                email_success:
+                  summary: Email notification sent
+                  value:
+                    success: true
+                    message: "Notification sent successfully"
+                    statusCode: 200
+                    data:
+                      userId: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                      email: "client@example.com"
+                      mode: "email"
+                      missingInfoType: "Date_of_birth"
+                      missingFieldLabel: "Date of birth"
+                      updateMissingInfoUrl: "https://app.cvtocareer.com/missing-info/550e8400-e29b-41d4-a716-446655440000"
+                      notifiedAt: "2026-05-08T12:00:00.000Z"
+                whatsapp_success:
+                  summary: WhatsApp notification sent
+                  value:
+                    success: true
+                    message: "Notification sent successfully"
+                    statusCode: 200
+                    data:
+                      userId: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                      email: "client@example.com"
+                      mode: "whatsapp"
+                      missingInfoType: "your_address"
+                      missingFieldLabel: "Your Address"
+                      notifiedAt: "2026-05-08T12:00:00.000Z"
+        '400':
+          description: Bad request — missing required fields or invalid mode
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "userId, missingInfoType and missingInfoUrl are required"
+                statusCode: 400
+                data: null
+        '401':
+          description: Unauthorized — invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "User not found"
+                statusCode: 404
+                data: null
+
+  /v1/communication-template/notify-missing-info-whatsapp:
+    post:
+      tags:
+        - Communication Template
+      summary: "Deprecated — use /notify-missing-info with mode: whatsapp"
+      description: |
+        **Deprecated.** This route is an alias. Use `POST /v1/communication-template/notify-missing-info`
+        with `"mode": "whatsapp"` in the request body instead.
+      deprecated: true
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - userId
+                - missingInfoType
+                - missingInfoUrl
+              properties:
+                userId:
+                  type: string
+                  example: "b2c3d4e5-6789-0abc-def1-234567890abc"
+                missingInfoType:
+                  type: string
+                  enum:
+                    - Date_of_birth
+                    - your_address
+                    - preferred_personal_pronouns
+                    - referral_information
+                  example: "your_address"
+                missingInfoUrl:
+                  type: string
+                  example: "https://seek.com.au/job/87654321"
+                mode:
+                  type: string
+                  default: whatsapp
+                  example: "whatsapp"
+      responses:
+        '200':
+          description: Notification sent successfully — see /notify-missing-info for full schema
+        '400':
+          description: Bad request — missing required fields
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+components:
+  schemas:
+    CommunicationTemplate:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: Template UUID (deprecated, use id)
+          example: "a1b2c3d4-1234-5678-9abc-def012345678"
+        id:
+          type: string
+          description: Template UUID
+          example: "a1b2c3d4-1234-5678-9abc-def012345678"
+        templateName:
+          type: string
+          description: Name of the template
+          example: "Welcome Email"
+        persona:
+          type: string
+          description: Target persona for this template
+          example: "client"
+        subject:
+          type: string
+          description: Email/notification subject line
+          example: "Welcome to CV2Career!"
+        body:
+          type: string
+          description: Template body content
+          example: "Dear {{name}}, welcome to our platform..."
+        isDeleted:
+          type: boolean
+          description: Soft-delete flag
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp of creation
+          example: "2026-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp of last update
+          example: "2026-05-08T12:00:00.000Z"
