@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-import { validate as isUuid } from "uuid";
 import { SlackMessage } from "../../models/v1/slack-message.model";
 import { getServiceLogger } from "../../utils/createLogger";
 
@@ -41,7 +39,7 @@ class SlackManageService {
   async updateMessage(id: string, updateData: Record<string, any>) {
     logger.debug(`Updating slack message ${id}`);
 
-    if (!isUuid(id)) {
+    if (!id) {
       logger.warn(`Invalid message ID format: ${id}`);
       return null;
     }

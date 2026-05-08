@@ -1,9 +1,7 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { Upload } from "../models/v1/upload.model";
 import ErrorHandler from "../utils/errorHandler";
-import { Op } from "sequelize";
 import { validate as isUuid } from "uuid";
-import { UploadStatus } from "../utils/enum";
 
 const logger = getServiceLogger("upload-service");
 
@@ -48,7 +46,7 @@ export const getAllUploads = async (query: {
   }
 
   // Filter by user ID
-  if (userId && isUuid(userId)) {
+  if (userId) {
     where.userId = userId;
   }
 

@@ -217,3 +217,127 @@ export const getCoachReferrals = catchAsyncError(
     }
   }
 );
+
+/**
+ * ⚡ GET /v1/referrals/partner/summary
+ * Get partner referral summary — total, invited, registered, paid referrals + earnings + referral link
+ */
+export const getPartnerSummary = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.apiError(new ErrorHandler("User authentication required", 401));
+      }
+
+      const result = await ReferralService.getPartnerSummary(user.id, user);
+
+      res.apiSuccess(
+        result,
+        "Partner summary retrieved successfully"
+      );
+    } catch (error: any) {
+      logger.error(`Failed to fetch partner summary: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+/**
+ * ⚡ POST /v1/referrals/send-email
+ * Send referral invitation email to a potential referral
+ */
+export const sendReferralEmail = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.apiError(new ErrorHandler("User authentication required", 401));
+      }
+
+      const { firstName, lastName, middleName, email, phoneNumber } = req.body;
+      if (!firstName || !lastName || !email) {
+        return res.apiError(new ErrorHandler("firstName, lastName and email are required", 400));
+      }
+
+      const host = req.headers.host || req.headers.origin || "localhost";
+
+      const result = await ReferralService.handleSendReferralEmail(
+        user.id,
+        { firstName, lastName, middleName, email, phoneNumber },
+        host,
+      );
+
+      res.apiSuccess(result, "Referral email sent successfully");
+    } catch (error: any) {
+      logger.error(`Failed to send referral email: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+/**
+ * ⚡ POST /v1/referrals/claim
+ * Claim a referral — validates that the authenticated user was referred by the provided referrer
+ */
+export const claimReferral = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.apiError(new ErrorHandler("User authentication required", 401));
+      }
+
+      const { firstName, lastName, middleName, email, phoneNumber } = req.body;
+      if (!firstName || !lastName || !email) {
+        return res.apiError(new ErrorHandler("firstName, lastName and email are required", 400));
+      }
+
+      const host = req.headers.host || req.headers.origin || "localhost";
+
+      const result = await ReferralService.handleClaimReferral(
+        user.id,
+        { firstName, lastName, middleName, email, phoneNumber },
+        host,
+      );
+
+      res.apiSuccess(result, "Referral claimed successfully");
+    } catch (error: any) {
+      logger.error(`Failed to claim referral: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+/**
+ * ⚡ POST /v1/referrals/bulk-upload
+ * Bulk upload referrals from spreadsheet data
+ */
+export const bulkUploadReferrals = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.apiError(new ErrorHandler("User authentication required", 401));
+      }
+
+      const { referrals } = req.body;
+      if (!referrals || !Array.isArray(referrals) || referrals.length === 0) {
+        return res.apiError(new ErrorHandler("referrals array is required and must not be empty", 400));
+      }
+
+      const host = req.headers.host || req.headers.origin || "localhost";
+
+      const result = await ReferralService.handleBulkUploadReferrals(
+        user.id,
+        referrals,
+        host,
+      );
+
+      res.apiSuccess(result, "Bulk referral emails queued successfully");
+    } catch (error: any) {
+      logger.error(`Failed to bulk upload referrals: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);

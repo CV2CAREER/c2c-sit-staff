@@ -10,6 +10,7 @@ import {
     getUsersByRoles,
     getAllUsers,
     getClientNameList,
+    updateProfile,
 } from "../../controllers/v1/user.controller";
 import { dispatchClient } from "../../controllers/v1/dispatch-client.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
@@ -20,6 +21,7 @@ const userRouterV1 = Router();
 
 userRouterV1.post("/login", loginUser);
 userRouterV1.get("/profile", checkBlacklistedTokens, isUserAuthenticated, getCurrentUserProfile);
+userRouterV1.put("/profile", checkBlacklistedTokens, isUserAuthenticated, updateProfile);
 userRouterV1.get("/clients", checkBlacklistedTokens, isUserAuthenticated, getClients);
 userRouterV1.get("/clients/names", checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"), getClientNameList);
 userRouterV1.get("/assistants", checkBlacklistedTokens, isUserAuthenticated, getAssistants);

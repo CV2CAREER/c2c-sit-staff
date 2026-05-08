@@ -9,6 +9,7 @@ import {
   getUsersByRoles as getUsersByRolesService,
   getAllUsers as getAllUsersService,
   getClientNameList as getClientNameListService,
+  updateUserProfile,
 } from "../../services/user.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -220,6 +221,34 @@ export const getAllUsers = catchAsyncError(
         count: users.length
       },
       "Users retrieved successfully",
+    );
+  },
+);
+
+// Update authenticated user profile
+export const updateProfile = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { user } = req;
+    const { firstName, middleName, lastName, phoneNumber, password, country } = req.body;
+
+    logger.info(`Processing profile update request for user: ${user.email}`);
+
+    const { user: updatedUser } = await updateUserProfile(user.id, {
+      firstName,
+      middleName,
+      lastName,
+      phoneNumber,
+      password,
+      country,
+    });
+
+    logger.info(`Profile updated successfully for user: ${updatedUser.firstName} ${updatedUser.lastName} (${updatedUser.email})`);
+
+    res.apiSuccess(
+      {
+        user: updatedUser,
+      },
+      "Profile updated successfully",
     );
   },
 );

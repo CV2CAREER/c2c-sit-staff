@@ -14,6 +14,7 @@ import {
   SlackEventType,
   SlackChannel,
 } from "@/utils/enum";
+import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
 
 const mailDirectory = path.resolve(__dirname, "../../views/emails");
@@ -191,6 +192,7 @@ export class CommunicationTemplateService {
       missingInfoUrl: string | string[] | { url: string } | unknown;
       mode?: "email" | "whatsapp";
     },
+    host: string,
     requestingUser: {
       id: string;
       firstName: string;
@@ -198,6 +200,7 @@ export class CommunicationTemplateService {
       email: string;
     },
   ) {
+    const location = getEnvironmentFromHost(host);
     const MISSING_INFO_LABELS: Record<string, string> = {
       Date_of_birth: "Date of birth",
       your_address: "Your Address",
@@ -284,6 +287,8 @@ export class CommunicationTemplateService {
       // Fire Slack notification without blocking the response
       setImmediate(() => {
         SlackService.notify({
+          location,
+          host,
           node: SlackNode.USER_MANAGEMENT,
           provider: SlackProvider.SENDGRID,
           severity: SlackSeverity.INFO,
@@ -325,6 +330,8 @@ export class CommunicationTemplateService {
       // Fire Slack notification without blocking the response
       setImmediate(() => {
         SlackService.notify({
+          location,
+          host,
           node: SlackNode.USER_MANAGEMENT,
           provider: SlackProvider.SENDGRID,
           severity: SlackSeverity.INFO,
