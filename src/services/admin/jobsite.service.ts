@@ -1,4 +1,3 @@
-import { validate as isUuid } from "uuid";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { User } from "../../models/v1/user.model";
@@ -16,7 +15,7 @@ class JobsiteService {
    * with full Aggregator details populated.
    */
   async getUserJobsites(userId: string) {
-    if (!isUuid(userId)) throw new ErrorHandler("Invalid user ID.", 400);
+    if (!userId) throw new ErrorHandler("Invalid user ID.", 400);
 
     const user = await User.findByPk(userId);
     if (!user) throw new ErrorHandler("User not found.", 404);
@@ -44,7 +43,7 @@ class JobsiteService {
    * filters aggregators by AGGREGATOR_GROUPS and populates profile.aggregators.
    */
   async assignUserJobsites(userId: string, host: string) {
-    if (!isUuid(userId)) throw new ErrorHandler("Invalid user ID.", 400);
+    if (!userId) throw new ErrorHandler("Invalid user ID.", 400);
 
     const user = await User.findByPk(userId);
     if (!user) throw new ErrorHandler("User not found.", 404);
@@ -72,7 +71,7 @@ class JobsiteService {
    * Prevents reassigning the aggregatorId.
    */
   async updateUserJobsite(userId: string, aggId: string, updates: Record<string, any>) {
-    if (!isUuid(userId)) throw new ErrorHandler("Invalid user ID.", 400);
+    if (!userId) throw new ErrorHandler("Invalid user ID.", 400);
     if (!aggId) throw new ErrorHandler("Aggregator ID is required.", 400);
 
     const user = await User.findByPk(userId);
@@ -101,7 +100,7 @@ class JobsiteService {
    * Trigger title sync and client sample queue for a specific jobsite.
    */
   async triggerJobsite(userId: string, aggId: string, host: string) {
-    if (!isUuid(userId)) throw new ErrorHandler("Invalid user ID.", 400);
+    if (!userId) throw new ErrorHandler("Invalid user ID.", 400);
     if (!aggId) throw new ErrorHandler("Aggregator ID is required.", 400);
 
     const user = await User.findByPk(userId);
@@ -127,7 +126,7 @@ class JobsiteService {
    * Remove one or more aggregator links from a user's profile by aggregatorId(s).
    */
   async deleteUserJobsites(userId: string, aggId?: string, aggIds?: string[]) {
-    if (!isUuid(userId)) throw new ErrorHandler("Invalid user ID.", 400);
+    if (!userId) throw new ErrorHandler("Invalid user ID.", 400);
 
     const targetIds = new Set<string>();
     if (aggId) targetIds.add(aggId);

@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { Op, QueryTypes } from "sequelize";
-import { validate as isUuid } from "uuid";
 import { BCRYPT_SALT_ROUNDS } from "../../config/env";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
 import { User } from "../../models/v1/user.model";
@@ -380,7 +379,7 @@ class AdminUserApplicationService {
     const users = this.validateUsersForAdd(input.users);
 
     const actorUserId = String(input.actorUserId || "");
-    if (!isUuid(actorUserId)) {
+    if (!actorUserId) {
       throw new ErrorHandler("Invalid actor user ID.", 400);
     }
 
@@ -497,7 +496,7 @@ class AdminUserApplicationService {
     const normalizedAssignments: PersonaAssignmentItem[] = [];
     const seen = new Set<string>();
     for (const assignment of assignments) {
-      if (!assignment || !isUuid(String(assignment.userId || ""))) {
+      if (!assignment) {
         throw new ErrorHandler("Each assignment must include a valid userId.", 400);
       }
       const role = normalizeRole(assignment.role);
@@ -526,7 +525,7 @@ class AdminUserApplicationService {
     const assignments = this.validateAssignments(input.assignments);
 
     const actorUserId = String(input.actorUserId || "");
-    if (!isUuid(actorUserId)) {
+    if (!actorUserId) {
       throw new ErrorHandler("Invalid actor user ID.", 400);
     }
 

@@ -131,6 +131,374 @@ paths:
         "500":
           description: Server error
 
+  /v1/referrals/partner/summary:
+    get:
+      tags:
+        - Referrals
+      summary: Get partner referral summary
+      description: |
+        Returns a partner's referral summary including total, invited, registered, and paid referral counts.
+        Also returns total earnings (paid referrals × $10) and the partner's referral link.
+        Includes a detailed list of all users referred by the authenticated partner.
+      operationId: getPartnerSummary
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Partner summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Partner summary retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                        properties:
+                          totalReferrals:
+                            type: integer
+                            description: Total number of referral records
+                            example: 5
+                          invitedReferrals:
+                            type: integer
+                            description: Number of referrals with PENDING or CLAIMED status
+                            example: 2
+                          registeredReferrals:
+                            type: integer
+                            description: Number of referrals where the referred user exists and is not deleted
+                            example: 3
+                          paidReferrals:
+                            type: integer
+                            description: Number of referrals with PAID referralStatus or the referred user has paid
+                            example: 1
+                          totalEarnings:
+                            type: integer
+                            description: Total earnings (paid referrals × 10)
+                            example: 10
+                      referralLink:
+                        type: string
+                        description: Partner's unique referral link
+                        example: "https://rat.cvtocareer.com/signup?referralCode=PARTNER123"
+                      referredUsers:
+                        type: array
+                        description: List of users referred by this partner
+                        items:
+                          type: object
+                          properties:
+                            referralId:
+                              type: string
+                              format: uuid
+                              description: Referral record ID
+                            userId:
+                              type: string
+                              format: uuid
+                              description: ID of the referred user
+                            email:
+                              type: string
+                              format: email
+                              nullable: true
+                              description: Email of the referred user
+                            firstName:
+                              type: string
+                              nullable: true
+                              description: First name of the referred user
+                            lastName:
+                              type: string
+                              nullable: true
+                              description: Last name of the referred user
+                            status:
+                              type: string
+                              description: Referral claim status (PENDING, CLAIMED, APPROVED, REJECTED)
+                              example: "APPROVED"
+                            referralStatus:
+                              type: string
+                              description: Revenue status (PAID, UNPAID)
+                              example: "PAID"
+                            paymentStatus:
+                              type: string
+                              nullable: true
+                              description: Payment status of the referred user
+                              example: "Paid"
+                            isUserSubscribed:
+                              type: boolean
+                              description: Whether the referred user has an active subscription
+                              example: true
+                            createdAt:
+                              type: string
+                              format: date-time
+                              description: When the referral record was created
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/referrals/send-email:
+    post:
+      tags:
+        - Referrals
+      summary: Send referral invitation email
+      description: |
+        Sends a referral invitation email to a potential referral.
+        Validates that the recipient is not already registered and not the referrer themselves.
+        Automatically sends Slack notification to CSM team.
+      operationId: sendReferralEmail
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+                - email
+              properties:
+                firstName:
+                  type: string
+                  description: First name of the referral
+                  example: "John"
+                lastName:
+                  type: string
+                  description: Last name of the referral
+                  example: "Doe"
+                middleName:
+                  type: string
+                  description: Middle name of the referral (optional)
+                  example: "Michael"
+                email:
+                  type: string
+                  format: email
+                  description: Email of the referral
+                  example: "john.doe@example.com"
+                phoneNumber:
+                  type: string
+                  description: Phone number of the referral (optional)
+                  example: "+1234567890"
+      responses:
+        "200":
+          description: Referral email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Referral email sent successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "Referral email sent successfully"
+                      referralLink:
+                        type: string
+                        description: The referral link sent to the potential referral
+                        example: "https://rat.cvtocareer.com/register?ref=PARTNER123"
+        "400":
+          description: Bad request - missing fields, self-referral, or user already registered
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
+  /v1/referrals/claim:
+    post:
+      tags:
+        - Referrals
+      summary: Claim a referral
+      description: |
+        Validates that the authenticated user was referred by the provided referrer details.
+        Updates the referral status to CLAIMED and updates referrer stats.
+        Sends Slack notification and email notification to the referrer.
+      operationId: claimReferral
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+                - email
+              properties:
+                firstName:
+                  type: string
+                  description: First name of the authenticated user
+                  example: "Jane"
+                lastName:
+                  type: string
+                  description: Last name of the authenticated user
+                  example: "Smith"
+                middleName:
+                  type: string
+                  description: Middle name of the authenticated user (optional)
+                  example: "Ann"
+                email:
+                  type: string
+                  format: email
+                  description: Email of the referrer
+                  example: "referrer@example.com"
+                phoneNumber:
+                  type: string
+                  description: Phone number of the referrer (optional)
+                  example: "+1234567890"
+      responses:
+        "200":
+          description: Referral claimed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Referral claimed successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "Referral claimed successfully"
+                      referrerName:
+                        type: string
+                        description: Full name of the referrer
+                        example: "John Doe"
+        "400":
+          description: Bad request - missing fields or invalid referral claim
+        "401":
+          description: Unauthorized
+        "404":
+          description: Referrer not found
+        "500":
+          description: Server error
+
+  /v1/referrals/bulk-upload:
+    post:
+      tags:
+        - Referrals
+      summary: Bulk upload referrals from spreadsheet
+      description: |
+        Bulk queues referral invitation emails for multiple potential referrals.
+        Skips any referrals where the email matches the authenticated user's own email.
+        Automatically sends Slack notification to CSM team with counts.
+      operationId: bulkUploadReferrals
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - referrals
+              properties:
+                referrals:
+                  type: array
+                  description: Array of referral objects
+                  items:
+                    type: object
+                    required:
+                      - firstName
+                      - lastName
+                      - email
+                    properties:
+                      firstName:
+                        type: string
+                        description: First name of the referral
+                        example: "Alice"
+                      lastName:
+                        type: string
+                        description: Last name of the referral
+                        example: "Johnson"
+                      middleName:
+                        type: string
+                        description: Middle name of the referral (optional)
+                        example: "Marie"
+                      email:
+                        type: string
+                        format: email
+                        description: Email of the referral
+                        example: "alice@example.com"
+                      phoneNumber:
+                        type: string
+                        description: Phone number of the referral (optional)
+                        example: "+1234567890"
+      responses:
+        "200":
+          description: Bulk referral emails queued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Successfully queued 5 referral emails"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                      message:
+                        type: string
+                        example: "Successfully queued 5 referral emails"
+                      totalSent:
+                        type: integer
+                        description: Number of emails successfully queued
+                        example: 5
+                      failed:
+                        type: integer
+                        description: Number of emails that failed (self-referrals)
+                        example: 1
+                      failedEmails:
+                        type: array
+                        items:
+                          type: string
+                          format: email
+                        description: List of emails that failed
+                        example: ["self@example.com"]
+        "400":
+          description: Bad request - missing or empty referrals array
+        "401":
+          description: Unauthorized
+        "500":
+          description: Server error
+
   /v1/referrals/approve:
     post:
       tags:

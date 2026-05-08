@@ -424,7 +424,7 @@ class AdminUserExportApplicationService {
 
   async createExportTask(input: CreateExportTaskInput): Promise<ExportStatusResponse> {
     const actorUserId = String(input.actorUserId || "");
-    if (!isUuid(actorUserId)) {
+    if (!actorUserId) {
       throw new ErrorHandler("Invalid actor user ID.", 400);
     }
 

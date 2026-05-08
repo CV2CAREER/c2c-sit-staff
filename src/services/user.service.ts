@@ -5,7 +5,6 @@ import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
 import { getCachedUser, setCachedUser } from "./cache/user.cache.service";
 import { hopeUserExists, hopeUserIdExists } from "../utils/user-helper";
-import { validate as isUuid } from "uuid";
 import { SlackService } from "./slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
@@ -21,19 +20,20 @@ import { Plan } from "../models/v1/plan.model";
 const logger = getServiceLogger("user");
 
 export const handleGetUserInfo = async (userId: string) => {
-  if (!isUuid(userId)) {
+  if (!userId) {
     throw new ErrorHandler("Invalid user ID.", 400);
   }
+  const user = await hopeUserIdExists(userId);
 
-  let user: User | null = await getCachedUser(userId);
+  // let user: User | null = await getCachedUser(userId);
 
-  if (user) logger.info("User fetched from REDIS");
+  // if (user) logger.info("User fetched from REDIS");
 
-  if (!user) {
-    user = await hopeUserIdExists(userId);
+  // if (!user) {
+    
 
-    setCachedUser(userId, user);
-  }
+  //   setCachedUser(userId, user);
+  // }
 
   return { user };
 };
@@ -621,4 +621,51 @@ export const getClientNameList = async () => {
 
   logger.info(`Retrieved ${result.length} clients for name list`);
   return result;
+};
+
+// Update authenticated user profile
+export const updateUserProfile = async (userId: string, updateData: {
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  password?: string;
+  country?: string;
+}) => {
+  if (!userId) {
+    throw new ErrorHandler("Invalid user ID.", 400);
+  }
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new ErrorHandler("User not found.", 404);
+  }
+
+  const allowedFields = ['firstName', 'middleName', 'lastName', 'phoneNumber', 'country'];
+
+  // Handle password separately
+  if (updateData.password) {
+    const { validatePasswordStrength } = await import("../validators/password.validator");
+    const passwordError = validatePasswordStrength(updateData.password);
+    if (passwordError) {
+      throw new ErrorHandler(passwordError, 400);
+    }
+    user.password = await bcrypt.hash(updateData.password, 10);
+  }
+
+  // Update other fields
+  for (const field of allowedFields) {
+    if (updateData[field as keyof typeof updateData] !== undefined) {
+      (user as any)[field] = updateData[field as keyof typeof updateData];
+    }
+  }
+
+  await user.save();
+
+  // Clear cached user data
+  await setCachedUser(userId, null);
+
+  logger.info(`User profile updated for user: ${user.firstName} ${user.lastName} (${user.email})`);
+
+  return { user };
 };

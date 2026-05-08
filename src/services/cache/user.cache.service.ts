@@ -26,7 +26,7 @@ export const getCachedUser = async (userId: string) => {
   }
 };
 
-export const setCachedUser = async (userId: string, userData: User) => {
+export const setCachedUser = async (userId: string, userData: User | null) => {
   const redisClient = await getConnectedRedis();
 
   if (!isRedisUsable(redisClient)) {
@@ -39,12 +39,16 @@ export const setCachedUser = async (userId: string, userData: User) => {
   }
 
   try {
-    await redisClient.set(
-      `PADIPLUS:doc:user:${userId}`,
-      JSON.stringify(userData),
-      "EX",
-      7 * 24 * 60 * 60, // cache expires in 7 days
-    );
+    if (userData === null) {
+      await redisClient.del(`PADIPLUS:doc:user:${userId}`);
+    } else {
+      await redisClient.set(
+        `PADIPLUS:doc:user:${userId}`,
+        JSON.stringify(userData),
+        "EX",
+        7 * 24 * 60 * 60, // cache expires in 7 days
+      );
+    }
   } catch (err) {
     logger.error("Failed to set cached user: " + err);
     return null;

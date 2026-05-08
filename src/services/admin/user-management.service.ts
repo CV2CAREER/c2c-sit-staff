@@ -26,7 +26,7 @@ class UserManagementService {
    * @param actorEmail Email of admin performing the update (optional)
    */
   async updateUser(userId: string, updateData: any, actorUserId: string, actorEmail?: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -320,7 +320,7 @@ class UserManagementService {
    * @param host Host from request object
    */
    async deleteUser(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
-     if (!isUuid(userId)) {
+     if (!userId) {
        throw new ErrorHandler("Invalid user ID.", 400);
      }
 
@@ -396,7 +396,7 @@ class UserManagementService {
     * @param host Host from request object
     */
    async restoreUser(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
-     if (!isUuid(userId)) {
+     if (!userId) {
        throw new ErrorHandler("Invalid user ID.", 400);
      }
 
@@ -462,7 +462,7 @@ class UserManagementService {
     * @param host Host from request object
     */
    async purgeUser(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
-     if (!isUuid(userId)) {
+     if (!userId) {
        throw new ErrorHandler("Invalid user ID.", 400);
      }
 
@@ -527,7 +527,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getPendingDocumentsByUserId(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -555,7 +555,7 @@ class UserManagementService {
    * @param host Host from request object
    */
   async approveUserAccount(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -633,7 +633,7 @@ class UserManagementService {
    * @param host Host from request object
    */
   async sendUserDetailsToSlack(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -707,7 +707,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getUserPreferences(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -740,7 +740,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getJobPreferencesHistory(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -769,7 +769,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getUserReferrals(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -815,7 +815,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getUserUploadedDocuments(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -852,7 +852,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getUserProgress(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
@@ -883,7 +883,7 @@ class UserManagementService {
    * @param userId ID of user
    */
   async getUserProfile(userId: string) {
-    if (!isUuid(userId)) {
+    if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
