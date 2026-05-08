@@ -168,8 +168,7 @@ export const ADMIN_SUPPORT_DESK_ASSIGN = "/api/v1/admin/support/assign";
 export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
   `/api/v1/admin/support/${sessionId}/end`;
 export const ADMIN_TEMPLATES = "/api/v1/admin/templates";
-export const ADMIN_TEMPLATE_NOTIFY = "/api/v1/admin/templates/notify-missing-info";
-export const ADMIN_TEMPLATE_NOTIFY_WHATSAPP = "/api/v1/admin/templates/notify-missing-info-whatsapp";
+export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO = "/api/v1/communication-template/notify-missing-info";
 export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";
 
 // Sales Operation Endpoints

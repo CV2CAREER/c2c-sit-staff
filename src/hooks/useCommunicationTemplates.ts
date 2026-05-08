@@ -6,7 +6,7 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
 
 type CommunicationTemplateUser = {
-  _id: string;
+  id: string;
   firstName?: string;
   lastName?: string;
   middleName?: string;
@@ -138,11 +138,10 @@ export function useCommunicationTemplates({
 
   const notifyMissingInfo = useMutation({
     mutationFn: async (payload: NotifyPayload) => {
-      const endpoint =
-        payload.mode === "whatsapp"
-          ? endpoints.ADMIN_TEMPLATE_NOTIFY_WHATSAPP
-          : endpoints.ADMIN_TEMPLATE_NOTIFY;
-      const response = await axiosInstance.post<ApiSuccess<unknown>>(endpoint, payload);
+      const response = await axiosInstance.post<ApiSuccess<unknown>>(
+        endpoints.COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO,
+        payload,
+      );
       return response.data;
     },
   });
