@@ -104,8 +104,8 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await UserPreferenceHistory.sync({ force: false });         // new table
-        await User.sync({ alter: true });
-        await Profile.sync({ alter: true });
+        // await User.sync({ alter: true });
+        // await Profile.sync({ alter: true });
 
         // To be done
         // await UserPreferenceHistory.sync({ alter: true });
