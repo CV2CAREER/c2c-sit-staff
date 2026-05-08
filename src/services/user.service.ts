@@ -599,3 +599,26 @@ export const getAllUsers = async (query: {
   logger.info(`Retrieved ${users.length} users from database`);
   return users;
 };
+
+// Get all clients — only full name and email (for dropdowns / selectors)
+export const getClientNameList = async () => {
+  logger.info("Retrieving client name list");
+
+  const clients = await User.findAll({
+    where: { role: "client", isActive: true, isDeleted: false },
+    attributes: ["firstName", "lastName", "email"],
+    order: [
+      ["firstName", "ASC"],
+      ["lastName", "ASC"],
+    ],
+  });
+
+  const result = clients.map((c) => ({
+    fullName: `${c.firstName} ${c.lastName}`.trim(),
+    email: c.email,
+    label: `${c.firstName} ${c.lastName} (${c.email})`.trim(),
+  }));
+
+  logger.info(`Retrieved ${result.length} clients for name list`);
+  return result;
+};

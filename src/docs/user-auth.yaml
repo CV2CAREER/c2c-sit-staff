@@ -1310,3 +1310,81 @@ paths:
                     message: "Access denied. Required role(s): admin, assistant"
                     statusCode: 403
                     data: null
+
+  /v1/user/clients/names:
+    get:
+      tags:
+        - User Authentication
+      summary: Get all clients — full name and email only
+      description: |
+        Returns a lightweight list of all active clients containing only their
+        full name and email address. Each entry also includes a pre-formatted
+        `label` field (`"First Last (email@example.com)"`) ready for use in
+        dropdowns and selector components.
+      operationId: getClientNameList
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Client name list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  statusCode:
+                    type: integer
+                  data:
+                    type: object
+                    properties:
+                      clients:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            fullName:
+                              type: string
+                              example: "John Doe"
+                            email:
+                              type: string
+                              format: email
+                              example: "john.doe@example.com"
+                            label:
+                              type: string
+                              description: Pre-formatted string for dropdowns
+                              example: "John Doe (john.doe@example.com)"
+                      count:
+                        type: integer
+              examples:
+                success:
+                  summary: Name list retrieved
+                  value:
+                    success: true
+                    message: "Client name list retrieved successfully"
+                    statusCode: 200
+                    data:
+                      clients:
+                        - fullName: "John Doe"
+                          email: "john.doe@example.com"
+                          label: "John Doe (john.doe@example.com)"
+                        - fullName: "Jane Smith"
+                          email: "jane.smith@example.com"
+                          label: "Jane Smith (jane.smith@example.com)"
+                      count: 2
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — admin or assistant role required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

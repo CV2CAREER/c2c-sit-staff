@@ -7,7 +7,8 @@ import {
   getClients as getClientsService,
   getAssistants as getAssistantsService,
   getUsersByRoles as getUsersByRolesService,
-  getAllUsers as getAllUsersService
+  getAllUsers as getAllUsersService,
+  getClientNameList as getClientNameListService,
 } from "../../services/user.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -184,6 +185,22 @@ export const getUsersByRoles = catchAsyncError(
         count: users.length
       },
       "Staff users retrieved successfully",
+    );
+  },
+);
+
+// Get all clients — full name and email only (for dropdowns / selectors)
+export const getClientNameList = catchAsyncError(
+  async (req: Request, res: Response) => {
+    logger.info("Processing request to get client name list");
+
+    const clients = await getClientNameListService();
+
+    logger.info(`Retrieved ${clients.length} clients for name list`);
+
+    res.apiSuccess(
+      { clients, count: clients.length },
+      "Client name list retrieved successfully",
     );
   },
 );
