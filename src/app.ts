@@ -52,6 +52,7 @@ import jobsiteRouterV1 from "./routes/v1/jobsite.route"
 import campaignManagementRouterV1 from "./routes/v1/campaign-management.route";
 import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
 import viewAsUserRouterV1 from "./routes/v1/view-as-user.route";
+import communicationTemplateRouterV1 from "./routes/v1/communication-template.route";
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -215,6 +216,7 @@ app.use("/api/v1/campaigns", campaignManagementRouterV1);
 app.use("/api/v1/jobsite", jobsiteRouterV1);
 app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
+app.use("/api/v1/communication-template", communicationTemplateRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);
