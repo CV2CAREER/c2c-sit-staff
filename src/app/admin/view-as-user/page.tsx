@@ -33,7 +33,7 @@ export default function ViewAsUserAdminPage() {
   const loadingToastRef = useRef<string | undefined>(undefined);
 
   const { data, isLoading, isError } = useFetchData<ClientNamesData>({
-    url: "/v1/user/clients/names",
+    url: "/api/v1/user/clients/names",
     method: "GET",
     queryKey: ["admin", "client-names"],
     enabled: true,
