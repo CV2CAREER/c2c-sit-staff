@@ -1,0 +1,163 @@
+# OpenAPI Specification for View As User Endpoint
+
+paths:
+  /v1/view-as-user:
+    post:
+      tags:
+        - View As User
+      summary: View the application as another user
+      description: |
+        Allows an admin or assistant to impersonate another user for support or debugging purposes.
+
+        **Client / Guest targets (admin + assistant):**
+        Returns a short-lived redirect URL pointing to the client app. The frontend navigates
+        the browser to that URL; the client app consumes the one-time JWT to establish a session.
+
+        **Internal staff targets (admin only):**
+        Returns the target user's email and their dashboard URL. The frontend should trigger
+        a NextAuth `signIn("credentials", { viewAsUser: true, email })` call to switch the
+        session context (same flow as before, just driven from this endpoint's response).
+
+        Token validity for client/guest redirects: **5 minutes**.
+      operationId: viewAsUser
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetEmail
+              properties:
+                targetEmail:
+                  type: string
+                  format: email
+                  description: Email address of the user to view as
+                  example: "client@example.com"
+            example:
+              targetEmail: "client@example.com"
+      responses:
+        '200':
+          description: View-as-user initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  statusCode:
+                    type: integer
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      redirectUrl:
+                        type: string
+                        description: >
+                          Present when target is a client/guest. Navigate the browser here to
+                          establish a session in the client app.
+                        example: "https://app.cvtocareer.com/api/auth/view-as-user-login?token=eyJ..."
+                      email:
+                        type: string
+                        format: email
+                        description: Present when target is internal staff. Use this to trigger signIn.
+                      dashboardUrl:
+                        type: string
+                        description: Present when target is internal staff. Redirect here after signIn.
+                        example: "/coach/dashboard"
+                      viewAsUserInternal:
+                        type: boolean
+                        description: >
+                          true when target is internal staff — signals the frontend to trigger
+                          a re-authentication flow rather than a direct redirect.
+              examples:
+                client_redirect:
+                  summary: Client/guest — redirect to client app
+                  value:
+                    success: true
+                    message: "View as user initiated successfully"
+                    statusCode: 200
+                    data:
+                      success: true
+                      redirectUrl: "https://app.cvtocareer.com/api/auth/view-as-user-login?token=eyJ..."
+                internal_staff:
+                  summary: Internal staff — re-auth required
+                  value:
+                    success: true
+                    message: "View as user initiated successfully"
+                    statusCode: 200
+                    data:
+                      success: true
+                      email: "coach@cvtocareer.com"
+                      dashboardUrl: "/coach/dashboard"
+                      viewAsUserInternal: true
+        '400':
+          description: Bad request — missing or empty targetEmail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "Target user email is required."
+                statusCode: 400
+                data: null
+        '401':
+          description: Unauthorized — no valid session token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "Unauthorized"
+                statusCode: 401
+                data: null
+        '403':
+          description: >
+            Forbidden — either the caller lacks the required role, or an assistant
+            attempted to view a non-client/guest user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_admin_or_assistant:
+                  summary: Caller is not admin or assistant
+                  value:
+                    success: false
+                    message: "Access denied. Required role(s): admin, assistant"
+                    statusCode: 403
+                    data: null
+                assistant_staff_view:
+                  summary: Assistant tried to view internal staff
+                  value:
+                    success: false
+                    message: "Assistants can only view users with 'client' or 'guest' roles."
+                    statusCode: 403
+                    data: null
+                non_admin_staff_view:
+                  summary: Non-admin tried to view internal staff
+                  value:
+                    success: false
+                    message: "Only administrators can view as internal staff users."
+                    statusCode: 403
+                    data: null
+        '404':
+          description: Target user not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: "Target user not found."
+                statusCode: 404
+                data: null

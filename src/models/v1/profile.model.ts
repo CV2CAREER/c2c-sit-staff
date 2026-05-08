@@ -135,6 +135,11 @@ export class Profile extends Model {
   jobTypes?: string[];
 
   @AllowNull(true)
+  @Default([])
+  @Column(DataType.ARRAY(DataType.STRING))
+  jobTypesExcluded?: string[];
+  
+  @AllowNull(true)
   @Column(DataType.DECIMAL(10, 2))
   minSalary?: number;
 

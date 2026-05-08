@@ -139,3 +139,7 @@ export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
 export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
 export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;
+
+// VIEW AS USER
+export const CLIENT_APP_DOMAIN = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
+export const VIEW_AS_USER_JWT_SECRET = process.env.VIEW_AS_USER_JWT_SECRET || process.env.SIGN_IN_ACCESS_SECRET_KEY;
