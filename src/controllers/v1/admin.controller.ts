@@ -24,8 +24,8 @@ const logger = getServiceLogger("admin-controller");
 const ensureAdmin = (req: Request) => {
   const { user } = req;
 
-  if (!user || user.role !== Role.ADMIN) {
-    throw new ErrorHandler("Only admin users can access this endpoint.", 403);
+  if (!user || (user.role !== Role.ADMIN && user.role !== Role.ASSISTANT)) {
+    throw new ErrorHandler("Only Admin or Placement Controller users can access this endpoint.", 403);
   }
 
   return user;
