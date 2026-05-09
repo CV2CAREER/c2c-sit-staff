@@ -609,7 +609,7 @@ export class ReferralService {
   static async getPartnerSummary(userId: string, partnerUser: any) {
     try {
       const partnerEmail = partnerUser.email;
-      const baseReferralUrl = process.env.RAT_FRONTEND_URL || "http://localhost:3001";
+      const baseReferralUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
       // Find partner's referral code
       const partnerRecord = await User.findOne({ where: { id: userId } });
@@ -738,7 +738,7 @@ export class ReferralService {
 
     // Generate referral link
     let referralLink = "";
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
     if ((user as any).partner?.referralCode) {
       referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
@@ -971,12 +971,12 @@ Next step: Confirm referral claimed, process any applicable rewards for the refe
 
     // Generate referral link
     let referralLink = "";
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
     if ((user as any).partner?.referralCode) {
       referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
     } else {
-      referralLink = `${frontendUrl}/register?ref=${user.email}-client`;
+      referralLink = `${frontendUrl}/register?ref=${user.email}-partner`;
     }
 
     const failedEmails: string[] = [];
