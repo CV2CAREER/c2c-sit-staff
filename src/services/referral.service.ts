@@ -609,7 +609,7 @@ export class ReferralService {
   static async getPartnerSummary(userId: string, partnerUser: any) {
     try {
       const partnerEmail = partnerUser.email;
-      const baseReferralUrl = process.env.RAT_FRONTEND_URL || "http://localhost:3001";
+      const baseReferralUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
       // Find partner's referral code
       const partnerRecord = await User.findOne({ where: { id: userId } });
@@ -623,7 +623,7 @@ export class ReferralService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'isDeleted', 'deletedAt', 'createdAt'],
+            attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'isDeleted', 'deletedAt', 'createdAt', 'plan'],
           },
         ],
         order: [['createdAt', 'DESC']],
@@ -639,26 +639,34 @@ export class ReferralService {
         return referredUser && !referredUser.isDeleted;
       }).length;
 
+      const validPlans = ['bronze', 'silver', 'gold', 'platinum'];
+
       const paidReferrals = referrals.filter(ref => {
         const referredUser = (ref as any).user;
-        const isPaid = ref.referralStatus === 'PAID' ||
-          referredUser?.paymentStatus === 'Paid' ||
-          referredUser?.isUserSubscribed === true;
+        const plan = referredUser?.plan?.toLowerCase?.();
+        const hasValidPlan = validPlans.includes(plan);
+        const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
+          (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
+          (referredUser?.isUserSubscribed === true && hasValidPlan);
         return isPaid;
       }).length;
 
       // Total earnings: paymentStatus === 'Paid' referrals * 50
       const totalEarnings = referrals.reduce((sum, ref) => {
         const referredUser = (ref as any).user;
-        const isPaid = ref.referralStatus === 'PAID' ||
-          referredUser?.paymentStatus === 'Paid' ||
-          referredUser?.isUserSubscribed === true;
+        const plan = referredUser?.plan?.toLowerCase?.();
+        const hasValidPlan = validPlans.includes(plan);
+        const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
+          (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
+          (referredUser?.isUserSubscribed === true && hasValidPlan);
         return sum + (isPaid ? 50 : 0);
       }, 0);
 
       // Detailed list of referred users
       const referredUsers = referrals.map(ref => {
         const referredUser = (ref as any).user;
+        const plan = referredUser?.plan?.toLowerCase?.();
+        const hasValidPlan = validPlans.includes(plan);
         return {
           referralId: ref.id,
           userId: ref.userId,
@@ -668,7 +676,7 @@ export class ReferralService {
           status: ref.status,
           referralStatus: ref.referralStatus,
           paymentStatus: referredUser?.paymentStatus || null,
-          isUserSubscribed: referredUser?.isUserSubscribed || false,
+          isUserSubscribed: (referredUser?.isUserSubscribed === true && hasValidPlan) || false,
           createdAt: ref.createdAt,
         };
       });
@@ -734,12 +742,12 @@ export class ReferralService {
 
     // Generate referral link
     let referralLink = "";
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
     if ((user as any).partner?.referralCode) {
       referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
     } else {
-      referralLink = `${frontendUrl}/register?ref=${user.email}-client`;
+      referralLink = `${frontendUrl}/register?ref=${user.email}-partner`;
     }
 
     // Send referral email
@@ -848,7 +856,7 @@ Phone: ${referralData.phoneNumber}`,
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'isUserSubscribed', 'email', 'firstName', 'lastName'],
+          attributes: ['id', 'isUserSubscribed', 'email', 'firstName', 'lastName', 'plan'],
         },
       ],
     });
@@ -862,11 +870,14 @@ Phone: ${referralData.phoneNumber}`,
       );
     }
 
-    // Check if the referred user has an active subscription
+    const validPlans = ['bronze', 'silver', 'gold', 'platinum'];
+
+    // Check if the referred user has an active subscription with a valid plan
     const referredUser = (existingReferral as any).user;
-    if (!referredUser || !referredUser.isUserSubscribed) {
+    const referredPlan = referredUser?.plan?.toLowerCase?.();
+    if (!referredUser || !referredUser.isUserSubscribed || !validPlans.includes(referredPlan)) {
       throw new ErrorHandler(
-        "The referred user must have an active subscription before the referral can be claimed.",
+        "The referred user must have an active subscription with a Bronze, Silver, Gold, or Platinum plan before the referral can be claimed.",
         400,
       );
     }
@@ -964,7 +975,7 @@ Next step: Confirm referral claimed, process any applicable rewards for the refe
 
     // Generate referral link
     let referralLink = "";
-    const frontendUrl = getFrontendUrl();
+    const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
 
     if ((user as any).partner?.referralCode) {
       referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
