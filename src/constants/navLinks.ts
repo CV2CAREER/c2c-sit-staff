@@ -51,6 +51,7 @@ export interface NavLink {
 export const ADMIN_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/admin/dashboard", icon: House },
   { name: "Status Report", href: "/admin/status-report", icon: SlidersHorizontal },
+  { name: "Personal Info", href: "/admin/profile", icon: User },
   {
     name: "Profiles",
     groupId: 1,
@@ -161,8 +162,43 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
 
 export const ASSISTANT_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/assistant/dashboard", icon: House },
-  { name: "Communication Templates", href: "/assistant/communication-templates", icon: Mail },
   { name: "Personal Info", href: "/assistant/profile", icon: User },
+  {
+    name: "Profiles",
+    groupId: 1,
+    icon: Users,
+    access: ["admin", "assistant"],
+    children: [
+      { name: "Users", href: "/assistant/users", icon: Users },
+      { name: "Campaign", href: "/assistant/campaign-mgt", icon: Users },
+      { name: "Client Sample", href: "/assistant/client-sample", icon: Users },
+    ],
+  },
+  {
+    name: "Job Mgt",
+    groupId: 5,
+    icon: Briefcase,
+    access: ["admin", "assistant"],
+    children: [
+      { name: "Job Discovery", href: "/assistant/job-preference", icon: Binoculars },
+      { name: "Applications", href: "/assistant/job-applications", icon: FileUser },
+    ],
+  },
+  {
+    name: "Communication",
+    icon: Mail,
+    groupId: 8,
+    access: ["admin", "assistant"],
+    children: [
+      { name: "Train Chatbot", href: "/assistant/communication/chatbot-trainer", icon: Bot },
+      { name: "Chatbot Logs", href: "/assistant/communication/chatbot-logs", icon: Bot },
+      { name: "Human Support", href: "/assistant/communication/human-support", icon: User },
+      { name: "Emails", href: "/assistant/communication-templates", icon: Mail },
+      { name: "JustCall", href: "/assistant/justcall", icon: Layers },
+      { name: "Slack", href: "/assistant/slack", icon: SiSlack },
+    ],
+  },
+  { name: "View As User", href: "/assistant/view-as-user", icon: ScanEye, access: ["admin", "assistant"] },
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight },
 ];
 

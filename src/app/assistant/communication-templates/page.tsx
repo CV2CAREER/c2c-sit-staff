@@ -1,7 +1,10 @@
-"use client";
-
+import type { Metadata } from "next";
 import CommunicationTemplatesPage from "./_components/CommunicationTemplatesPage";
 
-export default function AssistantCommunicationTemplates() {
+export const metadata: Metadata = {
+  title: "Communication Templates",
+};
+
+export default function AdminCommunicationTemplatesPage() {
   return <CommunicationTemplatesPage />;
 }

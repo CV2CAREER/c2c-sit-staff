@@ -145,6 +145,7 @@ export default function ReferralTable({ referrals }: { referrals: Referral[] }) 
         <StyledDataGridPro
           rows={rows}
           columns={columns}
+          showToolbar={true}
           pageSizeOptions={[10, 20, 50]}
           paginationModel={{ page: 0, pageSize: 10 }}
           checkboxSelection={false}

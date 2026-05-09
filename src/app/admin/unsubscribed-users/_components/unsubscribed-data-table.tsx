@@ -47,11 +47,9 @@ const UnsubscribedUsersDataTable: React.FC = () => {
       field: "username",
       headerName: "User",
       renderCell: (params) => {
-          const user = params.row.user;
-          if (!user) return "N/A";
           return (
-            <Link className="text-blue hover:text-career-blue-400" href={`/admin/users/${user.id}`}>
-              {`${user.firstName} ${user.lastName}`}
+            <Link className="text-blue hover:text-career-blue-400" href={`/admin/users/${params.row.id}`}>
+              {`${params.row.firstName} ${params.row.lastName} (${params.row.email})`}
             </Link>
           );
       },
