@@ -654,7 +654,7 @@ export class ReferralService {
       // Total earnings: paymentStatus === 'Paid' referrals * 50
       const totalEarnings = referrals.reduce((sum, ref) => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan?.toLowerCase?.();
+        const plan = referredUser?.plan;
         const hasValidPlan = validPlans.includes(plan);
         const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
           (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
@@ -665,7 +665,7 @@ export class ReferralService {
       // Detailed list of referred users
       const referredUsers = referrals.map(ref => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan?.toLowerCase?.();
+        const plan = referredUser?.plan;
         const hasValidPlan = validPlans.includes(plan);
         return {
           referralId: ref.id,
@@ -870,11 +870,11 @@ Phone: ${referralData.phoneNumber}`,
       );
     }
 
-    const validPlans = ['bronze', 'silver', 'gold', 'platinum'];
+    const validPlans = ['Bronze', 'Silver', 'Gold', 'Platinum'];
 
     // Check if the referred user has an active subscription with a valid plan
     const referredUser = (existingReferral as any).user;
-    const referredPlan = referredUser?.plan?.toLowerCase?.();
+    const referredPlan = referredUser?.plan;
     if (!referredUser || !referredUser.isUserSubscribed || !validPlans.includes(referredPlan)) {
       throw new ErrorHandler(
         "The referred user must have an active subscription with a Bronze, Silver, Gold, or Platinum plan before the referral can be claimed.",
