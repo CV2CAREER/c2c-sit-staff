@@ -644,9 +644,10 @@ export class ReferralService {
       const paidReferrals = referrals.filter(ref => {
         const referredUser = (ref as any).user;
         const plan = referredUser?.plan?.toLowerCase?.();
-        const isPaid = ref.referralStatus === 'PAID' ||
-          (referredUser?.paymentStatus === 'Paid' && validPlans.includes(plan)) ||
-          (referredUser?.isUserSubscribed === true && validPlans.includes(plan));
+        const hasValidPlan = validPlans.includes(plan);
+        const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
+          (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
+          (referredUser?.isUserSubscribed === true && hasValidPlan);
         return isPaid;
       }).length;
 
@@ -654,15 +655,18 @@ export class ReferralService {
       const totalEarnings = referrals.reduce((sum, ref) => {
         const referredUser = (ref as any).user;
         const plan = referredUser?.plan?.toLowerCase?.();
-        const isPaid = ref.referralStatus === 'PAID' ||
-          (referredUser?.paymentStatus === 'Paid' && validPlans.includes(plan)) ||
-          (referredUser?.isUserSubscribed === true && validPlans.includes(plan));
+        const hasValidPlan = validPlans.includes(plan);
+        const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
+          (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
+          (referredUser?.isUserSubscribed === true && hasValidPlan);
         return sum + (isPaid ? 50 : 0);
       }, 0);
 
       // Detailed list of referred users
       const referredUsers = referrals.map(ref => {
         const referredUser = (ref as any).user;
+        const plan = referredUser?.plan?.toLowerCase?.();
+        const hasValidPlan = validPlans.includes(plan);
         return {
           referralId: ref.id,
           userId: ref.userId,
@@ -672,7 +676,7 @@ export class ReferralService {
           status: ref.status,
           referralStatus: ref.referralStatus,
           paymentStatus: referredUser?.paymentStatus || null,
-          isUserSubscribed: referredUser?.isUserSubscribed || false,
+          isUserSubscribed: (referredUser?.isUserSubscribed === true && hasValidPlan) || false,
           createdAt: ref.createdAt,
         };
       });
