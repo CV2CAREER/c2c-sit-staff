@@ -639,7 +639,7 @@ export class ReferralService {
         return referredUser && !referredUser.isDeleted;
       }).length;
 
-      const validPlans = ['bronze', 'silver', 'gold', 'platinum'];
+      const validPlans = ['Bronze', 'Silver', 'Gold', 'Platinum'];
 
       const paidReferrals = referrals.filter(ref => {
         const referredUser = (ref as any).user;
