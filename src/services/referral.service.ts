@@ -969,7 +969,7 @@ Next step: Confirm referral claimed, process any applicable rewards for the refe
     if ((user as any).partner?.referralCode) {
       referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
     } else {
-      referralLink = `${frontendUrl}/register?ref=${user.email}-client`;
+      referralLink = `${frontendUrl}/register?ref=${user.email}-partner`;
     }
 
     const failedEmails: string[] = [];
