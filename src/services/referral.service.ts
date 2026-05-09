@@ -643,7 +643,7 @@ export class ReferralService {
 
       const paidReferrals = referrals.filter(ref => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan?.toLowerCase?.();
+        const plan = referredUser?.plan;
         const hasValidPlan = validPlans.includes(plan);
         const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
           (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
