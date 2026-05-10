@@ -1,5 +1,7 @@
 import { SubscriptionAllocation } from "../../models/v1/subscription-allocation.model";
 import { User } from "../../models/v1/user.model";
+import { Credentials } from "../../models/v1/credentials.model";
+import { Plan } from "../../models/v1/plan.model";
 import { Application } from "../../models/v1/application.model";
 import { Op } from "sequelize";
 
@@ -13,18 +15,26 @@ export class ClientsAssignedService {
    * @param assistantId - ID of the authenticated staff user
    */
   static async getAssignedClients(assistantId: string) {
-    // Get active allocations with client user data in single query
+    // Get active allocations with plan data - planId links to Plan which has userId (the actual client)
     const allocations = await SubscriptionAllocation.findAll({
       where: {
         staffUserId: assistantId,
         isActive: true,
         endedAt: null
       },
+      include: [
+        {
+          model: Plan,
+          attributes: ['userId'],
+          required: true
+        }
+      ],
       attributes: ['id', 'planId', 'assignedAt'],
-      raw: true
     });
 
-    const clientIds = allocations.map(alloc => alloc.planId);
+    const clientIds = allocations
+      .map(alloc => (alloc as any).plan?.userId)
+      .filter(Boolean);
 
     if (clientIds.length === 0) {
       return {
@@ -35,7 +45,7 @@ export class ClientsAssignedService {
       };
     }
 
-    // Get all clients in single query
+    // Get all clients with their credentials in a single query
     const clients = await User.findAll({
       where: {
         id: {
@@ -43,16 +53,39 @@ export class ClientsAssignedService {
         },
         deletedAt: null
       },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'uniqueId', 'applicationStatus', 'progress'],
+      include: [
+        {
+          model: Credentials,
+          as: 'credentials',
+          required: false,
+          attributes: [
+            'id',
+            'seekEmail',
+            'currentCity',
+            'onboardingDate',
+            'referrer',
+            'AssignedPCName',
+            'AssignedPCEmail',
+            'capitalized',
+            'Active',
+            'SeekAnswerPriority',
+            'SeekAggregator',
+            'SeekSubStartDate',
+            'blacklisted'
+          ]
+        }
+      ],
+      attributes: ['id', 'firstName', 'lastName', 'email', 'uniqueId', 'applicationStatus', 'progress', 'createdAt'],
       order: [['firstName', 'ASC']],
-      raw: true
     });
+
+    const clientUserIds = clients.map(c => c.id);
 
     // Get applications count for these clients in one query
     const applications = await Application.findAll({
       where: {
         client_id: {
-          [Op.in]: clientIds
+          [Op.in]: clientUserIds
         },
         isDeleted: false
       },
@@ -66,13 +99,43 @@ export class ClientsAssignedService {
       app.Status === 'PENDING' || app.Status === 'NEW' || app.Application_Mode === 'UNATTENDED'
     ).length;
 
+    // Format client list with credentials data
+    const clientData = clients.map(client => {
+      const creds = (client as any).credentials;
+      return {
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        email: client.email,
+        uniqueId: client.uniqueId,
+        applicationStatus: client.applicationStatus,
+        progress: client.progress,
+        createdAt: client.createdAt,
+        credentials: creds ? {
+          id: creds.id,
+          seekEmail: creds.seekEmail,
+          currentCity: creds.currentCity,
+          onboardingDate: creds.onboardingDate,
+          referrer: creds.referrer,
+          AssignedPCName: creds.AssignedPCName,
+          AssignedPCEmail: creds.AssignedPCEmail,
+          capitalized: creds.capitalized,
+          Active: creds.Active,
+          SeekAnswerPriority: creds.SeekAnswerPriority,
+          SeekAggregator: creds.SeekAggregator,
+          SeekSubStartDate: creds.SeekSubStartDate,
+          blacklisted: creds.blacklisted
+        } : null,
+        displayName: `${client.firstName} ${client.lastName} - ${client.uniqueId || client.email}`
+      };
+    });
+
     // Format client names list for dropdown
-    const clientNames = clients.map(client => 
-      `${client.firstName} ${client.lastName} - ${client.uniqueId || client.email}`
-    );
+    const clientNames = clientData.map(c => c.displayName);
 
     return {
       clients: clientNames,
+      clientDetails: clientData,
       clientsApplication: applications,
       totalApplications,
       totalUnattended
