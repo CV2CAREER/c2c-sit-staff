@@ -1,10 +1,13 @@
-"use client";
+import ProfileAvatarHeader from "./_components/ProfileAvatarHeader";
+import EditProfile from "./_components/EditProfile";
 
-import React from "react";
-import PersonaProfile from "@/components/PersonaProfile";
-
-const CoachProfilePage = () => {
-  return <PersonaProfile title="Coach Portal" />;
+const PartnerProfilePage = () => {
+  return (
+    <section className="flex flex-col gap-8 mt-8">
+      <ProfileAvatarHeader />
+      <EditProfile />
+    </section>
+  );
 };
 
-export default CoachProfilePage;
+export default PartnerProfilePage;

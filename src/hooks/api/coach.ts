@@ -86,6 +86,17 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
 export const useCoachMutations = () => {
   const queryClient = useQueryClient();
 
+  const cancelSession = useMutation({
+    mutationKey: ["coach-cancel-session"],
+    mutationFn: async (sessionId: string) => {
+      const response = await axiosInstance.patch(coachEndpoints.COACH_SESSION_CANCEL(sessionId));
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coach-sessions"] });
+    },
+  });
+
   const completeSession = useMutation({
     mutationKey: ["coach-complete-session"],
     mutationFn: async (sessionId: string) => {
@@ -161,6 +172,7 @@ export const useCoachMutations = () => {
     deleteSchedule,
     updateSession,
     completeSession,
+    cancelSession,
     gradeSession,
   };
 };

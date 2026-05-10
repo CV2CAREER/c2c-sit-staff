@@ -5,13 +5,13 @@ import Link from "next/link";
 
 interface CoachSessionCardProps {
   data: {
-    _id: string;
+    id: string;
     sessionStatus: string;
     sessionType: string;
-    clientData: {
-      firstName: string;
-      lastName: string;
-    };
+    "client.firstName": string;
+    "client.lastName": string;
+    "schedule.date": string;
+    "schedule.day": string;
     time: {
       startTime: string;
       endTime: string;
@@ -31,29 +31,38 @@ const sessionStatusStyles: Record<string, string> = {
 const CoachSessionCard = ({ data }: CoachSessionCardProps) => {
   const statusStyle = sessionStatusStyles[data.sessionStatus.toLowerCase()] || "bg-gray-100 text-gray-700";
   
-  // Assuming time strings are in format "DD/MMM/YYYY HH:mm AM/PM" or similar
-  const startTimeParts = data.time.startTime.split(" ");
-  const date = startTimeParts[0];
-  const startTime = startTimeParts.slice(1).join(" ");
-  const endTime = data.time.endTime.split(" ").slice(1).join(" ");
+  const scheduleDate = data["schedule.date"]?.split("T")[0] || "Unknown Date";
+  const scheduleDay = data["schedule.day"] || "Unknown Day";
+  const startTime = data.time.startTime || "Unknown Time";
+  const endTime = data.time.endTime || "Unknown Time";
+  const sessionTypeLabels: Record<string, string> = {
+    screening_preparation: "Screening Preparation",
+    interview_panel: "Interview Preparation",
+    career_consultation: "Career Consultation",
+  };
+  const sessionTypeLabel = sessionTypeLabels[data.sessionType] || data.sessionType?.replace(/_/g, " ") || "Session";
+  
+
 
   return (
     <Link 
-      href={`/coach/sessions/${data._id}`}
+      href={`/coach/${data.id}`}
       className="block group bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm transition-all duration-200 hover:shadow-md"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <h4 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-          {`${data.clientData.firstName} ${data.clientData.lastName}`}
+          {`${data?.["client.firstName"]} ${data?.["client.lastName"]}`}
         </h4>
         <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${statusStyle}`}>
-          {data.sessionStatus}
+          {data?.sessionStatus}
         </span>
       </div>
       
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 text-gray-600 text-sm">
-          <span className="font-semibold">{date}</span>
+          <span className="font-semibold">{scheduleDate}</span>
+          <span className="text-gray-300">|</span>
+          <span>{scheduleDay}</span>
           <span className="text-gray-300">|</span>
           <span>{startTime} - {endTime}</span>
         </div>
@@ -61,7 +70,7 @@ const CoachSessionCard = ({ data }: CoachSessionCardProps) => {
         <div className="pt-3 border-t border-gray-100">
           <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-1">Session Type</p>
           <p className="font-bold text-gray-800">
-            {data.sessionType === "screening" ? "Screening Preparation" : "Interview Panel"}
+            {sessionTypeLabel}
           </p>
         </div>
       </div>
