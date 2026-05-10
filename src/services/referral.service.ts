@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
+import { Plan } from "../models/v1/plan.model";
 import { Referrer } from "../models/v1/referrer.model";
 import { Partner } from "../models/v1/partner.model";
 import { SlackService } from "./slack.service";
@@ -629,6 +630,77 @@ export class ReferralService {
         order: [['createdAt', 'DESC']],
       });
 
+      // --- Batch plan validation: query all referred users' plans at once ---
+      const referredUserIds = referrals
+        .map(ref => (ref as any).user?.id)
+        .filter(Boolean) as string[];
+
+      logger.info(`getPartnerSummary referredUserIds: ${JSON.stringify(referredUserIds)}`);
+
+      const planResults = new Map<string, boolean>();
+      if (referredUserIds.length > 0) {
+        // Pull all non-expired, non-deleted plans for these users
+        const plans = await Plan.findAll({
+          where: {
+            userId: { [Op.in]: referredUserIds },
+            hasExpired: false,
+            deletedAt: null,
+          },
+        });
+
+        logger.info(`getPartnerSummary raw plans found: ${plans.length}`);
+        if (plans.length > 0) {
+          for (const p of plans) {
+            logger.info(`getPartnerSummary plan: userId=${p.userId}, title="${p.title}", paymentStatus="${p.paymentStatus}", hasExpired=${p.hasExpired}, expiresAt=${p.expiresAt}`);
+          }
+        }
+
+        // Build map of userId → has valid plan using same logic as userHasValidPlan
+        for (const userId of referredUserIds) {
+          const userPlans = plans.filter(p => p.userId === userId);
+
+          if (userPlans.length === 0) {
+            logger.warn(`getPartnerSummary userId=${userId} → No plans found at all`);
+            planResults.set(userId, false);
+            continue;
+          }
+
+          const valid = userPlans.some(p => {
+            // 1) Case-insensitive title match
+            const titleMatch = Plan.VALID_PLAN_TITLES.some(
+              t => p.title?.toLowerCase() === t.toLowerCase(),
+            );
+            if (!titleMatch) {
+              logger.warn(`getPartnerSummary userId=${userId} → title "${p.title}" not valid`);
+              return false;
+            }
+
+            // 2) Must not be failed/refunded
+            if (p.paymentStatus === 'failed' || p.paymentStatus === 'refunded') {
+              logger.warn(`getPartnerSummary userId=${userId} → paymentStatus is "${p.paymentStatus}"`);
+              return false;
+            }
+
+            // 3) Check expiry
+            if (p.expiresAt) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const expiry = new Date(p.expiresAt);
+              expiry.setHours(23, 59, 59, 999);
+              if (expiry < today) {
+                logger.warn(`getPartnerSummary userId=${userId} → plan expired at ${p.expiresAt}`);
+                return false;
+              }
+            }
+
+            logger.info(`getPartnerSummary userId=${userId} → VALID plan: id="${p.id}", title="${p.title}"`);
+            return true;
+          });
+
+          planResults.set(userId, valid);
+        }
+      }
+
       // Calculate stats
       const totalReferrals = referrals.length;
 
@@ -639,12 +711,9 @@ export class ReferralService {
         return referredUser && !referredUser.isDeleted;
       }).length;
 
-      const validPlans = ['Bronze', 'Silver', 'Gold', 'Platinum'];
-
       const paidReferrals = referrals.filter(ref => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan;
-        const hasValidPlan = validPlans.includes(plan);
+        const hasValidPlan = planResults.get(referredUser?.id) === true;
         const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
           (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
           (referredUser?.isUserSubscribed === true && hasValidPlan);
@@ -654,8 +723,7 @@ export class ReferralService {
       // Total earnings: paymentStatus === 'Paid' referrals * 50
       const totalEarnings = referrals.reduce((sum, ref) => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan;
-        const hasValidPlan = validPlans.includes(plan);
+        const hasValidPlan = planResults.get(referredUser?.id) === true;
         const isPaid = (ref.referralStatus === 'PAID' && hasValidPlan) ||
           (referredUser?.paymentStatus === 'Paid' && hasValidPlan) ||
           (referredUser?.isUserSubscribed === true && hasValidPlan);
@@ -665,8 +733,7 @@ export class ReferralService {
       // Detailed list of referred users
       const referredUsers = referrals.map(ref => {
         const referredUser = (ref as any).user;
-        const plan = referredUser?.plan;
-        const hasValidPlan = validPlans.includes(plan);
+        const hasValidPlan = planResults.get(referredUser?.id) === true;
         return {
           referralId: ref.id,
           userId: ref.userId,
@@ -870,14 +937,13 @@ Phone: ${referralData.phoneNumber}`,
       );
     }
 
-    const validPlans = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+    // Validate plan via the Plan model (authoritative source) instead of User.plan string
+    const hasValidPlan = await Plan.userHasValidPlan(user.id);
 
-    // Check if the referred user has an active subscription with a valid plan
-    const referredUser = (existingReferral as any).user;
-    const referredPlan = referredUser?.plan;
-    if (!referredUser || !referredUser.isUserSubscribed || !validPlans.includes(referredPlan)) {
+    // Also check isUserSubscribed as a secondary guard
+    if (!user.isUserSubscribed || !hasValidPlan) {
       throw new ErrorHandler(
-        "The referred user must have an active subscription with a Bronze, Silver, Gold, or Platinum plan before the referral can be claimed.",
+        "You must have an active subscription with a Bronze, Silver, Gold, or Platinum plan before the referral can be claimed.",
         400,
       );
     }

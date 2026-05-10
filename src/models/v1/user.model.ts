@@ -386,6 +386,10 @@ export class User extends Model {
   @Column(DataType.UUID)
   locationId?: string;
 
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  referrROle?: string;
+
   @BelongsTo(() => Location, {
     onDelete: "SET NULL",
     onUpdate: "CASCADE",

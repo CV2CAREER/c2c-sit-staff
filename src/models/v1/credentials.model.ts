@@ -120,6 +120,11 @@ export class Credentials extends Model {
   @AllowNull(true)
   @Default(false)
   @Column(DataType.BOOLEAN)
+  seekAnswerPriority?: boolean;
+
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
   SeekAggregator?: boolean;
 
   @AllowNull(true)

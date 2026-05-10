@@ -104,7 +104,7 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         await Credentials.sync({ force: false });         // new table
-        // await User.sync({ alter: true });
+        await User.sync({ alter: true });
         // await Profile.sync({ alter: true });
 
         // To be done

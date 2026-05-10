@@ -283,7 +283,7 @@ export const getClients = async (query: {
         foreignKey: 'clientId',
         required: true,
         attributes: [
-          'id', 'seekEmail', 'seekPassword', 'seekAnswerPriority'
+          'id', 'seekEmail', 'seekPassword', 'SeekAnswerPriority'
         ]
       },
       {
@@ -373,7 +373,7 @@ export const getClients = async (query: {
       subToExpireDays: Math.max(0, subToExpireDays),
       subExpired,
       isActiveTriggeredByAdmin: !!profile.isAdminTriggered,
-      answerPriority: !!credentials.seekAnswerPriority,
+      answerPriority: !!credentials.SeekAnswerPriority,
       
       // Aggregator statuses
       seekAggregator: !!aggregatorStatus['seek'],

@@ -14,6 +14,7 @@ import {
   BeforeCreate,
   BeforeUpdate,
 } from "sequelize-typescript";
+import { Op } from "sequelize";
 import { User } from "./user.model";
 import { Profile } from "./profile.model";
 import { Feature } from "./feature.model";
@@ -118,6 +119,40 @@ export class Plan extends Model {
   // Soft delete timestamp (replaces isDeleted boolean)
   @Column(DataType.DATE)
   deletedAt?: Date;
+
+  /**
+   * Valid plan titles that qualify a referred user for referral rewards.
+   */
+  static VALID_PLAN_TITLES = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+
+  /**
+   * Check if a user has a completed, non-expired, valid subscription plan.
+   * This queries the actual Plan records — the authoritative source — rather than
+   * relying on the
+   */
+  static async userHasValidPlan(userId: string): Promise<boolean> {
+    const plan = await Plan.findOne({
+      where: {
+        userId,
+        title: { [Op.in]: Plan.VALID_PLAN_TITLES },
+        paymentStatus: 'completed',
+        hasExpired: false,
+      },
+    });
+
+    if (!plan) return false;
+
+    // Also enforce expiresAt if set
+    if (plan.expiresAt) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiry = new Date(plan.expiresAt);
+      expiry.setHours(23, 59, 59, 999);
+      if (expiry < today) return false;
+    }
+
+    return true;
+  }
 
   // Hook to calculate expiresAt before save
   @BeforeCreate
