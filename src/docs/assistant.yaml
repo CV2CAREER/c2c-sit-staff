@@ -6,7 +6,10 @@ paths:
       tags:
         - Assistant
       summary: Get assigned clients and statistics
-      description: Returns all clients assigned to the authenticated assistant along with dashboard statistics
+      description: >
+        Returns all clients assigned to the authenticated assistant along with dashboard statistics.
+        Assignment is determined by matching the assistant's email against the `AssignedPCEmail`
+        field in the Credentials table.
       operationId: getClientsAssigned
       security:
         - bearerAuth: []
@@ -29,12 +32,120 @@ paths:
                         type: array
                         items:
                           type: string
-                        description: Formatted client names for dropdown selection
+                        description: Formatted client display names for dropdown selection
                         example: ["John Doe - CLIENT-001", "Jane Smith - jane@example.com"]
+                      clientDetails:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              description: Client user ID
+                              example: "20260101-001"
+                            firstName:
+                              type: string
+                              example: "John"
+                            lastName:
+                              type: string
+                              example: "Doe"
+                            email:
+                              type: string
+                              example: "john.doe@example.com"
+                            uniqueId:
+                              type: string
+                              nullable: true
+                              example: "CLIENT-001"
+                            applicationStatus:
+                              type: string
+                              example: "COMMENCED"
+                            progress:
+                              type: string
+                              example: "EMAIL_VERIFIED"
+                            createdAt:
+                              type: string
+                              format: date-time
+                            credentials:
+                              type: object
+                              nullable: true
+                              description: Credential record for the client
+                              properties:
+                                id:
+                                  type: string
+                                  description: Credentials record ID
+                                seekEmail:
+                                  type: string
+                                  nullable: true
+                                  description: Seek email used by the client
+                                currentCity:
+                                  type: string
+                                  nullable: true
+                                  description: Client's current city
+                                onboardingDate:
+                                  type: string
+                                  nullable: true
+                                  description: Onboarding date
+                                referrer:
+                                  type: string
+                                  nullable: true
+                                  description: Referrer information
+                                AssignedPCName:
+                                  type: string
+                                  nullable: true
+                                  description: Assigned placement consultant name
+                                AssignedPCEmail:
+                                  type: string
+                                  nullable: true
+                                  description: Assigned placement consultant email
+                                capitalized:
+                                  type: string
+                                  nullable: true
+                                  default: "FLIGHT"
+                                  description: Capitalized status
+                                Active:
+                                  type: boolean
+                                  nullable: true
+                                  default: false
+                                SeekAnswerPriority:
+                                  type: boolean
+                                  nullable: true
+                                  default: false
+                                SeekAggregator:
+                                  type: boolean
+                                  nullable: true
+                                  default: false
+                                SeekSubStartDate:
+                                  type: string
+                                  nullable: true
+                                  description: Seek subscription start date
+                                blacklisted:
+                                  type: string
+                                  nullable: true
+                                  description: Blacklist status
+                            displayName:
+                              type: string
+                              description: Formatted display name
+                              example: "John Doe - CLIENT-001"
                       clientsApplication:
                         type: array
                         items:
                           type: object
+                          properties:
+                            id:
+                              type: string
+                              description: Application ID
+                            client_id:
+                              type: string
+                              description: Client user ID
+                            Status:
+                              type: string
+                              description: Application status
+                            createdAt:
+                              type: string
+                              format: date-time
+                            Application_Mode:
+                              type: string
+                              description: Application mode (UNATTENDED, etc.)
                         description: Full application records for assigned clients
                       totalApplications:
                         type: number

@@ -1,13 +1,12 @@
-import { SubscriptionAllocation } from "../../models/v1/subscription-allocation.model";
 import { User } from "../../models/v1/user.model";
 import { Credentials } from "../../models/v1/credentials.model";
-import { Plan } from "../../models/v1/plan.model";
 import { Application } from "../../models/v1/application.model";
 import { Op } from "sequelize";
 
 /**
- * Optimized service to fetch clients assigned to current assistant
- * Uses efficient database queries with proper joins and indexes
+ * Service to fetch clients assigned to the current assistant.
+ * Assignment is stored in the Credentials table via AssignedPCEmail
+ * (the assistant's email) which links clients to their assistant.
  */
 export class ClientsAssignedService {
   /**
@@ -15,37 +14,47 @@ export class ClientsAssignedService {
    * @param assistantId - ID of the authenticated staff user
    */
   static async getAssignedClients(assistantId: string) {
-    // Get active allocations with plan data - planId links to Plan which has userId (the actual client)
-    const allocations = await SubscriptionAllocation.findAll({
-      where: {
-        staffUserId: assistantId,
-        isActive: true,
-        endedAt: null
-      },
-      include: [
-        {
-          model: Plan,
-          attributes: ['userId'],
-          required: true
-        }
-      ],
-      attributes: ['id', 'planId', 'assignedAt'],
+    // First get the assistant's email from their user record
+    const assistant = await User.findByPk(assistantId, {
+      attributes: ['id', 'email'],
+      raw: true
     });
 
-    const clientIds = allocations
-      .map(alloc => (alloc as any).plan?.userId)
-      .filter(Boolean);
-
-    if (clientIds.length === 0) {
+    if (!assistant || !assistant.email) {
       return {
         clients: [],
+        clientDetails: [],
         clientsApplication: [],
         totalApplications: 0,
         totalUnattended: 0
       };
     }
 
-    // Get all clients with their credentials in a single query
+    // Query all Credentials where the assistant's email matches AssignedPCEmail
+    const credentials = await Credentials.findAll({
+      where: {
+        AssignedPCEmail: assistant.email,
+        isDeleted: false
+      },
+      attributes: ['id', 'clientId', 'seekEmail', 'currentCity', 'onboardingDate', 'referrer', 'AssignedPCName', 'AssignedPCEmail', 'capitalized', 'Active', 'SeekAnswerPriority', 'SeekAggregator', 'SeekSubStartDate', 'blacklisted'],
+      raw: true
+    });
+
+    const clientIds = credentials
+      .map(cred => cred.clientId)
+      .filter(Boolean) as string[];
+
+    if (clientIds.length === 0) {
+      return {
+        clients: [],
+        clientDetails: [],
+        clientsApplication: [],
+        totalApplications: 0,
+        totalUnattended: 0
+      };
+    }
+
+    // Fetch the actual client user records
     const clients = await User.findAll({
       where: {
         id: {
@@ -53,35 +62,22 @@ export class ClientsAssignedService {
         },
         deletedAt: null
       },
-      include: [
-        {
-          model: Credentials,
-          as: 'credentials',
-          required: false,
-          attributes: [
-            'id',
-            'seekEmail',
-            'currentCity',
-            'onboardingDate',
-            'referrer',
-            'AssignedPCName',
-            'AssignedPCEmail',
-            'capitalized',
-            'Active',
-            'SeekAnswerPriority',
-            'SeekAggregator',
-            'SeekSubStartDate',
-            'blacklisted'
-          ]
-        }
-      ],
       attributes: ['id', 'firstName', 'lastName', 'email', 'uniqueId', 'applicationStatus', 'progress', 'createdAt'],
       order: [['firstName', 'ASC']],
+      raw: true
     });
+
+    // Build a map of clientId -> credentials for quick lookup
+    const credentialsMap = new Map<string, any>();
+    for (const cred of credentials) {
+      if (cred.clientId) {
+        credentialsMap.set(cred.clientId, cred);
+      }
+    }
 
     const clientUserIds = clients.map(c => c.id);
 
-    // Get applications count for these clients in one query
+    // Get applications for these clients
     const applications = await Application.findAll({
       where: {
         client_id: {
@@ -99,9 +95,9 @@ export class ClientsAssignedService {
       app.Status === 'PENDING' || app.Status === 'NEW' || app.Application_Mode === 'UNATTENDED'
     ).length;
 
-    // Format client list with credentials data
+    // Enrich client data with credentials
     const clientData = clients.map(client => {
-      const creds = (client as any).credentials;
+      const creds = credentialsMap.get(client.id);
       return {
         id: client.id,
         firstName: client.firstName,
