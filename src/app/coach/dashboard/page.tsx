@@ -16,10 +16,12 @@ const CoachDashboardPage = () => {
   const sessions = sessionsDomain.data?.populatedSessions || [];
   const isLoading = sessionsDomain.isLoading;
 
-  // Filter for pending/upcoming sessions
-  const upcomingSessions = sessions.filter((s: any) => 
+  // Filter for pending and scheduled sessions
+  const pendingScheduledSessions = sessions.filter((s: any) =>
     ["pending", "scheduled"].includes(s.sessionStatus.toLowerCase())
   );
+  // Last 6 for display
+  const upcomingSessions = pendingScheduledSessions.slice(-6);
 
   const DASHBOARD_CARDS_DATA = [
     {
@@ -34,7 +36,7 @@ const CoachDashboardPage = () => {
     },
     {
       title: "Upcoming",
-      value: upcomingSessions.length || 0,
+      value: pendingScheduledSessions.length || 0,
       icon: <Clock size={20} className="text-yellow-500" />,
     },
     {
@@ -100,7 +102,7 @@ const CoachDashboardPage = () => {
           ) : upcomingSessions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {upcomingSessions.map((session: any) => (
-                <CoachSessionCard key={session._id} data={session} />
+                <CoachSessionCard key={session.id} data={session} />
               ))}
             </div>
           ) : (

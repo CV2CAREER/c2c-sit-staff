@@ -29,9 +29,9 @@ const ScheduledEvents = () => {
   const filteredData = useMemo(() => {
     switch (activeView) {
       case "Screening":
-        return sessions.filter((s: any) => s.sessionType?.toLowerCase() === "screening");
+        return sessions.filter((s: any) => s.sessionType?.toLowerCase() === "screening_preparation");
       case "Interview":
-        return sessions.filter((s: any) => s.sessionType?.toLowerCase() === "interview");
+        return sessions.filter((s: any) => s.sessionType?.toLowerCase() === "interview_panel");
       case "Completed":
         return sessions.filter((s: any) => s.sessionStatus?.toLowerCase() === "completed");
       case "Canceled":
@@ -61,8 +61,8 @@ const ScheduledEvents = () => {
                 activeView === view.label ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
             }`}>
               {view.label === "All Sessions" ? sessions.length : 
-               view.label === "Screening" ? sessions.filter((s: any) => s.sessionType?.toLowerCase() === "screening").length :
-               view.label === "Interview" ? sessions.filter((s: any) => s.sessionType?.toLowerCase() === "interview").length :
+               view.label === "Screening" ? sessions.filter((s: any) => s.sessionType?.toLowerCase() === "screening_preparation").length :
+               view.label === "Interview" ? sessions.filter((s: any) => s.sessionType?.toLowerCase() === "interview_panel").length :
                view.label === "Completed" ? sessions.filter((s: any) => s.sessionStatus?.toLowerCase() === "completed").length :
                sessions.filter((s: any) => ["canceled", "cancelled"].includes(s.sessionStatus?.toLowerCase())).length}
             </span>
