@@ -125,7 +125,7 @@ export default function GradingForm({ sessionId, initialGrading, onSuccess }: Gr
           <Button 
             onClick={handleSubmit} 
             disabled={gradeSession.isPending} 
-            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 font-bold text-lg gap-2 shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 text-black px-10 h-14 font-bold text-lg gap-2 shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             {gradeSession.isPending ? <Loader2 className="animate-spin" size={24} /> : <Save size={24} />}
             Submit Session Grade

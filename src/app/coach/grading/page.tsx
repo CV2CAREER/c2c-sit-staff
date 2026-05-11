@@ -10,7 +10,7 @@ const GradingPage = () => {
     <section className="flex flex-col gap-8 mt-6">
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-2xl font-bold text-gray-900">Grading & Feedback</h2>
-        <p className="text-gray-500 mt-1">Review completed sessions and provide feedback to client.</p>
+        <p className="text-gray-500 mt-1">Review completed sessions and provide feedback to clients.</p>
       </div>
 
       <Tabs defaultValue="all" className="w-full">

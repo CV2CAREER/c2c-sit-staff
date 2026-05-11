@@ -192,7 +192,7 @@ export default function ManageSession() {
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border-b border-gray-100 px-8 py-6">
                 <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
                   <div className="bg-blue-600 p-2 rounded-xl">
-                    <FileText size={18} className="text-white" />
+                    <FileText size={18} className="text-black" />
                   </div>
                   Coach Preparation
                 </CardTitle>
