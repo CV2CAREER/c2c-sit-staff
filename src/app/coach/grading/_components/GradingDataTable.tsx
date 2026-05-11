@@ -51,6 +51,23 @@ const GradingDataTable = ({ gradingState }: GradingDataTableProps) => {
           },
         };
       }
+      if (col.field === "grading") {
+        return {
+          ...col,
+          headerName: "Score",
+          renderCell: (params: any) => {
+            const grading = params.value;
+            if (grading?.score != null && grading?.maxScore != null) {
+              return (
+                <span className="font-semibold">
+                  {grading.score}/{grading.maxScore}
+                </span>
+              );
+            }
+            return <span className="text-gray-400">—</span>;
+          },
+        };
+      }
       if (col.field === "isGraded") {
         return {
           ...col,
