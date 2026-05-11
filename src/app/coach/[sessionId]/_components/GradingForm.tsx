@@ -64,12 +64,12 @@ export default function GradingForm({ sessionId, initialGrading, onSuccess }: Gr
 
   return (
     <Card className="rounded-2xl border-none shadow-sm mt-6 overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-        <CardTitle className="text-xl flex items-center gap-2">
+      <CardHeader className="text-black p-6">
+        <CardTitle className="text-xl flex items-center gap-2 text-black">
           <Star className="text-yellow-300 fill-yellow-300" size={24} />
           Grading & Feedback
         </CardTitle>
-        <p className="text-blue-100 text-sm mt-1">Evaluate the student's performance across key metrics.</p>
+        <p className="text-black text-sm mt-1">Evaluate the client's performance across key metrics.</p>
       </CardHeader>
       <CardContent className="p-6 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
