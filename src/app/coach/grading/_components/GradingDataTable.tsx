@@ -38,6 +38,19 @@ const GradingDataTable = ({ gradingState }: GradingDataTableProps) => {
           ),
         };
       }
+      if (col.field === "time") {
+        return {
+          ...col,
+          headerName: "Time",
+          renderCell: (params: any) => {
+            const time = params.value;
+            if (time?.startTime && time?.endTime) {
+              return <span>{time.startTime} - {time.endTime}</span>;
+            }
+            return <span>N/A</span>;
+          },
+        };
+      }
       if (col.field === "isGraded") {
         return {
           ...col,
