@@ -954,7 +954,7 @@ paths:
                   maxLength: 64
                   nullable: true
                   description: Test completion date
-                seekAnswerPriority:
+                SeekAnswerPriority:
                   type: string
                   maxLength: 32
                   nullable: true
@@ -1077,7 +1077,7 @@ paths:
                   "seekPassword": "StrongPassword123",
                   "seekCredentialsTest": "PASSED",
                   "seekCredentialsTestDate": "2026-04-20T10:30:00Z",
-                  "seekAnswerPriority": "true",
+                  "SeekAnswerPriority": "true",
                   "currentCity": "Sydney",
                   "onboardingDate": "2026-04-01",
                   "criteriaReviewCompleted": "YES",
@@ -1131,7 +1131,7 @@ paths:
                     "seekPassword": "StrongPassword123",
                     "seekCredentialsTest": "PASSED",
                     "seekCredentialsTestDate": "2026-04-20T10:30:00Z",
-                    "seekAnswerPriority": "true",
+                    "SeekAnswerPriority": "true",
                     "currentCity": "Sydney",
                     "onboardingDate": "2026-04-01",
                     "criteriaReviewCompleted": "YES",

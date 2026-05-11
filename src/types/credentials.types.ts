@@ -8,7 +8,7 @@ export interface CredentialsAttributes {
   seekPassword?: string;
   seekCredentialsTest?: string;
   seekCredentialsTestDate?: string;
-  seekAnswerPriority?: string;
+  SeekAnswerPriority?: string;
   currentCity?: string;
   onboardingDate?: string;
   criteriaReviewCompleted?: string;
