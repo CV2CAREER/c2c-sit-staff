@@ -26,7 +26,7 @@ import { User } from "./user.model";
 export class InterviewPrepEvidence extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)

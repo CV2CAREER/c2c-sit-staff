@@ -12,7 +12,7 @@ import {
 export class Promotion extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Index
@@ -86,7 +86,7 @@ export class Promotion extends Model {
 export class PromotionLength extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Column({

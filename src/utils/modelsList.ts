@@ -60,6 +60,8 @@ import { AccessLevel } from "../models/v1/access-level.model";
 import { AccessRule } from "../models/v1/access-rule.model";
 import { UserAccessLevel } from "../models/v1/user-access-level.model";
 import { CommunicationTemplate } from "../models/v1/communication-template.model";
+import { CvRevamp } from "@/models/v1/cv-revamp.model";
+import { VCSPrompt, VCS } from "../models/v1/keyword-population.model";
 
 export const modelList = [
   User,
@@ -89,7 +91,6 @@ export const modelList = [
   InterviewPrepEvidence,
   Message,
   Chat,
-  SubscriptionAllocation,
   AdminControl,
   SystemConfig,
   AuditTrail,
@@ -100,8 +101,6 @@ export const modelList = [
   TrainingTracker,
   TrainingTrackerSession,
   SalesOperation,
-  CRTracking,
-  CRTrackingHistory,
   CROwner,
   CRChange,
   CRSeverity,
@@ -110,9 +109,11 @@ export const modelList = [
   CRType,
   CRPersona,
   CRProvider,
-  SlackMessage,
   CRNode,
+  CRTracking,
+  CRTrackingHistory,
   CREOT,
+  SlackMessage,
   Setting,
   Log, 
   ViewAsRule, 
@@ -124,5 +125,9 @@ export const modelList = [
   CommunicationTemplate,
   AuditLog,
   PassKeyVault,
+  SubscriptionAllocation,
   UserPreferenceHistory,
+  CvRevamp,
+  VCSPrompt,
+  VCS,
 ];

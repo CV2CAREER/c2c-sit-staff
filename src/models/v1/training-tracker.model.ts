@@ -38,7 +38,7 @@ import { TrainingTrackerSession } from "./training-tracker-session.model";
 export class TrainingTracker extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)
@@ -50,7 +50,7 @@ export class TrainingTracker extends Model {
 
   @ForeignKey(() => TrainingTrackerSession)
   @AllowNull
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   sessionId?: string;
   
   @BelongsTo(() => TrainingTrackerSession, { foreignKey: "sessionId", targetKey: "id" })

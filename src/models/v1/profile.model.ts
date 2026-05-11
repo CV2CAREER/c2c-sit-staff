@@ -36,7 +36,7 @@ import { AggregatorLink } from "../../types/aggregator.types";
 export class Profile extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   // Foreign key to users table
@@ -63,7 +63,7 @@ export class Profile extends Model {
   // Foreign key to plans table
   @ForeignKey(() => Plan)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   planId?: string;
 
   @BelongsTo(() => Plan)

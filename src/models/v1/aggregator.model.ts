@@ -19,7 +19,7 @@ import { AggregatorPicture } from "../../types/aggregator.types";
 export class Aggregator extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)

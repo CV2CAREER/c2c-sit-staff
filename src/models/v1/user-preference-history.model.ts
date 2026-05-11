@@ -35,13 +35,13 @@ import { Profile } from "./profile.model";
 export class UserPreferenceHistory extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)
   @AllowNull(false)
   @Index
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   userId!: string;
 
   @BelongsTo(() => User, {

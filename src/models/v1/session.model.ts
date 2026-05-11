@@ -68,7 +68,7 @@ import { Schedule } from "./schedule.model";
 export class Session extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(true)
@@ -106,7 +106,7 @@ export class Session extends Model {
   // Reference to Schedule model (if exists)
   @ForeignKey(() => Schedule)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   scheduleId?: string;
 
   @BelongsTo(() => Schedule, "scheduleId")

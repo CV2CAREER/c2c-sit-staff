@@ -4,7 +4,7 @@ import { Table, Column, Model, DataType, PrimaryKey, Default, CreatedAt, Updated
 export class CRPersona extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)

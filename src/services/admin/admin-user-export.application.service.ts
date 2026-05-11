@@ -2,7 +2,6 @@ import { createWriteStream, existsSync } from "fs";
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-import { validate as isUuid } from "uuid";
 import { USE_REDIS } from "../../config/env";
 import { getConnectedRedis } from "../../config/redis";
 import { getQueue } from "../../config/bullMQ";
@@ -508,7 +507,7 @@ class AdminUserExportApplicationService {
   }
 
   async getTaskStatus(taskId: string): Promise<ExportStatusResponse> {
-    if (!isUuid(taskId)) {
+    if (!taskId) {
       throw new ErrorHandler("Invalid taskId.", 400);
     }
 

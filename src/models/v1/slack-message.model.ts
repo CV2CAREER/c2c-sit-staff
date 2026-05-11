@@ -9,7 +9,6 @@ import {
   PrimaryKey,
   Default,
 } from "sequelize-typescript";
-import { v4 as uuidv4 } from "uuid";
 
 @Table({
   tableName: "slack_messages",
@@ -22,8 +21,8 @@ import { v4 as uuidv4 } from "uuid";
 })
 export class SlackMessage extends Model {
   @PrimaryKey
-  @Default(uuidv4)
-  @Column(DataType.UUID)
+  @Default(DataType.UUIDV4)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(true)

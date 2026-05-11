@@ -22,7 +22,7 @@ import { AccessLevel } from "./access-level.model";
 export class UserAccessLevel extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)
@@ -37,7 +37,7 @@ export class UserAccessLevel extends Model {
   @ForeignKey(() => AccessLevel)
   @AllowNull(false)
   @Index("idx_user_access_levels_user_access_unique")
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   accessLevelId!: string;
 
   @BelongsTo(() => AccessLevel, "accessLevelId")

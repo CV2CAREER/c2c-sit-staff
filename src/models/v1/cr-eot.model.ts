@@ -18,24 +18,24 @@ import { CROwner } from "./cr/owner.model";
 export class CREOT extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => CRTracking)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   crId!: string;
 
   @ForeignKey(() => CROwner)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   developerId!: string;
 
   @ForeignKey(() => CROwner)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   nilId!: string;
 

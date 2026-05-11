@@ -12,7 +12,7 @@ import {
 export class Resource extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Column({

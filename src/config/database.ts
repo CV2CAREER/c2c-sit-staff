@@ -45,6 +45,7 @@ import { UploadRecycle } from "@/models/v1/upload-recycle.model";
 import { UserAccessLevel } from "@/models/v1/user-access-level.model";
 import { UserPermission } from "@/models/v1/user-permissions.model";
 import { AccessLevel } from "@/models/v1/access-level.model";
+import { VCSPrompt, VCS } from "../models/v1/keyword-population.model";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -103,16 +104,17 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        // await Credentials.sync({ force: false });         // new table
+        // await Credentials.sync({ alter: true });         // new schema
         // await User.sync({ alter: true });
         // await Profile.sync({ alter: true });
 
         // To be done
         // await UserPreferenceHistory.sync({ alter: true });
-        // await CRTracking.sync({ alter: true });
-        // await CvRevamp.sync({ alter: true });
+        await VCSPrompt.sync({ force: false });
+        await VCS.sync({ force: false });
+        await CvRevamp.sync({ force: false });
         // await ClientAvailability.sync({ alter: true });
-        // await UnsubscribedUser.sync({ alter: true });
+        await UnsubscribedUser.sync({ force: false });
 
         await ensureTrainingTrackerSessions();
         await ensureCRTrackingHistoryTable();

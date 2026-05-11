@@ -10,6 +10,7 @@ import {
   BelongsTo,
   CreatedAt,
   UpdatedAt,
+  BeforeCreate,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
@@ -21,9 +22,22 @@ import { SeekExternalCredentials } from "../../types/credentials.types";
 })
 export class Credentials extends Model {
   @PrimaryKey
-  @Default(DataType.UUIDV4)
   @Column(DataType.STRING)
   id!: string;
+
+  @BeforeCreate
+  static async generateId(instance: Credentials) {
+    if (!instance.id) {
+      const lastCredential = await Credentials.findOne({
+        order: [["id", "DESC"]],
+        attributes: ["id"],
+        paranoid: false,
+      });
+      const lastId = lastCredential?.id;
+      const lastNumericId = lastId ? parseInt(lastId, 10) : 0;
+      instance.id = isNaN(lastNumericId) ? "1" : String(lastNumericId + 1);
+    }
+  }
 
   @AllowNull(true)
   @Column(DataType.STRING(64))

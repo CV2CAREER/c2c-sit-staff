@@ -26,12 +26,12 @@ export class SupportConversation extends Model {
 
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => SupportSession)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   supportSessionId!: string;
 
   @BelongsTo(() => SupportSession, "supportSessionId")

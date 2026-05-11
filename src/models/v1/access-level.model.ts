@@ -21,7 +21,7 @@ import { UserAccessLevel } from "./user-access-level.model";
 export class AccessLevel extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)

@@ -24,7 +24,7 @@ export enum JCTriggerStatus {
 export class JCTrigger extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)

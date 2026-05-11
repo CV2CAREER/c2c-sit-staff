@@ -30,13 +30,13 @@ export enum CvStatus {
 export class CvRevamp extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   // Reference to uploaded file
   @ForeignKey(() => Upload)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   uploadId?: string;
 
   @BelongsTo(() => Upload, "uploadId")

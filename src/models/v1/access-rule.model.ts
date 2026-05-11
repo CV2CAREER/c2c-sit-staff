@@ -20,12 +20,12 @@ import { AccessLevel } from "./access-level.model";
 export class AccessRule extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => AccessLevel)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   accessLevelId!: string;
 
   @BelongsTo(() => AccessLevel, "accessLevelId")

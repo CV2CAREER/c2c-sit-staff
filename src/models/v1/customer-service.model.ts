@@ -22,7 +22,7 @@ import { User } from "./user.model";
 export class CustomerService extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)

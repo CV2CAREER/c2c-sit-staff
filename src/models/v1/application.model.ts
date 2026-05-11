@@ -39,7 +39,7 @@ import { User } from "./user.model";
 export class Application extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Default("N/A")

@@ -24,14 +24,14 @@ import { CROwner } from "./cr/owner.model";
     { name: "idx_cr_tracking_level", fields: ["level"] },
     { name: "idx_cr_tracking_created_at", fields: ["createdAt"] },
     { name: "idx_cr_tracking_status", fields: ["status"] },
-    { name: "idx_cr_tracking_owner", fields: ["owner"] },
-    { name: "idx_cr_tracking_nil", fields: ["NIL"] }
+    { name: "idx_cr_tracking_owner", fields: ["ownerId"] },
+    { name: "idx_cr_tracking_nil", fields: ["nilId"] }
   ]
 })
 export class CRTracking extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)
@@ -186,7 +186,7 @@ export class CRTracking extends Model {
 
   @ForeignKey(() => CROwner)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   ownerId?: string;
 
@@ -196,7 +196,7 @@ export class CRTracking extends Model {
 
   @ForeignKey(() => CROwner)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   nilId?: string;
 
@@ -206,7 +206,7 @@ export class CRTracking extends Model {
 
   @ForeignKey(() => CROwner)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   nominatedDeveloperId?: string;
 

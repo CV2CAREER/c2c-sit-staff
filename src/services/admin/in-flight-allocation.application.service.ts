@@ -1,5 +1,4 @@
 import { QueryTypes } from "sequelize";
-import { validate as isUuid } from "uuid";
 import { Plan } from "../../models/v1/plan.model";
 import { SubscriptionAllocation } from "../../models/v1/subscription-allocation.model";
 import { User } from "../../models/v1/user.model";
@@ -168,7 +167,7 @@ const toNumber = (value: string | number | null): number => {
 };
 
 const validateUuidOrThrow = (value: string, field: string) => {
-  if (!isUuid(value)) {
+  if (!value) {
     throw new ErrorHandler(`Invalid ${field}.`, 400);
   }
 };

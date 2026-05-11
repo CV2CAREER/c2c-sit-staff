@@ -18,7 +18,7 @@ import {
 export class SystemConfig extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Unique

@@ -23,7 +23,7 @@ import { Ability } from "../../utils/enum";
 export class UserPermission extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => User)
@@ -36,7 +36,7 @@ export class UserPermission extends Model {
 
   @ForeignKey(() => Resource) // Assuming Resource model exists
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   resourceId!: string;
 
   @BelongsTo(() => Resource)

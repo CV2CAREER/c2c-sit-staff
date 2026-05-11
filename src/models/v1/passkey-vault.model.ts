@@ -9,7 +9,6 @@ import {
   PrimaryKey,
   Default,
 } from "sequelize-typescript";
-import { v4 as uuidv4 } from "uuid";
 
 @Table({
   tableName: "passkey_vault",
@@ -23,8 +22,8 @@ import { v4 as uuidv4 } from "uuid";
 })
 export class PassKeyVault extends Model {
   @PrimaryKey
-  @Default(uuidv4)
-  @Column(DataType.UUID)
+  @Default(DataType.UUIDV4)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)

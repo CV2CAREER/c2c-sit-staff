@@ -1,5 +1,4 @@
 import { Op } from "sequelize";
-import { validate as isUuid } from "uuid";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { User } from "../../models/v1/user.model";
@@ -163,7 +162,7 @@ class UserManagementService {
    * @param actorEmail Email of admin performing action
    */
   async approveUserDocument(documentId: string, actorUserId: string, actorEmail?: string, host?: string) {
-    if (!isUuid(documentId)) {
+    if (!documentId) {
       throw new ErrorHandler("Invalid document ID.", 400);
     }
 
@@ -241,7 +240,7 @@ class UserManagementService {
    * @param actorEmail Email of admin performing action
    */
   async rejectUserDocument(documentId: string, reason: string, actorUserId: string, actorEmail?: string, host?: string) {
-    if (!isUuid(documentId)) {
+    if (!documentId) {
       throw new ErrorHandler("Invalid document ID.", 400);
     }
 

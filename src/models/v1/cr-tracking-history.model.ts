@@ -25,12 +25,12 @@ import { CRTracking } from "./cr-tracking.model";
 export class CRTrackingHistory extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @ForeignKey(() => CRTracking)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   @Index
   crId?: string;
 

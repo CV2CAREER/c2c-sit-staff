@@ -22,10 +22,14 @@ import { DayOfWeek, ClientSessionType } from "../../utils/enum";
 export class ClientAvailability extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)
+  @Column(DataType.STRING)
+  date!: Date;
+
+  @AllowNull(true)
   @Column(DataType.ENUM("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"))
   day!: DayOfWeek;
 

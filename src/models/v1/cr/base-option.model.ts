@@ -15,12 +15,11 @@ import {
 export class BaseOptionModel extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)
   @Column(DataType.STRING)
-  @Index
   name!: string;
 
   @CreatedAt

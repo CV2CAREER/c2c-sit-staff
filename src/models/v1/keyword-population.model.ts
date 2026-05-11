@@ -19,7 +19,7 @@ import {
 export class VCSPrompt extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @AllowNull(false)
@@ -48,7 +48,7 @@ export class VCSPrompt extends Model {
 export class VCS extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   @Default(false)
@@ -56,7 +56,7 @@ export class VCS extends Model {
   active!: boolean;
 
   @ForeignKey(() => VCSPrompt)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   activePromptId!: string;
 
   @BelongsTo(() => VCSPrompt, "activePromptId")

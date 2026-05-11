@@ -1,7 +1,6 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { Upload } from "../models/v1/upload.model";
 import ErrorHandler from "../utils/errorHandler";
-import { validate as isUuid } from "uuid";
 
 const logger = getServiceLogger("upload-service");
 
@@ -80,7 +79,7 @@ export const getAllUploads = async (query: {
  * @param updateData Data to update
  */
 export const updateUpload = async (uploadId: string, updateData: any) => {
-  if (!isUuid(uploadId)) {
+  if (!uploadId) {
     throw new ErrorHandler("Invalid upload ID.", 400);
   }
 

@@ -259,12 +259,12 @@ export class User extends Model {
   // Foreign Keys - assuming Profile model exists
   @ForeignKey(() => Profile)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   profileId?: string;
 
   @ForeignKey(() => Profile)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   secondaryProfileId?: string;
 
   @BelongsTo(() => Profile, "profileId")
@@ -383,7 +383,7 @@ export class User extends Model {
   // Foreign key to locations table
   @ForeignKey(() => Location)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   locationId?: string;
 
   @AllowNull(true)
@@ -416,7 +416,7 @@ export class User extends Model {
   // Plan relationship
   @ForeignKey(() => Plan)
   @AllowNull(true)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   planId?: string;
 
   @BelongsTo(() => Plan, "planId")

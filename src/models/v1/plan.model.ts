@@ -27,7 +27,7 @@ import { Feature } from "./feature.model";
 export class Plan extends Model {
   @PrimaryKey
   @Default(DataType.UUIDV4) // ✅ Auto-generate UUID, no AutoIncrement
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   id!: string;
 
   // Foreign key to users table
@@ -49,7 +49,7 @@ export class Plan extends Model {
   // Foreign key to features table
   @ForeignKey(() => Feature)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   featureId!: string;
 
   @BelongsTo(() => Feature, {
@@ -58,7 +58,6 @@ export class Plan extends Model {
   })
   feature!: Feature;
 
-  // Array of profile IDs (stored as UUID array)
   @AllowNull(false)
   @Default([])
   @Column(DataType.ARRAY(DataType.STRING))
