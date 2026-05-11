@@ -61,7 +61,7 @@ const GradingDataTable = ({ gradingState }: GradingDataTableProps) => {
                 <span className="text-green-600 font-semibold text-xs">Graded</span>
               ) : (
                 <Link 
-                  href={`/coach/grading/${params.row.id}`}
+                  href={`/coach/${params.row.id}`}
                   className="text-blue-600 hover:underline font-semibold text-xs bg-blue-50 px-2 py-1 rounded"
                 >
                   Grade Session
