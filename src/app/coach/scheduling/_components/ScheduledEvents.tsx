@@ -58,7 +58,7 @@ const ScheduledEvents = () => {
             {view.icon}
             {view.label}
             <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeView === view.label ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
+                activeView === view.label ? "bg-blue-500 text-black" : "bg-gray-100 text-black"
             }`}>
               {view.label === "All Sessions" ? sessions.length : 
                view.label === "Screening" ? sessions.filter((s: any) => s.sessionType?.toLowerCase() === "screening_preparation").length :
@@ -84,7 +84,7 @@ const ScheduledEvents = () => {
           <div className="col-span-full bg-white rounded-xl border border-dashed border-gray-200 p-16 text-center text-gray-500">
             <Calendar size={48} className="mx-auto text-gray-200 mb-4" />
             <p className="text-lg font-medium">No sessions found in this category</p>
-            <p className="text-sm">When students book a session with you, they will appear here.</p>
+            <p className="text-sm">When client book a session with you, they will appear here.</p>
           </div>
         )}
       </div>

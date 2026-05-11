@@ -264,7 +264,7 @@ const AvailableHours = () => {
             <div className="bg-white rounded-xl border border-dashed border-gray-200 p-12 text-center text-gray-500">
               <Calendar size={48} className="mx-auto text-gray-200 mb-4" />
               <p className="text-lg font-medium">No schedules found</p>
-              <p className="text-sm">Set your availability above to let students book sessions.</p>
+              <p className="text-sm">Set your availability above to let client book sessions.</p>
             </div>
           )}
         </section>

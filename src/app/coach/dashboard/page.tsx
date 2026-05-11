@@ -109,7 +109,7 @@ const CoachDashboardPage = () => {
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                <Calendar size={48} className="text-gray-200 mb-4" />
                <p className="text-lg font-medium">No upcoming sessions</p>
-               <p className="text-sm">You'll see them here once students book with you.</p>
+               <p className="text-sm">You'll see them here once client book with you.</p>
             </div>
           )}
         </div>
