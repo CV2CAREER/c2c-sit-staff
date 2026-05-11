@@ -52,7 +52,7 @@ const ScheduledEvents = () => {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${
               activeView === view.label
                 ? "bg-blue-600 text-white shadow-blue-100"
-                : "bg-white text-gray-600 border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30"
+                : "bg-black text-gray-600 border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30"
             }`}
           >
             {view.icon}

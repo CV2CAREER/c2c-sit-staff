@@ -52,7 +52,7 @@ const CoachDashboardPage = () => {
       <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Coach Dashboard</h2>
-          <p className="text-gray-500 mt-1">Manage your upcoming sessions and track student progress.</p>
+          <p className="text-gray-500 mt-1">Manage your upcoming sessions and track client progress.</p>
         </div>
         <div className="flex gap-3">
           <Link href="/coach/scheduling">
