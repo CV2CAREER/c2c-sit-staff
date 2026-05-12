@@ -15,7 +15,7 @@ paths:
           name: id
           schema:
             type: string
-            format: uuid
+            format: stringng
           description: Optional filter by single Sales Operation ID
       responses:
         "200":
@@ -130,7 +130,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Sales Operation ID
       requestBody:
         required: true
@@ -156,7 +156,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Sales Operation ID
       responses:
         "200":

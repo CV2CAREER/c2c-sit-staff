@@ -126,10 +126,10 @@ paths:
         - name: applicationId
           in: path
           required: true
-          description: UUID of the application to soft-delete
+          description: string of the application to soft-delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Application deleted successfully
@@ -161,10 +161,10 @@ paths:
         - name: applicationId
           in: path
           required: true
-          description: UUID of the application to restore
+          description: string of the application to restore
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Application restored successfully
@@ -196,10 +196,10 @@ paths:
         - name: applicationId
           in: path
           required: true
-          description: UUID of the application to permanently delete
+          description: string of the application to permanently delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Application permanently deleted
@@ -221,7 +221,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
         Client:
           type: string
         Timestamp:
@@ -304,7 +304,7 @@ components:
           properties:
             id:
               type: string
-              format: uuid
+              format: string
             email:
               type: string
               format: email

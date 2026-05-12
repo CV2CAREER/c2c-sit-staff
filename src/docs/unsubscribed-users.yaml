@@ -32,11 +32,11 @@ paths:
                       properties:
                         id:
                           type: string
-                          format: uuid
+                          format: string
                           description: Unsubscribe record ID
                         userId:
                           type: string
-                          format: uuid
+                          format: string
                           description: User ID
                         reason:
                           type: string
@@ -60,7 +60,7 @@ paths:
                           properties:
                             id:
                               type: string
-                              format: uuid
+                              format: string
                             firstName:
                               type: string
                             lastName:
@@ -96,7 +96,7 @@ paths:
               properties:
                 userId:
                   type: string
-                  format: uuid
+                  format: string
                   description: ID of the user to unsubscribe
                   example: "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
                 reason:
@@ -152,7 +152,7 @@ paths:
           description: ID of the user to remove from unsubscribe list
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: User removed from unsubscribed list successfully

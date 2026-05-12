@@ -115,8 +115,8 @@ paths:
                   statusCode: 200
                   data:
                     documents:
-                      - id: "doc-uuid-123"
-                        userId: "user-uuid-456"
+                      - id: "doc-string-123"
+                        userId: "user-string-456"
                         type: "resume"
                         status: "Accepted"
                         document:
@@ -139,7 +139,7 @@ paths:
                         createdAt: "2024-01-01T00:00:00.000Z"
                         updatedAt: "2024-01-01T00:00:00.000Z"
                         user:
-                          id: "user-uuid-456"
+                          id: "user-string-456"
                           firstName: "John"
                           lastName: "Doe"
                           email: "john.doe@example.com"
@@ -214,8 +214,8 @@ paths:
           description: The unique identifier of the user
           schema:
             type: string
-            format: uuid
-            example: "user-uuid-123"
+            format: string
+            example: "user-string-123"
       responses:
         '200':
           description: User documents retrieved successfully
@@ -332,8 +332,8 @@ paths:
                   statusCode: 200
                   data:
                     documents:
-                      - id: "doc-uuid-123"
-                        userId: "user-uuid-456"
+                      - id: "doc-string-123"
+                        userId: "user-string-456"
                         type: "resume"
                         status: "Accepted"
                         document:
@@ -356,7 +356,7 @@ paths:
                         createdAt: "2024-01-01T00:00:00.000Z"
                         updatedAt: "2024-01-01T00:00:00.000Z"
                         user:
-                          id: "user-uuid-456"
+                          id: "user-string-456"
                           firstName: "John"
                           lastName: "Doe"
                           email: "john.doe@example.com"
@@ -431,8 +431,8 @@ paths:
           description: The unique identifier of the user
           schema:
             type: string
-            format: uuid
-            example: "user-uuid-123"
+            format: string
+            example: "user-string-123"
         - name: type
           in: path
           required: true
@@ -502,8 +502,8 @@ paths:
           description: The unique identifier of the document
           schema:
             type: string
-            format: uuid
-            example: "doc-uuid-123"
+            format: string
+            example: "doc-string-123"
       responses:
         '200':
           description: Document retrieved successfully
@@ -536,8 +536,8 @@ paths:
                   statusCode: 200
                   data:
                     document:
-                      id: "doc-uuid-123"
-                      userId: "user-uuid-456"
+                      id: "doc-string-123"
+                      userId: "user-string-456"
                       type: "resume"
                       status: "Accepted"
                       document:
@@ -589,8 +589,8 @@ paths:
           description: The unique identifier of the document
           schema:
             type: string
-            format: uuid
-            example: "doc-uuid-123"
+            format: string
+            example: "doc-string-123"
       requestBody:
         required: true
         content:
@@ -660,7 +660,7 @@ paths:
                   statusCode: 200
                   data:
                     document:
-                      id: "doc-uuid-123"
+                      id: "doc-string-123"
                       status: "Accepted"
                       isDefault: true
         '404':
@@ -708,8 +708,8 @@ paths:
           description: The unique identifier of the document
           schema:
             type: string
-            format: uuid
-            example: "doc-uuid-123"
+            format: string
+            example: "doc-string-123"
       responses:
         '200':
           description: Document deleted successfully
@@ -788,8 +788,8 @@ paths:
           description: The unique identifier of the document
           schema:
             type: string
-            format: uuid
-            example: "doc-uuid-123"
+            format: string
+            example: "doc-string-123"
       requestBody:
         required: true
         content:
@@ -837,7 +837,7 @@ paths:
                   statusCode: 200
                   data:
                     document:
-                      id: "doc-uuid-123"
+                      id: "doc-string-123"
                       status: "Accepted"
         '404':
           description: Not found - Document not found

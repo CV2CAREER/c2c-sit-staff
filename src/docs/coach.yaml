@@ -23,7 +23,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Session retrieved successfully
@@ -145,7 +145,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Session marked as completed successfully
@@ -183,7 +183,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Session canceled successfully
@@ -205,7 +205,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
           description: Session unique identifier
         sessionType:
           type: string
@@ -227,11 +227,11 @@ components:
           description: Video conference link for the session
         clientId:
           type: string
-          format: uuid
+          format: string
           description: Client assigned to this session
         coachId:
           type: string
-          format: uuid
+          format: string
           description: Coach assigned to this session
         time:
           type: object

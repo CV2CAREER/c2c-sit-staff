@@ -128,7 +128,7 @@ paths:
           name: id
           schema:
             type: string
-          description: Template UUID to act on (alternative to body id)
+          description: Template string to act on (alternative to body id)
         - in: query
           name: templateName
           schema:
@@ -201,7 +201,7 @@ paths:
           name: id
           schema:
             type: string
-          description: Template UUID to permanently delete
+          description: Template string to permanently delete
         - in: query
           name: templateName
           schema:
@@ -268,7 +268,7 @@ paths:
               properties:
                 userId:
                   type: string
-                  description: UUID of the client user to notify
+                  description: string of the client user to notify
                   example: "b2c3d4e5-6789-0abc-def1-234567890abc"
                 missingInfoType:
                   type: string
@@ -462,11 +462,11 @@ components:
       properties:
         _id:
           type: string
-          description: Template UUID (deprecated, use id)
+          description: Template string (deprecated, use id)
           example: "a1b2c3d4-1234-5678-9abc-def012345678"
         id:
           type: string
-          description: Template UUID
+          description: Template string
           example: "a1b2c3d4-1234-5678-9abc-def012345678"
         templateName:
           type: string

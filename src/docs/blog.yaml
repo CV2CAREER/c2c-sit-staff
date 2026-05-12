@@ -81,7 +81,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Blog Post ID
       requestBody:
         required: true
@@ -133,7 +133,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Blog Post ID
       responses:
         "204":
@@ -154,7 +154,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Blog Post ID
       responses:
         "200":

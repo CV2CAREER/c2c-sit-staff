@@ -72,7 +72,7 @@ paths:
                           properties:
                             referralId:
                               type: string
-                              format: uuid
+                              format: string
                               description: Referral record ID
                             referrerEmail:
                               type: string
@@ -86,7 +86,7 @@ paths:
                               description: Referral code
                             referredUserId:
                               type: string
-                              format: uuid
+                              format: stringng
                               description: Referred user ID
                             referredEmail:
                               type: string
@@ -196,11 +196,11 @@ paths:
                           properties:
                             referralId:
                               type: string
-                              format: uuid
+                              format: string
                               description: Referral record ID
                             userId:
                               type: string
-                              format: uuid
+                              format: string
                               description: ID of the referred user
                             email:
                               type: string
@@ -522,7 +522,7 @@ paths:
               properties:
                 referralId:
                   type: string
-                  format: uuid
+                  format: string
                   description: ID of referral to approve
       responses:
         "200":
@@ -568,7 +568,7 @@ paths:
               properties:
                 referralId:
                   type: string
-                  format: uuid
+                  format: string
                   description: ID of referral to decline
                 reason:
                   type: string
@@ -614,7 +614,7 @@ paths:
           description: ID of referral to delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Referral deleted successfully
@@ -655,7 +655,7 @@ paths:
           description: ID of referral to restore
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Referral restored successfully
@@ -696,7 +696,7 @@ paths:
           description: ID of referral to permanently delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Referral permanently deleted
@@ -735,7 +735,7 @@ paths:
           description: ID of user to get referrals for
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: User referrals retrieved successfully
@@ -760,7 +760,7 @@ paths:
                           properties:
                             id:
                               type: string
-                              format: uuid
+                              format: string
                             status:
                               type: string
                               example: "APPROVED"

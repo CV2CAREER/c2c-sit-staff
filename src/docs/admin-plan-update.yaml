@@ -1,0 +1,142 @@
+# Admin Plan Update API Documentation
+
+paths:
+  /v1/admin/users/{userId}/plan:
+    patch:
+      tags:
+        - Admin Users
+      summary: Update a user's plan by feature (pricing plan) ID
+      description: |
+        Assigns or removes a user's subscription plan based on the given feature (pricing plan) ID.
+
+        - If the feature's tier is **Free**: the user's existing active plan is expired,
+          and all plan-related fields on the user record are cleared (user has no plan).
+        - If the feature's tier is **paid** (Emerald, Coral, Copper, Bronze, Silver, Gold, Platinum):
+          any existing active plan is expired, a new Plan record is created with
+          `paymentStatus = "completed"`, and the user's plan fields are updated accordingly.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the target user whose plan will be updated
+          schema:
+            type: string
+            example: "20260512001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - featureId
+              properties:
+                featureId:
+                  type: string
+                  description: ID of the feature (pricing plan) to assign
+                  example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      responses:
+        '200':
+          description: User plan updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User plan updated to \"Silver\" successfully"
+                  data:
+                    type: object
+                    properties:
+                      plan:
+                        oneOf:
+                          - $ref: '#/components/schemas/Plan'
+                          - type: "null"
+                            description: "Returned as null when the feature tier is Free"
+        '400':
+          description: Bad request — missing featureId or invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "featureId is required in the request body"
+        '401':
+          description: Unauthorized — missing or invalid authentication token
+        '403':
+          description: Forbidden — user does not have admin or assistant role
+        '404':
+          description: User or Feature not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "User not found"
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the plan record
+          example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+        userId:
+          type: string
+          description: ID of the user the plan belongs to
+          example: "20260512001"
+        title:
+          type: string
+          description: Plan title (matches the feature title)
+          example: "Silver"
+        featureId:
+          type: string
+          description: Foreign key to the features table
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        validityPeriod:
+          type: string
+          description: Plan validity period
+          example: "6 months"
+        expiresAt:
+          type: string
+          format: date
+          description: Calculated expiration date
+        hasExpired:
+          type: boolean
+          description: Whether the plan has been expired
+          example: false
+        paymentStatus:
+          type: string
+          enum: [awaiting_payment, completed, failed, refunded]
+          description: Payment status (set to "completed" when assigned by admin)
+          example: "completed"
+        paymentAmount:
+          type: number
+          format: decimal
+          description: Plan price from the feature
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

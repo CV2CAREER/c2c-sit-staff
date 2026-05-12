@@ -15,7 +15,7 @@ paths:
           name: id
           schema:
             type: string
-            format: uuid
+            format: string
           description: Optional filter by specific CR Tracking ID
         - in: query
           name: page
@@ -60,7 +60,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: CR Tracking ID
       responses:
         "200":
@@ -122,7 +122,7 @@ paths:
                   type: string
                 ownerId:
                   type: string
-                  format: uuid
+                  format: string
                   description: CR Owner ID (reference to CROwner table)
                 ownerEmail:
                   type: string
@@ -133,7 +133,7 @@ paths:
                   type: string
                 nilId:
                   type: string
-                  format: uuid
+                  format: string
                   description: NIL Owner ID (reference to CROwner table)
                 nilEmail:
                   type: string
@@ -173,7 +173,7 @@ paths:
                   default: false
                 nominatedDeveloperId:
                   type: string
-                  format: uuid
+                  format: stringng
                   description: Nominated Developer ID (reference to CROwner table)
                 nominatedDeveloperEmail:
                   type: string
@@ -227,7 +227,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: CR Tracking ID
       responses:
         "200":
@@ -248,7 +248,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: CR Tracking ID
       responses:
         "200":
@@ -269,7 +269,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: CR Tracking ID
       responses:
         "200":
@@ -290,7 +290,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: CR Tracking ID
         - in: query
           name: downgradeOrUpgrade
@@ -428,7 +428,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Option ID
       requestBody:
         required: true
@@ -472,7 +472,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Option ID
       responses:
         "200":
@@ -522,11 +522,11 @@ paths:
                 properties:
                   CR:
                     type: string
-                    format: uuid
+                    format: string
                     description: CR Tracking ID
                   developer:
                     type: string
-                    format: uuid
+                    format: string
                     description: Developer Owner ID
                   numberOfHours:
                     type: number
@@ -534,7 +534,7 @@ paths:
                     description: Number of hours requested
                   NIL:
                     type: string
-                    format: uuid
+                    format: string
                     description: NIL Owner ID
                   duration:
                     type: object

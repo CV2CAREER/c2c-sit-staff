@@ -33,7 +33,7 @@ paths:
                           properties:
                             id:
                               type: string
-                              example: "uuid"
+                              example: "string"
                             firstName:
                               type: string
                               example: "John"

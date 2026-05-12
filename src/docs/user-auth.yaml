@@ -91,7 +91,7 @@ paths:
                   statusCode: 200
                   data:
                     user:
-                      id: "user-uuid-123"
+                      id: "user-stringng-123"
                       email: "john.doe@example.com"
                       firstName: "John"
                       lastName: "Doe"
@@ -232,8 +232,8 @@ paths:
           description: The unique identifier of the user to promote
           schema:
             type: string
-            format: uuid
-            example: "user-uuid-123"
+            format: string
+            example: "user-string-123"
       requestBody:
         required: true
         content:
@@ -301,7 +301,7 @@ paths:
                   statusCode: 200
                   data:
                     user:
-                      id: "user-uuid-123"
+                      id: "user-string-123"
                       email: "john.doe@example.com"
                       firstName: "John"
                       lastName: "Doe"
@@ -377,8 +377,8 @@ paths:
           description: The unique identifier of the user to retrieve
           schema:
             type: string
-            format: uuid
-            example: "user-uuid-123"
+            format: string
+            example: "user-string-123"
       responses:
         '200':
           description: User information retrieved successfully
@@ -430,7 +430,7 @@ paths:
                   statusCode: 200
                   data:
                     user:
-                      id: "user-uuid-123"
+                      id: "user-string-123"
                       email: "john.doe@example.com"
                       firstName: "John"
                       lastName: "Doe"
@@ -516,21 +516,21 @@ paths:
                 pcId:
                   type: string
                   description: The unique identifier of the PC (Placement Control) to dispatch to
-                  example: "pc-uuid-123"
+                  example: "pc-string-123"
                 clientId:
                   type: string
                   description: Single client ID to dispatch (optional if userIds provided)
-                  example: "client-uuid-456"
+                  example: "client-string-456"
                 userIds:
                   type: array
                   description: Array of client IDs to dispatch (optional if clientId provided)
                   items:
                     type: string
-                  example: ["client-uuid-789", "client-uuid-101"]
+                  example: ["client-string-789", "client-string-101"]
             example:
-              pcId: "pc-uuid-123"
-              clientId: "client-uuid-456"
-              userIds: ["client-uuid-789", "client-uuid-101"]
+              pcId: "pc-string-123"
+              clientId: "client-string-456"
+              userIds: ["client-string-789", "client-string-101"]
       responses:
         '200':
           description: Client dispatch completed successfully
@@ -755,7 +755,7 @@ paths:
                     statusCode: 200
                     data:
                       clients:
-                        - id: "client-uuid-123"
+                        - id: "client-string-123"
                           email: "client1@example.com"
                           firstName: "Client"
                           lastName: "One"
@@ -764,7 +764,7 @@ paths:
                           isDeleted: false
                           isEmailVerified: true
                           createdAt: "2024-01-01T00:00:00.000Z"
-                        - id: "client-uuid-456"
+                        - id: "client-string-456"
                           email: "client2@example.com"
                           firstName: "Client"
                           lastName: "Two"
@@ -880,14 +880,14 @@ paths:
                   statusCode: 200
                   data:
                     pcUsers:
-                      - id: "assistant-uuid-123"
+                      - id: "assistant-string-123"
                         email: "assistant1@example.com"
                         firstName: "Assistant"
                         lastName: "One"
                         role: "PC"
                         isEmailVerified: true
                         createdAt: "2024-01-01T00:00:00.000Z"
-                      - id: "assistant-uuid-456"
+                      - id: "assistant-string-456"
                         email: "assistant2@example.com"
                         firstName: "Assistant"
                         lastName: "Two"
@@ -1070,7 +1070,7 @@ paths:
                   statusCode: 200
                   data:
                     user:
-                      id: "user-uuid-123"
+                      id: "user-string-123"
                       email: "john.doe@example.com"
                       firstName: "John"
                       lastName: "Doe"
@@ -1231,7 +1231,7 @@ paths:
                   statusCode: 200
                   data:
                     users:
-                      - id: "user-uuid-123"
+                      - id: "user-string-123"
                         email: "admin@example.com"
                         firstName: "Admin"
                         lastName: "User"
@@ -1240,7 +1240,7 @@ paths:
                         isActive: true
                         createdAt: "2024-01-01T00:00:00.000Z"
                         updatedAt: "2024-01-01T00:00:00.000Z"
-                      - id: "user-uuid-456"
+                      - id: "user-string-456"
                         email: "assistant@example.com"
                         firstName: "Assistant"
                         lastName: "User"
@@ -1249,7 +1249,7 @@ paths:
                         isActive: true
                         createdAt: "2024-01-02T00:00:00.000Z"
                         updatedAt: "2024-01-02T00:00:00.000Z"
-                      - id: "user-uuid-789"
+                      - id: "user-string-789"
                         email: "client@example.com"
                         firstName: "Client"
                         lastName: "User"

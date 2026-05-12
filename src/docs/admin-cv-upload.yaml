@@ -1,0 +1,146 @@
+# Admin CV / Cover Letter Upload API Documentation
+
+paths:
+  /v1/admin/documents/upload-cv-cover-letter:
+    post:
+      tags:
+        - Admin Documents
+      summary: Upload CV and/or Cover Letter for a user (admin-only)
+      description: |
+        Allows an admin to upload a CV (resume) and/or cover letter for a specific user.
+        Files are uploaded to Google Cloud Storage and upload records are created with `source = admin`.
+
+        At least one file must be provided — either `resume`, `coverletter`, or both.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - userId
+              properties:
+                userId:
+                  type: string
+                  description: ID of the target user for whom the document(s) are being uploaded
+                  example: "user_abc123"
+                resume:
+                  type: string
+                  format: binary
+                  description: CV/Resume file (PDF, DOC, DOCX, etc.)
+                coverletter:
+                  type: string
+                  format: binary
+                  description: Cover letter file (PDF, DOC, DOCX, etc.)
+      responses:
+        '200':
+          description: CV/Cover Letter uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "CV/Cover Letter uploaded successfully"
+                  data:
+                    type: object
+                    properties:
+                      uploads:
+                        type: array
+                        description: Array of created upload records
+                        items:
+                          $ref: '#/components/schemas/AdminUpload'
+        '400':
+          description: Bad request — missing userId, no files provided, or invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "No files uploaded. Please attach a resume and/or cover letter."
+        '401':
+          description: Unauthorized — missing or invalid authentication token
+        '403':
+          description: Forbidden — user does not have admin or assistant role
+        '500':
+          description: Internal server error during upload or database operation
+
+components:
+  schemas:
+    AdminUpload:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the upload record
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        userId:
+          type: string
+          description: ID of the user the document belongs to
+          example: "user_abc123"
+        type:
+          type: string
+          enum: [resume, coverletter]
+          description: Type of uploaded document
+          example: "resume"
+        status:
+          type: string
+          enum: [Pending, Revised, Accepted, Rejected]
+          description: Upload status (initially set to "Revised")
+          example: "Revised"
+        source:
+          type: string
+          enum: [client, admin]
+          description: Source of the upload (always "admin" for this endpoint)
+          example: "admin"
+        document:
+          type: object
+          description: Document file metadata from cloud storage
+          properties:
+            url:
+              type: string
+              description: Public URL of the uploaded file in Google Cloud Storage
+              example: "https://storage.googleapis.com/bucket-name/admin-cv-uploads/user_abc123/resume_1712345678_abc123.pdf"
+            publicId:
+              type: string
+              description: Storage path identifier
+              example: "admin-cv-uploads/user_abc123/resume_1712345678_abc123.pdf"
+            name:
+              type: string
+              description: Original filename
+              example: "resume_1712345678_abc123.pdf"
+            size:
+              type: integer
+              description: File size in bytes
+              example: 245760
+            mimeType:
+              type: string
+              description: MIME type of the uploaded file
+              example: "application/pdf"
+        isDeleted:
+          type: boolean
+          description: Soft delete flag
+          example: false
+        isDefault:
+          type: boolean
+          description: Whether this is the default document for its type
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the upload record was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the upload record was last updated

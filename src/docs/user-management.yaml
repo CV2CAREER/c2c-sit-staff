@@ -17,10 +17,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user to update
+          description: string of user to update
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:
@@ -157,7 +157,7 @@ paths:
                     message: "User updated successfully"
                     statusCode: 200
                     data:
-                      id: "user-uuid-123"
+                      id: "user-string-123"
                       firstName: "John"
                       lastName: "Doe"
                       email: "john.doe@example.com"
@@ -189,10 +189,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user to delete
+          description: string of user to delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User deleted successfully
@@ -219,10 +219,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user to restore
+          description: string of user to restore
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User restored successfully
@@ -250,10 +250,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user to permanently delete
+          description: string of user to permanently delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '204':
           description: User permanently deleted successfully
@@ -279,10 +279,10 @@ paths:
         - name: documentId
           in: path
           required: true
-          description: UUID of document to approve
+          description: string of document to approve
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Document approved successfully
@@ -308,10 +308,10 @@ paths:
         - name: documentId
           in: path
           required: true
-          description: UUID of document to reject
+          description: string of document to reject
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:
@@ -348,10 +348,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user
+          description: string of user
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Pending documents retrieved successfully
@@ -378,10 +378,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user to approve
+          description: string of user to approve
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Account approved successfully or already approved
@@ -439,10 +439,10 @@ paths:
         - name: userId
           in: path
           required: true
-          description: UUID of user
+          description: string of user
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User details sent to Slack successfully
@@ -495,7 +495,7 @@ paths:
                           properties:
                             id:
                               type: string
-                              format: uuid
+                              format: string
                             title:
                               type: string
                               example: "Resume Review"
@@ -522,7 +522,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User preferences retrieved successfully
@@ -551,7 +551,7 @@ paths:
                         properties:
                           id:
                             type: string
-                            format: uuid
+                            format: string
                           email:
                             type: string
                             example: "user@example.com"
@@ -580,7 +580,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Job preferences history retrieved successfully
@@ -624,7 +624,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User referrals retrieved successfully
@@ -654,7 +654,7 @@ paths:
                         properties:
                           id:
                             type: string
-                            format: uuid
+                            format: string
                           email:
                             type: string
                           firstname:
@@ -684,11 +684,11 @@ paths:
       parameters:
         - name: userId
           in: path
-          description: UUID of user
+          description: string of user
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User uploaded documents retrieved successfully
@@ -719,7 +719,7 @@ paths:
                         properties:
                           id:
                             type: string
-                            format: uuid
+                            format: string
                           email:
                             type: string
                             example: "user@example.com"
@@ -748,11 +748,11 @@ paths:
       parameters:
         - name: userId
           in: path
-          description: UUID of user
+          description: string of user
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User profile retrieved successfully
@@ -794,11 +794,11 @@ paths:
       parameters:
         - name: userId
           in: path
-          description: UUID of user
+          description: string of user
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: User progress retrieved successfully
@@ -818,7 +818,7 @@ paths:
                     properties:
                       userId:
                         type: string
-                        format: uuid
+                        format: string
                         example: "b3f1c2d4-e5a6-7890-bcde-f01234567890"
                       firstName:
                         type: string

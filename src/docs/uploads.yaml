@@ -47,7 +47,7 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
+            format: string
         - name: isDeleted
           in: query
           description: Filter by deleted status
@@ -103,7 +103,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:
@@ -173,11 +173,11 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
           description: Unique identifier for the upload
         userId:
           type: string
-          format: uuid
+          format: string
           description: ID of the user who uploaded the document
         type:
           type: string
