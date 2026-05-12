@@ -60,7 +60,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: stringng
       responses:
         200:
           description: Slack message details
@@ -78,7 +78,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:

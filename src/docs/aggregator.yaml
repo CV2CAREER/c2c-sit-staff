@@ -19,7 +19,7 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
+            format: string
           description: Optional aggregator ID to retrieve single aggregator
         - in: query
           name: startDate
@@ -177,7 +177,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Aggregator ID to update
       requestBody:
         required: true
@@ -282,7 +282,7 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
+            format: string
           description: Optional aggregator ID to delete single aggregator
       requestBody:
         required: false
@@ -292,9 +292,9 @@ paths:
               type: array
               items:
                 type: string
-                format: uuid
+                format: string
               description: Array of aggregator IDs to delete multiple
-              example: ["uuid1", "uuid2", "uuid3"]
+              example: ["string1", "string2", "string3"]
       responses:
         "200":
           description: Aggregator(s) deleted successfully

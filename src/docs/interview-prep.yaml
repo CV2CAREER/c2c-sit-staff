@@ -136,10 +136,10 @@ paths:
         - name: prepId
           in: path
           required: true
-          description: UUID of the interview Q&A record to soft-delete
+          description: string of the interview Q&A record to soft-delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Interview Q&A record deleted successfully
@@ -171,10 +171,10 @@ paths:
         - name: prepId
           in: path
           required: true
-          description: UUID of the interview Q&A record to restore
+          description: string of the interview Q&A record to restore
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Interview Q&A record restored successfully
@@ -206,10 +206,10 @@ paths:
         - name: prepId
           in: path
           required: true
-          description: UUID of the interview Q&A record to permanently delete
+          description: string of the interview Q&A record to permanently delete
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Interview Q&A record permanently deleted
@@ -276,7 +276,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
           example: "ad4021ad-11a8-49d3-af24-057f1387958a"
         userId:
           type: string
@@ -332,7 +332,7 @@ components:
           properties:
             id:
               type: string
-              format: uuid
+              format: string
               example: "c4c1c1e7-671e-4dbf-959e-2a59c9679dc1"
             email:
               type: string

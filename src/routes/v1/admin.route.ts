@@ -42,6 +42,7 @@ import {
   putCampaignSheet,
 } from "../../controllers/v1/campaign-sheets.controller";
 import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
+import { updateUserPlanByFeatureController } from "../../controllers/v1/admin-plan.controller";
 import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
@@ -513,6 +514,14 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   patchAdminUserPersona,
+);
+
+adminRouterV1.patch(
+  "/users/:userId/plan",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin", "assistant"),
+  updateUserPlanByFeatureController,
 );
 adminRouterV1.post(
   "/users/export",

@@ -18,7 +18,7 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
+            format: string
           description: Filter features by location membership
         - in: query
           name: tier
@@ -72,7 +72,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Feature ID (subscription plan ID)
       responses:
         "200":
@@ -121,15 +121,15 @@ paths:
               properties:
                 id:
                   type: string
-                  format: uuid
+                  format: string
                   description: Feature ID (subscription plan ID)
                 featureId:
                   type: string
-                  format: uuid
+                  format: string
                   description: Alternate feature ID field
                 planId:
                   type: string
-                  format: uuid
+                  format: string
                   description: Alternate feature ID field used by pricing callers
                 updates:
                   type: object

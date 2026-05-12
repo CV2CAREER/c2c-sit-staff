@@ -982,7 +982,7 @@ export const saveEditedJob = async (
   if (!joblink) throw new Error("Job link is required");
 
   // Validate that client exists
-  const clientExists = await User.findOne({
+  const clientExists = await Credentials.findOne({
     where: {
       id: clientId,
       isDeleted: false,
@@ -1000,12 +1000,14 @@ export const saveEditedJob = async (
     environment = "staging";
   }
 
+  logger.info(`Saving job application with data: ${JSON.stringify(jobData)} for client: ${clientId} by user: ${fullName}`);
+
   // Prepare data for Flask API
   const requestData = {
     environment,
     client_id: clientId,
     submitted_by: fullName,
-    vaEmail: user?.email || "",
+    vaEmail: clientExists?.AssignedPCEmail || "",
     job_data: {
       job_title: jobData.job_title,
       company: jobData.company,

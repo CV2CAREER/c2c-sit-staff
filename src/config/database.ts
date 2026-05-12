@@ -110,11 +110,11 @@ export const connectDB = async (): Promise<void> => {
 
         // To be done
         // await UserPreferenceHistory.sync({ alter: true });
-        await VCSPrompt.sync({ force: false });
-        await VCS.sync({ force: false });
-        await CvRevamp.sync({ force: false });
+        // await UserPreferenceHistory.sync({ force: false });
+        // await VCS.sync({ force: false });
+        // await CvRevamp.sync({ force: false });
         // await ClientAvailability.sync({ alter: true });
-        await UnsubscribedUser.sync({ force: false });
+        // await UnsubscribedUser.sync({ force: false });
 
         await ensureTrainingTrackerSessions();
         await ensureCRTrackingHistoryTable();

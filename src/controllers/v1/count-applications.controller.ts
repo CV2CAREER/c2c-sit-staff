@@ -38,7 +38,9 @@ export const countApplications = async (req: Request, res: Response) => {
     }
 
     /* credentials */
-    const cred = await Credentials.findByPk(clientId);
+    const cred = await Credentials.findOne({
+      where: { id: clientId },
+    });
 
     if (!cred) {
       return res.status(404).json({
@@ -50,7 +52,7 @@ export const countApplications = async (req: Request, res: Response) => {
 
     /* user */
     const user = await User.findOne({
-      where: { uniqueId: cred.client?.uniqueId || "" },
+      where: { id: cred.clientId || "" },
       attributes: ["profileId"],
     });
 

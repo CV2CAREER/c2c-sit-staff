@@ -28,17 +28,17 @@ paths:
         - name: userId
           in: query
           required: true
-          description: UUID of the target user
+          description: string of the target user
           schema:
             type: string
-            format: uuid
+            format: string
         - name: aggId
           in: query
           required: false
-          description: UUID of the aggregator — required when `action=trigger`
+          description: string of the aggregator — required when `action=trigger`
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         '200':
           description: Success
@@ -66,12 +66,12 @@ paths:
                     statusCode: 200
                     data:
                       aggregators:
-                        - aggregatorId: "agg-uuid-001"
+                        - aggregatorId: "agg-string-001"
                           username: "jane.doe@seek.com"
                           generatedEmail: "jane123@alias.com"
                           isVerified: true
                           aggregator:
-                            id: "agg-uuid-001"
+                            id: "agg-string-001"
                             name: "seek"
                             isEnabled: true
                             config: {}
@@ -123,10 +123,10 @@ paths:
               properties:
                 userId:
                   type: string
-                  format: uuid
-                  description: UUID of the target user
+                  format: string
+                  description: string of the target user
             example:
-              userId: "user-uuid-123"
+              userId: "user-string-123"
       responses:
         '200':
           description: Jobsites assigned successfully
@@ -212,11 +212,11 @@ paths:
               properties:
                 userId:
                   type: string
-                  format: uuid
-                  description: UUID of the target user
+                  format: string
+                  description: string of the target user
                 aggId:
                   type: string
-                  format: uuid
+                  format: string
                   description: aggregatorId of the link to update
                 username:
                   type: string
@@ -231,8 +231,8 @@ paths:
                   type: boolean
                   description: Updated verification status
             example:
-              userId: "user-uuid-123"
-              aggId: "agg-uuid-001"
+              userId: "user-string-123"
+              aggId: "agg-string-001"
               username: "updated.email@seek.com"
               isVerified: true
       responses:
@@ -283,24 +283,24 @@ paths:
         - name: userId
           in: query
           required: true
-          description: UUID of the target user
+          description: string of the target user
           schema:
             type: string
-            format: uuid
+            format: string
         - name: aggId
           in: query
           required: false
           description: aggregatorId of a single jobsite to remove
           schema:
             type: string
-            format: uuid
+            format: string
         - name: aggIds
           in: query
           required: false
           description: Comma-separated list of aggregatorIds to remove
           schema:
             type: string
-            example: "agg-uuid-001,agg-uuid-002"
+            example: "agg-string-001,agg-string-002"
       responses:
         '200':
           description: Jobsite(s) deleted successfully
@@ -343,7 +343,7 @@ paths:
                     statusCode: 200
                     data:
                       aggregators:
-                        - aggregatorId: "agg-uuid-003"
+                        - aggregatorId: "agg-string-003"
                           username: "user@linkedin.com"
                           isVerified: true
         '400':

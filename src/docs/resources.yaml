@@ -40,7 +40,7 @@ paths:
                           properties:
                             id:
                               type: string
-                              format: uuid
+                              format: stringng
                               description: Resource ID
                             name:
                               type: string
@@ -58,7 +58,7 @@ paths:
                         properties:
                           id:
                             type: string
-                            format: uuid
+                            format: string
                             description: Resource ID
                           name:
                             type: string
@@ -128,7 +128,7 @@ paths:
                     properties:
                       id:
                         type: string
-                        format: uuid
+                        format: string
                       name:
                         type: string
                       value:
@@ -199,7 +199,7 @@ paths:
                     properties:
                       id:
                         type: string
-                        format: uuid
+                        format: string
                       name:
                         type: string
                       value:
@@ -236,7 +236,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           description: Resource ID to delete
       responses:
         "200":

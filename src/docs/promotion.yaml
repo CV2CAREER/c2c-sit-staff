@@ -131,7 +131,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
         country:
           type: string
         name:
@@ -166,7 +166,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
         duration:
           type: number
           description: Duration in days

@@ -97,7 +97,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
           example: "550e8400-e29b-41d4-a716-446655440000"
       responses:
         "200":
@@ -131,7 +131,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
+          format: string
           example: "550e8400-e29b-41d4-a716-446655440000"
         sessionId:
           type: string
@@ -153,14 +153,14 @@ components:
                 example: "Additional context data"
         clientId:
           type: string
-          format: uuid
+          format: string
           example: "123e4567-e89b-12d3-a456-426614174000"
         client:
           type: object
           properties:
             id:
               type: string
-              format: uuid
+              format: string
             email:
               type: string
               example: "customer@example.com"

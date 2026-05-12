@@ -23,7 +23,7 @@ paths:
                   description: Session subject
                 customerId:
                   type: string
-                  format: uuid
+                  format: string
                   description: Customer ID (staff only)
       responses:
         "201":
@@ -67,7 +67,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:
@@ -106,7 +106,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Messages retrieved successfully
@@ -126,7 +126,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       requestBody:
         required: true
         content:
@@ -167,10 +167,10 @@ paths:
               properties:
                 sessionId:
                   type: string
-                  format: uuid
+                  format: string
                 staffId:
                   type: string
-                  format: uuid
+                  format: string
       responses:
         "200":
           description: Staff assigned successfully
@@ -190,7 +190,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            format: string
       responses:
         "200":
           description: Support session closed successfully
