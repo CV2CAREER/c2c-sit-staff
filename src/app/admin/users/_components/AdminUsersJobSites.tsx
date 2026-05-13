@@ -88,6 +88,7 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
             'nominatedDeveloper',
             'updatedBy',
             'note',
+            "email",
         ];
 
         modifiedArr = modifiedArr.filter(
@@ -98,14 +99,18 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
             (el) => !excludedFields.includes(el.field)
         );
 
-        // Move username to first column
+        // Move username to first column and display the real email
         const usernameIndex = modifiedArr.findIndex(
             (el) => el.field === 'username'
         );
 
         if (usernameIndex > -1) {
             const [usernameColumn] = modifiedArr.splice(usernameIndex, 1);
-            modifiedArr.unshift(usernameColumn);
+            modifiedArr.unshift({
+                ...usernameColumn,
+                renderCell: (params: any) =>
+                    params?.row?.email || params?.row?.username || '-',
+            });
         }
 
         modifiedArr.push(
