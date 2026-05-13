@@ -1,0 +1,288 @@
+# Admin User Job Preference Update API Documentation
+
+paths:
+  /v1/user-management/users/{userId}/preferences/{profileType}:
+    put:
+      tags:
+        - User Management
+      summary: Update job preference for a user (admin/assistant)
+      description: |
+        Updates a user's job preference profile (primary or secondary).
+
+        Supports two modes:
+        1. **Step-based updates** — Use query parameters (`step01=true`, `step02=true`, etc.) to update specific sections only.
+        2. **Full update** — Omit all step query parameters to update the entire profile at once.
+
+        If the profile does not exist for the user, it will be automatically created.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the target user
+          schema:
+            type: string
+            example: "20260512001"
+        - name: profileType
+          in: path
+          required: true
+          description: Profile type — primary or secondary
+          schema:
+            type: string
+            enum: [primary, secondary]
+            example: "primary"
+        - name: step01
+          in: query
+          required: false
+          description: |
+            Step 1 — Role & Location. Updates: role, courseOfStudy, titles, titlesExcluded, keywords,
+            keywordsExcluded, country, state, stateExcluded, city, cityExcluded
+          schema:
+            type: boolean
+            example: true
+        - name: step02
+          in: query
+          required: false
+          description: |
+            Step 2 — Job Types & Salary. Updates: jobTypes, minSalary, maxSalary, classifications,
+            classificationsExcluded, advertisers, industries, workingRight
+          schema:
+            type: boolean
+            example: true
+        - name: step03
+          in: query
+          required: false
+          description: |
+            Step 3 — Extended preferences (same fields as step02 but stored separately for sequential onboarding)
+          schema:
+            type: boolean
+            example: true
+        - name: step04
+          in: query
+          required: false
+          description: |
+            Step 4 — Automation settings. Updates: isResumeVariationDeveloped, isAiForCriteriaSelectionAllowed
+          schema:
+            type: boolean
+            example: true
+        - name: step05
+          in: query
+          required: false
+          description: |
+            Step 5 — Additional info. Updates: questions, maritalStatus, disabilityStatus, dateOfBirth,
+            veteran, taxIdentificationNumber, socialSecurityNumber, body, bodyExcluded, coverletterIncluded,
+            roleKeywordExclusive, additionalComments, aggregators
+          schema:
+            type: boolean
+            example: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                profile:
+                  type: object
+                  description: Profile data to update. Accepts as `profile` key or at root level.
+                  properties:
+                    role:
+                      type: string
+                      description: Desired job role/title
+                      example: "Software Engineer"
+                    courseOfStudy:
+                      type: string
+                      description: Field of study
+                      example: "Computer Science"
+                    roleTitlesInclude:
+                      type: array
+                      items:
+                        type: string
+                      description: Job titles to include
+                      example: ["Software Engineer", "Full Stack Developer"]
+                    roleTitlesExclude:
+                      type: array
+                      items:
+                        type: string
+                      description: Job titles to exclude
+                      example: ["Junior Developer"]
+                    keywordsWithinTitlesInclude:
+                      type: array
+                      items:
+                        type: string
+                      description: Keywords to include within title search
+                    keywordsWithinTitlesExclude:
+                      type: array
+                      items:
+                        type: string
+                      description: Keywords to exclude within title search
+                    country:
+                      type: object
+                      properties:
+                        value:
+                          type: string
+                          example: "Australia"
+                        label:
+                          type: string
+                          example: "Australia"
+                    statesInclude:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          value:
+                            type: string
+                          label:
+                            type: string
+                    statesExclude:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          value:
+                            type: string
+                    citiesInclude:
+                      type: array
+                      items:
+                        type: object
+                    citiesExclude:
+                      type: array
+                      items:
+                        type: object
+                    jobTypesInclude:
+                      type: array
+                      items:
+                        type: string
+                      example: ["Full-time", "Permanent"]
+                    jobTypesExclude:
+                      type: array
+                      items:
+                        type: string
+                    minSalary:
+                      type: object
+                      properties:
+                        value:
+                          type: number
+                          example: 80000
+                    maxSalary:
+                      type: object
+                      properties:
+                        value:
+                          type: number
+                          example: 150000
+                    classificationsIncluded:
+                      type: array
+                      items:
+                        type: object
+                    classificationsExcluded:
+                      type: array
+                      items:
+                        type: object
+                    industriesIncluded:
+                      type: array
+                      items:
+                        type: object
+                    industriesExcluded:
+                      type: array
+                      items:
+                        type: object
+                    advertisers:
+                      type: array
+                      items:
+                        type: object
+                    advertisersInclude:
+                      type: array
+                      items:
+                        type: object
+                    advertisersExclude:
+                      type: array
+                      items:
+                        type: object
+                    workingRight:
+                      type: string
+                      description: Working rights in the country
+                      example: "Australian Citizen"
+                    isResumeVariationDeveloped:
+                      type: boolean
+                    isAiForCriteriaSelectionAllowed:
+                      type: boolean
+                    questions:
+                      type: array
+                      items:
+                        type: object
+                    maritalStatus:
+                      type: string
+                    disabilityStatus:
+                      type: string
+                    dateOfBirth:
+                      type: string
+                      format: date
+                    veteran:
+                      type: string
+                    taxIdentificationNumber:
+                      type: string
+                    socialSecurityNumber:
+                      type: string
+                    body:
+                      type: string
+                    bodyExcluded:
+                      type: string
+                    coverletterIncluded:
+                      type: boolean
+                    roleKeywordExclusive:
+                      type: boolean
+                    additionalComments:
+                      type: string
+                    aggregators:
+                      type: array
+                      items:
+                        type: object
+                params:
+                  type: object
+                  description: Alternative way to pass step query parameters via body
+                  properties:
+                    step01:
+                      type: boolean
+                    step02:
+                      type: boolean
+                    step03:
+                      type: boolean
+                    step04:
+                      type: boolean
+                    step05:
+                      type: boolean
+      responses:
+        '200':
+          description: Job preference updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "primary job preference updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      message:
+                        type: string
+                      profile:
+                        type: object
+                        description: The updated profile object
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden — user is not admin or assistant
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error

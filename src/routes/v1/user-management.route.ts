@@ -19,6 +19,7 @@ import {
   getUserProfile,
   getUserProgress,
   getInflightUsers,
+  updateJobPreference,
 } from "../../controllers/v1/user-management.controller";
 
 const userManagementRouterV1 = Router();
@@ -111,6 +112,11 @@ userManagementRouterV1.get(
 // Get all users with INFLIGHT campaigns
 userManagementRouterV1.get(
   "/users/inflight", getInflightUsers
+);
+
+// Update job preference (step-based or full)
+userManagementRouterV1.put(
+  "/users/:userId/preferences/:profileType", updateJobPreference
 );
 
 export default userManagementRouterV1;

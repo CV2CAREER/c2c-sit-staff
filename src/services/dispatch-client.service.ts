@@ -129,7 +129,7 @@ ${remainingCount > 0 ? `\n+${remainingCount} more client(s)` : ''}`;
         severity: SlackSeverity.INFO,
         trigger: "Client dispatch",
         type: SlackEventType.USER_TRIGGERED,
-        channel: SlackChannel.TOWN_CRIER,
+        channel: SlackChannel.CRY_WOLF,
         body: formattedMessage,
         teamMentions: "CSM",
       });

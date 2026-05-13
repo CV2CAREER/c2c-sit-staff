@@ -1,4 +1,3 @@
-// services/justcall.service.ts
 import crypto from "crypto";
 import db from "@/database/postgres";
 import { getConnectedRedis } from "@/config/redis";
