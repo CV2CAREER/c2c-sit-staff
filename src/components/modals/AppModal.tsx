@@ -42,13 +42,11 @@ const AppModal: React.FC<ModalProps> = ({
           }
         }}
       >
-        {title && (
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold mb-4 text-black">
-              {title}
-            </DialogTitle>
-          </DialogHeader>
-        )}
+        <DialogHeader>
+          <DialogTitle className={title ? "text-2xl font-bold mb-4 text-black" : "sr-only"}>
+            {title || "Dialog"}
+          </DialogTitle>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>

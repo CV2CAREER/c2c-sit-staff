@@ -25,6 +25,9 @@ import { FiLoader, FiX } from 'react-icons/fi';
 import { modifyTableActionsColAndRows, tableColumns } from "../../users/_components/tableColumns";
 
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useMutateData } from "@/hooks/useApi";
+import { useQueryClient } from "@tanstack/react-query";
+import { ADMIN_USER_PLAN_UPGRADE, ADMIN_USER_PROGRESS_MILESTONE } from "@/constants/apiEndpoints/admin.endpoint";
 import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
 import { moveTo, StyledDataGridPro } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
@@ -96,14 +99,22 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
   const [userToUpdate, setUserToUpdate] = useState<any | null>(null);
   const [allPaths, setAllPaths] = useState<string[]>([]);
   const [allRunsModal, setAllRunsModal] = useState<string[]>([]);
-  const [planSelectedModalOpen, setPlanSelectedModalOpen] = useState(false);
   const [paymentConfirmationModalOpen, setPaymentConfirmationModalOpen] = useState(false);
   const [loginCredentialsModalOpen, setLoginCredentialsModalOpen] = useState(false);
   const [hasRunModal, setHasRunModal] = useState<string[]>([]);
   const [planOverrideMetadata, setPlanOverrideMetadata] = useState<{
     type: string;
-    data: { plan: string };
-  }>({ type: 'plan_selected', data: { plan: '' } });
+    data: { planId: string; plan: string };
+  }>({ type: 'plan_selected', data: {  planId: '', plan: '' } });
+
+  const { featureTitlesDomain } = useAdminQueries({
+    fetchFeatureTitles: true,
+  });
+  const featurePlans = featureTitlesDomain?.data?.features || [];
+  const planOrder = ['Coral', 'Emerald', 'Bronze', 'Silver', 'Gold', 'Platinum'];
+  const orderedPlans = planOrder
+    .map(name => featurePlans.find((p: any) => p.title?.toLowerCase() === name.toLowerCase()))
+    .filter(Boolean);
 
   // New GET /v1/user/all endpoint replacing old API call
   const allUsers = useGetAllUsers({ 
@@ -117,6 +128,33 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     plan: userType?.plan !== "all" ? userType?.plan?.toLowerCase() : undefined,
     startDate: dateFilterData.startDate ?? undefined,
     endDate: dateFilterData.endDate ?? undefined,
+  });
+
+  const queryClient = useQueryClient();
+  const upgradePlanMutation = useMutateData<any, { featureId: string; userId: string }>({
+    method: "PATCH",
+    url: (params) => ADMIN_USER_PLAN_UPGRADE(params.userId),
+    mutationKey: ["admin-upgrade-plan-modal"],
+    onSuccess: () => {
+      toast.success("User plan upgraded successfully");
+      queryClient.invalidateQueries({ queryKey: ["admin-fetch-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-feature-titles"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
+    },
+    onError: () => {
+      toast.error("Failed to upgrade user plan");
+    },
+  });
+  const userProgressMutation = useMutateData<any, { progress: string; userId: string }>({
+    method: "PATCH",
+    url: (params) => ADMIN_USER_PROGRESS_MILESTONE(params.userId),
+    mutationKey: ["admin-user-progress-milestone"],
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
+    onError: () => {
+      toast.error("Failed to update user progress");
+    },
   });
 
   // Legacy query removed - all filtering now handled by useGetAllUsers
@@ -145,59 +183,22 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
   const runProgressAPIDefault = async (value: string, userId: string, user: any, metadata?: {}) => {
     try {
-      if (
-        ['Email Verified', 'Documents Accepted', 'Documents Declined', 'Plan Selected', 'Payment Confirmed'].includes(
-          value,
-        )
-      ) {
-        let shouldRun = false;
-        if (value === 'Email Verified' && !user?.isEmailVerified) {
-          shouldRun = true;
-        }
-        if (value === 'Documents Accepted' && !user?.isDocumentApproved) {
-          shouldRun = true;
-        }
-        if (
-          value === 'Documents Declined' &&
-          user?.isDocumentUploaded &&
-          user?.isDocumentApproved === false
-        ) {
-          shouldRun = true;
-        }
-        if (value === 'Plan Selected' && !user?.hasPlan) {
-          shouldRun = true;
-        }
-        if (value === 'Payment Confirmed') {
-          shouldRun = true;
-        }
-        if (shouldRun) {
-          // await toast.promise(
-          //   updateUserProgressMutation.mutateAsync({
-          //     uid: userId,
-          //     progress: value,
-          //     metadata: metadata,
-          //   }),
-          //   {
-          //     loading: 'Updating progress - ' + value,
-          //     success: `Progress(${value}) updated!`,
-          //     error: `Failed to update Progress(${value})!`,
-          //   },
-          // );
-        }
-      } else {
-        // await toast.promise(
-          // updateUserProgressMutation.mutateAsync({
-          //   uid: userId,
-          //   progress: value,
-          //   metadata: metadata,
-          // }),
-          // {
-          //   loading: 'Updating progress - ' + value,
-          //   success: `Progress(${value}) updated!`,
-          //   error: `Failed to update Progress(${value})!`,
-          // },
-        // );
+      // Skip Payment Confirmed here - it's handled by the dedicated modal with plan upgrade
+      if (value === 'Payment Confirmed') {
+        return true;
       }
+      
+      await toast.promise(
+        userProgressMutation.mutateAsync({
+          userId,
+          progress: value,
+        }),
+        {
+          loading: 'Updating progress - ' + value,
+          success: `Progress(${value}) updated!`,
+          error: `Failed to update Progress(${value})!`,
+        },
+      );
       return true;
     } catch (error) {
       return false;
@@ -295,18 +296,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
               setAllRunsModal((current: any) => {
                 return [...current, 'Plan Selected'];
               });
-              if (
-                !formattedProgressPath.includes('Login Credentials Verified') ||
-                formattedProgressPath.indexOf(path) <
-                  formattedProgressPath.indexOf('Login Credentials Verified')
-              ) {
-                setProgressBeingHandled({
-                  value: path,
-                  readyState: 0,
-                });
-                setPlanSelectedModalOpen(true);
-              }
-
+              await runProgressAPIDefault('Plan Selected', user.id || user._id, user);
               break;
 
             case 'Payment Confirmed':
@@ -343,11 +333,11 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
               }
               break;
 
-            default:
-              await runProgressAPIDefault(path, user.id, user);
+              default:
+                await runProgressAPIDefault(path, user.id || user._id, user);
           }
         }
-      } else runProgressAPIDefault(progress, user._id, user);
+      } else runProgressAPIDefault(progress, user.id || user._id, user);
     }
 
     setProgressBeingHandled((current: any) => {
@@ -541,104 +531,6 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
         togggleVisibility={setIsDispatchModalOpen}
       />
 
-      {/* Plan select modal */}
-      <CustomModal
-        visibility={!!planSelectedModalOpen}
-        toggleVisibility={() => setPlanSelectedModalOpen((current) => !current)}
-      >
-        <div className="bg-white p-4 sm:p-6 rounded-2xl min-h-[200px] relative">
-          <div className="flex items-center justify-end">
-            <button
-              onClick={() => {
-                setPlanSelectedModalOpen(false);
-                setProgressBeingHandled(null);
-                setUserToUpdate(null);
-                setHasRunModal((current: any) => {
-                  return [...current, 'Plan Selected'];
-                });
-                setPlanOverrideMetadata({ type: 'plan_selected', data: { plan: '' } });
-              }}
-            >
-              <FiX className="text-2xl" />
-            </button>
-          </div>
-          <h2>
-            <span className="text-24 !font-medium font-sharp-grotesk mt-4 text-career-black-200">
-              Select {userToUpdate?.firstName} plan
-            </span>
-          </h2>
-          <p>Are you sure you want to select plan?</p>
-
-          <div className="w-full flex flex-col">
-            <div className="w-full h-fit flex-row flex items-center space-x-4 py-4">
-              {['Coral', 'Emerald', 'Bronze', 'Silver', 'Gold', 'Platinum'].map((data, index) => {
-                return (
-                  <div
-                    key={index}
-                    onClick={() => {
-                      setPlanOverrideMetadata((current: any) => {
-                        return { ...current, data: { plan: data } };
-                      });
-                    }}
-                    className={`rounded border px-2 transition-all ${
-                      planOverrideMetadata.data.plan === data
-                        ? 'border-blue-600 border-2'
-                        : 'border-gray-500'
-                    } h-[80px] w-[100px] grid place-items-center`}
-                  >
-                    <p className="text-sm font-semibold text-center capitalize">{data} plan</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <Button
-              disabled={
-                (progressBeingHandled?.readyState === 1 &&
-                  progressBeingHandled?.value === 'Plan Selected') ||
-                planOverrideMetadata.data.plan?.length === 0
-              }
-              color="light-blue"
-              onClick={async () => {
-                setProgressBeingHandled((current: any) => {
-                  return { ...current, readyState: 1 };
-                });
-                const runAPI = await runProgressAPIDefault(
-                  'Plan Selected',
-                  userToUpdate?.id,
-                  userToUpdate,
-                  planOverrideMetadata.data,
-                );
-                setProgressBeingHandled((current: any) => {
-                  return { ...current, readyState: 2 };
-                });
-                if (runAPI) {
-                  setHasRunModal((current: any) => {
-                    return [...current, 'Plan Selected'];
-                  });
-                }
-                setPlanOverrideMetadata({ type: 'plan_selected', data: { plan: '' } });
-                setPlanSelectedModalOpen(false);
-              }}
-              className="capitalize mt-4 flex items-center gap-2 max-w-[120px]"
-              type="submit"
-            >
-              {progressBeingHandled?.readyState === 1 &&
-              progressBeingHandled?.value === 'Plan Selected' ? (
-                <FiLoader className="animate-spin text-base" />
-              ) : (
-                ''
-              )}
-              Updat
-              {progressBeingHandled?.readyState === 1 &&
-              progressBeingHandled?.value === 'Plan Selected'
-                ? 'ing...'
-                : 'e'}
-            </Button>
-          </div>
-        </div>
-      </CustomModal>
-
       {/* Plan confirmation modal */}
       <CustomModal
         visibility={!!paymentConfirmationModalOpen}
@@ -654,7 +546,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 setHasRunModal((current: any) => {
                   return [...current, 'Payment Confirmed'];
                 });
-                setPlanOverrideMetadata({ type: 'payment_confirmed', data: { plan: '' } });
+                setPlanOverrideMetadata({ type: 'payment_confirmed', data: { planId: '', plan: '' } });
               }}
             >
               <FiX className="text-2xl" />
@@ -669,67 +561,53 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
           <div className="w-full flex flex-col">
             <div className="w-full h-fit flex-row flex items-center space-x-4 py-4">
-              {['Coral', 'Emerald', 'Bronze', 'Silver', 'Gold', 'Platinum'].map((data, index) => {
-                return (
-                  <div
-                    key={index}
-                    onClick={() => {
-                      setPlanOverrideMetadata((current: any) => {
-                        return { ...current, data: { plan: data } };
-                      });
-                    }}
-                    className={`rounded border px-2 transition-all ${
-                      planOverrideMetadata.data.plan === data
-                        ? 'border-blue-600 border-2'
-                        : 'border-gray-500'
-                    } h-[80px] w-[100px] grid place-items-center`}
-                  >
-                    <p className="text-sm font-semibold text-center capitalize">{data} plan</p>
-                  </div>
-                );
-              })}
+              {orderedPlans.map((plan: any) => (
+                <div
+                  key={plan.id}
+                  onClick={() => {
+                    setPlanOverrideMetadata((current: any) => {
+                      return { ...current, data: { planId: plan.id, plan: plan.title } };
+                    });
+                  }}
+                  className={`rounded border px-2 transition-all cursor-pointer ${
+                    planOverrideMetadata.data.planId === plan.id
+                      ? 'border-blue-600 border-2'
+                      : 'border-gray-500'
+                  } h-[80px] w-[100px] grid place-items-center`}
+                >
+                  <p className="text-sm font-semibold text-center capitalize">{plan.title} plan</p>
+                </div>
+              ))}
             </div>
 
             <Button
-              disabled={
-                (progressBeingHandled?.readyState === 1 &&
-                  progressBeingHandled?.value === 'Payment Confirmed') ||
-                planOverrideMetadata.data.plan?.length === 0
-              }
+              disabled={upgradePlanMutation.isPending || !planOverrideMetadata.data.planId || !userToUpdate?.id}
               color="light-blue"
               onClick={async () => {
-                setProgressBeingHandled((current: any) => {
-                  return { ...current, readyState: 1 };
+                if (!userToUpdate?.id) return;
+                // Step 1: Upgrade the user plan with the featureId
+                await upgradePlanMutation.mutateAsync({
+                  featureId: planOverrideMetadata.data.planId,
+                  userId: userToUpdate.id,
                 });
-                const runAPI = await runProgressAPIDefault(
-                  'Payment Confirmed',
-                  userToUpdate?.id,
-                  userToUpdate,
-                  planOverrideMetadata.data,
-                );
-                setProgressBeingHandled((current: any) => {
-                  return { ...current, readyState: 2 };
+                // Step 2: Update progress to Payment Confirmed
+                await userProgressMutation.mutateAsync({
+                  userId: userToUpdate.id,
+                  progress: 'Payment Confirmed',
                 });
-                if (runAPI) {
-                  setHasRunModal((current: any) => {
-                    return [...current, 'Payment Confirmed'];
-                  });
-                }
-                setPlanOverrideMetadata({ type: 'payment_confirmed', data: { plan: '' } });
+                setPlanOverrideMetadata({ type: 'payment_confirmed', data: { planId: '', plan: '' } });
                 setPaymentConfirmationModalOpen(false);
               }}
               className="capitalize mt-4 flex items-center gap-2 max-w-[120px]"
               type="submit"
             >
-              {progressBeingHandled?.readyState === 1 &&
-              progressBeingHandled?.value === 'Payment Confirmed' ? (
+              {upgradePlanMutation.isPending || userProgressMutation.isPending ? (
                 <FiLoader className="animate-spin text-base" />
               ) : (
                 ''
               )}
               Updat
-              {progressBeingHandled?.readyState === 1 &&
-              progressBeingHandled?.value === 'Payment Confirmed'
+              {upgradePlanMutation.isPending || userProgressMutation.isPending
                 ? 'ing...'
                 : 'e'}
             </Button>

@@ -27,7 +27,7 @@ const AdminUsersJobPreferencesCard = ({
     setEditedFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const { updateUserPreferencesMutation } = useAdminMutations();
+  const { updateUserPreferencesByProfileMutation } = useAdminMutations();
 
   const [editedFormData, setEditedFormData] = useState<AdminPreferencesType>({
     role: preferences?.role || "",
@@ -39,8 +39,8 @@ const AdminUsersJobPreferencesCard = ({
     advertisersExcluded: preferences?.advertisersExcluded || [],
     jobTypes: preferences?.jobTypes || [],
     jobTypesExcluded: preferences?.jobTypesExcluded || [],
-    minSalary: preferences?.minSalary || 0,
-    maxSalary: preferences?.maxSalary || 0,
+    minSalary: Math.trunc(preferences?.minSalary || 0),
+    maxSalary: Math.trunc(preferences?.maxSalary || 0),
     classifications: preferences?.classifications || [],
     classificationsIncluded: preferences?.classificationsIncluded || [],
     classificationsExcluded: preferences?.classificationsExcluded || [],
@@ -347,19 +347,17 @@ const AdminUsersJobPreferencesCard = ({
               Cancel
             </button>
             <Button
-              disabled={updateUserPreferencesMutation.isPending}
+              disabled={updateUserPreferencesByProfileMutation.isPending}
               onClick={() => {
-                updateUserPreferencesMutation.mutate(editedFormData, {
-                  onSuccess: () => {
-                    setIsEditable(false);
-                    queryClient.invalidateQueries({
-                      queryKey: ["admin-user-preferences", userId],
-                    });
-                  },
+                updateUserPreferencesByProfileMutation.mutate({
+                  userId,
+                  profileType: activeProfile,
+                  body: editedFormData,
                 });
+                setIsEditable(false);
               }}
             >
-              {updateUserPreferencesMutation.isPending
+              {updateUserPreferencesByProfileMutation.isPending
                 ? "Saving..."
                 : "Save Changes"}
             </Button>
