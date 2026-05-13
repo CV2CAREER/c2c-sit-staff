@@ -98,9 +98,9 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
           const buffer = await fs.readFile(file.filepath);
           const originalName =
             file.originalFilename || file.newFilename || "upload.bin";
-          const storageName = generateUniqueFilename(originalName);
+          // const storageName = generateUniqueFilename(originalName);
 
-          const uploadResult = await uploadBufferToStorage(buffer, storageName, {
+          const uploadResult = await uploadBufferToStorage(buffer, originalName, {
             folder: `admin-cv-uploads/${userId}`,
             mimeType: file.mimetype || undefined,
           });

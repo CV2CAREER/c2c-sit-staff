@@ -50,7 +50,10 @@ export const uploadBufferToStorage = async (
         },
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Firebase upload timeout after 30s")), 30000)
+        setTimeout(
+          () => reject(new Error("Firebase upload timeout after 60s")),
+          60000
+        )
       ),
     ]);
 
