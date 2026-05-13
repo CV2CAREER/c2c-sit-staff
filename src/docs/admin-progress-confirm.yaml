@@ -1,0 +1,103 @@
+# Admin User Progress Confirmation API Documentation
+
+paths:
+  /v1/admin/users/{userId}/progress:
+    patch:
+      tags:
+        - Admin Users
+      summary: Confirm / advance a user's progress milestone
+      description: |
+        Updates or advances a user's progress to the specified milestone.
+        Optionally confirms payment (marks as Paid, capitalises revenue) at the same time.
+
+        **Typical progress flow:**
+        Onboarding → Email Verified → Documents Accepted → CV/Resume Uplifted →
+        Payment Initiated → Plan Selected → **Payment Confirmed** →
+        Login Credentials Verified → Sample Results Dispatched →
+        Sample Results Accepted → Preferences Updated →
+        Preparatory Session Accepted → Application Commenced → ...
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the target user
+          schema:
+            type: string
+            example: "20260512001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - progress
+              properties:
+                progress:
+                  type: string
+                  description: The progress milestone to set
+                  enum:
+                    - Onboarding
+                    - Email Verified
+                    - Documents Accepted
+                    - Documents Declined
+                    - CV/Resume Uplifted
+                    - Payment Initiated
+                    - Plan Selected
+                    - Followed on Socials
+                    - Payment Confirmed
+                    - Login Credentials Verified
+                    - Sample Results Dispatched
+                    - Sample Results Accepted
+                    - Preferences Updated
+                    - Preparatory Session Accepted
+                    - Preparatory Session Declined
+                    - Application Commenced
+                    - Application Hold
+                    - Application Expired
+                    - Offer Notification Received
+                    - Campaign Ended
+                    - Prospect
+                  example: "Payment Confirmed"
+                confirmPayment:
+                  type: boolean
+                  description: |
+                    If true, also marks paymentStatus as "Paid", revenue as "Capitalized",
+                    promotes role to "client", and sets isUserSubscribed / hasActiveSubscription.
+                  example: true
+                amount:
+                  type: number
+                  description: Payment amount (used only when confirmPayment is true)
+                  example: 299.00
+      responses:
+        '200':
+          description: User progress updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'User progress updated to "Payment Confirmed" successfully'
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        description: The updated user object (sensitive fields excluded)
+        '400':
+          description: Bad request — missing or invalid progress value
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error

@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
-import { updateUserPlanByFeature } from "../../services/admin-plan.service";
+import { updateUserPlanByFeature, confirmUserProgress } from "../../services/admin-plan.service";
+import { Progress } from "../../utils/enum";
 
 const logger = getServiceLogger("admin-plan-controller");
 
@@ -19,6 +20,7 @@ export const updateUserPlanByFeatureController = catchAsyncError(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { featureId } = req.body;
+    const host = req.headers.host || req.headers.origin || "localhost";
 
     logger.info(
       `Processing request to update plan for user ${userId} with feature ${featureId}`,
@@ -30,7 +32,7 @@ export const updateUserPlanByFeatureController = catchAsyncError(
       );
     }
 
-    const plan = await updateUserPlanByFeature(userId, featureId);
+    const plan = await updateUserPlanByFeature(host, userId, featureId);
 
     if (!plan) {
       return res.apiSuccess(
@@ -43,6 +45,59 @@ export const updateUserPlanByFeatureController = catchAsyncError(
     return res.apiSuccess(
       { plan },
       `User plan updated to "${plan.title}" successfully`,
+      200,
+    );
+  },
+);
+
+/**
+ * PATCH /api/v1/admin/users/:userId/progress
+ *
+ * Confirm / advance a user's progress milestone.
+ * Optionally confirm payment and capitalise revenue.
+ *
+ * Body: {
+ *   progress: "Payment Confirmed" | "Login Credentials Verified" | ...,
+ *   confirmPayment?: boolean,
+ *   amount?: number
+ * }
+ */
+export const confirmUserProgressController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { progress, confirmPayment, amount } = req.body;
+
+    logger.info(
+      `Processing request to confirm progress for user ${userId}: ${progress}`,
+    );
+
+    if (!progress || typeof progress !== "string") {
+      return res.apiError(
+        new ErrorHandler("progress is required in the request body", 400),
+      );
+    }
+
+    // Validate progress value
+    const validProgress = Object.values(Progress);
+    if (!validProgress.includes(progress as Progress)) {
+      return res.apiError(
+        new ErrorHandler(
+          `Invalid progress value. Must be one of: ${validProgress.join(", ")}`,
+          400,
+        ),
+      );
+    }
+
+    const user = await confirmUserProgress(
+      userId,
+      progress as Progress,
+      confirmPayment === true,
+      amount !== undefined ? Number(amount) : undefined,
+    );
+
+    return res.apiSuccess(
+      { user },
+      `User progress updated to "${progress}" successfully`,
       200,
     );
   },

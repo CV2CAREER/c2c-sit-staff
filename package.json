@@ -15,6 +15,7 @@
     "sync:pricing:mongo": "tsx scripts/sync-pricing-from-mongo.ts",
     "sync:cr-options:mongo": "tsx scripts/sync-cr-options-from-mongo.ts",
     "sync:admin-ai:mongo": "tsx scripts/sync-admin-ai-from-mongo.ts",
+    "sync:aggregators:mongo": "tsx scripts/sync-aggregators-from-mongo.ts",
     "check-all": "",
     "prepare": "node scripts/setup-hooks.js"
   },
@@ -90,6 +91,7 @@
     "@types/module-alias": "^2.0.4",
     "@types/node": "^24.1.0",
     "@types/nodemailer": "^6.4.17",
+    "@types/pg": "^8.20.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/winston": "^2.4.4",
     "@typescript-eslint/eslint-plugin": "^8.56.1",

@@ -14,6 +14,16 @@ import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity }
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { Credentials } from "../../models/v1/credentials.model";
 
+export interface IJobPreferenceQuery {
+  step01?: boolean;
+  step02?: boolean;
+  step03?: boolean;
+  step04?: boolean;
+  step05?: boolean;
+  isDashboard?: boolean;
+}
+
+
 const logger = getServiceLogger("user-management-service");
 
 class UserManagementService {
@@ -23,8 +33,9 @@ class UserManagementService {
    * @param updateData Object containing fields to update
    * @param actorUserId ID of admin performing the update
    * @param actorEmail Email of admin performing the update (optional)
+   * @param fullName Full name of admin performing the update (optional)
    */
-  async updateUser(userId: string, updateData: any, actorUserId: string, actorEmail?: string) {
+  async updateUser(userId: string, updateData: any, actorUserId: string, actorEmail?: string, fullName?: string) {
     if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
@@ -95,30 +106,31 @@ class UserManagementService {
       }
     }
 
-    user.updatedBy = actorEmail || actorUserId;
+    user.updatedBy = fullName || actorEmail || actorUserId;
     
     if (hasChanges) {
       await user.save();
     }
 
-    // Create audit trail
-    await AuditTrail.create({
-      action: "ADMIN_USER_UPDATE",
-      actorUserId,
-      actorEmail: actorEmail || null,
-      targetType: "User",
-      targetKey: user.id,
-      before: beforeState,
-      after: user.toJSON(),
-      metadata: {
-        mode: "admin-edit"
-      }
-    });
-
     logger.info(`User ${userId} updated by admin ${actorEmail || actorUserId}`);
 
     // Send Slack notification for user update
     setImmediate(async () => {
+
+      // Create audit trail
+      await AuditTrail.create({
+        action: "ADMIN_USER_UPDATE",
+        actorUserId,
+        actorEmail: actorEmail || null,
+        targetType: "User",
+        targetKey: user.id,
+        before: beforeState,
+        after: user.toJSON(),
+        metadata: {
+          mode: "admin-edit"
+        }
+      });
+
       try {
         const environment = getEnvironmentFromHost(process.env.HOST || 'localhost');
         
@@ -193,20 +205,21 @@ class UserManagementService {
     user.updatedBy = actorEmail || actorUserId;
     await user.save();
 
-    // Audit trail
-    await AuditTrail.create({
-      action: "USER_DOCUMENT_APPROVE",
-      actorUserId,
-      actorEmail: actorEmail || null,
-      targetType: "User",
-      targetKey: user.id,
-      before: beforeState,
-      after: user.toJSON(),
-      metadata: { documentType }
-    });
-
     // Slack notification
     setImmediate(async () => {
+
+      // Audit trail
+      await AuditTrail.create({
+        action: "USER_DOCUMENT_APPROVE",
+        actorUserId,
+        actorEmail: actorEmail || null,
+        targetType: "User",
+        targetKey: user.id,
+        before: beforeState,
+        after: user.toJSON(),
+        metadata: { documentType }
+      });
+
       try {
         const slackHost = host || 'localhost';
         const environment = getEnvironmentFromHost(slackHost);
@@ -273,20 +286,23 @@ class UserManagementService {
     user.updatedBy = actorEmail || actorUserId;
     await user.save();
 
-    // Audit trail
-    await AuditTrail.create({
-      action: "USER_DOCUMENT_REJECT",
-      actorUserId,
-      actorEmail: actorEmail || null,
-      targetType: "User",
-      targetKey: user.id,
-      before: beforeState,
-      after: user.toJSON(),
-      metadata: { documentType, reason }
-    });
+    
 
     // Slack notification
     setImmediate(async () => {
+
+      // Audit trail
+      await AuditTrail.create({
+        action: "USER_DOCUMENT_REJECT",
+        actorUserId,
+        actorEmail: actorEmail || null,
+        targetType: "User",
+        targetKey: user.id,
+        before: beforeState,
+        after: user.toJSON(),
+        metadata: { documentType, reason }
+      });
+
       try {
         const slackHost = host || 'localhost';
         const environment = getEnvironmentFromHost(slackHost);
@@ -350,20 +366,21 @@ class UserManagementService {
      user.deletedBy = actorEmail || actorUserId;
      await user.save();
 
-     // Audit trail
-     await AuditTrail.create({
-       action: "USER_DELETE",
-       actorUserId,
-       actorEmail: actorEmail || null,
-       targetType: "User",
-       targetKey: user.id,
-       before: beforeState,
-       after: user.toJSON(),
-       metadata: { mode: "soft-delete" }
-     });
-
      // Slack notification
      setImmediate(async () => {
+
+      // Audit trail
+      await AuditTrail.create({
+        action: "USER_DELETE",
+        actorUserId,
+        actorEmail: actorEmail || null,
+        targetType: "User",
+        targetKey: user.id,
+        before: beforeState,
+        after: user.toJSON(),
+        metadata: { mode: "soft-delete" }
+      });
+
        try {
          const slackHost = host || 'localhost';
          const environment = getEnvironmentFromHost(slackHost);
@@ -416,20 +433,21 @@ class UserManagementService {
      user.updatedBy = actorEmail || actorUserId;
      await user.save();
 
-     // Audit trail
-     await AuditTrail.create({
-       action: "USER_RESTORE",
-       actorUserId,
-       actorEmail: actorEmail || null,
-       targetType: "User",
-       targetKey: user.id,
-       before: beforeState,
-       after: user.toJSON(),
-       metadata: { mode: "restore" }
-     });
-
      // Slack notification
      setImmediate(async () => {
+
+      // Audit trail
+      await AuditTrail.create({
+        action: "USER_RESTORE",
+        actorUserId,
+        actorEmail: actorEmail || null,
+        targetType: "User",
+        targetKey: user.id,
+        before: beforeState,
+        after: user.toJSON(),
+        metadata: { mode: "restore" }
+      });
+
        try {
          const slackHost = host || 'localhost';
          const environment = getEnvironmentFromHost(slackHost);
@@ -484,21 +502,22 @@ class UserManagementService {
       // Now delete the user permanently
       await user.destroy({ force: true });
 
-     // Audit trail
-     await AuditTrail.create({
-       action: "USER_PURGE",
-       actorUserId,
-       actorEmail: actorEmail || null,
-       targetType: "User",
-       targetKey: userId,
-       before: user.toJSON(),
-       after: { purged: true },
-       metadata: { mode: "permanent-delete" }
-     });
-
      // Slack notification
      setImmediate(async () => {
        try {
+
+        // Audit trail
+        await AuditTrail.create({
+          action: "USER_PURGE",
+          actorUserId,
+          actorEmail: actorEmail || null,
+          targetType: "User",
+          targetKey: userId,
+          before: user.toJSON(),
+          after: { purged: true },
+          metadata: { mode: "permanent-delete" }
+        });
+
          const slackHost = host || 'localhost';
          const environment = getEnvironmentFromHost(slackHost);
          await SlackService.notify({
@@ -829,7 +848,7 @@ class UserManagementService {
       where: {
         userId: userId
       },
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'ASC']]
     });
 
     logger.info(`Retrieved ${documents.length} uploaded documents for user ${userId}`);
@@ -938,6 +957,254 @@ class UserManagementService {
     return {
       inflightCredentials,
       count: inflightCredentials.length
+    };
+  }
+
+  /**
+   * Update job preference for a user based on profile type and query parameters.
+   * For use by admin/assistant from user management.
+   */
+  async updateJobPreference(
+    userId: string,
+    profileType: 'primary' | 'secondary', 
+    updateData: any,
+    query: IJobPreferenceQuery,
+    host: string,
+  ): Promise<any> {
+    // Find or create profile for the user
+    let profile = await Profile.findOne({
+      where: { userId, name: profileType },
+    });
+
+    if (!profile) {
+      profile = await Profile.create({
+        userId,
+        name: profileType,
+      });
+      logger.info(`Initialized empty ${profileType} profile shell for user: ${userId}`);
+    }
+
+    // Handle step mapping for all profiles
+    let updatedSteps: string[] = [];
+
+    if (query.step01) {
+      const {
+        role,
+        courseOfStudy,
+        roleTitlesInclude,
+        roleTitlesExclude,
+        keywordsWithinTitlesInclude,
+        keywordsWithinTitlesExclude,
+        country,
+        statesInclude,
+        statesExclude,
+        citiesInclude,
+        citiesExclude,
+      } = updateData;
+
+      if (role !== undefined) profile.role = role;
+      if (courseOfStudy !== undefined) profile.courseOfStudy = courseOfStudy;
+      if (roleTitlesInclude !== undefined) profile.titles = roleTitlesInclude;
+      if (roleTitlesExclude !== undefined) profile.titlesExcluded = roleTitlesExclude;
+      if (keywordsWithinTitlesInclude !== undefined) profile.keywords = keywordsWithinTitlesInclude;
+      if (keywordsWithinTitlesExclude !== undefined) profile.keywordsExcluded = keywordsWithinTitlesExclude;
+
+      if (country !== undefined) {
+        profile.country = typeof country === 'object' && country !== null ? country.value : country;
+      }
+      if (statesInclude !== undefined) {
+        profile.state = (statesInclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (statesExclude !== undefined) {
+        profile.stateExcluded = (statesExclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (citiesInclude !== undefined) {
+        profile.city = (citiesInclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (citiesExclude !== undefined) {
+        profile.cityExcluded = (citiesExclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      updatedSteps.push('01');
+    }
+
+    if (query.step02 || query.step03) {
+      const {
+        jobTypesInclude,
+        jobTypesExclude,
+        minSalary,
+        maxSalary,
+        classificationsIncluded,
+        classificationsExcluded,
+        industriesIncluded,
+        industriesExcluded,
+        advertisers,
+        advertisersInclude,
+        advertisersExcluded,
+        advertisersExclude,
+        workingRight,
+      } = updateData;
+
+      if (jobTypesInclude !== undefined) profile.jobTypes = jobTypesInclude;
+      if (minSalary !== undefined) profile.minSalary = minSalary.value ?? minSalary;
+      if (maxSalary !== undefined) profile.maxSalary = maxSalary.value ?? maxSalary;
+      if (classificationsIncluded !== undefined) profile.classifications = classificationsIncluded?.values ? classificationsIncluded.values() : classificationsIncluded;
+      if (classificationsExcluded !== undefined) profile.classificationsExcluded = classificationsExcluded?.values ? classificationsExcluded.values() : classificationsExcluded;
+      if (advertisers !== undefined) { profile.advertisers = advertisers; profile.advertisersInclude = advertisers; }
+      if (advertisersInclude !== undefined) { profile.advertisers = advertisersInclude; profile.advertisersInclude = advertisersInclude; }
+      if (advertisersExcluded !== undefined) { profile.advertisersExcluded = advertisersExcluded; profile.advertisersExclude = advertisersExcluded; }
+      if (advertisersExclude !== undefined) { profile.advertisersExcluded = advertisersExclude; profile.advertisersExclude = advertisersExclude; }
+      if (industriesIncluded !== undefined) profile.industriesInclude = industriesIncluded;
+      if (industriesExcluded !== undefined) profile.industriesExclude = industriesExcluded;
+      if (workingRight !== undefined) profile.workingRight = workingRight;
+      if (query.step02) updatedSteps.push('02');
+      if (query.step03) updatedSteps.push('03');
+    }
+
+    if (query.step04) {
+      const { isResumeVariationDeveloped, isAiForCriteriaSelectionAllowed } = updateData;
+      if (isResumeVariationDeveloped !== undefined) profile.isResumeVariationDeveloped = isResumeVariationDeveloped;
+      if (isAiForCriteriaSelectionAllowed !== undefined) profile.isAiForCriteriaSelectionAllowed = isAiForCriteriaSelectionAllowed;
+      updatedSteps.push('04');
+    }
+
+    if (query.step05) {
+      const { questions, maritalStatus, disabilityStatus, dateOfBirth, veteran, taxIdentificationNumber, socialSecurityNumber, body, bodyExcluded, coverletterIncluded, roleKeywordExclusive, additionalComments, aggregators } = updateData;
+      if (questions !== undefined) profile.questions = questions;
+      if (maritalStatus !== undefined) profile.maritalStatus = maritalStatus;
+      if (disabilityStatus !== undefined) profile.disabilityStatus = disabilityStatus;
+      if (dateOfBirth !== undefined) profile.dateOfBirth = dateOfBirth;
+      if (veteran !== undefined) profile.veteran = veteran;
+      if (taxIdentificationNumber !== undefined) profile.taxIdentificationNumber = taxIdentificationNumber;
+      if (socialSecurityNumber !== undefined) profile.socialSecurityNumber = socialSecurityNumber;
+      if (body !== undefined) profile.body = body;
+      if (bodyExcluded !== undefined) profile.bodyExcluded = bodyExcluded;
+      if (coverletterIncluded !== undefined) profile.coverletterIncluded = coverletterIncluded;
+      if (roleKeywordExclusive !== undefined) profile.roleKeywordExclusive = roleKeywordExclusive;
+      if (additionalComments !== undefined) profile.additionalComments = additionalComments;
+      if (aggregators !== undefined) profile.aggregators = aggregators;
+      updatedSteps.push('05');
+    }
+
+    // If NO step parameters provided - update ALL fields directly
+    if (updatedSteps.length === 0) {
+      if (updateData.country && typeof updateData.country === 'object' && updateData.country !== null) {
+        updateData.country = updateData.country.value;
+      }
+      if (updateData.statesInclude) {
+        updateData.state = (updateData.statesInclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (updateData.statesExclude) {
+        updateData.stateExcluded = (updateData.statesExclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (updateData.citiesInclude) {
+        updateData.city = (updateData.citiesInclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (updateData.citiesExclude) {
+        updateData.cityExcluded = (updateData.citiesExclude as any[] | undefined)?.map(
+          (option: any) => typeof option === 'object' && option !== null ? option.value : option
+        ) || [];
+      }
+      if (updateData.classifications) {
+        updateData.classifications = (updateData.classifications as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      if (updateData.industries) {
+        updateData.industriesInclude = (updateData.industries as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      if (updateData.jobTypesExcluded) {
+        updateData.jobTypesExcluded = (updateData.jobTypesExcluded as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item.value : item
+        );
+      }
+      if (updateData.industriesExcluded !== undefined) {
+        updateData.industriesExcluded = (updateData.industriesExcluded as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+        updateData.industriesExclude = updateData.industriesExcluded;
+      }
+      if (updateData.advertisers !== undefined) {
+        updateData.advertisers = updateData.advertisers;
+        updateData.advertisersInclude = updateData.advertisers;
+      }
+      if (updateData.advertisersInclude !== undefined) {
+        updateData.advertisers = updateData.advertisersInclude;
+        updateData.advertisersInclude = updateData.advertisersInclude;
+      }
+      if (updateData.advertisersExcluded !== undefined) {
+        updateData.advertisersExcluded = updateData.advertisersExcluded;
+        updateData.advertisersExclude = updateData.advertisersExcluded;
+      }
+      if (updateData.advertisersExclude !== undefined) {
+        updateData.advertisersExcluded = updateData.advertisersExclude;
+        updateData.advertisersExclude = updateData.advertisersExclude;
+      }
+      if (updateData.advertisersInclude) {
+        updateData.advertisersInclude = (updateData.advertisersInclude as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      if (updateData.advertisers) {
+        updateData.advertisers = (updateData.advertisers as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      if (updateData.advertisersExcluded) {
+        updateData.advertisersExcluded = (updateData.advertisersExcluded as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      if (updateData.advertisersExclude) {
+        updateData.advertisersExclude = (updateData.advertisersExclude as any[] | undefined)?.map(
+          (item: any) => typeof item === 'object' && item !== null ? item : item
+        );
+      }
+      Object.assign(profile, updateData);
+      updatedSteps.push('full');
+    }
+
+    await profile.save();
+
+    // Save history record in background
+    setImmediate(async () => {
+      try {
+        await UserPreferenceHistory.create({
+          userId,
+          profileId: profile.id,
+          profileType,
+          updatedFields: updatedSteps,
+          updateSource: 'user_update',
+          preferenceSnapshot: profile.get()
+        });
+        logger.debug(`Preference history saved for user: ${userId}, profile: ${profileType}`);
+      } catch (historyError) {
+        logger.error(`Failed to save preference history: ${historyError}`);
+      }
+    });
+
+    logger.info(`${profileType} job preference ${updatedSteps.includes('full') ? 'FULL UPDATE' : `steps [${updatedSteps.join(', ')}]`} updated for user: ${userId}`);
+
+    const updatedProfile = profile.get();
+    return {
+      success: true,
+      message: `${profileType} job preference updated successfully`,
+      profile: updatedProfile,
     };
   }
 }

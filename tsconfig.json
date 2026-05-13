@@ -16,7 +16,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts", "src/tests/loadTests.js"],
+  "include": ["src/**/*.ts", "src/tests/loadTests.js", "scripts/sync-aggregators-from-mongo.ts"],
   "exclude": [
     "node_modules",
     "src/tests",

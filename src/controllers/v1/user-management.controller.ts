@@ -3,7 +3,7 @@ import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { Role } from "../../utils/enum";
-import { userManagementService } from "../../services/admin/user-management.service";
+import { userManagementService, IJobPreferenceQuery } from "../../services/admin/user-management.service";
 
 const logger = getServiceLogger("user-management-controller"); 
 
@@ -26,6 +26,7 @@ export const updateUser = catchAsyncError(
   async (req: Request, res: Response) => {
     const authorizedUser = ensureAuthorized(req);
     const { userId } = req.params;
+    const fullName = `${authorizedUser.firstName} ${authorizedUser.lastName}`;
     
     logger.info(`User ${authorizedUser.email} (${authorizedUser.role}) attempting to update user ${userId}`);
     
@@ -33,7 +34,8 @@ export const updateUser = catchAsyncError(
       userId,
       req.body,
       authorizedUser.id,
-      authorizedUser.email
+      authorizedUser.email,
+      fullName
     );
 
     logger.info(`User ${userId} successfully updated by ${authorizedUser.email}`);
@@ -365,5 +367,31 @@ export const getInflightUsers = catchAsyncError(
       result,
       "Users with INFLIGHT campaigns retrieved successfully",
     );
+  },
+);
+
+/**
+ * Update job preference for a user (admin/assistant)
+ */
+export const updateJobPreference = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+    const { userId, profileType } = req.params;
+    const validProfileType = (profileType || 'primary') as 'primary' | 'secondary';
+    const updateData = req.body?.profile || req.body;
+    const query: IJobPreferenceQuery = req.body?.params || req.query;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    logger.info(`Admin ${authorizedUser.email} updating ${validProfileType} job preference for user ${userId}`);
+
+    const result = await userManagementService.updateJobPreference(
+      userId,
+      validProfileType,
+      updateData,
+      query,
+      host,
+    );
+
+    res.apiSuccess(result, result.message);
   },
 );
