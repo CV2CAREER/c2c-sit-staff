@@ -142,14 +142,6 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
                 displayValue: ""
             },
             {
-                title: "Included Industries",
-                key: "industriesIncluded",
-                inputType: "multiSelect",
-                options: [],
-                value: "",
-                displayValue: ""
-            },
-            {
                 title: "Excluded Industries",
                 key: "industriesExcluded",
                 inputType: "multiSelect",

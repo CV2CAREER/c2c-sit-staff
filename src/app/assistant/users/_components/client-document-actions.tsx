@@ -187,7 +187,17 @@ export default function DocumentTableActions({
               case "download":
                 return (
                   <DropdownMenuItem
-                    onClick={() => setActiveDialog("download")}
+                    onClick={() => {
+                      const target = allDocuments.find(
+                        (dt: any) => dt.id === document_.id || dt._id === document_.id
+                      );
+                      const url = target?.url || target?.document?.url;
+                      if (url) {
+                        window.open(url, "_blank", "noopener,noreferrer");
+                      } else {
+                        toast.error("Document URL not available");
+                      }
+                    }}
                     key="download"
                   >
                     <Download />

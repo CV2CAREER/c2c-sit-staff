@@ -508,6 +508,18 @@ export const useUsersMutations = () => {
         toast.error("Failed to upgrade plan");
       },
     }),
+    upgradeUserPlanMutation: useMutateData<any, { featureId: string; userId: string }>({
+      method: "PATCH",
+      url: (params) => endpoints.ADMIN_USER_PLAN_UPGRADE(params.userId),
+      mutationKey: ["admin-user-plan-upgrade"],
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("User plan upgraded successfully");
+      },
+      onError: () => {
+        toast.error("Failed to upgrade user plan");
+      },
+    }),
     accountActionMutation: useMutateData<any, { userId: string; action: string }>({
       method: "POST",
       url: endpoints.ADMIN_ACCOUNT_ACTION,
@@ -531,6 +543,18 @@ export const useUsersMutations = () => {
       },
       onError: () => {
         toast.error("Failed to delete user");
+      },
+    }),
+    permanentDeleteUserMutation: useMutateData<any, { userId: string }>({
+      method: "DELETE",
+      url: (params) => endpoints.ADMIN_PERMANENT_DELETE_USER(params.userId),
+      mutationKey: ["admin-permanent-delete-user"],
+      onSuccess: () => {
+        invalidateAllUsersQueries();
+        toast.success("User permanently deleted");
+      },
+      onError: () => {
+        toast.error("Failed to permanently delete user");
       },
     }),
     assignVaMutation: useMutateData<any, { credId: string; vaEmail: string | null; host?: string }>({

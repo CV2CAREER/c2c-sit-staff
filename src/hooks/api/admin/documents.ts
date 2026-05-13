@@ -72,11 +72,10 @@ export const useDocumentsMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    submitDocumentReviewMutation: useMutateData<any, { uid: string; documents: any[] }>({
+    submitDocumentReviewMutation: useMutateData<any, FormData>({
       method: "POST",
       url: endpoints.ADMIN_DOCUMENT_REVIEW,
       mutationKey: ["admin-submit-document-review"],
-      paramKey: "uid",
       onSuccess: () => {},
       onError: () => {},
     }),

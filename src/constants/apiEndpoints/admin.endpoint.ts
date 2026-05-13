@@ -52,20 +52,23 @@ export const ADMIN_USER_DETAIL = (id: string) => `/api/v1/user/${id}`;
 export const ADMIN_DISPATCH_CLIENT = "/api/v1/user/dispatch-client";
 export const ADMIN_USER_EXTRACT_CV = "/api/v1/admin/extract-cv-data";
 export const ADMIN_UPDATE_USER_PROGRESS = "/api/v1/admin/user-progress";
+export const ADMIN_USER_PROGRESS_MILESTONE = (userId: string) => `/api/v1/admin/users/${userId}/progress`;
 export const SHORTEN_WORDS = "/api/v1/shortenWords";
 
 // Dropdown/Schema management
 export const ADMIN_DROPDOWN = "/api/v1/admin/dropdown";
 export const ADMIN_CLIENT_JOBSITE = "/api/v1/admin/client-jobsite";
 export const ADMIN_UPGRADE_PLAN = "/api/v1/admin/upgrade-plan";
+export const ADMIN_USER_PLAN_UPGRADE = (userId: string) => `/api/v1/admin/users/${userId}/plan`;
 export const ADMIN_PLANS = "/api/v1/admin/plans";
 export const ADMIN_ACCOUNT_ACTION = "/api/v1/admin/account-action";
 export const ADMIN_DELETE_USER = "/api/v1/admin/users";
+export const ADMIN_PERMANENT_DELETE_USER = (userId: string) => `/api/v1/user-management/users/${userId}/purge`;
 export const ADMIN_APPLICATION_EMAILS = "/api/v1/admin/applications/emails";
 export const ADMIN_DOCUMENTS = "/api/v1/document";
 export const ADMIN_UPLOAD_DOCUMENTS = "/api/v1/admin/documents/upload";
 export const ADMIN_DOCUMENTS_GET_SIGNED_URL = "/api/v1/admin/documents/get-signed-url";
-export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/document-review";
+export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/upload-cv-cover-letter";
 export const ADMIN_USER_PREFERENCES = "/api/v1/admin/users/preferences";
 export const ADMIN_JOB_PREFERENCES = "/api/v1/admin/job-preferences";
 export const ADMIN_ACCESS_LEVELS = "/api/v1/admin/access-levels";
@@ -96,6 +99,7 @@ export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/admin/promos?id=
 // User Management Endpoints - Temidayo
 export const ADMIN_FEATURE_TITLES = "/api/v1/user-management/features";
 export const ADMIN_USER_PREFERENCES_V2 = (userId: string) => `/api/v1/user-management/users/${userId}/preferences`;
+export const ADMIN_USER_PREFERENCES_BY_PROFILE = (userId: string, profileType: string) => `/api/v1/user-management/users/${userId}/preferences/${profileType}`;
 export const ADMIN_USER_PREFERENCES_HISTORY = (userId: string) => `/api/v1/user-management/users/${userId}/preferences/history`;
 export const ADMIN_USER_REFERRALS = (userId: string) => `/api/v1/user-management/users/${userId}/referrals`;
 export const ADMIN_USER_DOCUMENTS = (userId: string) => `/api/v1/user-management/users/${userId}/documents`;

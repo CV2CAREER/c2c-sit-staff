@@ -14,13 +14,13 @@ import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { FiX } from "react-icons/fi";
 import { FieldArray, Formik } from "formik";
-import { QueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import PulseLoader from "../../_components/DropDown/loader";
 
 
 
 const ClientDocument = ({ userId }: { userId: string }) => {
-  const queryClient = new QueryClient();
+  const queryClient = useQueryClient();
   const { userDocumentsDomain: documentsData } = useAdminQueries({
     userId,
     fetchUserDocuments: true,
@@ -147,6 +147,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
             }}
               onSubmit={async (values) => {
                 const formData = new FormData();
+                formData.append("userId", userId);
                 values.resume.forEach((file: any) => {
                   formData.append("resume", file?.file);
                 });
@@ -155,9 +156,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 });
 
                 try {
-                  const uploadResponse = await uploadDocumentsMutation.mutateAsync(formData);
-                  const files = uploadResponse.data;
-                  await submitDocumentReviewMutation.mutateAsync({ uid: userId, documents: files });
+                  await submitDocumentReviewMutation.mutateAsync(formData);
                   
                   toast.success("Document uploaded and reviewed successfully");
                   setIsReviseModalOpen(false);

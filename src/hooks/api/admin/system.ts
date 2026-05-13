@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useFetchData, useMutateData } from "../../useApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
+import toast from "react-hot-toast";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { BOT_NAMES } from "@/utils/constants";
@@ -448,6 +449,24 @@ export const useSystemMutations = () => {
       paramKey: "userId" as any,
       onSuccess: () => {},
       onError: () => {},
+    }),
+    updateUserPreferencesByProfileMutation: useMutation({
+      mutationKey: ["admin-update-user-preferences-by-profile"],
+      mutationFn: async ({ userId, profileType, body }: { userId: string; profileType: string; body: any }) => {
+        const response = await axiosInstance.put(
+          endpoints.ADMIN_USER_PREFERENCES_BY_PROFILE(userId, profileType),
+          body,
+          { withCredentials: true }
+        );
+        return response.data;
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["admin-user-preferences-v2"] });
+        toast.success("User preferences updated successfully");
+      },
+      onError: () => {
+        toast.error("Failed to update user preferences");
+      },
     }),
   };
 };

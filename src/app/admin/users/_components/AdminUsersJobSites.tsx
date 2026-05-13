@@ -4,12 +4,14 @@ import { useAdminUserDetailContext } from "../context/userDetailContext"
 import AdminJobsiteRowGeneratorModal from "./AdminJobsiteRowGeneratorModal"
 import Table from "@/components/newTable/Table"
 import toast from 'react-hot-toast';
+import CustomButton from "@/components/CustomButton/CustomButton"
 
 
 const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     const [allowJobsiteEdit, setAllowJobsiteEdit] = useState(false)
     const [editingJobsite, setEditingJobsite] = useState<any>(null)
     const { user } = useAdminUserDetailContext()
+    const [triggeredJobsite, setTriggeredJobsite] = useState(null)
 
     const { clientJobsiteDomain } = useAdminQueries({ userId, fetchClientJobsite: true })
     const { deleteJobsiteMutation, updateJobsiteMutation } = useAdminMutations()
@@ -50,6 +52,25 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
         return updatedRow
     }
 
+    async function triggerJobsite(agg: any) {
+        const loadingToast = toast.loading('Triggering jobsite...');
+
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            toast.dismiss(loadingToast);
+            toast.success('Jobsite triggered successfully.');
+        } catch (err: any) {
+            toast.dismiss(loadingToast);
+
+            toast.error(
+                err.response?.data?.message ?? "Trigger jobsite failed"
+            );
+        } finally {
+            setTriggeredJobsite(null);
+        }
+    }
+
     const setupAliasmail = (username: string) => {
         const emailPart = username?.split("@")[0];
         const domain = username?.split("@")[1]?.split(".")[0];
@@ -58,42 +79,84 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     }
 
     function modifyArray(modifiedArr: any[]) {
-        modifiedArr = modifiedArr.filter(
-        (el) => el.field !== 'isVerified' && el.field !== 'aggregator' && el.field !== '_id' && el.field !== 'nominatedDeveloper' && el.field !== 'updatedBy' && el.field !== 'note',
-        );
+    modifiedArr = modifiedArr.filter(
+        (el) =>
+            el.field !== 'id' &&
+            el.field !== 'isVerified' &&
+            el.field !== 'aggregator' &&
+            el.field !== '_id' &&
+            el.field !== 'nominatedDeveloper' &&
+            el.field !== 'updatedBy' &&
+            el.field !== 'note',
+    );
 
-        modifiedArr.push(
-            {
-                field: 'jobsite',
-                headerName: 'jobsite',
-                width: 300,
-                type: 'jobsite',
-                cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF]',
-                renderCell: (params: any) => params?.row?.aggregator?.name ?? '-',
-            },
-            {
-                field: 'generatedEmail',
-                headerName: 'Generated Email',
-                width: 300,
-                type: 'generatedEmail',
-                cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF]',
-                renderCell: (params: any) => {
-                    return setupAliasmail(params?.row?.username)
-                }
-            },
-            {
-                field: 'isVerified',
-                headerName: 'status',
-                width: 300,
-                type: 'status',
-                cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF]',
-            },
-        );
-        return modifiedArr;
+    // Move username column to the beginning
+    const usernameColumn = modifiedArr.find(
+        (el) => el.field === 'username'
+    );
+
+    modifiedArr = modifiedArr.filter(
+        (el) => el.field !== 'username'
+    );
+
+    if (usernameColumn) {
+        modifiedArr.unshift(usernameColumn);
     }
+
+    modifiedArr.push(
+        {
+            field: 'jobsite',
+            headerName: 'jobsite',
+            width: 300,
+            type: 'jobsite',
+            cellClassName: 'el',
+            headerClassName: 'bg-[#80D7FF]',
+            renderCell: (params: any) =>
+                params?.row?.aggregator?.name ?? '-',
+        },
+        {
+            field: 'generatedEmail',
+            headerName: 'Generated Email',
+            width: 300,
+            type: 'generatedEmail',
+            cellClassName: 'el',
+            headerClassName: 'bg-[#80D7FF]',
+            renderCell: (params: any) => {
+                return setupAliasmail(params?.row?.username);
+            },
+        },
+        {
+            field: 'triggerJobsite',
+            headerName: 'Trigger Jobsite',
+            width: 300,
+            type: 'triggerJobsite',
+            cellClassName: 'el',
+            headerClassName:
+                'bg-[#80D7FF] text-black font-semibold',
+            renderCell: (params: any) => {
+                return (
+                    <CustomButton
+                        customBtnClass='h-[45px]'
+                        isSubmitting={
+                            params.row?.id &&
+                            params.row?.id == triggeredJobsite
+                        }
+                        isDisabled={
+                            params.row?.aggregator?.id ==
+                            triggeredJobsite
+                        }
+                        title="Trigger Jobsite"
+                        handleClick={async () => {
+                            await triggerJobsite(params.row);
+                        }}
+                    />
+                );
+            },
+        },
+    );
+
+    return modifiedArr;
+}
 
     return (
         <div className="bg-white shadow-sm rounded-sm mb-8">

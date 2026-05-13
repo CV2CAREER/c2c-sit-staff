@@ -126,7 +126,7 @@ export default FurtherUserAccountActions;
 const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonStyles, userId }: { open: boolean, setIsOpen: (open: boolean) => void, actionText: string, action: string, affirmButtonStyles: string, userId: string }) => {
 
 
-    const { accountActionMutation: acceptMutation, deleteUserMutation: deleteMutation } = useAdminMutations();
+    const { accountActionMutation: acceptMutation, permanentDeleteUserMutation: deleteMutation } = useAdminMutations();
 
     return (
         <AppModal
