@@ -34,7 +34,13 @@ class JobsiteService {
       })
     );
 
-    return { aggregators: populated };
+    // Inject user email into each aggregator item
+    const populatedWithEmail = populated.map((item) => ({
+      ...item,
+      email: user.email,
+    }));
+
+    return { aggregators: populatedWithEmail };
   }
 
   /**
