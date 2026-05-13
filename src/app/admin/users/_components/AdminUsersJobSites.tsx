@@ -79,84 +79,99 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     }
 
     function modifyArray(modifiedArr: any[]) {
-    modifiedArr = modifiedArr.filter(
-        (el) =>
-            el.field !== 'id' &&
-            el.field !== 'isVerified' &&
-            el.field !== 'aggregator' &&
-            el.field !== '_id' &&
-            el.field !== 'nominatedDeveloper' &&
-            el.field !== 'updatedBy' &&
-            el.field !== 'note',
-    );
+        // Remove unwanted columns
+        const excludedFields = [
+            'id',
+            'aggregatorId',
+            'isVerified',
+            'aggregator',
+            'nominatedDeveloper',
+            'updatedBy',
+            'note',
+        ];
 
-    // Move username column to the beginning
-    const usernameColumn = modifiedArr.find(
-        (el) => el.field === 'username'
-    );
+        modifiedArr = modifiedArr.filter(
+            (el) => el.field !== 'id'
+        );
 
-    modifiedArr = modifiedArr.filter(
-        (el) => el.field !== 'username'
-    );
+        modifiedArr = modifiedArr.filter(
+            (el) => !excludedFields.includes(el.field)
+        );
 
-    if (usernameColumn) {
-        modifiedArr.unshift(usernameColumn);
+        // Move username to first column
+        const usernameIndex = modifiedArr.findIndex(
+            (el) => el.field === 'username'
+        );
+
+        if (usernameIndex > -1) {
+            const [usernameColumn] = modifiedArr.splice(usernameIndex, 1);
+            modifiedArr.unshift(usernameColumn);
+        }
+
+        modifiedArr.push(
+            {
+                field: 'jobsite',
+                headerName: 'Jobsite',
+                width: 300,
+                type: 'jobsite',
+                cellClassName: 'el',
+                headerClassName: 'bg-[#80D7FF]',
+                renderCell: (params: any) =>
+                    params?.row?.aggregator.name ?? '-',
+            },
+            {
+                field: 'generatedEmail',
+                headerName: 'Generated Email',
+                width: 300,
+                type: 'generatedEmail',
+                cellClassName: 'el',
+                headerClassName: 'bg-[#80D7FF]',
+                renderCell: (params: any) => {
+                    return setupAliasmail(params?.row?.username);
+                },
+            },
+            // {
+            //     field: 'isVerified',
+            //     headerName: 'status',
+            //     width: 300,
+            //     type: 'status',
+            //     cellClassName: 'el',
+            //     headerClassName: 'bg-[#80D7FF]',
+            //     renderCell: (params: any) => {
+            //         return setupAliasmail(params?.isEnabled);
+            //     },
+            // },
+            {
+                field: 'triggerJobsite',
+                headerName: 'Trigger Jobsite',
+                width: 300,
+                type: 'triggerJobsite',
+                cellClassName: 'el',
+                headerClassName:
+                    'bg-[#80D7FF] text-black font-semibold',
+                renderCell: (params: any) => {
+                    return (
+                        <CustomButton
+                            customBtnClass="h-[45px]"
+                            isSubmitting={
+                                params.row?.id &&
+                                params.row?.id === triggeredJobsite
+                            }
+                            isDisabled={
+                                params.row?.id === triggeredJobsite
+                            }
+                            title="Trigger Jobsite"
+                            handleClick={async () => {
+                                await triggerJobsite(params.row?.id);
+                            }}
+                        />
+                    );
+                },
+            },
+        );
+
+        return modifiedArr;
     }
-
-    modifiedArr.push(
-        {
-            field: 'jobsite',
-            headerName: 'jobsite',
-            width: 300,
-            type: 'jobsite',
-            cellClassName: 'el',
-            headerClassName: 'bg-[#80D7FF]',
-            renderCell: (params: any) =>
-                params?.row?.aggregator?.name ?? '-',
-        },
-        {
-            field: 'generatedEmail',
-            headerName: 'Generated Email',
-            width: 300,
-            type: 'generatedEmail',
-            cellClassName: 'el',
-            headerClassName: 'bg-[#80D7FF]',
-            renderCell: (params: any) => {
-                return setupAliasmail(params?.row?.username);
-            },
-        },
-        {
-            field: 'triggerJobsite',
-            headerName: 'Trigger Jobsite',
-            width: 300,
-            type: 'triggerJobsite',
-            cellClassName: 'el',
-            headerClassName:
-                'bg-[#80D7FF] text-black font-semibold',
-            renderCell: (params: any) => {
-                return (
-                    <CustomButton
-                        customBtnClass='h-[45px]'
-                        isSubmitting={
-                            params.row?.id &&
-                            params.row?.id == triggeredJobsite
-                        }
-                        isDisabled={
-                            params.row?.aggregator?.id ==
-                            triggeredJobsite
-                        }
-                        title="Trigger Jobsite"
-                        handleClick={async () => {
-                            await triggerJobsite(params.row);
-                        }}
-                    />
-                );
-            },
-        },
-    );
-
-    return modifiedArr;
-}
 
     return (
         <div className="bg-white shadow-sm rounded-sm mb-8">
