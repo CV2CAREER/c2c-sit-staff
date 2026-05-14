@@ -24,6 +24,7 @@ import { getServiceLogger } from "../../utils/createLogger";
     getCampaignClientById,
     createCampaignClient,
     updateCampaignClient,
+    UpdateCampaignClientPayload,
     deleteCampaignClient,
     deleteCampaignClientsBulk,
     softDeleteCampaignClient,
@@ -419,9 +420,9 @@ export const saveJob = catchAsyncError(async (req: Request, res: Response) => {
   export const updateCampaignClientController = catchAsyncError(async (req: Request, res: Response) => {
     logger.info("Processing update campaign client request");
     const { id } = req.params;
-    const data = req.body;
+    const data = req.body as UpdateCampaignClientPayload;
     const requestorName = `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim();
-    
+
     const result = await updateCampaignClient(id, data, requestorName);
     
     res.status(200).json({
@@ -543,9 +544,11 @@ export const getUserPreferences = catchAsyncError(async (req: Request, res: Resp
 export const toggleCampaignFlight = catchAsyncError(async (req: Request, res: Response) => {
   logger.info("Processing campaign toggle flight request");
   const { clientId } = req.params;
-  
-  const result = await landOrLaunchCampaign(clientId);
-  
+  const host = req.get('host') || req.hostname;
+  const triggeredBy = `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() || undefined;
+
+  const result = await landOrLaunchCampaign(clientId, host, triggeredBy);
+
   res.status(200).json(result);
 });
 
@@ -556,12 +559,26 @@ export const toggleCampaignFlight = catchAsyncError(async (req: Request, res: Re
 export const getDocumentReview = catchAsyncError(async (req: Request, res: Response) => {
   logger.info("Processing document review request");
   const { userId } = req.params;
-  
+
   const result = await getDocumentReviewData(userId);
-  
+
   res.status(200).json({
     success: true,
     message: "Document review data retrieved successfully",
     data: result
+  });
+});
+
+/**
+ * Manually trigger subscription expiry reminder job (for testing)
+ * POST /api/v1/campaigns/jobs/subscription-expiry-reminder/run
+ */
+export const triggerSubscriptionExpiryReminder = catchAsyncError(async (_req: Request, res: Response) => {
+  logger.info("Manual trigger: subscription expiry reminder job");
+  const { runSubscriptionExpiryReminderJob } = await import("../../jobs/cron/subscription-expiry-reminder.job");
+  await runSubscriptionExpiryReminderJob();
+  res.status(200).json({
+    success: true,
+    message: "Subscription expiry reminder job executed successfully",
   });
 });

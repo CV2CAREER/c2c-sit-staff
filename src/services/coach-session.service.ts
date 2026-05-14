@@ -174,6 +174,7 @@ export const completeSession = async (coachId: string, sessionId: string) => {
         trigger: `Session marked as completed: ${sessionId}`,
         type: SlackEventType.USER_TRIGGERED,
         channel: SlackChannel.TOWN_CRIER,
+        teamMentions: "CSM",
         body: `Session completed successfully.
 What happened: Coach ${coach?.firstName || 'Unknown'} ${coach?.lastName || ''} has marked session ${sessionId} as completed.
 Client: ${client?.firstName || 'Unknown'} ${client?.lastName || ''} (${client?.email || 'Unknown'})
