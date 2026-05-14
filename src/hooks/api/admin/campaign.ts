@@ -391,10 +391,8 @@ export const useCampaignMutations = () => {
       url: endpoints.ADMIN_CAMPAIGN_JOBS_EXTRACT,
       mutationKey: ["admin-campaign-jobs-extract"],
       onSuccess: () => {
-        toast.success("Jobs extracted successfully");
       },
       onError: () => {
-        toast.error("Failed to extract jobs");
       },
     }),
     saveCampaignJobsMutation: useMutateData<any, { clientId: string, joblink: string, jobData: any }>({
@@ -403,10 +401,8 @@ export const useCampaignMutations = () => {
       mutationKey: ["admin-campaign-jobs-save"],
       onSuccess: () => {
         invalidateCampaignQueries();
-        toast.success("Jobs saved successfully");
       },
       onError: () => {
-        toast.error("Failed to save jobs");
       },
     }),
     generateKeywordsFromResumeMutation: useMutateData<any, { id: string, keywords?: boolean, roleTitles?: boolean, increment?: boolean, existing?: any }>({

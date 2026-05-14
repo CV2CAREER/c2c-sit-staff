@@ -84,12 +84,21 @@ const AIEditModal: React.FC<{
       centered
     >
       <div className="p-4">
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
+
+          {/* Duplicate warning */}
+          {jobData.is_duplicate && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-300 rounded-md text-red-700 text-sm font-medium">
+              ⚠️ This job appears to be a duplicate. Please review before saving.
+            </div>
+          )}
+
+          {/* Editable fields */}
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Editable Fields</p>
+
           {/* Job Title */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Job Title <span className="text-red-500">*</span>
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Job Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={editedData.job_title || ''}
@@ -100,10 +109,8 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Company */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Company <span className="text-red-500">*</span>
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Company <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={editedData.company || ''}
@@ -114,10 +121,8 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Location */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Location <span className="text-red-500">*</span>
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Location <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={editedData.location || ''}
@@ -128,10 +133,8 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Job Type */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Job Type
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Job Type</label>
             <select
               value={editedData.job_type || 'N/A'}
               onChange={(e) => handleFieldChange('job_type', e.target.value)}
@@ -148,10 +151,8 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Country */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Country
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Country</label>
             <input
               type="text"
               value={editedData.country || ''}
@@ -162,13 +163,11 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Salary */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Salary
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Salary</label>
             <input
               type="text"
-              value={editedData.salary || 'N/A'}
+              value={editedData.salary || ''}
               onChange={(e) => handleFieldChange('salary', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Salary or N/A"
@@ -176,10 +175,8 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Date Advertised */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Date Advertised
-            </label>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Date Advertised</label>
             <input
               type="date"
               value={editedData.date_advertised || ''}
@@ -188,25 +185,58 @@ const AIEditModal: React.FC<{
             />
           </div>
 
-          {/* Job Site Info - Read Only */}
-          <div className="grid grid-cols-2 gap-4 mt-4">
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-xs font-semibold">Internal Jobsite:</span>
-              <span className="text-xs ml-2">{jobData.internal_jobsite || 'N/A'}</span>
+          {/* Job URL */}
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Job URL</label>
+            <input
+              type="text"
+              value={editedData.job_url || ''}
+              onChange={(e) => handleFieldChange('job_url', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              placeholder="https://..."
+            />
+            {editedData.job_url && (
+              <a href={editedData.job_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                Open link ↗
+              </a>
+            )}
+          </div>
+
+          {/* Read-only metadata */}
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Metadata (read-only)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">Job ID</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.job_id || 'N/A'}</p>
             </div>
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-xs font-semibold">External Jobsite:</span>
-              <span className="text-xs ml-2">{jobData.external_jobsite || 'N/A'}</span>
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">Client Name</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.client_name || 'N/A'}</p>
             </div>
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-xs font-semibold">Job ID:</span>
-              <span className="text-xs ml-2">{jobData.job_id || 'N/A'}</span>
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">Internal Jobsite</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.internal_jobsite || 'N/A'}</p>
             </div>
-            <div className="p-2 bg-gray-50 rounded">
-              <span className="text-xs font-semibold">Job Site:</span>
-              <span className="text-xs ml-2">{jobData.job_site_name || 'N/A'}</span>
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">External Jobsite</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.external_jobsite || 'N/A'}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">AI Service</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.ai_service || 'N/A'}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-xs font-semibold text-gray-500">Extraction Source</p>
+              <p className="text-sm text-gray-800 mt-0.5">{jobData.extraction_source || 'N/A'}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-md col-span-2">
+              <p className="text-xs font-semibold text-gray-500">Duplicate</p>
+              <p className={`text-sm font-semibold mt-0.5 ${jobData.is_duplicate ? 'text-red-600' : 'text-green-600'}`}>
+                {jobData.is_duplicate ? 'Yes — possible duplicate' : 'No'}
+              </p>
             </div>
           </div>
+
         </div>
 
         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
@@ -222,9 +252,7 @@ const AIEditModal: React.FC<{
             onClick={() => onConfirm(editedData)}
             disabled={loading}
             className={`px-6 py-2 rounded-md text-white transition duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-              loading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
             }`}
           >
             {loading ? 'Saving...' : 'Confirm & Save to Database'}
@@ -294,29 +322,13 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       });
       
       toast.dismiss(loadingToast);
-      
-      // Extract job data from the response - handles multiple formats
-      let jobData = null;
-      
-      // Try different response structures
-      if (result?.data?.job_data) {
-        jobData = result.data.job_data;
-      } else if (result?.job_data) {
-        jobData = result.job_data;
-      } else if (result?.data) {
-        jobData = result.data;
-      } else if (result?.job_title || result?.company) {
-        jobData = result;
-      } else {
-        jobData = result;
-      }
-      
-      console.log('Extracted job data:', jobData);
-      
-      if (jobData && (jobData.job_title || jobData.company)) {
+
+      const jobData = result?.job_data ?? result?.data?.job_data ?? null;
+
+      if (jobData) {
         setExtractedJobData(jobData);
         setShowEditModal(true);
-        toast.success(`AI extraction completed! Please review the data.`);
+        toast.success(result?.message || 'AI extraction completed! Please review the data.');
       } else {
         toast.error('Failed to extract job data. Invalid response format.');
       }
@@ -346,15 +358,15 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       
       toast.dismiss(loadingToast);
       
-      if (result?.data?.status === 'success' || result?.status === 'success') {
-        toast.success('Application saved successfully');
+      if (result?.success) {
+        toast.success(result?.message || 'Application saved successfully');
         setPageContent('');
         setExtractedJobData(null);
         setShowEditModal(false);
         if (setReload) setReload();
         onClose();
       } else {
-        toast.error(result?.data?.message || result?.message || 'Failed to save application');
+        toast.error(result?.message || 'Failed to save application');
       }
 
     } catch (error: any) {
