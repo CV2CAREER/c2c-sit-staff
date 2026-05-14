@@ -119,6 +119,7 @@ export const ADMIN_UPLOADS_GENERATE_KEYWORDS = "/api/v1/uploads/generate-keyword
 export const ADMIN_CAMPAIGN_GET_CLIENTS = "/api/v1/campaigns/clients";
 export const ADMIN_DISPATCH_SAMPLE = (clientId: string ) => `/api/v1/campaigns/clients/${clientId}/dispatch-samples`;
 export const ADMIN_ASSIGN_VA = "/api/v1/campaigns/va/assign";
+export const ADMIN_CAMPAIGN_AGGREGATORS_LIST = (userId: string | number) => `/api/v1/campaigns/aggregators/list/${userId}`;
 
 // Blog Endpoints
 export const ADMIN_BLOG = "/api/v1/admin/blog";

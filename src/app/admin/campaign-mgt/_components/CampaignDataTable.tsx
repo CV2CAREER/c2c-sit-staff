@@ -257,6 +257,8 @@ const queryClient = useQueryClient();
         ReturnCount: client.returnCount ?? 0,
         Batch: cred.Batch ?? null,
         Craft: cred.Craft ?? null,
+        Order: cred.Order ?? null,
+        Assurance: cred.Assurance ?? null,
 
         // ── Campaign status (top-level) ───────────────────────────
         Active: client.Active ?? false,
@@ -270,6 +272,8 @@ const queryClient = useQueryClient();
         SeekSubStartDate: client.SeekSubStartDate ?? null,
         SeekSubEndDate: cred.SeekSubEndDate ?? null,
         SeekSubDurDays: cred.SeekSubDurDays ?? null,
+        SeekSubToExpireDays: cred.SeekSubDurDays ?? null,
+        GraceDuration: cred.GraceDuration ?? null,
         CampaignEnd: cred.CampaignEnd ?? null,
 
         // ── Aggregators ───────────────────────────────────────────
@@ -295,7 +299,7 @@ const queryClient = useQueryClient();
         VaEmail: client.AssignedPCEmail ?? null,
         AssignedPCName: client.AssignedPCName ?? null,
         AssignedPCEmail: client.AssignedPCEmail ?? null,
-        updateBy: client.AssignedPCName ?? null,
+        updateBy: client.updatedBy ?? null,
 
         // ── Metadata ──────────────────────────────────────────────
         createdAt: client.createdAt,

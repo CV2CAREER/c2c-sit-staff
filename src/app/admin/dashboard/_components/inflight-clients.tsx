@@ -62,7 +62,7 @@ export default function InFlightClients() {
           Full_Name: external.Full_Name || "Unknown",
           Alias_Email: external.Alias_Email || item?.seekEmail || "N/A",
           SeekSubStartDate: item?.SeekSubStartDate ? new Date(item.SeekSubStartDate).toLocaleDateString() : "N/A",
-          Assurance: item?.assurance || "N/A",
+          Assurance: external?.Assurance || "N/A",
           SeekSubEndDate: external.SeekSubEndDate || "N/A",
           VaName: item?.AssignedPCName || "Unassigned",
           status: item?.capitalized || "Unknown",
