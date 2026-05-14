@@ -19,11 +19,9 @@ import {
   getEnvironmentFromHost,
   getSlackIdByEmail,
 } from "../utils/slack-helpers";
-import { hopeUserIdExists } from "../utils/user-helper";
 import { getConnectedRedis } from "../config/redis";
 import { Op, Sequelize } from "sequelize";
 import path from "path";
-import { credential } from "firebase-admin";
 
 const logger = getServiceLogger("campaign-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
