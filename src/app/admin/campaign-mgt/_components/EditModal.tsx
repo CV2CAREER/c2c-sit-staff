@@ -40,7 +40,7 @@ const formSchema = z.object({
   Middle_Name: z.string().optional().nullable(),
   Last_Name: z.string().min(2).max(50).optional().nullable(),
   Plan: z.string().optional().nullable(),
-  ReturnCount: z.number().optional().nullable(),
+  ReturnCount: z.string().optional().nullable(),
   Order: z.string().optional().nullable(),
   SeekSubStartDate: z.string().optional().nullable(),
   SeekWeeklyMax: z.number().optional().nullable(),
@@ -134,7 +134,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       Middle_Name: getField("Middle_Name"),
       Last_Name: getField("Last_Name"),
       Plan: getField("Plan"),
-      ReturnCount: Number(getField("ReturnCount")) || null,
+      ReturnCount: getField("ReturnCount") || null,
       Order: getField("Order"),
       SeekSubStartDate: getField("SeekSubStartDate"),
       Assurance: getField("Assurance"),
@@ -212,7 +212,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       }, {
         onSuccess: () => {
           toast.dismiss();
-          toast.success("Client updated successfully");
+          toast.success("Client has been updated successfully");
           setDialog(null);
           
           // Refresh campaign clients table

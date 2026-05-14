@@ -211,16 +211,24 @@ export const useCampaignMutations = () => {
         toast.error("Failed to count applications");
       },
     }),
-    toggleCampaignAggregatorMutation: useMutateData<any, { clientId: number; jobSite: string }>({
-      method: "PUT",
-      url: endpoints.ADMIN_CAMPAIGN_COUNT_APPLICATIONS,
+    toggleCampaignAggregatorMutation: useMutateData<any, { clientId: string | number; jobSite: string }>({
+      method: "PATCH",
+      url: endpoints.ADMIN_BOT_CONTROL,
       mutationKey: ["admin-toggle-campaign-aggregator"],
       onSuccess: () => {
         invalidateCampaignQueries();
-        toast.success("Aggregator toggled successfully");
       },
       onError: () => {
         toast.error("Failed to toggle aggregator");
+      },
+    }),
+    getAggregatorsByUserMutation: useMutateData<any, { userId: string | number }>({
+      method: "GET",
+      url: (params) => endpoints.ADMIN_CAMPAIGN_AGGREGATORS_LIST(params?.userId),
+      mutationKey: ["admin-get-aggregators-by-user"],
+      onSuccess: () => {},
+      onError: () => {
+        toast.error("Failed to fetch aggregators");
       },
     }),
     updateCampaignSheetBulkMutation: useMutateData<any, { table: string; data: any[] }>({
