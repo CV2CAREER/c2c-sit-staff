@@ -8,6 +8,7 @@ import { createBotHealthJob } from "./bot-health.job";
 import { createTokenCleanUpJob } from "./token-cleanup.job";
 import { createSubscriptionCheckJob } from "./subscription-check.job";
 import { createSupportSessionCleanupJob } from "./support-session-cleanup.job";
+import { createSubscriptionExpiryReminderJob } from "./subscription-expiry-reminder.job";
 
 const logger = getServiceLogger("app-cron-jobs");
 
@@ -27,6 +28,7 @@ export function startAllCronJobs() {
     { name: "Bot Health Job", task: createBotHealthJob() },
     { name: "Subscription Check Job", task: createSubscriptionCheckJob() },
     { name: "Support Session Cleanup Job", task: createSupportSessionCleanupJob() },
+    { name: "Subscription Expiry Reminder Job", task: createSubscriptionExpiryReminderJob() },
   ];
 
   jobInstances.forEach(({ name, task }) => {

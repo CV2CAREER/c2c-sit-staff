@@ -6,18 +6,23 @@ import { User } from "../models/v1/user.model";
 import { Aggregator } from "../models/v1/aggregator.model";
 import { Profile } from "../models/v1/profile.model";
 import crypto from "crypto";
+import { Credentials } from "@/models/v1/credentials.model";
 
 const logger = getServiceLogger("aggregator-updater");
 
 /**
  * Generate secure random password
  */
-const generatePassword = (length = 12): string => {
-  return crypto
-    .randomBytes(Math.ceil(length / 2))
-    .toString("hex")
-    .slice(0, length);
-};
+const generatePassword = () => {
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
 
 // Predefined aggregator groups for geographic filtering
 const AGGREGATOR_GROUPS: Record<string, Set<string>> = {
@@ -107,7 +112,7 @@ const updateAggregator = async (
 
   logger.info(`[updateAggregator] User ${userId} — country="${user.country || "(empty)"}", resolved="${resolvedGroup}"`);
 
-  const password = generatePassword(12);
+  const password = generatePassword();
 
   // Get or create user profile
   const profile = await findOrCreateProfile(userId.toString());
@@ -200,6 +205,18 @@ const updateAggregator = async (
       { aggregators: updatedAggregators },
       { where: { id: profile.id } }
     );
+
+    // Sync password back to Credentials JSONB when password is updated
+    const cred = await Credentials.findOne({ where: { clientId: userId } });
+    if (cred) {
+      const existingJsonb = (cred.toJSON() as any).seekExternalCredentials || {};
+      await cred.update({
+        seekExternalCredentials: {
+          ...existingJsonb,
+          ExternalPassword: password
+        },
+      } as any);
+    }
 
     processedAggregators = newAggregators.map(agg =>
       aggregators.find((a: any) => a.id === agg.aggregatorId)?.name

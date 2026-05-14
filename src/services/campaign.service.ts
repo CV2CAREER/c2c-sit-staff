@@ -1,8 +1,10 @@
 import { getServiceLogger } from "../utils/createLogger";
+import ErrorHandler from "../utils/errorHandler";
 import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { Aggregator } from "../models/v1/aggregator.model";
 import { Profile } from "../models/v1/profile.model";
+import { Plan } from "../models/v1/plan.model";
 import { Upload } from "../models/v1/upload.model";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
@@ -261,7 +263,7 @@ export const generateExternalPassword = async (
     const chars =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
     let password = "";
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 16; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return password;
@@ -287,8 +289,26 @@ export const generateExternalPassword = async (
 
   // Merge the new password into the existing JSONB object and save via instance update
   await userCredentials.update({
-    seekExternalCredentials: { ...existingJsonb, ExternalPassword: generatedPassword }
+    seekExternalCredentials: {
+      ...existingJsonb,
+      ExternalPassword: generatedPassword
+    },
   } as any);
+
+  // Sync password to all aggregator links on the user's primary profile
+  
+  if (userCredentials.clientId) {
+    const primaryProfile = await Profile.findOne({
+      where: { userId: userCredentials.clientId, name: "primary" },
+    });
+    if (primaryProfile && (primaryProfile.aggregators as any[])?.length) {
+      const updatedLinks = (primaryProfile.aggregators as any[]).map((link) => ({
+        ...link,
+        password: generatedPassword,
+      }));
+      await primaryProfile.update({ aggregators: updatedLinks });
+    }
+  }
 
   const userFullName = existingJsonb.Full_Name || existingJsonb.fullName || userId;
 
@@ -454,8 +474,12 @@ export const toggleAggregatorStatus = async (
 export const getUserProfileDetails = async (userId: string) => {
   logger.info(`Fetching user profile details for user ID: ${userId}`);
 
+  const client = await Credentials.findOne({
+    where: { id: userId }
+  });
+
   // Fetch user with plan data
-  const user = await User.findByPk(userId, {
+  const user = await User.findByPk(client?.clientId, {
     include: [
       {
         association: "activePlan",
@@ -466,7 +490,7 @@ export const getUserProfileDetails = async (userId: string) => {
 
   if (!user) {
     logger.warn(`User not found for ID: ${userId}`);
-    throw new Error("User not found");
+    throw new ErrorHandler("User not found", 404);
   }
 
   // Fetch profile for craft information
@@ -1108,7 +1132,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
       body: message,
     });
 
-    await targetCred.update({ AssignedPCName: null, AssignedPCEmail: null } as any);
+    await targetCred.update({ AssignedPCName: null, AssignedPCEmail: null, updatedBy: updatedBy } as any);
     
     logger.info(`VA unassigned successfully for credId=${credId}`);
 
@@ -1132,7 +1156,8 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 
   await targetCred.update({
     AssignedPCEmail: vaEmail,
-    AssignedPCName: `${targetVa.firstName} ${targetVa.lastName}`
+    AssignedPCName: `${targetVa.firstName} ${targetVa.lastName}`,
+    updatedBy: updatedBy,
   } as any);
 
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
@@ -1434,7 +1459,7 @@ export const getUserPreferencesByUserId = async (
  * Toggle campaign flight status (Launch / Land)
  * Toggles between INFLIGHT and HOLD status with all associated fields
  */
-export const landOrLaunchCampaign = async (clientId: string) => {
+export const landOrLaunchCampaign = async (clientId: string, host: string, triggeredBy?: string) => {
   logger.info(`Toggling campaign flight status for client: ${clientId}`);
 
   if (!clientId) {
@@ -1449,8 +1474,16 @@ export const landOrLaunchCampaign = async (clientId: string) => {
     throw new Error("Credential not found");
   }
 
-  let message: string;
   const credData = cred.toJSON() as any;
+  const jsonb = credData.seekExternalCredentials || {};
+  const clientName = `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() || `Client #${clientId}`;
+  const clientEmail = jsonb.Alias_Email || credData.seekEmail || 'unknown';
+  const planName = jsonb.Plan || 'Unknown';
+
+  let message: string;
+  let newStatus: string;
+  let slackTrigger: string;
+  let slackBody: string;
 
   if (credData.capitalized !== "INFLIGHT") {
     await cred.update({
@@ -1458,19 +1491,57 @@ export const landOrLaunchCampaign = async (clientId: string) => {
       Active: true,
       SeekAnswerPriority: true,
       SeekAggregator: true,
-      SeekSubStartDate: new Date().toISOString(),
     });
     message = "Campaign launched successfully!";
+    newStatus = "INFLIGHT";
+
+    slackTrigger = `Campaign launched for ${clientName}`;
+    slackBody = `*Client:* ${clientName} (${clientEmail})
+*Plan:* ${planName}
+*Status:* FLIGHT (Active)
+*Triggered By:* ${triggeredBy || 'System'}
+
+*Next Steps:*
+• Verify aggregators are submitting applications
+• Monitor application return count over the next 24–48 hours
+• Confirm Seek credentials are active and not locked
+• Check Answer Priority is enabled for queue processing`;
   } else {
     await cred.update({
       capitalized: "HOLD",
       Active: false,
       SeekAnswerPriority: false,
       SeekAggregator: false,
-      SeekSubStartDate: null,
     });
     message = "Campaign landed successfully!";
+    newStatus = "HOLD";
+
+    slackTrigger = `Campaign landed for ${clientName}`;
+    slackBody = `*Client:* ${clientName} (${clientEmail})
+*Plan:* ${planName}
+*Status:* HOLD (Inactive)
+*Triggered By:* ${triggeredBy || 'System'}
+
+*Next Steps:*
+• Confirm with the team the reason for landing (completed, issue, or manual pause)
+• If paused due to an issue, log it and assign for resolution
+• Update the client record notes if applicable
+• Schedule relaunch when ready`;
   }
+
+  const location = getEnvironmentFromHost(host);
+  await SlackService.notify({
+    location,
+    host,
+    node: SlackNode.MESSAGING,
+    provider: SlackProvider.CLARITY,
+    severity: SlackSeverity.INFO,
+    trigger: slackTrigger,
+    type: SlackEventType.ADMIN_ACTION,
+    channel: SlackChannel.VA,
+    teamMentions: "CSM",
+    body: slackBody,
+  });
 
   logger.info(`Campaign status updated: ${message} for client: ${clientId}`);
 
@@ -1478,7 +1549,7 @@ export const landOrLaunchCampaign = async (clientId: string) => {
     success: true,
     message,
     clientId,
-    newStatus: credData.capitalized !== "INFLIGHT" ? "FLIGHT" : "HOLD",
+    newStatus,
   };
 };
 
@@ -1544,7 +1615,38 @@ export const createCampaignClient = async (data: any) => {
  * exist as direct columns on the Credentials model. This function routes each incoming
  * field to the right destination so the update actually persists.
  */
-export const updateCampaignClient = async (id: string, data: any, requestorName?: string) => {
+export interface UpdateCampaignClientPayload {
+  First_Name?: string;
+  Middle_Name?: string;
+  Last_Name?: string;
+  Plan?: string;
+  Alias_Email?: string;
+  Alias_Password?: string;
+  ReturnCount?: string;
+  Order?: string;
+  Assurance?: string;
+  SeekSubStartDate?: string;
+  SeekSubDurDays?: number;
+  GraceDuration?: number;
+  Capitalized?: string;
+  Country?: string;
+  Active?: boolean;
+  SeekAnswerPriority?: boolean;
+  Seek_Aggregator?: boolean;
+  Reed_Aggregator?: boolean;
+  Jora_Aggregator?: boolean;
+  Adzuna_Aggregator?: boolean;
+  CareerOne_Aggregator?: boolean;
+  Batch?: string;
+  Craft?: string;
+  /** Internal wrapper — some callers nest the payload under a .data key */
+  data?: Omit<UpdateCampaignClientPayload, 'data'>;
+  aggregators?: Array<Record<string, unknown>>;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
+export const updateCampaignClient = async (id: string, data: UpdateCampaignClientPayload, requestorName?: string) => {
   logger.info(`Updating campaign client: ${id}`);
 
   if (!data || Object.keys(data).length === 0) {
@@ -1561,17 +1663,19 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
 
   // Handle nested data payload structure (fields may be inside a .data wrapper)
   const actualData = data.data || data;
-  const updateData = { ...actualData };
+
+  // Use a loose record so delete and string-trim operations are type-safe
+  const updateData: Record<string, unknown> = { ...actualData };
 
   // Never touch immutable / foreign-key fields
-  delete updateData.clientId;
-  delete updateData.id;
-  delete updateData.createdAt;
+  delete updateData['clientId'];
+  delete updateData['id'];
+  delete updateData['createdAt'];
 
   // Trim string fields
   for (const key in updateData) {
-    if (typeof updateData[key] === "string") {
-      updateData[key] = updateData[key].trim();
+    if (typeof updateData[key] === 'string') {
+      updateData[key] = (updateData[key] as string).trim();
     }
   }
 
@@ -1629,11 +1733,85 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
     directUpdates.seekExternalCredentials = { ...existingJsonb, ...jsonbUpdates };
   }
 
+  // Record who performed the update
+  if (requestorName) {
+    directUpdates['updatedBy'] = requestorName;
+  }
+
   // Apply the update
   if (Object.keys(directUpdates).length > 0) {
     await userInfo.update(directUpdates as any, {
-      fields: Object.keys(directUpdates)
+      fields: Object.keys(directUpdates),
     });
+  }
+
+  // When SeekSubStartDate changes, find the user's plan via Credentials.clientId,
+  // use plan.validityPeriod to compute the new end date, and sync all date/duration fields
+  if (fieldsToUpdate.SeekSubStartDate && userInfo.clientId) {
+    const rawDate = fieldsToUpdate.SeekSubStartDate as string;
+    // Accepts DD-MM-YYYY (datepicker) or ISO YYYY-MM-DD
+    const parts = rawDate.includes('-') && rawDate.split('-')[0].length === 2
+      ? rawDate.split('-')
+      : null;
+    const startDate = parts
+      ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+      : new Date(rawDate);
+
+    if (!isNaN(startDate.getTime())) {
+      // Use the plan title stored in seekExternalCredentials (e.g. "Bronze", "Silver")
+      // so we always match the client's current plan, not an old/different one
+      const currentJsonb = (userInfo.toJSON() as any).seekExternalCredentials || {};
+      const planTitle = currentJsonb.Plan as string | undefined;
+
+      const plan = await Plan.findOne({
+        where: {
+          userId: userInfo.clientId,
+          ...(planTitle ? { title: planTitle } : {}),
+        },
+        order: [['createdAt', 'DESC']],
+      });
+
+      if (plan?.validityPeriod) {
+        // validityPeriod examples: "6 months", "12 months", "30 days", "1 year"
+        const [rawAmount, rawUnit = ''] = plan.validityPeriod.trim().split(/\s+/);
+        const amount = parseInt(rawAmount, 10);
+        const unit = rawUnit.toLowerCase();
+        const expiry = new Date(startDate);
+
+        if (unit.startsWith('day')) {
+          expiry.setDate(expiry.getDate() + amount);
+        } else if (unit.startsWith('month')) {
+          expiry.setMonth(expiry.getMonth() + amount);
+        } else {
+          expiry.setFullYear(expiry.getFullYear() + amount);
+        }
+
+        const durationDays = Math.round((expiry.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Format expiry as DD-MM-YYYY to match the existing date style
+        const dd = String(expiry.getDate()).padStart(2, '0');
+        const mm = String(expiry.getMonth() + 1).padStart(2, '0');
+        const yyyy = expiry.getFullYear();
+        const endDateStr = `${dd}-${mm}-${yyyy}`;
+
+        await plan.update({ expiresAt: expiry, hasExpired: false });
+
+        await userInfo.update({
+          seekExternalCredentials: {
+            ...currentJsonb,
+            SeekSubDurDays: durationDays,
+            SeekSubEndDate: endDateStr,
+            CampaignEnd: endDateStr,
+          },
+        } as any);
+
+        logger.info(`Plan expiry set to ${endDateStr} (${durationDays} days) for user ${userInfo.clientId} [${planTitle ?? 'unknown plan'}]`);
+      } else if (plan) {
+        logger.warn(`Plan found for user ${userInfo.clientId} but has no validityPeriod — expiry not updated`);
+      } else {
+        logger.warn(`No plan found for user ${userInfo.clientId} — expiry not updated`);
+      }
+    }
   }
 
   // Update aggregator records if provided
@@ -1649,7 +1827,7 @@ export const updateCampaignClient = async (id: string, data: any, requestorName?
   }
 
   const updatedRecord = await Credentials.findByPk(id);
-  logger.info(`Updated campaign client: ${id}`);
+  logger.info(`Campaign client ${id} updated by: ${requestorName || 'unknown'}`);
   return updatedRecord!.toJSON();
 };
 

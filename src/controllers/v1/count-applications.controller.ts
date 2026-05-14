@@ -39,7 +39,7 @@ export const countApplications = async (req: Request, res: Response) => {
 
     /* credentials */
     const cred = await Credentials.findOne({
-      where: { id: clientId },
+      where: { id: String(clientId) },
     });
 
     if (!cred) {

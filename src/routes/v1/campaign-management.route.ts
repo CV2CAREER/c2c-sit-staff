@@ -30,7 +30,8 @@ import {
   permanentDeleteCampaignClientController,
   getUserPreferences,
   toggleCampaignFlight,
-  getDocumentReview
+  getDocumentReview,
+  triggerSubscriptionExpiryReminder,
 } from "../../controllers/v1/campaign-management.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
@@ -85,6 +86,9 @@ campaignManagementRouterV1.delete("/clients/:id", deleteCampaignClientController
 campaignManagementRouterV1.delete("/clients/bulk", deleteCampaignClientsBulkController);
 campaignManagementRouterV1.patch("/clients/:clientId/dispatch-samples", dispatchClientSamples);
 campaignManagementRouterV1.patch("/clients/:clientId/toggle-flight", toggleCampaignFlight);
+
+// Job Test Trigger
+campaignManagementRouterV1.post("/jobs/subscription-expiry-reminder/run", triggerSubscriptionExpiryReminder);
 campaignManagementRouterV1.patch("/clients/:id/soft-delete", softDeleteCampaignClientController);
 campaignManagementRouterV1.patch("/clients/:id/restore", restoreCampaignClientController);
 campaignManagementRouterV1.delete("/clients/:id/permanent", permanentDeleteCampaignClientController);

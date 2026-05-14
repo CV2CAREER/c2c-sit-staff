@@ -3,6 +3,7 @@ import ErrorHandler from "../../utils/errorHandler";
 import { User } from "../../models/v1/user.model";
 import { Profile } from "../../models/v1/profile.model";
 import { Aggregator } from "../../models/v1/aggregator.model";
+import { Credentials } from "../../models/v1/credentials.model";
 import { updateTitlesV2, runTestClientSamples } from "../../utils/aggregator-title-updater";
 import updateAggregator from "../../utils/aggregator-updater";
 import createEmailAlias from "../../utils/email-alias";
@@ -97,6 +98,20 @@ class JobsiteService {
     );
 
     await profile.update({ aggregators: updatedLinks });
+
+    // Sync password back to Credentials JSONB when password is updated
+    if (updates.password) {
+      const cred = await Credentials.findOne({ where: { clientId: userId } });
+      if (cred) {
+        const existingJsonb = (cred.toJSON() as any).seekExternalCredentials || {};
+        await cred.update({
+          seekExternalCredentials: {
+            ...existingJsonb,
+            ExternalPassword: updates.password,
+          },
+        } as any);
+      }
+    }
 
     logger.info(`Jobsite updated for user ${userId}, aggId: ${aggId}`);
     return { aggregators: updatedLinks };

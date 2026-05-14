@@ -1290,3 +1290,65 @@ paths:
           description: Campaign client permanently deleted successfully
         '404':
           description: Client not found
+
+  /v1/campaigns/jobs/subscription-expiry-reminder/run:
+    post:
+      tags:
+        - Campaign Management
+      summary: Manually trigger subscription expiry reminder job
+      description: |
+        Immediately executes the subscription expiry reminder cron job without waiting for its
+        scheduled time (daily 8 AM WAT). Use this endpoint to test or manually fire the three
+        milestone Slack notifications.
+
+        **What it does:**
+        - Checks the `Plan` table for subscriptions whose `expiresAt` falls on:
+          - **Today + 14 days** → ⚠️ 14-day reminder
+          - **Today + 7 days** → 🚨 7-day reminder
+          - **Today (0 days)** → 🔴 Expiry-day alert
+        - For each milestone with matching plans, posts a Slack message to `#TOWN_CRIER`
+          tagging the C&S team (`@CSM`) with client details and next steps.
+        - Milestones with no matching plans are skipped silently.
+
+        **How to force all three notifications to fire:**
+        Set a test plan's `expiresAt` to today, today + 7, and today + 14 in the database,
+        then call this endpoint — all three Slack messages should arrive within seconds.
+
+        **Status:** Not yet tested — expected: all four notifications delivered with @C&S team tag matching PROD.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: false
+        description: No request body required.
+      responses:
+        '200':
+          description: Job executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Subscription expiry reminder job executed successfully"
+              examples:
+                Success:
+                  value:
+                    success: true
+                    message: "Subscription expiry reminder job executed successfully"
+        '401':
+          description: Unauthorized — valid staff session token required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Job execution failed — check server logs for details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
