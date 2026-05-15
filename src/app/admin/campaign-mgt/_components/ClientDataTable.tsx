@@ -211,6 +211,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
         fetchSingleClient: true,
         fetchAggregators: true,
         fetchCampaignSheet: tableDisplay === "aggregator",
+        fetchClientApplications: dataOption?.value === "job_applications",
         campaignOptions: {
             active: aggregatorDataState === "active" ? "true" : "false",
             aggregator: selectedAggregator?.value,
@@ -226,6 +227,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
         singleClientDomain,
         campaignSheetDomain,
         aggregatorsDomain,
+        clientApplicationsDomain,
     } = useAdminQueries(adminQueriesOptions);
 
     const {
@@ -243,6 +245,9 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
 
     const { data: jobsiteAggregators, isLoading: isJobsiteAggregatorsLoading } = aggregatorsDomain;
     const { data: applicationData, isLoading: isApplicationLoading, error: applicationError } = campaignSheetDomain;
+    const { data: clientApplicationsData, isLoading: isClientApplicationsLoading, error: clientApplicationsError } = clientApplicationsDomain;
+
+    const isDataOptionLoading = dataOption?.value === "job_applications" ? isClientApplicationsLoading : isApplicationLoading;
 
     // Use the custom hook for client plan management
     const { hasPremiumAccess, canUseSecondaryProfile, planName } = useClientPlan((clientInfo as unknown as Client) || null);
@@ -431,6 +436,20 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             toast.error(errorMessage);
         }
     }, [applicationData, applicationError]);
+
+    useEffect(() => {
+        if (dataOption?.value !== "job_applications") return;
+        if (clientApplicationsData) {
+            const applications = clientApplicationsData?.data?.data ?? [];
+            const total = clientApplicationsData?.data?.pagination?.totalCount ?? 0;
+            setTableData(applications);
+            setTotalTableCount(total);
+        } else if (clientApplicationsError) {
+            setTableData([]);
+            setTotalTableCount(0);
+            toast.error("Failed to fetch client applications");
+        }
+    }, [clientApplicationsData, clientApplicationsError, dataOption?.value]);
 
     useEffect(() => {
         if (!selectedAggregator && tableDisplay === "aggregator") {
@@ -842,7 +861,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                             }}
                             paginationMode="server"
                             columnBufferPx={5}
-                            loading={isApplicationLoading}
+                            loading={isDataOptionLoading}
                             pagination
                             pinnedColumns={{ left: ['__check__', 'actions'] }}
                         />

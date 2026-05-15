@@ -14,6 +14,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     fetchSheetsTemplates = false,
     fetchSingleClient = false,
     fetchUserDocsAndPreferences = false,
+    fetchClientApplications = false,
     userId = "",
     clientId = "",
     campaignOptions = {},
@@ -78,6 +79,14 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     enabled: fetchUserDocsAndPreferences && !!userId,
   });
 
+  const clientApplications = useFetchData<any>({
+    method: "GET",
+    url: clientId ? endpoints.ADMIN_CLIENT_APPLICATIONS(clientId) : "",
+    queryKey: ["admin-client-applications", clientId],
+    enabled: fetchClientApplications && !!clientId,
+    staleEarly: true,
+  });
+
   return useMemo(() => ({
     campaignSheetDomain: {
       data: campaignSheet.data?.data?.records ?? campaignSheet.data?.data ?? campaignSheet.data,
@@ -130,6 +139,13 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
       isError: documentReview.isError,
       error: documentReview.error,
     },
+    clientApplicationsDomain: {
+      data: clientApplications.data,
+      isLoading: clientApplications.isLoading,
+      isSuccess: clientApplications.isSuccess,
+      isError: clientApplications.isError,
+      error: clientApplications.error,
+    },
   }), [
     campaignSheet.data, campaignSheet.isLoading, campaignSheet.isSuccess, campaignSheet.isError, campaignSheet.error,
     campaignClients.data, campaignClients.isLoading, campaignClients.isSuccess, campaignClients.isError, campaignClients.error,
@@ -138,6 +154,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     sheetsTemplates.data, sheetsTemplates.isLoading, sheetsTemplates.isSuccess, sheetsTemplates.isError, sheetsTemplates.error,
     singleClient.data, singleClient.isLoading, singleClient.isSuccess, singleClient.isError, singleClient.error,
     documentReview.data, documentReview.isLoading, documentReview.isSuccess, documentReview.isError, documentReview.error,
+    clientApplications.data, clientApplications.isLoading, clientApplications.isSuccess, clientApplications.isError, clientApplications.error,
   ]);
 };
 

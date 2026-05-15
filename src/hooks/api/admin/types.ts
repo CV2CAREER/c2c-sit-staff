@@ -91,6 +91,7 @@ export interface AdminQueriesOptions {
   fetchSheetsTemplates?: boolean;
   fetchSingleClient?: boolean;
   clientId?: string;
+  fetchClientApplications?: boolean;
   fetchUserDocsAndPreferences?: boolean;
   fetchAggregatorLocations?: boolean;
   aggregatorName?: string;
