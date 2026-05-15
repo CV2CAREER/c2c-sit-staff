@@ -15,29 +15,37 @@ import {
 
 const logger = getServiceLogger("subscription-expiry-reminder-job");
 
-const MILESTONES: Array<{ days: number; label: string; emoji: string; severity: SlackSeverity }> = [
-  { days: 14, label: "14 days",              emoji: "⚠️",  severity: SlackSeverity.INFO },
-  { days: 7,  label: "7 days",               emoji: "🚨",  severity: SlackSeverity.INFO },
-  { days: 0,  label: "0 days (today)",        emoji: "🔴",  severity: SlackSeverity.INFO },
+// Each bucket is [fromDays, toDays] inclusive — non-overlapping so a plan is
+// notified by exactly one milestone per run.
+const MILESTONES: Array<{ from: number; to: number; label: string; emoji: string; severity: SlackSeverity }> = [
+  { from: 8,  to: 14, label: "8–14 days",     emoji: "⚠️",  severity: SlackSeverity.INFO },
+  { from: 1,  to: 7,  label: "1–7 days",      emoji: "🚨",  severity: SlackSeverity.INFO },
+  { from: 0,  to: 0,  label: "0 days (today)", emoji: "🔴",  severity: SlackSeverity.INFO },
 ];
 
-function getDayRange(daysFromNow: number): { start: Date; end: Date } {
-  const start = new Date();
-  start.setDate(start.getDate() + daysFromNow);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+function getDayString(daysFromNow: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
+// Returns the inclusive date range [fromDay, toDay] as "YYYY-MM-DD" strings.
+function getDayRange(fromDays: number, toDays: number): { from: string; to: string } {
+  return { from: getDayString(fromDays), to: getDayString(toDays) };
+}
+
+// Keyed by the `from` value of each milestone bucket.
 const NEXT_STEPS: Record<number, string> = {
-  14: [
+  8: [
     "• Contact each client to discuss renewal options before the deadline",
     "• Send a personalised renewal reminder email",
     "• Review the account health and flag any outstanding issues",
     "• Confirm the preferred payment method is up to date",
   ].join("\n"),
-  7: [
+  1: [
     "• Follow up with clients who have not yet renewed",
     "• Escalate to the account manager if there is no response within 24 hours",
     "• Begin preparing any landing steps in case renewal does not proceed",
@@ -52,12 +60,12 @@ const NEXT_STEPS: Record<number, string> = {
   ].join("\n"),
 };
 
-async function notifyMilestone(days: number, label: string, emoji: string, severity: SlackSeverity) {
-  const { start, end } = getDayRange(days);
+async function notifyMilestone(from: number, to: number, label: string, emoji: string, severity: SlackSeverity) {
+  const { from: fromDate, to: toDate } = getDayRange(from, to);
 
   const plans = await Plan.findAll({
     where: {
-      expiresAt: { [Op.between]: [start, end] },
+      expiresAt: { [Op.between]: [fromDate, toDate] },
       hasExpired: false,
       deletedAt: null,
     },
@@ -103,7 +111,7 @@ async function notifyMilestone(days: number, label: string, emoji: string, sever
     clientLines,
     "",
     "*Next Steps:*",
-    NEXT_STEPS[days],
+    NEXT_STEPS[from],
     "",
     `_Automated check · ${new Date().toISOString()}_`,
   ].join("\n");
@@ -132,7 +140,8 @@ export async function runSubscriptionExpiryReminderJob() {
   logger.info("🔔 Running subscription expiry reminder job...");
   for (const milestone of MILESTONES) {
     await notifyMilestone(
-      milestone.days,
+      milestone.from,
+      milestone.to,
       milestone.label,
       milestone.emoji,
       milestone.severity,
