@@ -6,6 +6,7 @@ import { Aggregator } from "../models/v1/aggregator.model";
 import { Profile } from "../models/v1/profile.model";
 import { Plan } from "../models/v1/plan.model";
 import { Upload } from "../models/v1/upload.model";
+import { Application } from "../models/v1/application.model";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
 import {
@@ -491,17 +492,37 @@ export const getUserProfileDetails = async (userId: string) => {
     throw new ErrorHandler("User not found", 404);
   }
 
-  // Fetch profile for craft information
-  const Profile = require("../models/v1/profile.model").Profile;
-  const profile = await Profile.findByPk(user.profile);
+  // Fetch profile for craft and aggregator information
+  const profile = await Profile.findByPk(user.profileId);
 
   const userData = user.toJSON() as any;
   const profileData = profile ? (profile.toJSON() as any) : {};
 
-  // Application Statistics
-  const totalApplications = profileData.totalApplications || 0;
-  const successfulApplications = profileData.successfulApplications || 0;
-  const failedApplications = profileData.failedApplications || 0;
+  // Fetch application statistics directly from the Application model
+  const [totalApplications, successfulApplications, failedApplications] = await Promise.all([
+    Application.count({
+      where: { client_id: userId, isDeleted: false },
+    }),
+    Application.count({
+      where: {
+        client_id: userId,
+        isDeleted: false,
+        status: { [Op.iLike]: "Successful" },
+      },
+    }),
+    Application.count({
+      where: {
+        client_id: userId,
+        isDeleted: false,
+        status: { [Op.iLike]: "Failed" },
+      },
+    }),
+  ]);
+
+  // Count aggregators linked on the profile's aggregators JSONB array
+  const aggregatorCount = Array.isArray(profileData.aggregators)
+    ? profileData.aggregators.length
+    : 0;
 
   const response = {
     id: user.id,
@@ -517,7 +538,7 @@ export const getUserProfileDetails = async (userId: string) => {
           raw: userData.activePlan.raw,
         }
       : null,
-    craft: profileData.craft || profileData.profession || null,
+    craft: profileData.courseOfStudy || profileData.craft || profileData.profession || null,
     statistics: {
       totalApplications,
       successfulApplications,
@@ -527,6 +548,7 @@ export const getUserProfileDetails = async (userId: string) => {
           ? Math.round((successfulApplications / totalApplications) * 100)
           : 0,
     },
+    aggregatorCount,
   };
 
   logger.info(`Successfully retrieved profile details for user: ${user.email}`);
@@ -923,23 +945,7 @@ export const extractJobData = async (
   }
 
   // Get full name
-  let fullName = "";
-  if (credentialsRecord.seekExternalCredentials) {
-    try {
-      const externalCreds =
-        typeof credentialsRecord.seekExternalCredentials === "string"
-          ? JSON.parse(credentialsRecord.seekExternalCredentials)
-          : credentialsRecord.seekExternalCredentials;
-      fullName = `${externalCreds.First_Name || ""} ${externalCreds.Middle_Name || ""} ${externalCreds.Last_Name || ""}` || externalCreds.Full_Name || "";
-    } catch (e) {
-      logger.warn(`Failed to parse seekExternalCredentials: ${e}`);
-    }
-  }
-
-  if (!fullName) {
-    fullName =
-      `${userRecord.firstName || ""} ${userRecord.lastName || ""}`.trim();
-  }
+  let fullName = `${user.firstName} ${user.middleName} ${user.lastName}` ;
 
   let environment = process.env.NODE_ENV || "development";
   if (environment === "preview") {
@@ -957,6 +963,7 @@ export const extractJobData = async (
 
   logger.info(`✅ Using credentials.id UUID: ${clientId}`);
   logger.info(`   User: ${userRecord.email}`);
+  logger.info(`Job Site: http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`)
 
   // Call Flask AI Extraction API
   const axios = require("axios");
