@@ -32,6 +32,7 @@ import {
   toggleCampaignFlight,
   getDocumentReview,
   triggerSubscriptionExpiryReminder,
+  getClientApplications,
 } from "../../controllers/v1/campaign-management.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
@@ -86,6 +87,7 @@ campaignManagementRouterV1.delete("/clients/:id", deleteCampaignClientController
 campaignManagementRouterV1.delete("/clients/bulk", deleteCampaignClientsBulkController);
 campaignManagementRouterV1.patch("/clients/:clientId/dispatch-samples", dispatchClientSamples);
 campaignManagementRouterV1.patch("/clients/:clientId/toggle-flight", toggleCampaignFlight);
+campaignManagementRouterV1.get("/clients/:clientId/applications", getClientApplications);
 
 // Job Test Trigger
 campaignManagementRouterV1.post("/jobs/subscription-expiry-reminder/run", triggerSubscriptionExpiryReminder);

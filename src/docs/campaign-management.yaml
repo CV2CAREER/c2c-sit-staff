@@ -1352,3 +1352,187 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/campaigns/clients/{clientId}/applications:
+    get:
+      tags:
+        - Campaign Management
+      summary: Get all applications for a client
+      description: |
+        Returns a paginated list of job applications submitted for a specific client,
+        identified by their `client_id`. Supports optional filters for status, run source,
+        aggregator (internal jobsite), and soft-delete state.
+
+        **Pagination** is controlled via `page` and `pageSize` query params (defaults: page 1, 15 per page).
+
+        **`uniqueCount`** in the response represents the number of distinct `JobId` values —
+        useful for deduplicating multi-question applications.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          description: The `client_id` of the client whose applications to retrieve
+          schema:
+            type: string
+            example: "abc123"
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of records per page
+          schema:
+            type: integer
+            default: 15
+            example: 15
+        - name: status
+          in: query
+          required: false
+          description: Filter by application status (e.g. "Applied", "Failed"). Pass "all" or omit to skip.
+          schema:
+            type: string
+            example: "Applied"
+        - name: source
+          in: query
+          required: false
+          description: Filter by run source (`Run_Source` column). Pass "all" or omit to skip.
+          schema:
+            type: string
+            example: "Seek"
+        - name: aggregator
+          in: query
+          required: false
+          description: Filter by internal jobsite name (`Internal_Jobsite` column). Pass "all" or omit to skip.
+          schema:
+            type: string
+            example: "Seek"
+        - name: isDeleted
+          in: query
+          required: false
+          description: Include soft-deleted records. Defaults to `false` (active records only).
+          schema:
+            type: boolean
+            example: false
+      responses:
+        '200':
+          description: Applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Client applications retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            Client:
+                              type: string
+                            Job_Title:
+                              type: string
+                            Internal_Jobsite:
+                              type: string
+                            External_Jobsite:
+                              type: string
+                            Status:
+                              type: string
+                            Run_Source:
+                              type: string
+                            Application_Source:
+                              type: string
+                            Application_Mode:
+                              type: string
+                            Sample_Type:
+                              type: string
+                            isDeleted:
+                              type: boolean
+                            createdAt:
+                              type: string
+                              format: date-time
+                            user:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                email:
+                                  type: string
+                                firstName:
+                                  type: string
+                                lastName:
+                                  type: string
+                      pagination:
+                        type: object
+                        properties:
+                          totalCount:
+                            type: integer
+                            example: 120
+                          currentPage:
+                            type: integer
+                            example: 1
+                          pageSize:
+                            type: integer
+                            example: 15
+                          totalPages:
+                            type: integer
+                            example: 8
+                      uniqueCount:
+                        type: integer
+                        description: Number of distinct JobId values in the result set
+                        example: 95
+              examples:
+                Success:
+                  value:
+                    success: true
+                    message: "Client applications retrieved successfully"
+                    data:
+                      data:
+                        - id: "uuid-123"
+                          Client: "John Doe"
+                          Job_Title: "Software Engineer"
+                          Internal_Jobsite: "Seek"
+                          Status: "Applied"
+                          isDeleted: false
+                          createdAt: "2026-05-01T09:00:00.000Z"
+                          user:
+                            id: "user-uuid"
+                            email: "john@example.com"
+                            firstName: "John"
+                            lastName: "Doe"
+                      pagination:
+                        totalCount: 120
+                        currentPage: 1
+                        pageSize: 15
+                        totalPages: 8
+                      uniqueCount: 95
+        '401':
+          description: Unauthorized — valid staff session token required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

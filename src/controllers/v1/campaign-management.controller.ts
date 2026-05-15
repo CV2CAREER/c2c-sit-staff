@@ -32,7 +32,8 @@ import { getServiceLogger } from "../../utils/createLogger";
     permanentDeleteCampaignClient,
     getUserPreferencesByUserId,
     landOrLaunchCampaign,
-    getDocumentReviewData
+    getDocumentReviewData,
+    getClientApplicationsByClientId,
   } from "../../services/campaign.service";
 
 const logger = getServiceLogger("campaign-management-controller");
@@ -581,4 +582,27 @@ export const triggerSubscriptionExpiryReminder = catchAsyncError(async (_req: Re
     success: true,
     message: "Subscription expiry reminder job executed successfully",
   });
+});
+
+/**
+ * Get all applications for a specific client by client_id
+ * GET /api/v1/campaigns/clients/:clientId/applications
+ */
+export const getClientApplications = catchAsyncError(async (req: Request, res: Response) => {
+  const { clientId } = req.params;
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 15;
+  const isDeleted = req.query.isDeleted !== undefined ? req.query.isDeleted === "true" : undefined;
+  const status = req.query.status as string | undefined;
+  const source = req.query.source as string | undefined;
+  const aggregator = req.query.aggregator as string | undefined;
+
+  const result = await getClientApplicationsByClientId(clientId, page, pageSize, {
+    isDeleted,
+    status,
+    source,
+    aggregator,
+  });
+
+  res.apiSuccess(result, "Client applications retrieved successfully");
 });

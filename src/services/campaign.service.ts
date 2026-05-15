@@ -2064,3 +2064,70 @@ export const dispatchSampleResults = async (
     updatedRecords: updateResult[0],
   };
 };
+
+/**
+ * Get all applications for a specific client by their client_id,
+ * with optional filters (status, source, aggregator, isDeleted) and pagination.
+ */
+export const getClientApplicationsByClientId = async (
+  clientId: string,
+  page: number = 1,
+  pageSize: number = 15,
+  filters?: {
+    isDeleted?: boolean;
+    status?: string;
+    source?: string;
+    aggregator?: string;
+  },
+) => {
+  logger.info(`Fetching applications for client_id: ${clientId} (page: ${page}, size: ${pageSize})`);
+
+  const where: Record<string, any> = { client_id: clientId };
+
+  where.isDeleted = filters?.isDeleted !== undefined ? filters.isDeleted : false;
+
+  if (filters?.status && filters.status !== "all") {
+    where.Status = filters.status;
+  }
+  if (filters?.source && filters.source !== "all") {
+    where.Run_Source = filters.source;
+  }
+  if (filters?.aggregator && filters.aggregator !== "all") {
+    where.Internal_Jobsite = filters.aggregator;
+  }
+
+  const { count, rows } = await Application.findAndCountAll({
+    where,
+    include: [
+      {
+        model: User,
+        as: "user",
+        attributes: ["id", "email", "firstName", "lastName"],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    raw: true,
+    nest: true,
+  });
+
+  const uniqueCount = await Application.count({
+    where,
+    distinct: true,
+    col: "JobId",
+  });
+
+  logger.info(`Found ${count} applications for client_id ${clientId}`);
+
+  return {
+    data: rows,
+    pagination: {
+      totalCount: count,
+      currentPage: page,
+      pageSize,
+      totalPages: Math.ceil(count / pageSize),
+    },
+    uniqueCount,
+  };
+};
