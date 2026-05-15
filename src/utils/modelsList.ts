@@ -62,6 +62,7 @@ import { UserAccessLevel } from "../models/v1/user-access-level.model";
 import { CommunicationTemplate } from "../models/v1/communication-template.model";
 import { CvRevamp } from "@/models/v1/cv-revamp.model";
 import { VCSPrompt, VCS } from "../models/v1/keyword-population.model";
+import { MissingInfoRequest } from "../models/v1/missing-info-request.model";
 
 export const modelList = [
   User,
@@ -130,4 +131,5 @@ export const modelList = [
   CvRevamp,
   VCSPrompt,
   VCS,
+  MissingInfoRequest
 ];

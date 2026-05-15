@@ -10,42 +10,6 @@ import { TrainingTrackerSession } from "../models/v1/training-tracker-session.mo
 import { AccessLevelService } from "../services/admin/access-level.service";
 import { CommunicationTemplateService } from "../services/admin/communication-template.service";
 
-import { Credentials } from "../models/v1/credentials.model";
-import { Aggregator } from "../models/v1/aggregator.model";
-import { UserPreferenceHistory } from "../models/v1/user-preference-history.model";
-import { AdminControl } from "../models/v1/admin-control.model";
-import { AuditLog } from "../models/v1/audit-log.model";
-import { CRTracking } from "../models/v1/cr-tracking.model";
-import { User } from "../models/v1/user.model";
-import { CvRevamp } from "../models/v1/cv-revamp.model";
-import { Profile } from "../models/v1/profile.model";
-import { Referrer } from "../models/v1/referrer.model";
-import { Partner } from "../models/v1/partner.model";
-import { SalesConsultant } from "../models/v1/sales-consultant.model";
-import { CustomerService } from "../models/v1/customer-service.model";
-import { Application } from "@/models/v1/application.model";
-import { AuditTrail } from "@/models/v1/audit-trail.model";
-import { SupportConversation } from "@/models/v1/chat-message.model";
-import { Chat } from "@/models/v1/chat.model";
-import { ClientAvailability } from "@/models/v1/client-availability.model";
-import { Plan } from "@/models/v1/plan.model";
-import { InterviewPrepQuestionAnswer } from "@/models/v1/interview-prep.model";
-import { InterviewPrepEvidence } from "@/models/v1/interview-prep-evidence.model";
-import { Message } from "@/models/v1/message.model";
-import { PassKeyVault } from "@/models/v1/passkey-vault.model";
-import { SalesOperation } from "@/models/v1/sales-operation.model";
-import { Schedule } from "@/models/v1/schedule.model";
-import { Session } from "@/models/v1/session.model";
-import { SystemConfig } from "@/models/v1/system-config.model";
-import { SupportSession } from "@/models/v1/support-session.model";
-import { TrainingTracker } from "@/models/v1/training-tracker.model";
-import { UnsubscribedUser } from "@/models/v1/unsubscribed-user.model";
-import { Upload } from "@/models/v1/upload.model";
-import { UploadRecycle } from "@/models/v1/upload-recycle.model";
-import { UserAccessLevel } from "@/models/v1/user-access-level.model";
-import { UserPermission } from "@/models/v1/user-permissions.model";
-import { AccessLevel } from "@/models/v1/access-level.model";
-import { VCSPrompt, VCS } from "../models/v1/keyword-population.model";
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -110,7 +74,7 @@ export const connectDB = async (): Promise<void> => {
 
         // To be done
         // await UserPreferenceHistory.sync({ alter: true });
-        // await UserPreferenceHistory.sync({ force: false });
+        // await MissingInfoRequest.sync({ force: false });
         // await VCS.sync({ force: false });
         // await CvRevamp.sync({ force: false });
         // await ClientAvailability.sync({ alter: true });

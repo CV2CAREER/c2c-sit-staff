@@ -68,17 +68,11 @@ export const deleteCommunicationTemplate = catchAsyncError(async (req: any, res:
 });
 
 export const notifyMissingInfo = catchAsyncError(async (req: any, res: Response) => {
-  const { user } = req;
   const host = req.headers.host || req.headers.origin || "localhost";
   logger.info(
-    `Notifying missing info — triggered by: ${user?.email ?? "unknown"}, body: ${JSON.stringify(req.body)}`,
+    `Notifying missing info — triggered by: ${req.user?.email ?? "unknown"}, body: ${JSON.stringify(req.body)}`,
   );
-  const payload = await CommunicationTemplateService.notifyMissingInfo(req.body, host, {
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-  });
+  const payload = await CommunicationTemplateService.notifyMissingInfo(req.body, host, req.user);
   return res.apiSuccess(payload, "Notification sent successfully", 200);
 });
 

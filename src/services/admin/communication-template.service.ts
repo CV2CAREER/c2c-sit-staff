@@ -2,6 +2,7 @@ import crypto from "crypto";
 import path from "path";
 import ErrorHandler from "@/utils/errorHandler";
 import { CommunicationTemplate } from "@/models/v1/communication-template.model";
+import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
 import { User } from "@/models/v1/user.model";
 import { getServiceLogger } from "@/utils/createLogger";
 import { sendMail } from "@/config/sendGrid";
@@ -193,12 +194,7 @@ export class CommunicationTemplateService {
       mode?: "email" | "whatsapp";
     },
     host: string,
-    requestingUser: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-    },
+    requestingUser: Pick<User, "id" | "firstName" | "lastName" | "email">,
   ) {
     const location = getEnvironmentFromHost(host);
     const MISSING_INFO_LABELS: Record<string, string> = {
@@ -243,124 +239,110 @@ export class CommunicationTemplateService {
       `Missing info notification — user: ${userId}, type: ${missingInfoType}, mode: ${mode}, triggered by: ${triggeredBy}`,
     );
 
-    if (mode === "email") {
-      // Send client and admin emails in parallel; log but don't throw on partial failure
-      const [clientResult, adminResult] = await Promise.allSettled([
-        sendMail({
-          email: user.email,
-          subject: "You have missing profile information",
-          templateName: "client-missing-info.ejs",
-          templateDir: mailDirectory,
-          templateData: {
-            name: clientName,
-            missingField: missingFieldLabel,
-            jobUrl: missingInfoUrl,
-            updateMissingInfoUrl,
-            currentYear: new Date().getFullYear(),
-          },
-        }),
-        sendMail({
-          email: TEAM_EMAIL,
-          subject: "New Missing Info Request Created",
-          templateName: "admin-missing-info.ejs",
-          templateDir: mailDirectory,
-          templateData: {
-            clientName,
-            clientEmail: user.email,
-            missingField: missingFieldLabel,
-            jobUrl: missingInfoUrl,
-            updateMissingInfoUrl,
-            triggeredBy,
-            channel: mode,
-            currentYear: new Date().getFullYear(),
-          },
-        }),
-      ]);
-
-      if (clientResult.status === "rejected") {
-        logger.error(`Client missing-info email failed for ${user.email}:`, clientResult.reason);
-      }
-      if (adminResult.status === "rejected") {
-        logger.error(`Admin missing-info email failed:`, adminResult.reason);
-      }
-
-      // Fire Slack notification without blocking the response
-      setImmediate(() => {
-        SlackService.notify({
-          location,
-          host,
-          node: SlackNode.USER_MANAGEMENT,
-          provider: SlackProvider.SENDGRID,
-          severity: SlackSeverity.INFO,
-          type: SlackEventType.MISSING_INFO,
-          channel: SlackChannel.TOWN_CRIER,
-          teamMentions: "CSM",
-          trigger: triggeredBy,
-          body: [
-            `Client Missing Information Notification Sent Through Email`,
-            `Client: ${clientName} (${user.email})`,
-            `Missing: ${missingFieldLabel}`,
-            `Job URL: ${missingInfoUrl}`,
-            `Action Link: ${updateMissingInfoUrl}`,
-            `Triggered by: ${triggeredBy}`,
-          ].join("\n"),
-        });
-      });
-
-      return {
-        userId: user.id,
-        email: user.email,
-        mode,
+    // Persist the request and send the notification concurrently.
+    // DB write is awaited so the record exists before we return; notifications
+    // are fire-and-forget so the endpoint responds immediately after the write.
+    const [record] = await Promise.all([
+      MissingInfoRequest.create({
+        targetUserId: user.id,
+        requestedById: requestingUser.id,
         missingInfoType,
-        missingFieldLabel,
-        updateMissingInfoUrl,
-        notifiedAt: new Date().toISOString(),
-      };
-    }
+        missingInfoUrl: updateMissingInfoUrl,
+      }),
+      // Kick off delivery without blocking the response
+      new Promise<void>((resolve) => {
+        setImmediate(async () => {
+          try {
+            if (mode === "email") {
+              const [clientResult, adminResult] = await Promise.allSettled([
+                sendMail({
+                  email: user.email,
+                  subject: "You have missing profile information",
+                  templateName: "client-missing-info.ejs",
+                  templateDir: mailDirectory,
+                  templateData: {
+                    name: clientName,
+                    missingField: missingFieldLabel,
+                    jobUrl: missingInfoUrl,
+                    updateMissingInfoUrl,
+                    currentYear: new Date().getFullYear(),
+                  },
+                }),
+                sendMail({
+                  email: TEAM_EMAIL,
+                  subject: "New Missing Info Request Created",
+                  templateName: "admin-missing-info.ejs",
+                  templateDir: mailDirectory,
+                  templateData: {
+                    clientName,
+                    clientEmail: user.email,
+                    missingField: missingFieldLabel,
+                    jobUrl: missingInfoUrl,
+                    updateMissingInfoUrl,
+                    triggeredBy,
+                    channel: mode,
+                    currentYear: new Date().getFullYear(),
+                  },
+                }),
+              ]);
 
-    if (mode === "whatsapp") {
-      await JustCallTriggerService.sendMsg({
-        action: "notify-missing-info",
-        payload: {
-          name: user.firstName,
-          phone: (user.whatsappNumber ?? "").replace("+", ""),
-        },
-      });
+              if (clientResult.status === "rejected") {
+                logger.error(`Client missing-info email failed for ${user.email}:`, clientResult.reason);
+              }
+              if (adminResult.status === "rejected") {
+                logger.error(`Admin missing-info email failed:`, adminResult.reason);
+              }
+            }
 
-      // Fire Slack notification without blocking the response
-      setImmediate(() => {
-        SlackService.notify({
-          location,
-          host,
-          node: SlackNode.USER_MANAGEMENT,
-          provider: SlackProvider.SENDGRID,
-          severity: SlackSeverity.INFO,
-          type: SlackEventType.MISSING_INFO,
-          channel: SlackChannel.TOWN_CRIER,
-          teamMentions: "CSM",
-          trigger: triggeredBy,
-          body: [
-            `Client Missing Information Notification Sent Through WhatsApp`,
-            `Client: ${clientName} (${user.email})`,
-            `Missing: ${missingFieldLabel}`,
-            `Job URL: ${missingInfoUrl}`,
-            `Action Link: ${updateMissingInfoUrl}`,
-            `Triggered by: ${triggeredBy}`,
-          ].join("\n"),
+            if (mode === "whatsapp") {
+              await JustCallTriggerService.sendMsg({
+                action: "notify-missing-info",
+                payload: {
+                  name: user.firstName,
+                  phone: (user.whatsappNumber ?? "").replace("+", ""),
+                },
+              });
+            }
+
+            await SlackService.notify({
+              location,
+              host,
+              node: SlackNode.USER_MANAGEMENT,
+              provider: SlackProvider.SENDGRID,
+              severity: SlackSeverity.INFO,
+              type: SlackEventType.MISSING_INFO,
+              channel: SlackChannel.TOWN_CRIER,
+              teamMentions: "CSM",
+              trigger: triggeredBy,
+              body: [
+                `Client Missing Information Notification Sent Through ${mode === "whatsapp" ? "WhatsApp" : "Email"}`,
+                `Client: ${clientName} (${user.email})`,
+                `Missing: ${missingFieldLabel}`,
+                `Job URL: ${missingInfoUrl}`,
+                `Action Link: ${updateMissingInfoUrl}`,
+                `Triggered by: ${triggeredBy}`,
+                `Request ID: ${requestId}`,
+              ].join("\n"),
+            });
+          } catch (err: any) {
+            logger.error(`Background notification failed for request ${requestId}:`, err.message);
+          }
+          resolve();
         });
-      });
+      }),
+    ]);
 
-      return {
-        userId: user.id,
-        email: user.email,
-        mode,
-        missingInfoType,
-        missingFieldLabel,
-        notifiedAt: new Date().toISOString(),
-      };
-    }
-
-    throw new ErrorHandler("Invalid mode. Must be 'email' or 'whatsapp'.", 400);
+    return {
+      id: record.id,
+      requestId,
+      userId: user.id,
+      email: user.email,
+      mode,
+      missingInfoType,
+      missingFieldLabel,
+      updateMissingInfoUrl,
+      notifiedAt: new Date().toISOString(),
+    };
   }
 
   static async ensureTemplatesTable() {
