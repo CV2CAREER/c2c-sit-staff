@@ -258,7 +258,7 @@ export class CommunicationTemplateService {
               const [clientResult, adminResult] = await Promise.allSettled([
                 sendMail({
                   email: user.email,
-                  subject: "You have missing profile information",
+                  subject: "Action Required: Missing Profile Information",
                   templateName: "client-missing-info.ejs",
                   templateDir: mailDirectory,
                   templateData: {
