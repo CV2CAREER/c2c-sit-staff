@@ -82,8 +82,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
         profile.statistics?.totalApplications ?? 0,
         profile.statistics?.successfulApplications ?? 0,
         profile.statistics?.failedApplications ?? 0,
-        profile.aggregatorCount ?? 0, 
-        profile.statistics?.successRate ?? 0,
+        profile.aggregatorCount ?? 0
       ]);
     }
   }, [profile]);
