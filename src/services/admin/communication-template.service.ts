@@ -244,6 +244,7 @@ export class CommunicationTemplateService {
     // are fire-and-forget so the endpoint responds immediately after the write.
     const [record] = await Promise.all([
       MissingInfoRequest.create({
+        id: requestId,
         targetUserId: user.id,
         requestedById: requestingUser.id,
         missingInfoType,
