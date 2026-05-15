@@ -144,25 +144,31 @@ export const sendPreferenceNotifications = async (
   });
 
   // Send Slack notification
-  const location = getEnvironmentFromHost(host);
-  await SlackService.notify({
-    location,
-    host,
-    node: SlackNode.MESSAGING,
-    provider: SlackProvider.SENDGRID,
-    severity: SlackSeverity.INFO,
-    trigger: `User preference update notification sent`,
-    type: SlackEventType.USER_TRIGGERED,
-    channel: SlackChannel.CRY_WOLF,
-    body: `A User, ${firstname} (${email}), has been notified of updated job preferences.
-*Success*: Notification email sent specifically for preference updates.
-*Immediate Impact*: User is informed that their preferences have been updated and can review them.
-*Next Step*: Admin to monitor for user feedback or further preference changes.`,
-  });
+  setImmediate(async () => {
+    try {
+      const location = getEnvironmentFromHost(host);
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.SENDGRID,
+        severity: SlackSeverity.INFO,
+        trigger: `User preference update notification sent`,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: `A User, ${firstname} (${email}), has been notified of updated job preferences.
+    *Success*: Notification email sent specifically for preference updates.
+    *Immediate Impact*: User is informed that their preferences have been updated and can review them.
+    *Next Step*: Admin to monitor for user feedback or further preference changes.`,
+      });
 
-  logger.info(
-    `Preference notifications sent successfully for user: ${firstname} (${email})`,
-  );
+      logger.info(
+        `Preference notifications sent successfully for user: ${firstname} (${email})`,
+      );
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
 
   return {
     emailSent: true,
@@ -217,25 +223,33 @@ export const dispatchClientCredentials = async (
   });
 
   // Send Slack notification
-  const location = getEnvironmentFromHost(host);
-  await SlackService.notify({
-    location,
-    host,
-    node: SlackNode.MESSAGING,
-    provider: SlackProvider.SENDGRID,
-    severity: SlackSeverity.INFO,
-    trigger: `Jobsite credentials dispatched`,
-    type: SlackEventType.USER_TRIGGERED,
-    channel: SlackChannel.CRY_WOLF,
-    body: `Jobsite credentials have been dispatched to user ${clientUser.firstName} ${clientUser.lastName}.
-*Success*: Email containing ${credentials.length} aggregator credentials sent.
-*Immediate Impact*: User can now access and manage their jobsite accounts.
-*Next Step*: Monitor for user support requests regarding login issues.`,
-  });
+  setImmediate(async () => {
+    try {
 
-  logger.info(
-    `Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`,
-  );
+      const location = getEnvironmentFromHost(host);
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.SENDGRID,
+        severity: SlackSeverity.INFO,
+        trigger: `Jobsite credentials dispatched`,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: `Jobsite credentials have been dispatched to user ${clientUser.firstName} ${clientUser.lastName}.
+    *Success*: Email containing ${credentials.length} aggregator credentials sent.
+    *Immediate Impact*: User can now access and manage their jobsite accounts.
+    *Next Step*: Monitor for user support requests regarding login issues.`,
+      });
+
+      logger.info(
+        `Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`,
+      );
+      
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
 
   return {
     credentialsDispatched: credentials.length,
@@ -316,21 +330,29 @@ export const generateExternalPassword = async (
   );
 
   // Send Slack notification
-  const location = getEnvironmentFromHost(host);
-  await SlackService.notify({
-    location,
-    host,
-    node: SlackNode.DATABASE,
-    provider: SlackProvider.MYSQL,
-    severity: SlackSeverity.INFO,
-    trigger: `External password generated for user`,
-    type: SlackEventType.USER_TRIGGERED,
-    channel: SlackChannel.CRY_WOLF,
-    teamMentions: "CSM",
-    body: `Jobsite password for user ${userFullName} has been generated successfully.
-*Success*: ExternalPassword field updated in database with auto-generated password.
-*Immediate Impact*: User can now be dispatched with credentials for automated applications.
-*Next Step*: Proceed with credential dispatch if ready.`,
+  setImmediate(async () => {
+    try {
+
+      const location = getEnvironmentFromHost(host);
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.DATABASE,
+        provider: SlackProvider.MYSQL,
+        severity: SlackSeverity.INFO,
+        trigger: `External password generated for user`,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        teamMentions: "CSM",
+        body: `Jobsite password for user ${userFullName} has been generated successfully.
+    *Success*: ExternalPassword field updated in database with auto-generated password.
+    *Immediate Impact*: User can now be dispatched with credentials for automated applications.
+    *Next Step*: Proceed with credential dispatch if ready.`,
+      });
+      
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
   });
 
   return {
@@ -1126,16 +1148,24 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 *Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
 *Next Step*: TPA to hand over any pending items if applicable.`;
 
-    await SlackService.notify({
-      location: getEnvironmentFromHost(host || ""),
-      host: host || "",
-      node: SlackNode.HUMAN_RESOURCE,
-      provider: SlackProvider.HUBSTAFF,
-      severity: SlackSeverity.INFO,
-      trigger: `VA unassigned from client`,
-      type: SlackEventType.USER_TRIGGERED,
-      channel: SlackChannel.VA,
-      body: message,
+    setImmediate(async () => {
+      try {
+
+        await SlackService.notify({
+          location: getEnvironmentFromHost(host || ""),
+          host: host || "",
+          node: SlackNode.HUMAN_RESOURCE,
+          provider: SlackProvider.HUBSTAFF,
+          severity: SlackSeverity.INFO,
+          trigger: `VA unassigned from client`,
+          type: SlackEventType.USER_TRIGGERED,
+          channel: SlackChannel.VA,
+          body: message,
+        });
+        
+      } catch (err) {
+        logger.error(`❌ Slack notification failed: ${err}`);
+      }
     });
 
     await targetCred.update({ AssignedPCName: null, AssignedPCEmail: null, updatedBy: updatedBy } as any);
@@ -1174,16 +1204,24 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
 
-  await SlackService.notify({
-    location: getEnvironmentFromHost(host || ""),
-    host: host || "",
-    node: SlackNode.HUMAN_RESOURCE,
-    provider: SlackProvider.HUBSTAFF,
-    severity: SlackSeverity.INFO,
-    trigger: `VA assigned to client`,
-    type: SlackEventType.USER_TRIGGERED,
-    channel: SlackChannel.VA,
-    body: message,
+  setImmediate(async () => {
+    try {
+
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ""),
+        host: host || "",
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: `VA assigned to client`,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.VA,
+        body: message,
+      });
+      
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
   });
 
   logger.info(`VA assigned successfully for credId=${credId} to ${vaEmail}`);
@@ -1535,18 +1573,26 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
 • Schedule relaunch when ready`;
   }
 
-  const location = getEnvironmentFromHost(host);
-  await SlackService.notify({
-    location,
-    host,
-    node: SlackNode.MESSAGING,
-    provider: SlackProvider.CLARITY,
-    severity: SlackSeverity.INFO,
-    trigger: slackTrigger,
-    type: SlackEventType.ADMIN_ACTION,
-    channel: SlackChannel.VA,
-    teamMentions: "CSM",
-    body: slackBody,
+  setImmediate(async () => {
+    try {
+
+      const location = getEnvironmentFromHost(host);
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.CLARITY,
+        severity: SlackSeverity.INFO,
+        trigger: slackTrigger,
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.VA,
+        teamMentions: "CSM",
+        body: slackBody,
+      });
+      
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
   });
 
   logger.info(`Campaign status updated: ${message} for client: ${clientId}`);
@@ -2037,26 +2083,34 @@ export const dispatchSampleResults = async (
   });
 
   // Send Slack notification
-  const location = getEnvironmentFromHost(host || "");
+  setImmediate(async () => {
+    try {
 
-  await SlackService.notify({
-    location,
-    host: host || "",
-    node: SlackNode.MESSAGING,
-    provider: SlackProvider.SENDGRID,
-    severity: SlackSeverity.INFO,
-    trigger: `Sample results dispatched`,
-    type: SlackEventType.ADMIN_ACTION,
-    channel: SlackChannel.CRY_WOLF,
-    body: `${user.firstName} has been notified of their sample test results for review.
-*Success*: Sample results successfully dispatched to the user.
-*Immediate Impact*: User can now review and provide feedback on the samples.
-*Next Step*: Admin to wait for user acceptance or feedback.`,
+      const location = getEnvironmentFromHost(host || "");
+
+      await SlackService.notify({
+        location,
+        host: host || "",
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.SENDGRID,
+        severity: SlackSeverity.INFO,
+        trigger: `Sample results dispatched`,
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.CRY_WOLF,
+        body: `${user.firstName} has been notified of their sample test results for review.
+          *Success*: Sample results successfully dispatched to the user.
+          *Immediate Impact*: User can now review and provide feedback on the samples.
+          *Next Step*: Admin to wait for user acceptance or feedback.`,
+      });
+
+      logger.info(
+        `Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`,
+      );
+      
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
   });
-
-  logger.info(
-    `Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`,
-  );
 
   return {
     success: true,
