@@ -326,6 +326,7 @@ export const generateExternalPassword = async (
     trigger: `External password generated for user`,
     type: SlackEventType.USER_TRIGGERED,
     channel: SlackChannel.CRY_WOLF,
+    teamMentions: "CSM",
     body: `Jobsite password for user ${userFullName} has been generated successfully.
 *Success*: ExternalPassword field updated in database with auto-generated password.
 *Immediate Impact*: User can now be dispatched with credentials for automated applications.
