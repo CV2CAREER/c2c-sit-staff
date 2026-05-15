@@ -20,7 +20,7 @@ interface cardsDataProps {
 }
 
 const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = ({ clientId }) => {
-  const [applicationData, setApplicationData] = useState([0, 0, 0]);
+  const [applicationData, setApplicationData] = useState([0, 0, 0, 0, 0]);
   const [clientList, setClientList] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loaders, setLoaders] = useState({
@@ -64,19 +64,29 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     }
   }, [allUserData]);
 
-  // const plan = clientCampaignData?.data?.plan || null;
-  const clientFullName = `${singleClientData?.seekExternalCredentials?.First_Name} ${singleClientData?.seekExternalCredentials?.Middle_Name} ${singleClientData?.seekExternalCredentials?.Last_Name}` || singleClientData?.name || clientCampaignData?.data?.name || "";
-  const clientCraft = singleClientData?.seekExternalCredentials?.Craft || singleClientData?.craft || clientCampaignData?.data?.craft || "";
+  const profile = clientCampaignData?.data;
+
+  const nameFromCredentials = [
+    singleClientData?.seekExternalCredentials?.First_Name,
+    singleClientData?.seekExternalCredentials?.Middle_Name,
+    singleClientData?.seekExternalCredentials?.Last_Name,
+  ].filter(Boolean).join(' ');
+
+  const clientFullName = nameFromCredentials || singleClientData?.name || profile?.name || "";
+  const clientCraft = singleClientData?.craft || singleClientData?.seekExternalCredentials?.Craft || profile?.craft || "";
+
 
   useEffect(() => {
-    if (clientCampaignData) {
+    if (profile) {
       setApplicationData([
-        clientCampaignData.data.statistics?.successfulApplications ?? 0,
-        clientCampaignData.data.statistics?.failedApplications ?? 0,
-        0,
+        profile.statistics?.totalApplications ?? 0,
+        profile.statistics?.successfulApplications ?? 0,
+        profile.statistics?.failedApplications ?? 0,
+        profile.aggregatorCount ?? 0, 
+        profile.statistics?.successRate ?? 0,
       ]);
     }
-  }, [clientCampaignData]);
+  }, [profile]);
 
   async function handleGeneratePassword(userId: string) {
     try {
@@ -116,8 +126,17 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     
   const cardsData: cardsDataProps[] = [
     {
-      title: "Successful Applications",
+      title: "Total Applications",
       value: applicationData[0],
+      icon: {
+        name: Layers,
+        bgColor: "bg-blue-100",
+        color: "text-blue-700",
+      },
+    },
+    {
+      title: "Successful Applications",
+      value: applicationData[1],
       icon: {
         name: Layers,
         bgColor: "bg-green-200",
@@ -126,7 +145,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     },
     {
       title: "Failed Applications",
-      value: applicationData[1],
+      value: applicationData[2],
       icon: {
         name: Layers,
         bgColor: "bg-red-200",
@@ -135,13 +154,13 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     },
     {
       title: "Active Jobsites",
-      value: applicationData[2],
+      value: applicationData[3],
       icon: {
         name: Bot,
         bgColor: "bg-lightblue",
         color: "text-blue",
       },
-    },
+    }
   ];
 
   return (
@@ -178,7 +197,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
               <div>
                 <h1 className="text-2xl font-bold mt-4">{clientFullName}</h1>
                 <p className="text-sm text-gray-500">Client ID: {clientId}</p>
-                <p>Craft: {clientCraft}</p>
+                {clientCraft && <p className="text-sm">Craft: {clientCraft}</p>}
               </div>
             </>
           )}
@@ -186,7 +205,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
 
         {/* Insights Cards */}
         <section className="w-full lg:w-[60%] flex flex-col gap-8 lg:gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {isLoading
               ? Array(3)
                   .fill(0)
