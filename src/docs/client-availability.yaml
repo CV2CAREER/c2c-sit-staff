@@ -1,0 +1,315 @@
+# OpenAPI Specification for Client Availability Endpoints
+
+paths:
+  /v1/client-availabilities:
+    get:
+      tags:
+        - Client Availabilities
+      summary: Get All Client Availabilities
+      description: |
+        Retrieves all active client availabilities where `isAvailable` is true
+        and `isDeleted` is false. Results are ordered by date ascending and include
+        the associated client's basic profile.
+
+        Intended for coaches and admins to browse open availability slots before
+        accepting a session request.
+
+        **Required Role:** Authenticated user (coach or admin recommended)
+      operationId: getAllClientAvailabilities
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Client availabilities retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Client availabilities retrieved successfully"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientAvailability'
+        '401':
+          description: Authentication required
+        '500':
+          description: Internal server error
+
+  /v1/client-availabilities/{id}/accept:
+    post:
+      tags:
+        - Client Availabilities
+      summary: Accept Client Availability (Coach)
+      description: |
+        Allows a coach to accept a client availability slot, which:
+
+        1. Validates the availability exists and has not already been accepted.
+        2. Calculates the session duration in minutes from `startTime` and `endTime`.
+        3. Creates a new `Session` record with status `scheduled`, the calculated
+           duration, and the provided (or default) meeting link.
+        4. Marks the `ClientAvailability` record as `isAvailable: false`.
+        5. Fires off (via `setImmediate`) email notifications to the **client**,
+           the **coach**, and all **admins**, plus a **Slack** alert to the
+           `TOWN_CRIER` channel.
+
+        If `meetingLink` is omitted in the request body, the default Google Meet
+        link `https://meet.google.com/ipd-yhtc-kkg` is used.
+
+        **Required Role:** Authenticated user (coach)
+      operationId: acceptClientAvailability
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: ID of the client availability to accept
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meetingLink:
+                  type: string
+                  description: >
+                    Google Meet or other video conferencing URL. Falls back to the
+                    platform default (`https://meet.google.com/ipd-yhtc-kkg`) if omitted.
+                  example: "https://meet.google.com/abc-defg-hij"
+      responses:
+        '201':
+          description: Availability accepted and session scheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Availability accepted and session scheduled successfully"
+                  data:
+                    $ref: '#/components/schemas/Session'
+        '401':
+          description: Authentication required
+        '404':
+          description: Client availability not found or already accepted
+        '500':
+          description: Internal server error
+
+  /v1/sessions/{sessionId}/reschedule:
+    patch:
+      tags:
+        - Sessions
+      summary: Reschedule a Session (Coach)
+      description: |
+        Allows the assigned coach to reschedule an existing session by providing
+        new time details. The session must be in `pending` or `scheduled` status —
+        completed and canceled sessions cannot be rescheduled.
+
+        On success the endpoint:
+        1. Recalculates `duration` in minutes from the new `startTime`/`endTime`.
+        2. Updates `time`, `duration`, `timezone`, and `meetingLink` on the session.
+        3. Fires (via `setImmediate`) email notifications to the **client**, the
+           **coach**, and all **admins**, and a **Slack** alert to the `CRY_WOLF` channel.
+
+        Fields omitted from the request body (`timezone`, `meetingLink`) fall back
+        to the values already stored on the session.
+
+        **Required Role:** Authenticated coach (must be the coach assigned to the session)
+      operationId: rescheduleSession
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          description: ID of the session to reschedule
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - startTime
+                - endTime
+              properties:
+                startTime:
+                  type: string
+                  description: New start time (HH:mm or h:mm A)
+                  example: "10:00"
+                endTime:
+                  type: string
+                  description: New end time (HH:mm or h:mm A)
+                  example: "11:30"
+                date:
+                  type: string
+                  format: date
+                  description: New date for the session (optional)
+                  example: "2026-06-15"
+                timezone:
+                  type: string
+                  description: New timezone (optional, defaults to session's existing timezone)
+                  example: "Australia/Sydney"
+                meetingLink:
+                  type: string
+                  description: New meeting link (optional, defaults to session's existing link)
+                  example: "https://meet.google.com/new-link"
+      responses:
+        '200':
+          description: Session rescheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Session rescheduled successfully"
+                  data:
+                    $ref: '#/components/schemas/Session'
+        '400':
+          description: >
+            startTime/endTime missing, or session is already completed/canceled
+        '401':
+          description: Authentication required
+        '404':
+          description: Session not found or authenticated coach is not assigned to it
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    ClientAvailability:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the availability record
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        date:
+          type: string
+          format: date
+          description: The date of the availability slot
+          example: "2026-06-10"
+        day:
+          type: string
+          enum: [sunday, monday, tuesday, wednesday, thursday, friday, saturday]
+          description: Day of the week for the availability
+          example: "wednesday"
+        timezone:
+          type: string
+          description: Timezone for the availability slot
+          example: "Australia/Sydney"
+        startTime:
+          type: string
+          description: Start time of the availability slot (HH:mm or h:mm A)
+          example: "09:00"
+        endTime:
+          type: string
+          description: End time of the availability slot (HH:mm or h:mm A)
+          example: "10:30"
+        sessionType:
+          type: string
+          enum: [screening_preparation, interview_panel, career_consultation]
+          description: Type of coaching session requested
+          example: "interview_panel"
+        isAvailable:
+          type: boolean
+          description: Whether this slot is still open for acceptance
+          example: true
+        isDeleted:
+          type: boolean
+          description: Soft-delete flag
+          example: false
+        clientId:
+          type: string
+          description: ID of the client who submitted the availability
+          example: "user-uuid-here"
+        client:
+          type: object
+          description: Basic client profile (included in responses)
+          properties:
+            id:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes from the client
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the session
+        sessionType:
+          type: string
+          enum: [screening_preparation, interview_panel, career_consultation]
+        sessionStatus:
+          type: string
+          enum: [pending, completed, scheduled, canceled, uncompleted]
+          example: "scheduled"
+        duration:
+          type: integer
+          description: Session duration in minutes, calculated from startTime and endTime
+          example: 90
+        meetingLink:
+          type: string
+          description: Video conference link for the session
+          example: "https://meet.google.com/ipd-yhtc-kkg"
+        clientId:
+          type: string
+        coachId:
+          type: string
+        time:
+          type: object
+          description: Session start and end times
+          properties:
+            startTime:
+              type: string
+              example: "09:00"
+            endTime:
+              type: string
+              example: "10:30"
+        timezone:
+          type: string
+          example: "Australia/Sydney"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

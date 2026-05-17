@@ -7,6 +7,7 @@ import {
   getCoachSessions,
   updateSession,
   cancelSession,
+  rescheduleSession,
 } from "../../controllers/v1/sessions.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
@@ -234,6 +235,70 @@ sessionsRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   updateSession,
+);
+
+/**
+ * @swagger
+ * /v1/sessions/{sessionId}/reschedule:
+ *   patch:
+ *     summary: Reschedule a session (coach only)
+ *     tags:
+ *       - Sessions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Session ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - startTime
+ *               - endTime
+ *             properties:
+ *               startTime:
+ *                 type: string
+ *                 description: New start time (HH:mm or h:mm A)
+ *                 example: "10:00"
+ *               endTime:
+ *                 type: string
+ *                 description: New end time (HH:mm or h:mm A)
+ *                 example: "11:30"
+ *               date:
+ *                 type: string
+ *                 format: date
+ *                 description: New date (optional, keeps existing if omitted)
+ *                 example: "2026-06-15"
+ *               timezone:
+ *                 type: string
+ *                 description: New timezone (optional, keeps existing if omitted)
+ *                 example: "Australia/Sydney"
+ *               meetingLink:
+ *                 type: string
+ *                 description: New meeting link (optional, keeps existing if omitted)
+ *                 example: "https://meet.google.com/new-link"
+ *     responses:
+ *       200:
+ *         description: Session rescheduled successfully
+ *       400:
+ *         description: Cannot reschedule a completed or canceled session, or missing required fields
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Session not found or coach not assigned
+ */
+sessionsRouterV1.patch(
+  "/:sessionId/reschedule",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  rescheduleSession,
 );
 
 /**

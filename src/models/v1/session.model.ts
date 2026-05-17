@@ -13,6 +13,7 @@ import {
   Index,
 } from "sequelize-typescript";
 import {
+  DayOfWeek,
   EvidenceType,
   PrepStatus,
   SessionStatus,
@@ -139,6 +140,14 @@ export class Session extends Model {
 
   @BelongsTo(() => User, "coachId")
   coach?: User;
+
+  @AllowNull(true)
+  @Column(DataType.DATEONLY)
+  sessionDate?: string;
+
+  @AllowNull(true)
+  @Column(DataType.ENUM(...Object.values(DayOfWeek)))
+  sessionDay?: DayOfWeek;
 
   @AllowNull(true)
   @Column(DataType.STRING)

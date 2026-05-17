@@ -49,6 +49,10 @@ export class MissingInfoRequest extends Model {
   @Column(DataType.TEXT)
   missingInfoUrl!: string;
 
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  jobURL!: string;
+
   @AllowNull(false)
   @Default(DataType.NOW)
   @Column(DataType.DATE)

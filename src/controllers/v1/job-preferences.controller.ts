@@ -345,9 +345,6 @@ export const getSheetTemplatesController = catchAsyncError(
 
 export const getUsersFullNameController = catchAsyncError(
   async (req: Request, res: Response) => {
-    if (!ensureAdmin(req)) {
-      return sendError(res, "You are not authorized to access this resource", 403);
-    }
 
     const skipRaw = Number(req.query.skip ?? 0);
     const skip = Number.isFinite(skipRaw) && skipRaw >= 0 ? skipRaw : 0;

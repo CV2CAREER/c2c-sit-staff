@@ -70,6 +70,27 @@ export class TrainingTracker extends Model {
   })
   fullName!: string;
 
+  @AllowNull(true)
+  @Column(DataType.DATEONLY)
+  date?: string;
+
+  @AllowNull(true)
+  @Default("Pending")
+  @Column(DataType.STRING)
+  status?: string;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  notes?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  progress?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reworkType?: string;
+
   @Default(false)
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;

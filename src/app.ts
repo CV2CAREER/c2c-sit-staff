@@ -62,6 +62,7 @@ import placementRouterV1 from "./routes/v1/placement.route";
 
 // Coaches
 import coachRouterV1 from "./routes/v1/coach.route"
+import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route"
 
 export const app = express();
 
@@ -229,6 +230,7 @@ app.use("/api/v1/coach", coachRouterV1);
 app.use("/api/v1/coaches", coachRouterV1);
 app.use("/api/v1/schedules", scheduleRouterV1);
 app.use("/api/v1/availabilities", availabilityRouterV1);
+app.use("/api/v1/client-availabilities", clientAvailabilityRouterV1);
 app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation

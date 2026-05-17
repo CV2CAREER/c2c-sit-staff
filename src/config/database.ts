@@ -4,42 +4,43 @@ import { ensureInFlightIndexes } from "../services/admin/in-flight.index-bootstr
 import { getServiceLogger } from "../utils/createLogger";
 import { ensureAnalyticsIndexes } from "../services/admin/analytics.index-bootstrap.service";
 import { getSequelize, resetSequelize } from "../utils/sequelize";
-import { NODE_ENV } from "./env";
-import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
-import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
-import { AccessLevelService } from "../services/admin/access-level.service";
-import { CommunicationTemplateService } from "../services/admin/communication-template.service";
+import { NODE_ENV } from "./env"; 
+
+// import { CRTrackingHistory } from "../models/v1/cr-tracking-history.model";
+// import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
+// import { AccessLevelService } from "../services/admin/access-level.service";
+// import { CommunicationTemplateService } from "../services/admin/communication-template.service";
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
 const isProduction = NODE_ENV !== "local";
 
-const ensureTrainingTrackerSessions = async () => {
-  await TrainingTrackerSession.sync({ force: false });
+// const ensureTrainingTrackerSessions = async () => {
+//   await TrainingTrackerSession.sync({ force: false });
 
-  for (const sessionNumber of [1, 2, 3, 4]) {
-    await TrainingTrackerSession.findOrCreate({
-      where: { sessionNumber },
-      defaults: {
-        sessionNumber,
-        name: `Session ${sessionNumber}`,
-      },
-    });
-  }
-};
+//   for (const sessionNumber of [1, 2, 3, 4]) {
+//     await TrainingTrackerSession.findOrCreate({
+//       where: { sessionNumber },
+//       defaults: {
+//         sessionNumber,
+//         name: `Session ${sessionNumber}`,
+//       },
+//     });
+//   }
+// };
 
-const ensureCRTrackingHistoryTable = async () => {
-  await CRTrackingHistory.sync({ force: false });
-};
+// const ensureCRTrackingHistoryTable = async () => {
+//   await CRTrackingHistory.sync({ force: false });
+// };
 
-const ensureAccessLevelTables = async () => {
-  await AccessLevelService.ensureAccessLevelTablesAndSeed();
-};
+// const ensureAccessLevelTables = async () => {
+//   await AccessLevelService.ensureAccessLevelTablesAndSeed();
+// };
 
-const ensureCommunicationTemplatesTable = async () => {
-  await CommunicationTemplateService.ensureTemplatesTable();
-};
+// const ensureCommunicationTemplatesTable = async () => {
+//   await CommunicationTemplateService.ensureTemplatesTable();
+// };
 
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
@@ -68,22 +69,14 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        // await Credentials.sync({ alter: true });         // new schema
+        // await ClientAvailability.sync({ alter: true });         // new schema
         // await User.sync({ alter: true });
         // await Profile.sync({ alter: true });
 
-        // To be done
-        // await UserPreferenceHistory.sync({ alter: true });
-        // await MissingInfoRequest.sync({ force: false });
-        // await VCS.sync({ force: false });
-        // await CvRevamp.sync({ force: false });
-        // await ClientAvailability.sync({ alter: true });
-        // await UnsubscribedUser.sync({ force: false });
-
-        await ensureTrainingTrackerSessions();
-        await ensureCRTrackingHistoryTable();
-        await ensureAccessLevelTables();
-        await ensureCommunicationTemplatesTable();
+        // await ensureTrainingTrackerSessions();
+        // await ensureCRTrackingHistoryTable();
+        // await ensureAccessLevelTables();
+        // await ensureCommunicationTemplatesTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -136,10 +129,10 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         await newSequelize.sync({ alter: true });
-        await ensureTrainingTrackerSessions();
-        await ensureCRTrackingHistoryTable();
-        await ensureAccessLevelTables();
-        await ensureCommunicationTemplatesTable();
+        // await ensureTrainingTrackerSessions();
+        // await ensureCRTrackingHistoryTable();
+        // await ensureAccessLevelTables();
+        // await ensureCommunicationTemplatesTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

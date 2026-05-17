@@ -12,7 +12,7 @@ import {
   BelongsTo,
 } from "sequelize-typescript";
 import { User } from "./user.model";
-import { DayOfWeek, ClientSessionType } from "../../utils/enum";
+import { ClientAvailabilityStatus, DayOfWeek, ClientSessionType } from "../../utils/enum";
 
 @Table({
   tableName: "client_availabilities",
@@ -48,6 +48,11 @@ export class ClientAvailability extends Model {
   @AllowNull(false)
   @Column(DataType.ENUM("screening_preparation", "interview_panel", "career_consultation"))
   sessionType!: ClientSessionType;
+
+  @AllowNull(false)
+  @Default(ClientAvailabilityStatus.PENDING)
+  @Column(DataType.ENUM(...Object.values(ClientAvailabilityStatus)))
+  status!: ClientAvailabilityStatus;
 
   @AllowNull(false)
   @Default(true)

@@ -376,3 +376,10 @@ export enum ClientSessionType {
   INTERVIEW_PANEL = "interview_panel",
   CAREER_CONSULTATION = "career_consultation",
 }
+
+// Client Availability Status Enum
+export enum ClientAvailabilityStatus {
+  PENDING = "pending",
+  ACCEPTED = "accepted",
+  REJECTED = "rejected",
+}

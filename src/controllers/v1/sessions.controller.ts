@@ -8,6 +8,7 @@ import {
   updateSession as updateSessionService,
   cancelSession as cancelSessionService,
 } from "../../services/sessions";
+import { rescheduleSession as rescheduleSessionService } from "../../services/client-availability.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 
@@ -152,6 +153,34 @@ export const updateSession = catchAsyncError(
     );
 
     res.apiSuccess(updatedSession, "Session updated successfully");
+  },
+);
+
+/**
+ * Reschedule a session (coach only)
+ */
+export const rescheduleSession = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    const coachId = (req as any).user?.id;
+
+    if (!coachId) {
+      throw new Error("User not authenticated");
+    }
+
+    const { startTime, endTime, date, timezone, meetingLink } = req.body;
+
+    logger.info(`Coach ${coachId} rescheduling session: ${sessionId}`);
+
+    const updated = await rescheduleSessionService(sessionId, coachId, {
+      startTime,
+      endTime,
+      date,
+      timezone,
+      meetingLink,
+    });
+
+    res.apiSuccess(updated, "Session rescheduled successfully");
   },
 );
 

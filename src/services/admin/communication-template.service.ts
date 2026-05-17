@@ -201,7 +201,7 @@ export class CommunicationTemplateService {
       Date_of_birth: "Date of birth",
       your_address: "Your Address",
       preferred_personal_pronouns: "Preferred Personal Pronouns",
-      referral_information: "Referrals Information",
+      referral_information: "Referral Information",
     };
 
     const userId = normalize(payload.userId);
@@ -249,6 +249,7 @@ export class CommunicationTemplateService {
         requestedById: requestingUser.id,
         missingInfoType,
         missingInfoUrl: updateMissingInfoUrl,
+        jobURL: rawUrl
       }),
       // Kick off delivery without blocking the response
       new Promise<void>((resolve) => {

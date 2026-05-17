@@ -11,10 +11,11 @@ import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
 import {
   SlackChannel,
+  SlackEventType,
+  SlackLocation,
   SlackNode,
   SlackProvider,
   SlackSeverity,
-  SlackEventType,
 } from "../utils/enum";
 import {
   getEnvironmentFromHost,
@@ -333,9 +334,8 @@ export const generateExternalPassword = async (
   setImmediate(async () => {
     try {
 
-      const location = getEnvironmentFromHost(host);
       await SlackService.notify({
-        location,
+        location: SlackLocation.LOCALHOST,
         host,
         node: SlackNode.DATABASE,
         provider: SlackProvider.MYSQL,
