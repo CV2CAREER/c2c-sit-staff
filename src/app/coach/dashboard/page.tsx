@@ -61,12 +61,12 @@ const CoachDashboardPage = () => {
               Set Availability
             </button>
           </Link>
-          <Link href="/coach/client-availabilities">
+          {/* <Link href="/coach/client-availabilities">
             <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors shadow-sm">
               <CalendarCheck size={18} />
               Client Availabilities
             </button>
-          </Link>
+          </Link> */}
           <Link href="/coach/training-tracker">
             <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-semibold transition-colors">
               <ExternalLink size={18} />
