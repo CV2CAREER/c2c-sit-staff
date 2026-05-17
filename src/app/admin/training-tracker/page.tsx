@@ -13,12 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const PageContent = () => {
-  const [sessionNumber, setSessionNumber] = React.useState(1);
+  const [sessionNumber, setSessionNumber] = React.useState<number | null>(null);
   const [isDeleted, setIsDeleted] = React.useState(false);
   const [allowEdit, setAllowEdit] = React.useState<boolean>(false);
 
   const handleSessionChange = (value: string) => {
-    setSessionNumber(parseInt(value, 10));
+    setSessionNumber(value === "all" ? null : parseInt(value, 10));
   };
 
   const handleToggleDeleted = () => {
@@ -28,18 +28,19 @@ const PageContent = () => {
   return (
     <section className="flex flex-col gap-[2rem] p-4 md:p-6 lg:p-8">
       <PageHeader
-        title={`Training Tracker [${isDeleted ? "Deleted" : "Active"}]`}
+        title={`Training Tracker [${isDeleted ? "Deleted" : "Active"}] — ${sessionNumber === null ? "All Sessions" : `Session ${sessionNumber}`}`}
       />
       <div className="bg-white p-4 mobile:p-[3rem] rounded-3xl shadow-md">
         <div className="flex flex-col sm:flex-row gap-[1rem] my-[1rem] items-start sm:items-center">
           <Select
-            value={String(sessionNumber)}
+            value={sessionNumber === null ? "all" : String(sessionNumber)}
             onValueChange={handleSessionChange}
           >
             <SelectTrigger className="w-[220px] text-black">
               <SelectValue placeholder="Select Session" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All Sessions</SelectItem>
               {[1, 2, 3, 4].map((session) => (
                 <SelectItem key={session} value={String(session)}>
                   Session {session}

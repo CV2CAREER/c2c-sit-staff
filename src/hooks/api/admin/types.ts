@@ -132,7 +132,7 @@ export interface AdminQueriesOptions {
   resourceType?: string;
   fetchTrainingSessions?: boolean;
   fetchTrainingTracker?: boolean;
-  trainingSessionNumber?: number;
+  trainingSessionNumber?: number | null;
   trainingIsDeleted?: boolean;
 
   // CR Tracking

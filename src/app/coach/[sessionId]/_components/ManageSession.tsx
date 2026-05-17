@@ -18,7 +18,16 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "antd";
 import toast from "react-hot-toast";
-import { Loader2, Save, Trash2, CheckCircle, ArrowLeft, Star, Clock, Calendar, Video, FileText, User, MapPin } from "lucide-react";
+import { Loader2, Save, Trash2, CheckCircle, ArrowLeft, Star, Clock, Calendar, Video, FileText, User, MapPin, CalendarClock } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { timezones } from "@/app/coach/scheduling/_components/timezones";
 import GradingForm from "./GradingForm";
 
 export default function ManageSession() {
@@ -26,9 +35,17 @@ export default function ManageSession() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ open: boolean; type: "complete" | "cancel" }>({ open: false, type: "complete" });
+  const [rescheduleModal, setRescheduleModal] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    date: "",
+    startTime: "",
+    endTime: "",
+    timezone: "",
+    meetingLink: "",
+  });
 
   const { sessionDetailDomain } = useCoachQueries({ sessionId });
-  const { updateSession, completeSession, cancelSession } = useCoachMutations();
+  const { updateSession, completeSession, cancelSession, rescheduleSession } = useCoachMutations();
 
   const session = sessionDetailDomain.data;
   const isLoading = sessionDetailDomain.isLoading;
@@ -78,6 +95,29 @@ export default function ManageSession() {
       },
       onError: () => toast.error("Failed to cancel session"),
     });
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleForm.date || !rescheduleForm.startTime || !rescheduleForm.endTime || !rescheduleForm.timezone) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    const toastId = toast.loading("Proposing Session...");
+    try {
+      await rescheduleSession.mutateAsync({
+        sessionId,
+        date: rescheduleForm.date,
+        startTime: rescheduleForm.startTime,
+        endTime: rescheduleForm.endTime,
+        timezone: rescheduleForm.timezone,
+        ...(rescheduleForm.meetingLink.trim() ? { meetingLink: rescheduleForm.meetingLink.trim() } : {}),
+      });
+      toast.success("Session proposed successfully.", { id: toastId });
+      setRescheduleModal(false);
+      sessionDetailDomain.refetch();
+    } catch {
+      toast.error("Failed to reschedule session.", { id: toastId });
+    }
   };
 
   if (isLoading) {
@@ -322,6 +362,17 @@ export default function ManageSession() {
                       Cancel Session
                     </Button>
                   )}
+
+                  {session.sessionStatus !== 'completed' && session.sessionStatus !== 'canceled' && (
+                    <Button
+                      onClick={() => setRescheduleModal(true)}
+                      variant="outline"
+                      className="w-full h-14 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 font-bold text-base gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <CalendarClock size={20} />
+                      Reschedule Session
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -433,6 +484,121 @@ export default function ManageSession() {
               }`}
             >
               {confirmModal.type === "complete" ? "Yes, Complete" : "Yes, Cancel Session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Modal */}
+      <Dialog open={rescheduleModal} onOpenChange={(open) => !rescheduleSession.isPending && setRescheduleModal(open)}>
+        <DialogContent className="sm:max-w-[480px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <CalendarClock size={20} className="text-blue-600" />
+              Reschedule Session
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 pt-1">
+              Set a new date and time for this session. Meeting link is optional.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="r-date" className="text-sm font-semibold text-gray-700">
+                Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="r-date"
+                type="date"
+                value={rescheduleForm.date}
+                onChange={(e) => setRescheduleForm({ ...rescheduleForm, date: e.target.value })}
+                className="rounded-xl h-11"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="r-start" className="text-sm font-semibold text-gray-700">
+                  Start Time <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="r-start"
+                  type="time"
+                  value={rescheduleForm.startTime}
+                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, startTime: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="r-end" className="text-sm font-semibold text-gray-700">
+                  End Time <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="r-end"
+                  type="time"
+                  value={rescheduleForm.endTime}
+                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, endTime: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-sm font-semibold text-gray-700">
+                Timezone <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={rescheduleForm.timezone}
+                onValueChange={(val) => setRescheduleForm({ ...rescheduleForm, timezone: val })}
+              >
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  {timezones.map((tz) => (
+                    <SelectItem key={tz} value={tz}>
+                      {tz}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="r-link" className="text-sm font-semibold text-gray-700">
+                Meeting Link <span className="text-gray-400 font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="r-link"
+                type="url"
+                placeholder="https://meet.google.com/..."
+                value={rescheduleForm.meetingLink}
+                onChange={(e) => setRescheduleForm({ ...rescheduleForm, meetingLink: e.target.value })}
+                className="rounded-xl h-11"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 gap-3 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setRescheduleModal(false)}
+              disabled={rescheduleSession.isPending}
+              className="rounded-xl h-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={rescheduleSession.isPending}
+              className="rounded-xl h-11 bg-blue-600 hover:bg-blue-700 font-bold gap-2 text-black"
+            >
+              {rescheduleSession.isPending ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <CalendarClock size={16} />
+              )}
+              {rescheduleSession.isPending ? "Rescheduling..." : "Confirm Reschedule"}
             </Button>
           </DialogFooter>
         </DialogContent>

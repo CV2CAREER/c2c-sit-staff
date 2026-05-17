@@ -8,6 +8,8 @@ interface CoachSessionCardProps {
     id: string;
     sessionStatus: string;
     sessionType: string;
+    sessionDate: string;
+    sessionDay: string;
     "client.firstName": string;
     "client.lastName": string;
     "schedule.date": string;
@@ -31,8 +33,8 @@ const sessionStatusStyles: Record<string, string> = {
 const CoachSessionCard = ({ data }: CoachSessionCardProps) => {
   const statusStyle = sessionStatusStyles[data.sessionStatus.toLowerCase()] || "bg-gray-100 text-gray-700";
   
-  const scheduleDate = data["schedule.date"]?.split("T")[0] || "Unknown Date";
-  const scheduleDay = data["schedule.day"] || "Unknown Day";
+  const scheduleDate = data["schedule.date"]?.split("T")[0] || data["sessionDate"] || "Unknown Date";
+  const scheduleDay = data["schedule.day"] || data["sessionDay"] || "Unknown Day";
   const startTime = data.time.startTime || "Unknown Time";
   const endTime = data.time.endTime || "Unknown Time";
   const sessionTypeLabels: Record<string, string> = {

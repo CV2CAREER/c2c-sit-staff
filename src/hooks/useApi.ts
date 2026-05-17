@@ -14,6 +14,7 @@ interface MutationOptions<TResponse, TRequest = unknown> {
   headers?: Record<string, string>;
   onSuccess: (data: ApiSuccess<TResponse>) => void;
   onError: (error: ApiError) => void;
+  onMutate?: () => void;
 }
 
 export function useMutateData<TResponse, TRequest = unknown>({
@@ -25,9 +26,11 @@ export function useMutateData<TResponse, TRequest = unknown>({
   mutationKey,
   onError,
   onSuccess,
+  onMutate,
 }: MutationOptions<TResponse, TRequest>) {
   return useMutation<ApiSuccess<TResponse>, ApiError, TRequest>({
     mutationKey: [...mutationKey],
+    onMutate: onMutate,
     mutationFn: async (data: TRequest) => {
       try {
         let dynamicParams = params;

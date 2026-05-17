@@ -36,7 +36,7 @@ export default function CreateModal({
   user: any[];
   activeCoach: any[] | null;
   processRowUpdate: any;
-  sessionNumber: number;
+  sessionNumber: number | null;
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -63,7 +63,7 @@ export default function CreateModal({
         setNewRowData({
           traineeId: "",
           coachId: "",
-          sessionNumber: sessionNumber || 1,
+          sessionNumber: sessionNumber ?? 1,
           date: new Date().toISOString().split("T")[0],
           status: "Pending",
           notes: "",

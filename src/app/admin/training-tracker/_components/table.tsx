@@ -1,13 +1,12 @@
 // src/app/_components/table.jsx
 "use client";
 
-import React, { Suspense, useState, useMemo, useCallback } from "react";
+import { Suspense, useState, useMemo, useCallback } from "react";
 import Box from "@mui/material/Box";
 import {
   GridRowModesModel,
   GridRowModes,
   GridColDef,
-  GridToolbarContainer,
   GridActionsCellItem,
   GridEventListener,
   GridRowId,
@@ -36,6 +35,7 @@ import { orderTable } from "@/utils/table";
 import { getBaseColumns } from "./tableColumns";
 import TableWithHeaderClass from "@/components/Table";
 import CreateModal from "./create-modal";
+import ConfirmModal from "./confirm-modal";
 
 const EditRowModal = dynamic(() => import("./edit-modal"));
 
@@ -45,7 +45,7 @@ export default function TrainingTrackerDatagrid({
   isDeleted,
 }: {
   allowEdit?: boolean;
-  sessionNumber: number;
+  sessionNumber: number | null;
   isDeleted: boolean;
 }) {
   const {
@@ -86,6 +86,7 @@ export default function TrainingTrackerDatagrid({
           return coachUser
             ? {
                 _id: coachUserId,
+                id: coachUserId,
                 fullName: `${coachUser.firstName} ${coachUser.lastName}`,
               }
             : null;
@@ -100,10 +101,23 @@ export default function TrainingTrackerDatagrid({
   const [createModalIsOpen, setCreateModalIsOpen] = useState(false);
   const [editModalIsOpen, setEditModalIsOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<TrainingTrackerData | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+    variant: "danger" | "warning";
+    confirmLabel?: string;
+  }>({ isOpen: false, title: "", description: "", onConfirm: () => {}, variant: "danger" });
+
+  const closeConfirmModal = useCallback(() => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
   const [newRowData, setNewRowData] = useState<any>({
     traineeId: "",
     coachId: "",
-    sessionNumber: sessionNumber || 1,
+    sessionNumber: sessionNumber ?? 1,
     date: new Date().toISOString().split("T")[0],
     status: "Pending",
     notes: "",
@@ -182,7 +196,7 @@ export default function TrainingTrackerDatagrid({
 
   const getUserFullName = useCallback(
     (userId: string) => {
-      const foundUser = user.find((u: any) => u._id === userId);
+      const foundUser = user.find((u: any) => (u._id || u.id) === userId);
       return foundUser
         ? `${foundUser.firstName} ${foundUser.lastName}`
         : "Unknown User";
@@ -192,7 +206,7 @@ export default function TrainingTrackerDatagrid({
 
   const getCoachFullName = useCallback(
     (coachId: string) => {
-      const foundCoach = activeCoach?.find((c: any) => c._id === coachId);
+      const foundCoach = activeCoach?.find((c: any) => (c._id || c.id) === coachId);
       return foundCoach ? foundCoach.fullName : "Unknown Coach";
     },
     [activeCoach]
@@ -208,12 +222,12 @@ export default function TrainingTrackerDatagrid({
       setCreateModalIsOpen(true);
       setNewRowData((prev: any) => ({
         ...prev,
-        sessionNumber: sessionNumber || 1,
+        sessionNumber: sessionNumber ?? 1,
       }));
     };
 
     return (
-      <GridToolbarContainer>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: 0.5 }}>
         <Button
           className="flex items-center px-2 py-1.5 my-1.5 rounded-lg transition-all capitalize font-medium text-sm hover:shadow-lg bg-[#D7F7D4] text-[#5CBF54]"
           onClick={handleClick}
@@ -222,7 +236,7 @@ export default function TrainingTrackerDatagrid({
           Add record
         </Button>
         <GridToolbarExport />
-      </GridToolbarContainer>
+      </Box>
     );
   }
 
@@ -251,20 +265,36 @@ export default function TrainingTrackerDatagrid({
 
   const handleDeleteClick = useCallback(
     (id: GridRowId) => () => {
-      if (window.confirm("Are you sure you want to move this record to the recycle bin?")) {
-        softDeleteMutation.mutate({ trackerId: id as string });
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: "Move to Recycle Bin",
+        description: "Are you sure you want to move this record to the recycle bin?",
+        onConfirm: () => {
+          softDeleteMutation.mutate({ trackerId: id as string });
+          closeConfirmModal();
+        },
+        variant: "danger",
+        confirmLabel: "Move to Bin",
+      });
     },
-    [softDeleteMutation]
+    [softDeleteMutation, closeConfirmModal]
   );
 
   const handlePermanentDeleteClick = useCallback(
     (id: GridRowId) => () => {
-      if (window.confirm("Are you sure you want to permanently delete this record? This action cannot be undone.")) {
-        permanentDeleteMutation.mutate({ trackerId: id as string });
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: "Permanently Delete",
+        description: "Are you sure you want to permanently delete this record? This action cannot be undone.",
+        onConfirm: () => {
+          permanentDeleteMutation.mutate({ trackerId: id as string });
+          closeConfirmModal();
+        },
+        variant: "danger",
+        confirmLabel: "Delete Forever",
+      });
     },
-    [permanentDeleteMutation]
+    [permanentDeleteMutation, closeConfirmModal]
   );
 
   const handleCancelClick = useCallback(
@@ -369,7 +399,19 @@ export default function TrainingTrackerDatagrid({
             <GridActionsCellItem
               icon={<FaUndo />}
               label="Restore"
-              onClick={() => restoreMutation.mutate({ trackerId: row._id, userId: row.traineeId })}
+              onClick={() =>
+                setConfirmModal({
+                  isOpen: true,
+                  title: "Restore Record",
+                  description: "Are you sure you want to restore this record?",
+                  onConfirm: () => {
+                    restoreMutation.mutate({ trackerId: row._id, userId: row.traineeId });
+                    closeConfirmModal();
+                  },
+                  variant: "warning",
+                  confirmLabel: "Restore",
+                })
+              }
               color="inherit"
               key="restore-action"
             />,
@@ -399,7 +441,7 @@ export default function TrainingTrackerDatagrid({
             />,
           ];
     },
-    [rowModesModel, handleSaveClick, handleCancelClick, restoreMutation, handlePermanentDeleteClick, handleEditClick, handleDeleteClick, isDeleted]
+    [rowModesModel, handleSaveClick, handleCancelClick, restoreMutation, handlePermanentDeleteClick, handleEditClick, handleDeleteClick, isDeleted, closeConfirmModal]
   );
 
   const tableName = "CRUD_TABLE";
@@ -426,9 +468,9 @@ export default function TrainingTrackerDatagrid({
         rowModesModel={rowModesModel}
         onRowModesModelChange={handleRowModesModelChange}
         onRowEditStop={handleRowEditStop}
-        onRowClick={(row) => {
+        onRowClick={(params: any) => {
           if (allowEdit) {
-            openEditModal(row as unknown as TrainingTrackerData);
+            openEditModal((params.row ?? params) as TrainingTrackerData);
           }
         }}
         processRowUpdate={processRowUpdate}
@@ -469,6 +511,16 @@ export default function TrainingTrackerDatagrid({
           />
         </Suspense>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        variant={confirmModal.variant}
+        confirmLabel={confirmModal.confirmLabel}
+      />
     </Box>
   );
 }

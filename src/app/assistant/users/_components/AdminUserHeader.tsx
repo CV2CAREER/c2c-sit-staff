@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useAdminUserDetailContext } from "../context/userDetailContext"
 import { IoCaretDownSharp, IoCaretUp } from 'react-icons/io5';
 import { usePathname } from 'next/navigation';
-import { TableDropDownSearch } from "@/components/TableRedesign/TableHeader"
+import { TableDropDownSearch } from "@/components/TableRedesign/TableHeaderPC"
 
 const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId: (id: string) => void }) => {
 

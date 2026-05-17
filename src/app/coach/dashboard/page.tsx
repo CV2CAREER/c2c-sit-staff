@@ -4,7 +4,7 @@ import React from "react";
 import { useCoachQueries } from "@/hooks/api/coach";
 import StatCard from "@/app/admin/dashboard/_components/stats-card";
 import CoachSessionCard from "./_components/CoachSessionCard";
-import { Calendar, CheckCircle, Clock, BookOpen, ExternalLink } from "lucide-react";
+import { Calendar, CheckCircle, Clock, BookOpen, ExternalLink, CalendarCheck } from "lucide-react";
 import Link from "next/link";
 
 const CoachDashboardPage = () => {
@@ -59,6 +59,12 @@ const CoachDashboardPage = () => {
             <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors shadow-sm">
               <Calendar size={18} />
               Set Availability
+            </button>
+          </Link>
+          <Link href="/coach/client-availabilities">
+            <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors shadow-sm">
+              <CalendarCheck size={18} />
+              Client Availabilities
             </button>
           </Link>
           <Link href="/coach/training-tracker">

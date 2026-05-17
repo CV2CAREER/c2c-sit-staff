@@ -5,7 +5,7 @@ import { useCoachQueries, useCoachMutations } from "@/hooks/api/coach";
 import { DatePicker, TimePicker } from "antd";
 import dayjs from "dayjs";
 import moment from "moment";
-import { Trash2, Plus, Calendar, Clock, Globe, AlertCircle } from "lucide-react";
+import { Trash2, Plus, Calendar, Clock, Globe, AlertCircle, Inbox } from "lucide-react";
 import toast from "react-hot-toast";
 import { timezones } from "./timezones";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import ClientAvailabilityCard from "./ClientAvailabilityCard";
 
 interface TimeSlot {
   from: string;
@@ -41,8 +42,21 @@ const AvailableHours = () => {
   const [selectedTimeZone, setSelectedTimeZone] = useState<string>("");
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; scheduleId: string }>({ open: false, scheduleId: "" });
 
-  const { schedulesDomain } = useCoachQueries({ fetchSchedules: true });
+  const { schedulesDomain, clientAvailabilitiesDomain } = useCoachQueries({
+    fetchSchedules: true,
+    fetchClientAvailabilities: true,
+  });
   const { createSchedule, deleteSchedule } = useCoachMutations();
+
+  const pendingAvailabilities: any[] = useMemo(() => {
+    const data = clientAvailabilitiesDomain.data;
+    if (!data) return [];
+    const list = Array.isArray(data) ? data : data.availabilities || data.data || [];
+    return list.filter((a: any) => {
+      const status = (a.status || "").toLowerCase();
+      return status === "pending" || status === "";
+    });
+  }, [clientAvailabilitiesDomain.data]);
 
   const schedules = schedulesDomain.data || [];
 
@@ -268,6 +282,40 @@ const AvailableHours = () => {
             </div>
           )}
         </section>
+
+        {/* Pending Client Requests */}
+        {(clientAvailabilitiesDomain.isLoading || pendingAvailabilities.length > 0) && (
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Inbox size={16} className="text-blue-500" />
+              <h3 className="text-lg font-bold text-gray-800">
+                Client Availabilities
+              </h3>
+              {!clientAvailabilitiesDomain.isLoading && (
+                <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                  {pendingAvailabilities.length}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-row gap-3">
+              {clientAvailabilitiesDomain.isLoading ? (
+                [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-20 bg-gray-50 animate-pulse rounded-2xl border border-gray-100"
+                  />
+                ))
+              ) : (
+                pendingAvailabilities.map((availability: any) => (
+                  <ClientAvailabilityCard
+                    key={availability._id || availability.id}
+                    availability={availability}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

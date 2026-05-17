@@ -118,12 +118,13 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
 
   const onSubmit: SubmitHandler<TrainingTrackerData> = async (data) => {
     try {
-      if (!data._id) {
+      const trackerId = data._id || data.id;
+      if (!trackerId) {
         toast.error("Record ID is missing for update.");
         return;
       }
-      await updateMutation.mutateAsync({ newRow: data, trackerId: data._id });
-      onClose(); // Close modal on success
+      await updateMutation.mutateAsync({ newRow: data, trackerId });
+      onClose();
     } catch {
       // Error handled by hook's toast
     }
@@ -524,6 +525,7 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
                       />
                     );
                     break;
+                  case "date":
                   case "coachingContact":
                   case "coachingBooking":
                   case "createdAt":

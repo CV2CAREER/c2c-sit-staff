@@ -8,6 +8,7 @@ interface CoachQueriesOptions {
   fetchSessions?: boolean;
   fetchProfile?: boolean;
   fetchSchedules?: boolean;
+  fetchClientAvailabilities?: boolean;
   sessionId?: string;
   limit?: number;
 }
@@ -17,6 +18,7 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
     fetchSessions = false,
     fetchProfile = false,
     fetchSchedules = false,
+    fetchClientAvailabilities = false,
     sessionId = "",
     limit = 10,
   } = options;
@@ -50,6 +52,13 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
     enabled: fetchSchedules,
   });
 
+  const clientAvailabilities = useFetchData<any>({
+    method: "GET",
+    url: coachEndpoints.CLIENT_AVAILABILITIES,
+    queryKey: ["client-availabilities"],
+    enabled: fetchClientAvailabilities,
+  });
+
   return useMemo(() => ({
     sessionsDomain: {
       data: sessions.data?.data,
@@ -80,7 +89,14 @@ export const useCoachQueries = (options: CoachQueriesOptions = {}) => {
       isError: schedules.isError,
       refetch: schedules.refetch,
     },
-  }), [sessions, sessionDetail, coachProfile, schedules]);
+    clientAvailabilitiesDomain: {
+      data: clientAvailabilities.data?.data || [],
+      isLoading: clientAvailabilities.isLoading,
+      isSuccess: clientAvailabilities.isSuccess,
+      isError: clientAvailabilities.isError,
+      refetch: clientAvailabilities.refetch,
+    },
+  }), [sessions, sessionDetail, coachProfile, schedules, clientAvailabilities]);
 };
 
 export const useCoachMutations = () => {
@@ -167,6 +183,49 @@ export const useCoachMutations = () => {
     },
   });
 
+  const acceptClientAvailability = useMutation({
+    mutationKey: ["coach-accept-client-availability"],
+    mutationFn: async (payload: { id: string; meetingLink?: string }) => {
+      const { id, ...body } = payload;
+      const response = await axiosInstance.post(coachEndpoints.CLIENT_AVAILABILITY_ACCEPT(id), body);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-availabilities"] });
+    },
+  });
+
+  const declineClientAvailability = useMutation({
+    mutationKey: ["coach-decline-client-availability"],
+    mutationFn: async (payload: { id: string; reason: string }) => {
+      const { id, ...body } = payload;
+      const response = await axiosInstance.post(coachEndpoints.CLIENT_AVAILABILITY_DECLINE(id), body);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-availabilities"] });
+    },
+  });
+
+  const rescheduleSession = useMutation({
+    mutationKey: ["coach-reschedule-session"],
+    mutationFn: async (payload: {
+      sessionId: string;
+      startTime: string;
+      endTime: string;
+      date: string;
+      timezone: string;
+      meetingLink?: string;
+    }) => {
+      const { sessionId, ...body } = payload;
+      const response = await axiosInstance.patch(coachEndpoints.COACH_SESSION_RESCHEDULE(sessionId), body);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coach-sessions"] });
+    },
+  });
+
   return {
     createSchedule,
     deleteSchedule,
@@ -174,5 +233,8 @@ export const useCoachMutations = () => {
     completeSession,
     cancelSession,
     gradeSession,
+    acceptClientAvailability,
+    declineClientAvailability,
+    rescheduleSession,
   };
 };
