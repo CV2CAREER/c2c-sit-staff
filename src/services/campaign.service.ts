@@ -1084,7 +1084,7 @@ export const saveEditedJob = async (
   const flaskResponse = await axios.post(
     `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
     requestData,
-    { timeout: 30000 },
+    { timeout: 60000 },
   );
 
   if (!flaskResponse.data.success) {
