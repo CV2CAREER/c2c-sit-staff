@@ -214,26 +214,26 @@ export const updateUserPlanByFeature = async (
     });
 
     // Send Slack notification to paid-sub channel for payment confirmation
-    setImmediate(async () => {
-      try {
-        await SlackService.notify({
-          location,
-          host,
-          node: SlackNode.PAYMENT,
-          provider: SlackProvider.SYSTEM,
-          severity: SlackSeverity.INFO,
-          trigger: `PayPal Payment Captured by ADMIN `,
-          type: SlackEventType.ADMIN_ACTION,
-          channel: SlackChannel.PAID_SUB,
-          teamMentions: "CSM",
-          body: `Payment confirmed successfully by Admin.
-Next steps: CSM Team follow up the customer and assign PC to the customer.`,
-        });
-        logger.info(`✅ Slack notification sent for PayPal capture`);
-      } catch (error: any) {
-        logger.error(`❌ Failed to send Slack notification: ${error.message}`);
-      }
-    });
+//     setImmediate(async () => {
+//       try {
+//         await SlackService.notify({
+//           location,
+//           host,
+//           node: SlackNode.PAYMENT,
+//           provider: SlackProvider.SYSTEM,
+//           severity: SlackSeverity.INFO,
+//           trigger: `PayPal Payment Captured by ADMIN `,
+//           type: SlackEventType.ADMIN_ACTION,
+//           channel: SlackChannel.PAID_SUB,
+//           teamMentions: "CSM",
+//           body: `Payment confirmed successfully by Admin.
+// Next steps: CSM Team follow up the customer and assign PC to the customer.`,
+//         });
+//         logger.info(`✅ Slack notification sent for PayPal capture`);
+//       } catch (error: any) {
+//         logger.error(`❌ Failed to send Slack notification: ${error.message}`);
+//       }
+//     });
 
     logger.info(
       `[UpdateUserPlanByFeature] Plan "${newPlan.title}" (${newPlan.id}) assigned to user ${userId}. ` +
