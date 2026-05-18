@@ -193,8 +193,8 @@ export default function DocumentTableActions({
                       );
                       const url = target?.url || target?.document?.url;
                       if (url) {
-                        window.open(url, "_blank", "noopener,noreferrer");
-                        toast.success("Document downloaded successfully")
+                        window.location.href = url;
+                        toast.success("Document downloaded successfully");
                       } else {
                         toast.error("Document URL not available");
                       }
