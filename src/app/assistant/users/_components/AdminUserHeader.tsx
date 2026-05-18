@@ -110,7 +110,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
                       // router.push(pathArray?.join('/') ?? '/');
                       setUserEmail(e.email);
                       setIsUserId(e.id);
-                      window.location.href = `/admin/users/${e.id}`;
+                      window.location.href = `/assistant/users/${e.id}`;
                     }}
                     values={
                       userData && allData.length > 0

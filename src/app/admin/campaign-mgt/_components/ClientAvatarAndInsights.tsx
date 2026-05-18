@@ -169,7 +169,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
         listOfValues={['', ...clientList?.map((value) => String(value.id))]}
         defaultValue={clientId as string | undefined}
         onChange={(e: any) => {
-          window.location.href = `/admin/campaign-mgt/client/${e.id}`;
+          window.location.href = `/assistant/campaign-mgt/client/${e.id}`;
         }}
         values={[{ Full_Name: 'All User', id: '' }, ...clientList]}
       />

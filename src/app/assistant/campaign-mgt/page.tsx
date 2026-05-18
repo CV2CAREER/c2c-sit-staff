@@ -6,7 +6,7 @@ const CampaignManagementPage = () => {
   return (
     <main className="flex flex-col gap-8 mt-8 w-full">
       <PageHeader title="Campaign Management"/>
-      <CampaignDataTable route="assistance" />
+      <CampaignDataTable route="assistant" />
     </main>
   );
 };
