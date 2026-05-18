@@ -652,6 +652,30 @@ class AnalyticsApplicationService {
     });
   }
 
+  async getUserReturnCounts(): Promise<{ loyalists: number; returnees: number }> {
+    const sequelize = getSequelize();
+
+    const counts = await sequelize.query<{ loyalists: string | number; returnees: string | number }>(
+      `
+        SELECT
+          COUNT(*) FILTER (WHERE "returnCount" > 4)::bigint AS loyalists,
+          COUNT(*) FILTER (WHERE "returnCount" > 0)::bigint AS returnees
+        FROM users
+        WHERE "deletedAt" IS NULL;
+      `,
+      {
+        type: QueryTypes.SELECT,
+      },
+    );
+
+    const row = counts[0] || { loyalists: 0, returnees: 0 };
+
+    return {
+      loyalists: toNumber(row.loyalists),
+      returnees: toNumber(row.returnees),
+    };
+  }
+
   async getUserRoleCounts(): Promise<Record<string, number>> {
     const sequelize = getSequelize();
     

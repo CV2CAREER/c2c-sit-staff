@@ -368,10 +368,11 @@ export const getAdminAnalytics = catchAsyncError(
       `Processing analytics request for admin ${user.email} (from=${from ?? "default"}, to=${to ?? "default"})`,
     );
 
-    const [analytics, subscriptionTiers, userRoleCounts] = await Promise.all([
+    const [analytics, subscriptionTiers, userRoleCounts, userReturnCounts] = await Promise.all([
       analyticsApplicationService.getSuccessfulVsFailedMetrics({ from, to }),
       subscriptionTierAggregatorApplicationService.getRealtimeTierAnalytics(false),
-      analyticsApplicationService.getUserRoleCounts()
+      analyticsApplicationService.getUserRoleCounts(),
+      analyticsApplicationService.getUserReturnCounts(),
     ]);
 
     res.apiSuccess(
@@ -379,6 +380,8 @@ export const getAdminAnalytics = catchAsyncError(
         ...analytics,
         subscriptionTiers,
         userRoleCounts,
+        loyalists: userReturnCounts.loyalists,
+        returnees: userReturnCounts.returnees,
       },
       "Admin analytics retrieved successfully",
     );
