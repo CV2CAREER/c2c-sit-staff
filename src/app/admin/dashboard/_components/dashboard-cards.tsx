@@ -58,7 +58,7 @@ const DashboardCards = () => {
   const DASHBOARD_CARDS_DATA = [
     {
       title: "Users",
-      value: (queryTotalUsersCount.data as number) || 0,
+      value: queryTotalUsersCount.data ?? 0,
       linkIcon: true,
       route: "/admin/users",
     },
@@ -69,18 +69,18 @@ const DashboardCards = () => {
     },
     {
       title: "Inactive Subscriptions",
-      value: (queryTotalUsersCount.data as number || 0) - (applicationsData?.successful || 0),
+      value: (queryTotalUsersCount.data ?? 0) - (applicationsData?.successful || 0),
       linkIcon: false,
     },
     {
       title: "Guests",
-      value: (queryTotalGuestsCount.data as number) || 0,
+      value: queryTotalGuestsCount.data ?? 0,
       linkIcon: true,
       route: "/admin/users/?filter=guests",
     },
     {
       title: "Inactive Guest Subscriptions",
-      value: (queryTotalGuestsCount.data as number) || 0, // Placeholder as v1 lacks specific inactive guest sub count
+      value: queryTotalGuestsCount.data ?? 0, // Placeholder as v1 lacks specific inactive guest sub count
       linkIcon: false,
     },
     {
@@ -121,12 +121,12 @@ const DashboardCards = () => {
     },
     {
       title: "Loyalists",
-      value: usersData?.successful || 0, // Proxy from users.successful (Commenced)
+      value: queryOverallStats.data?.loyalists ?? 0,
       linkIcon: false,
     },
     {
       title: "Returnees",
-      value: usersData?.failed || 0, // Proxy from users.failed (Expired)
+      value: queryOverallStats.data?.returnees ?? 0,
       linkIcon: true,
       route: "/admin/users/?filter=returnees",
     },
