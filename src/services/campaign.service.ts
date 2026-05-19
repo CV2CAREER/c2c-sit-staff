@@ -24,6 +24,7 @@ import {
 import { getConnectedRedis } from "../config/redis";
 import { Op, Sequelize } from "sequelize";
 import path from "path";
+import { Logger } from "winston";
 
 const logger = getServiceLogger("campaign-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
@@ -1123,8 +1124,17 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
       throw new Error("Client profile not found");
     }
 
+    const user = await User.findOne({
+      where : {id : targetCred.clientId}
+    })
+
+    if (!user) {
+      logger.warn("User not found")
+    }
+
     let targetVa = null;
     let tagName = "Previously assigned VA";
+    let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`
 
     // Only lookup VA if there is actually an existing assigned email
     if (targetCred.AssignedPCEmail) {
@@ -1143,7 +1153,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
       }
     }
 
-    const message = `VA Unassignment for ${targetCred?.AssignedPCName}.
+    const message = `VA Unassignment for ${fullName}.
 *Success*: ${tagName} has been unassigned specifically from this client profile.
 *Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
 *Next Step*: TPA to hand over any pending items if applicable.`;
@@ -1157,7 +1167,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
           node: SlackNode.HUMAN_RESOURCE,
           provider: SlackProvider.HUBSTAFF,
           severity: SlackSeverity.INFO,
-          trigger: `VA unassigned from client`,
+          trigger: updatedBy,
           type: SlackEventType.USER_TRIGGERED,
           channel: SlackChannel.VA,
           body: message,
@@ -1184,6 +1194,16 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
     throw new Error("Client profile not found");
   }
 
+  const user = await User.findOne({
+      where : {id : targetCred.clientId}
+    })
+
+    if (!user) {
+      logger.warn("User not found")
+    }
+
+    let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`
+
   const targetVa = await User.findOne({ where: { email: vaEmail } });
   if (!targetVa) {
     logger.warn(`TPA not found for email=${vaEmail}`);
@@ -1199,7 +1219,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
   const tagName = slackId ? `<@${slackId}>` : `${targetVa?.firstName} ${targetVa?.lastName}`;
   
-  const message = `VA Assignment for ${targetCred?.AssignedPCName }.
+  const message = `VA Assignment for ${fullName}.
 *Success*: ${tagName} has been assigned to this client profile.
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
@@ -1213,7 +1233,7 @@ export const assignVAToClient = async (credId: string, vaEmail: string | null, h
         node: SlackNode.HUMAN_RESOURCE,
         provider: SlackProvider.HUBSTAFF,
         severity: SlackSeverity.INFO,
-        trigger: `VA assigned to client`,
+        trigger: updatedBy,
         type: SlackEventType.USER_TRIGGERED,
         channel: SlackChannel.VA,
         body: message,

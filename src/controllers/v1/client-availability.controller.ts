@@ -5,6 +5,7 @@ import {
   getAllClientAvailabilities as getAllClientAvailabilitiesService,
   acceptClientAvailability as acceptClientAvailabilityService,
   declineClientAvailability as declineClientAvailabilityService,
+  proposeRescheduleToClient as proposeRescheduleToClientService,
 } from "../../services/client-availability.service";
 
 const logger = getServiceLogger("client-availability-controller");
@@ -44,6 +45,29 @@ export const declineClientAvailability = catchAsyncError(
     await declineClientAvailabilityService(id, coachId, reason);
 
     res.apiSuccess(null, "Availability declined successfully");
+  },
+);
+
+export const proposeRescheduleClientAvailability = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const coachId = (req as any).user?.id;
+
+    if (!coachId) {
+      throw new Error("User not authenticated");
+    }
+
+    const { id } = req.params;
+    const { date, startTime, endTime, timezone, meetingLink } = req.body;
+
+    if (!date || !startTime || !endTime || !timezone) {
+      throw new Error("date, startTime, endTime, and timezone are required");
+    }
+
+    logger.info(`Coach ${coachId} proposing reschedule for availability: ${id}`);
+
+    await proposeRescheduleToClientService(id, coachId, { date, startTime, endTime, timezone, meetingLink });
+
+    res.apiSuccess(null, "Reschedule proposal sent to client successfully");
   },
 );
 

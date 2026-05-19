@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: "Poppins", sans-serif; color: #474747; width: 100%; background-color: #fff; text-align: justify; line-height: 1.6; }
+      .header { background: linear-gradient(90deg, #004174 0%, #00568f 100%); width: 100%; height: 112px; text-align: center; display: table; }
+      .header-content { display: table-cell; vertical-align: middle; }
+      .header img { width: 149px; height: 32px; }
+      .content { font-family: "Poppins", sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+      .title { font-size: 22px; font-weight: 500; line-height: 32px; color: #474747; text-transform: capitalize; margin-bottom: 20px; }
+      .body-content { background-color: #fff; width: 100%; }
+      .body-content p { margin-bottom: 16px; }
+      .notice-box { background-color: #e8f4fd; border: 1px solid #bee3f8; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center; }
+      .notice-box h2 { color: #1a6fa8; margin-bottom: 8px; }
+      .notice-icon { font-size: 48px; margin-bottom: 10px; }
+      .session-details { background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
+      .session-details h3 { color: #004174; margin-bottom: 15px; border-bottom: 2px solid #004174; padding-bottom: 10px; }
+      .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef; }
+      .detail-label { font-weight: 600; color: #6c757d; }
+      .detail-value { color: #004174; font-weight: 500; }
+      .proposed-box { background-color: #e6f4ea; border: 1px solid #a8d5b5; border-radius: 8px; padding: 20px; margin: 20px 0; }
+      .proposed-box h3 { color: #1a6fa8; margin-bottom: 15px; border-bottom: 2px solid #1a6fa8; padding-bottom: 10px; }
+      .meeting-link-box { background-color: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin: 20px 0; }
+      .meeting-link-box a { color: #004174; word-break: break-all; }
+      .cta-button { display: inline-block; background-color: #004174; color: #ffffff; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 500; margin: 20px 0; }
+      .contact-link { color: #004174; text-decoration: none; }
+      .signature { margin-top: 24px; }
+      .footer { background-color: #f9f9f9; padding: 32px 16px; text-align: center; }
+      .footer-logo { margin-bottom: 16px; }
+      .footer-logo img { width: 35px; height: 25px; }
+      .social-links { margin: 16px auto; }
+      .social-links a { text-decoration: none; vertical-align: middle; display: inline-block; padding: 0 6px; }
+      .social-links img { width: 24px; height: 24px; border: 0; }
+      .copyright { margin: 16px auto; }
+      .footer-links { margin-top: 16px; }
+      .footer-links a { text-decoration: none; color: #a3a3a3; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-content">
+        <img src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801" alt="CV To Career" />
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="notice-box">
+        <div class="notice-icon">🔄</div>
+        <h2>New Session Time Proposed</h2>
+        <p>Your coach has suggested an alternative time for your session.</p>
+      </div>
+
+      <h1 class="title">Session Reschedule Proposal</h1>
+
+      <div class="body-content">
+        <p><b>Dear <%= name %>,</b></p>
+
+        <p>
+          Your coach <strong><%= coachName %></strong> is unable to meet at your originally requested time,
+          but has proposed a new time slot for your session. Please review the details below.
+        </p>
+
+        <div class="session-details">
+          <h3>Your Original Request</h3>
+          <div class="detail-row">
+            <span class="detail-label">Date:</span>
+            <span class="detail-value"><%= originalDate %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Time:</span>
+            <span class="detail-value"><%= originalTime %> (<%= originalTimezone %>)</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Session Type:</span>
+            <span class="detail-value" style="text-transform: capitalize;"><%= sessionType.replace(/_/g, ' ') %></span>
+          </div>
+        </div>
+
+        <div class="proposed-box">
+          <h3>Proposed New Time</h3>
+          <div class="detail-row">
+            <span class="detail-label">Date:</span>
+            <span class="detail-value"><%= proposedDate %></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Time:</span>
+            <span class="detail-value"><%= proposedTime %> (<%= proposedTimezone %>)</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Session Type:</span>
+            <span class="detail-value" style="text-transform: capitalize;"><%= sessionType.replace(/_/g, ' ') %></span>
+          </div>
+        </div>
+
+        <% if (meetingLink) { %>
+        <div class="meeting-link-box">
+          <p><strong>Meeting Link:</strong> <a href="<%= meetingLink %>"><%= meetingLink %></a></p>
+        </div>
+        <% } %>
+
+        <p>
+          If this new time works for you, please log in to your dashboard to confirm.
+          If you need a different time, you can propose a new availability slot and we will do our best to accommodate you.
+        </p>
+
+        <p>
+          If you have any questions, please reach out to us at
+          <a href="mailto:deliveryteam@cvtocareer.com" class="contact-link">deliveryteam@cvtocareer.com</a>
+          and we will be happy to assist.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="<%= frontendUrl %>/dashboard" class="cta-button">Go to My Dashboard</a>
+        </div>
+
+        <div class="signature">
+          <p>Best regards,<br />CVtoCAREER Team</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-logo">
+        <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/laigusbucket/bea7d3a092f0710b014b1f203.png?GoogleAccessId=firebase-adminsdk-f76vf%40cvtocareer-394713.iam.gserviceaccount.com&Expires=4070905200&Signature=gWB9jqmAcwN9nLbugMdOj%2FD0BROrGRX4a8qnGa9cZGuOkc0Z2M9itk0pzUtoUtyedrxv%2B2hO%2BFqDqlduJ6J7WqVBAJ3wQ17oe72S5BwTvRXEY3Q7OM%2B9wuxsFsSwgrtfldf79sly6nIJQCXqb94FDFL661YxCbeGN%2BIq0j2volsUvmKtParJXXLo3LO%2BBmOms1nVf6HHldXbD%2FfMno5f%2FB8wj%2FLDF%2FvMk5LfTsISh0kSOXmvfRNQvktImOAH2rTt%2B6ejVByGrxstPLhViGGI0BSIWEOn0oFaihxHK3Lo%2B3T0WePp5Q0PoYFrERpTtGReyZFGIVc%2Bs%2B9PReVzHoL86g%3D%3D" alt="CVtoCAREER" />
+      </div>
+      <div class="social-links">
+        <a href="https://facebook.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png" alt="Facebook" /></a>
+        <a href="https://x.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png" alt="X" /></a>
+        <a href="https://youtube.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png" alt="YouTube" /></a>
+        <a href="mailto:deliveryteam@cvtocareer.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png" alt="Email" /></a>
+        <a href="https://instagram.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png" alt="Instagram" /></a>
+        <a href="https://linkedin.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png" alt="LinkedIn" /></a>
+        <a href="https://www.tiktok.com/@cvtocareer?lang=en"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_tiktok.png" alt="TikTok" /></a>
+      </div>
+      <p class="copyright">© <%= currentYear %> CVtoCAREER. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="<%= frontendUrl %>/dashboard/account?run=unsubscribe">Unsubscribe</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="<%= frontendUrl %>/privacy-policy">Privacy Policy</a>
+        &nbsp;&nbsp;|&nbsp;&nbsp;
+        <a href="<%= frontendUrl %>">Web</a>
+      </div>
+    </div>
+  </body>
+</html>

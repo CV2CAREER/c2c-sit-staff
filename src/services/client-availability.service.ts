@@ -237,6 +237,117 @@ export async function acceptClientAvailability(
   }
 }
 
+export interface ProposeReschedulePayload {
+  date: string;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  meetingLink?: string;
+}
+
+export async function proposeRescheduleToClient(
+  availabilityId: string,
+  coachId: string,
+  payload: ProposeReschedulePayload,
+): Promise<void> {
+  try {
+    const availability = await ClientAvailability.findOne({
+      where: { id: availabilityId, isAvailable: true, isDeleted: false },
+      include: [
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "firstName", "lastName", "email"],
+          required: true,
+        },
+      ],
+    });
+
+    if (!availability) {
+      throw new ErrorHandler(
+        "Client availability not found or already processed",
+        404,
+      );
+    }
+
+    const coach = await User.findByPk(coachId, {
+      attributes: ["id", "firstName", "lastName"],
+    });
+
+    await ClientAvailability.update(
+      { status: ClientAvailabilityStatus.REJECTED, isAvailable: false, isDeleted: true },
+      { where: { id: availabilityId } },
+    );
+
+    await availability.destroy();
+
+    logger.info(
+      `Coach ${coachId} proposed reschedule for availability ${availabilityId} → ${payload.date} ${payload.startTime}–${payload.endTime}`,
+    );
+
+    setImmediate(() => {
+      sendProposeRescheduleNotifications(availability, coach, payload).catch((err) =>
+        logger.error("Background propose-reschedule notification error:", err),
+      );
+    });
+  } catch (error: any) {
+    logger.error("Failed to propose reschedule:", error);
+    if (error instanceof ErrorHandler) throw error;
+    throw new ErrorHandler("Failed to propose reschedule", 500);
+  }
+}
+
+async function sendProposeRescheduleNotifications(
+  availability: ClientAvailability,
+  coach: User | null,
+  payload: ProposeReschedulePayload,
+): Promise<void> {
+  const client = (availability as any).client as User;
+  const frontendUrl = PROD_FRONTEND_URL || "https://rat.cvtocareer.com";
+  const currentYear = new Date().getFullYear();
+
+  const originalDate = moment.utc(availability.date).format("dddd, Do MMMM YYYY");
+  const originalTime = `${availability.startTime} – ${availability.endTime}`;
+  const proposedDate = moment.utc(payload.date).format("dddd, Do MMMM YYYY");
+  const proposedTime = `${payload.startTime} – ${payload.endTime}`;
+  const coachName = coach ? `${coach.firstName} ${coach.lastName}` : "Your Coach";
+
+  // Email → client
+  sendMail({
+    email: client.email,
+    subject: "Your Coach Has Proposed a New Session Time — CVtoCAREER",
+    templateName: "availability-reschedule-proposed.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      name: client.firstName,
+      coachName,
+      originalDate,
+      originalTime,
+      originalTimezone: availability.timezone,
+      sessionType: availability.sessionType,
+      proposedDate,
+      proposedTime,
+      proposedTimezone: payload.timezone,
+      meetingLink: payload.meetingLink || null,
+      frontendUrl,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(`Failed to send propose-reschedule email to client ${client.email}:`, err),
+  );
+
+  // Slack → TOWN_CRIER
+  SlackService.notify({
+    node: SlackNode.USER_MANAGEMENT,
+    provider: SlackProvider.SYSTEM,
+    severity: SlackSeverity.INFO,
+    type: SlackEventType.ADMIN_ACTION,
+    trigger: "client-availability-reschedule-proposed",
+    channel: SlackChannel.TOWN_CRIER,
+    body: `🔄 *Reschedule Proposed*\n\nCoach *${coachName}* proposed a new time for client *${client.firstName} ${client.lastName}* (${client.email}).\n\n*Original:* ${originalDate} ${originalTime} (${availability.timezone})\n*Proposed:* ${proposedDate} ${proposedTime} (${payload.timezone})\n*Session Type:* ${availability.sessionType}`,
+  }).catch((err) => logger.error("Failed to send Slack propose-reschedule notification:", err));
+}
+
 export interface ReschedulePayload {
   startTime: string;
   endTime: string;
