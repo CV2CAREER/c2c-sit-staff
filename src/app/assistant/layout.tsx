@@ -5,6 +5,8 @@ import TopBar from "@/components/TopBar";
 import ViewAsUserBanner from "@/components/ViewAsUserBanner";
 import AdminDashboardClientLayout from "../admin/_components/AdminDashboardClientLayout";
 import AssistantPersonaGuard from "./_components/AssistantPersonaGuard";
+import FloatingVAChat from "@/components/VaBot/VaBot";
+
 
 export const metadata: Metadata = {
   title: {
@@ -33,6 +35,7 @@ export default function AssistantDashboardLayout({
               <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
             </div>
           </section>
+          <FloatingVAChat />
         </main>
       </AdminDashboardClientLayout>
     </AssistantPersonaGuard>

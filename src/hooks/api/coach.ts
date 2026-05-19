@@ -207,6 +207,25 @@ export const useCoachMutations = () => {
     },
   });
 
+  const proposeRescheduleAvailability = useMutation({
+    mutationKey: ["coach-propose-reschedule-availability"],
+    mutationFn: async (payload: {
+      id: string;
+      date: string;
+      startTime: string;
+      endTime: string;
+      timezone: string;
+      meetingLink?: string;
+    }) => {
+      const { id, ...body } = payload;
+      const response = await axiosInstance.post(coachEndpoints.CLIENT_AVAILABILITY_PROPOSE_RESCHEDULE(id), body);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-availabilities"] });
+    },
+  });
+
   const rescheduleSession = useMutation({
     mutationKey: ["coach-reschedule-session"],
     mutationFn: async (payload: {
@@ -235,6 +254,7 @@ export const useCoachMutations = () => {
     gradeSession,
     acceptClientAvailability,
     declineClientAvailability,
+    proposeRescheduleAvailability,
     rescheduleSession,
   };
 };

@@ -54,6 +54,7 @@ export const metadata: Metadata = {
 };
 
 import AdminPersonaGuard from "./_components/AdminPersonaGuard";
+import FloatingVAChat from "@/components/VaBot/VaBot";
 
 function AdminDashboardLayout({
   children,
@@ -72,6 +73,7 @@ function AdminDashboardLayout({
               <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
             </div>
           </section>
+          <FloatingVAChat />
         </main>
       </AdminDashboardClientLayout>
     </AdminPersonaGuard>

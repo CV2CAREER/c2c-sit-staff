@@ -20,6 +20,7 @@ export const COACH_GRADE_SESSION = (sessionId: string) => `/api/v1/coach/grade/$
 export const CLIENT_AVAILABILITIES = "/api/v1/client-availabilities";
 export const CLIENT_AVAILABILITY_ACCEPT = (id: string) => `/api/v1/client-availabilities/${id}/accept`;
 export const CLIENT_AVAILABILITY_DECLINE = (id: string) => `/api/v1/client-availabilities/${id}/decline`;
+export const CLIENT_AVAILABILITY_PROPOSE_RESCHEDULE = (id: string) => `/api/v1/client-availabilities/${id}/propose-reschedule`;
 
 // Session Reschedule
 export const COACH_SESSION_RESCHEDULE = (sessionId: string) => `/api/v1/sessions/${sessionId}/reschedule`;

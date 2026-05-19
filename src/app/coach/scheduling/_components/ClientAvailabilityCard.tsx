@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, RefreshCw, Clock, Globe, User } from "lucide-react";
+import { CheckCircle, XCircle, RefreshCw, Clock, Globe, User, CalendarClock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { timezones } from "@/app/coach/scheduling/_components/timezones";
 import { useCoachMutations } from "@/hooks/api/coach";
 import toast from "react-hot-toast";
 
@@ -29,9 +37,10 @@ export default function ClientAvailabilityCard({ availability }: ClientAvailabil
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleStart, setRescheduleStart] = useState("");
   const [rescheduleEnd, setRescheduleEnd] = useState("");
-  const [rescheduleNote, setRescheduleNote] = useState("");
+  const [rescheduleTimezone, setRescheduleTimezone] = useState("");
+  const [rescheduleMeetingLink, setRescheduleMeetingLink] = useState("");
 
-  const { acceptClientAvailability, declineClientAvailability } = useCoachMutations();
+  const { acceptClientAvailability, declineClientAvailability, proposeRescheduleAvailability } = useCoachMutations();
 
   const id = availability._id || availability.id;
   const clientName =
@@ -83,35 +92,31 @@ export default function ClientAvailabilityCard({ availability }: ClientAvailabil
     );
   };
 
-  const handleReschedule = () => {
-    if (!rescheduleDate || !rescheduleStart || !rescheduleEnd) {
-      toast.error("Please fill in date, start time, and end time.");
+  const handleReschedule = async () => {
+    if (!rescheduleDate || !rescheduleStart || !rescheduleEnd || !rescheduleTimezone) {
+      toast.error("Please fill in all required fields.");
       return;
     }
-    const reason = [
-      `Coach proposed reschedule to ${rescheduleDate} from ${rescheduleStart} to ${rescheduleEnd}.`,
-      rescheduleNote ? `Note: ${rescheduleNote}` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    toast.loading("Sending reschedule request...", { id: "ca-reschedule" });
-    declineClientAvailability.mutate(
-      { id, reason },
-      {
-        onSuccess: (res: any) => {
-          toast.success(res?.message || "Reschedule request sent.", { id: "ca-reschedule" });
-          setModal(null);
-          setRescheduleDate("");
-          setRescheduleStart("");
-          setRescheduleEnd("");
-          setRescheduleNote("");
-        },
-        onError: (err: any) => {
-          toast.error(err?.message || "Failed to send reschedule request.", { id: "ca-reschedule" });
-        },
-      }
-    );
+    const toastId = toast.loading("Sending reschedule proposal...");
+    try {
+      await proposeRescheduleAvailability.mutateAsync({
+        id,
+        date: rescheduleDate,
+        startTime: rescheduleStart,
+        endTime: rescheduleEnd,
+        timezone: rescheduleTimezone,
+        ...(rescheduleMeetingLink.trim() ? { meetingLink: rescheduleMeetingLink.trim() } : {}),
+      });
+      toast.success("Reschedule proposal sent to client.", { id: toastId });
+      setModal(null);
+      setRescheduleDate("");
+      setRescheduleStart("");
+      setRescheduleEnd("");
+      setRescheduleTimezone("");
+      setRescheduleMeetingLink("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to send reschedule proposal.", { id: toastId });
+    }
   };
 
   return (
@@ -261,65 +266,108 @@ export default function ClientAvailabilityCard({ availability }: ClientAvailabil
       </Dialog>
 
       {/* Reschedule Modal */}
-      <Dialog open={modal === "reschedule"} onOpenChange={(open) => !open && setModal(null)}>
-        <DialogContent className="sm:max-w-[420px]">
+      <Dialog open={modal === "reschedule"} onOpenChange={(open) => !proposeRescheduleAvailability.isPending && !open && setModal(null)}>
+        <DialogContent className="sm:max-w-[480px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Propose Reschedule</DialogTitle>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <CalendarClock size={20} className="text-blue-600" />
+              Reschedule Session
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-3 py-2">
-            <p className="text-sm text-gray-600">
+          <div className="flex flex-col gap-4 mt-2">
+            <p className="text-sm text-gray-500">
               Suggest a new time for <span className="font-medium">{clientName}</span>&apos;s session.
             </p>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="rescheduleDate" className="text-sm">New Date *</Label>
+              <Label htmlFor="rescheduleDate" className="text-sm font-semibold text-gray-700">
+                Date <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="rescheduleDate"
                 type="date"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
+                className="rounded-xl h-11"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="rescheduleStart" className="text-sm">Start Time *</Label>
+                <Label htmlFor="rescheduleStart" className="text-sm font-semibold text-gray-700">
+                  Start Time <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="rescheduleStart"
                   type="time"
                   value={rescheduleStart}
                   onChange={(e) => setRescheduleStart(e.target.value)}
+                  className="rounded-xl h-11"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="rescheduleEnd" className="text-sm">End Time *</Label>
+                <Label htmlFor="rescheduleEnd" className="text-sm font-semibold text-gray-700">
+                  End Time <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="rescheduleEnd"
                   type="time"
                   value={rescheduleEnd}
                   onChange={(e) => setRescheduleEnd(e.target.value)}
+                  className="rounded-xl h-11"
                 />
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="rescheduleNote" className="text-sm">
-                Note <span className="text-gray-400 font-normal">(optional)</span>
+              <Label className="text-sm font-semibold text-gray-700">
+                Timezone <span className="text-red-500">*</span>
               </Label>
-              <Textarea
-                id="rescheduleNote"
-                placeholder="Add any additional context..."
-                value={rescheduleNote}
-                onChange={(e) => setRescheduleNote(e.target.value)}
-                rows={2}
+              <Select
+                value={rescheduleTimezone}
+                onValueChange={(val) => setRescheduleTimezone(val)}
+              >
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  {timezones.map((tz) => (
+                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="rescheduleMeetingLink" className="text-sm font-semibold text-gray-700">
+                Meeting Link <span className="text-gray-400 font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="rescheduleMeetingLink"
+                type="url"
+                placeholder="https://meet.google.com/..."
+                value={rescheduleMeetingLink}
+                onChange={(e) => setRescheduleMeetingLink(e.target.value)}
+                className="rounded-xl h-11"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModal(null)}>Cancel</Button>
+          <DialogFooter className="mt-4 gap-3 sm:gap-2">
             <Button
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={handleReschedule}
-              disabled={declineClientAvailability.isPending}
+              variant="outline"
+              onClick={() => setModal(null)}
+              disabled={proposeRescheduleAvailability.isPending}
+              className="rounded-xl h-11"
             >
-              {declineClientAvailability.isPending ? "Sending..." : "Send Proposal"}
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={proposeRescheduleAvailability.isPending}
+              className="rounded-xl h-11 bg-blue-600 hover:bg-blue-700 font-bold gap-2 text-black"
+            >
+              {proposeRescheduleAvailability.isPending ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <CalendarClock size={16} />
+              )}
+              {proposeRescheduleAvailability.isPending ? "Rescheduling..." : "Confirm Reschedule"}
             </Button>
           </DialogFooter>
         </DialogContent>
