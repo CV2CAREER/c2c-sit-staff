@@ -519,7 +519,17 @@ const EditRowModal: React.FC<EditRowModalProps> = ({
                     inputComponent = (
                       <Input
                         type="number"
-                        value={watch("assessment") || ""} // Use watch to get the calculated assessment
+                        value={watch("assessment") || ""}
+                        disabled
+                        className="w-full bg-gray-50 rounded-lg border border-gray-300"
+                      />
+                    );
+                    break;
+                  case "pcAssessment":
+                    inputComponent = (
+                      <Input
+                        type="number"
+                        value={watch("pcAssessment") ?? ""}
                         disabled
                         className="w-full bg-gray-50 rounded-lg border border-gray-300"
                       />

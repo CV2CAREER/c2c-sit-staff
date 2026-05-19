@@ -177,6 +177,7 @@ export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
 export const ADMIN_TEMPLATES = "/api/v1/admin/templates";
 export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO = "/api/v1/communication-template/notify-missing-info";
 export const ASSISTANT_CLIENTS_ASSIGNED = "/api/v1/assistant/clients-assigned";
+export const ASSISTANT_VA_CHAT = "/api/v1/assistant/va";
 
 // Sales Operation Endpoints
 export const ADMIN_SALES_OPERATION = "/api/v1/sales-operation";

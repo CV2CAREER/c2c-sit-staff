@@ -234,7 +234,29 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Customer Class</FormLabel>
                       <FormControl>
-                        <Input placeholder="Customer Class" {...field} />
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Customer Class" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="family">Family</SelectItem>
+                            <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
+                            <SelectItem value="satisfied">Satisfied</SelectItem>
+                            <SelectItem value="unsatisfied">Unsatisfied</SelectItem>
+                            <SelectItem value="upset">Upset</SelectItem>
+                            <SelectItem value="unclassified">Unclassified</SelectItem>
+                            <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="probono">Probono</SelectItem>
+                            <SelectItem value="inflight">Inflight</SelectItem>
+                            <SelectItem value="untraceable">Untraceable</SelectItem>
+                            <SelectItem value="friendly">Friendly</SelectItem>
+                            <SelectItem value="N/A">N/A</SelectItem>
+                            <SelectItem value="Warm_Lead">Warm Lead</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

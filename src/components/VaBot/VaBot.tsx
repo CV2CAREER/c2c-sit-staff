@@ -1,10 +1,16 @@
 'use client';
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button, Input, Avatar } from "antd";
 import { IoChatbubbleEllipsesOutline } from "react-icons/io5";
 import { AiOutlineClose } from "react-icons/ai";
 import { usePathname } from "next/navigation";
 import Select from 'react-select';
+import { useVaChatMutations } from "@/hooks/api/admin/va-chat";
+import { useFetchData } from "@/hooks/useApi";
+import { ASSISTANT_CLIENTS_ASSIGNED } from "@/constants/apiEndpoints/admin.endpoint";
+
+const generateSessionId = () =>
+  `va-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const FloatingVAChat = () => {
   const [visible, setVisible] = useState(false);
@@ -14,11 +20,44 @@ const FloatingVAChat = () => {
   const [showChats, setShowChats] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [jobUrl, setJobUrl] = useState('');
+  const [sessionId, setSessionId] = useState(generateSessionId);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const ishomepage = pathname === '/';
 
   const canContinue = !!selectedClient && !!jobUrl;
+
+  // Fetch clients assigned to this assistant
+  const clientsQuery = useFetchData<{
+    clientDetails: Array<{
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      displayName: string;
+    }>;
+  }>({
+    method: "GET",
+    url: ASSISTANT_CLIENTS_ASSIGNED,
+    queryKey: ["assistant-clients-assigned"],
+    enabled: visible && convoType === 'sample',
+  });
+
+  const clientOptions = (clientsQuery.data?.data?.clientDetails ?? []).map((c) => ({
+    value: c.id,
+    label: c.displayName || `${c.firstName} ${c.lastName}`,
+  }));
+
+  const { sendMessage } = useVaChatMutations(sessionId);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping, scrollToBottom]);
 
   const toggleChat = () => setVisible(!visible);
 
@@ -30,6 +69,48 @@ const FloatingVAChat = () => {
     setJobUrl('');
     setSelectedClient(null);
     setInput('');
+    setIsTyping(false);
+    setSessionId(generateSessionId());
+  };
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed || isTyping) return;
+
+    setMessages((prev) => [...prev, { role: 'user', message: trimmed }]);
+    setInput('');
+    setIsTyping(true);
+
+    sendMessage.mutate(
+      {
+        message: trimmed,
+        sessionId,
+        userId: convoType === 'sample' ? selectedClient?.value : undefined,
+        jobUrl: convoType === 'sample' && jobUrl ? jobUrl : undefined,
+        type: convoType,
+      },
+      {
+        onSuccess: (data: any) => {
+          const aiMessage = data?.data?.message ?? data?.message ?? '';
+          setMessages((prev) => [...prev, { role: 'assistant', message: aiMessage }]);
+          setIsTyping(false);
+        },
+        onError: () => {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', message: 'Sorry, something went wrong. Please try again.' },
+          ]);
+          setIsTyping(false);
+        },
+      }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const customRsStyles = {
@@ -118,7 +199,8 @@ const FloatingVAChat = () => {
                     <Select
                       styles={customRsStyles}
                       value={selectedClient}
-                      options={[]}
+                      options={clientOptions}
+                      isLoading={clientsQuery.isLoading}
                       onChange={(value) => setSelectedClient(value)}
                       placeholder="Search clients..."
                     />
@@ -149,7 +231,7 @@ const FloatingVAChat = () => {
                       key={index}
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-2`}
                     >
-                      {msg.role === 'system' && (
+                      {msg.role === 'assistant' && (
                         <Avatar className="mr-2 bg-career-blue-800">C</Avatar>
                       )}
                       <div
@@ -161,18 +243,33 @@ const FloatingVAChat = () => {
                       </div>
                     </div>
                   ))}
+
+                  {isTyping && (
+                    <div className="flex justify-start mb-2">
+                      <Avatar className="mr-2 bg-career-blue-800">C</Avatar>
+                      <div className="px-3 py-2 bg-gray-200 rounded-lg text-sm text-gray-500 italic">
+                        Typing...
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
+
                 <div className="mt-3 flex max-h-[80px]">
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Type a message..."
                     className="border-gray-400"
+                    disabled={isTyping}
                   />
                   <Button
                     type="primary"
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || isTyping}
+                    loading={isTyping}
+                    onClick={handleSend}
                     className="ml-2 h-[42px] bg-career-blue-800"
                   >
                     Send

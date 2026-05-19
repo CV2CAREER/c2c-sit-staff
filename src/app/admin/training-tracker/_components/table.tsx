@@ -212,10 +212,10 @@ export default function TrainingTrackerDatagrid({
     [activeCoach]
   );
 
-  const openEditModal = (row: TrainingTrackerData) => {
+  const openEditModal = useCallback((row: TrainingTrackerData) => {
     setSelectedRow(row);
     setEditModalIsOpen(true);
-  };
+  }, []);
 
   function EditToolbar() {
     const handleClick = () => {
@@ -428,7 +428,7 @@ export default function TrainingTrackerDatagrid({
               icon={<FaEdit />}
               label="Edit"
               className="textPrimary"
-              onClick={handleEditClick(id)}
+              onClick={() => openEditModal(row as TrainingTrackerData)}
               color="inherit"
               key="edit-action"
             />,
@@ -441,7 +441,7 @@ export default function TrainingTrackerDatagrid({
             />,
           ];
     },
-    [rowModesModel, handleSaveClick, handleCancelClick, restoreMutation, handlePermanentDeleteClick, handleEditClick, handleDeleteClick, isDeleted, closeConfirmModal]
+    [rowModesModel, handleSaveClick, handleCancelClick, restoreMutation, handlePermanentDeleteClick, openEditModal, handleDeleteClick, isDeleted, closeConfirmModal]
   );
 
   const tableName = "CRUD_TABLE";

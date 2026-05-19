@@ -124,7 +124,7 @@ export const trainingTrackerSchema = z.object({
   respectcurtesy: z.number().min(0).max(5).optional(),
   appearance: z.number().min(0).max(5).optional(),
   assessment: z.number().optional(), // Calculated field, not directly validated by form
-  pcAssessment: z.string().optional().or(z.literal("")),
+  pcAssessment: z.number().optional(),
   pleasantriessmallTalk: z.number().min(0).max(5).optional(),
   sessionObjectives: z.number().min(0).max(5).optional(),
   professionIntroduction: z.number().min(0).max(5).optional(),
