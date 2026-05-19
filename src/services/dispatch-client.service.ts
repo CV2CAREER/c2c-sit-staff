@@ -1,6 +1,7 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
 import { Profile } from "../models/v1/profile.model";
+import { Aggregator } from "../models/v1/aggregator.model";
 import { SlackService } from "./slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
@@ -213,7 +214,11 @@ Aggregators Credentials
   // Add aggregator credentials
   if (profile?.aggregators && Array.isArray(profile.aggregators)) {
     for (const agg of profile.aggregators) {
-      const aggregatorName = agg.aggregator?.name || 'Unknown';
+      // Look up aggregator name by aggregatorId from the aggregators table
+      const aggregatorRecord = await Aggregator.findByPk(agg.aggregatorId, {
+        attributes: ['name']
+      });
+      const aggregatorName = aggregatorRecord?.name || 'Unknown';
       const username = agg.username || '-';
       const password = agg.password || '-';
       

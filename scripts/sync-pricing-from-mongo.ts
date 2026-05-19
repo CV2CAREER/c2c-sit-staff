@@ -196,7 +196,7 @@ const buildPostgresConnectionString = () => {
     );
   }
 
-  return `postgres://${user}:${password}@${host}:${port}/${dbName}?sslmode=require`;
+  return `postgres://${user}:${password}@${host}:${port}/${dbName}?sslmode=no-verify`;
 };
 
 const toIsoOrZero = (value: Date | string | undefined) => {

@@ -70,7 +70,7 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await ClientAvailability.sync({ alter: true });         // new schema
-        // await User.sync({ alter: true });
+        // await TrainingTracker.sync({ alter: true });
         // await Profile.sync({ alter: true });
 
         // await ensureTrainingTrackerSessions();

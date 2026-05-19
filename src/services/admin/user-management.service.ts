@@ -8,7 +8,7 @@ import { Feature } from "../../models/v1/feature.model";
 import { Profile } from "../../models/v1/profile.model";
 import { UserPreferenceHistory } from "../../models/v1/user-preference-history.model";
 import { Referrer } from "../../models/v1/referrer.model";
-import { Role, UploadStatus } from "../../utils/enum";
+import { Role, UploadStatus, CustomerClass } from "../../utils/enum";
 import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
@@ -88,6 +88,17 @@ class UserManagementService {
       if (updateData[alias] !== undefined && updateData[column] === undefined) {
         updateData[column] = updateData[alias];
         delete updateData[alias];
+      }
+    }
+
+    // Validate customerClass if provided
+    if (updateData.customerClass !== undefined) {
+      const validClasses = Object.values(CustomerClass);
+      if (!validClasses.includes(updateData.customerClass)) {
+        throw new ErrorHandler(
+          `Invalid customerClass "${updateData.customerClass}". Allowed values: ${validClasses.join(', ')}`,
+          400
+        );
       }
     }
 

@@ -190,6 +190,178 @@ export class TrainingTracker extends Model {
   @Column(DataType.INTEGER)
   pcAssessment!: number;
 
+  // Session / scheduling fields
+  @AllowNull(true)
+  @Column(DataType.DATEONLY)
+  coachingContact?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATEONLY)
+  coachingBooking?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  start?: string;
+
+  @AllowNull(true)
+  @Column(DataType.INTEGER)
+  duration?: number;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  sessionType?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  surveyvideo?: string;
+
+  // Background / profile fields
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  preferredCraft?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  undergrad?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  postgrad?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  training?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  experience?: string;
+
+  // CV development status & reviewer fields
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  developmentStatus?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reviewer1?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reviewer2?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reviewer3?: string;
+
+  // CV checklist — boolean fields
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  overarchingRoleAndIndustryIdentified!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  personalDataGrouping!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  narrativeBasedGroupings!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  professionalSummary!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  technicalSkills!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  softSkills!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  jobDescriptionModification!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  factBasedGroupings!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  businessNameBusinessLocation!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  roleTitle!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  dateFormat!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  educationFormat!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  additionals!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  colourHighlightNewText!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  layoutModification!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  findReplaceAnd!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  paragraphing!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  alignment!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  textSpacing!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  differentiationOfEachRoleTitle!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  roleNarrativeDifferentiation!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  dateSerializationRationalization!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  roleSegmentation!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  grammerreadabilityEase!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  smeTechnicalContent!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  clientRequirementsAssessment!: boolean;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  dispatchToClient!: boolean;
+
   // Additional metadata
   @Column(DataType.DATE)
   deletedAt!: Date;
