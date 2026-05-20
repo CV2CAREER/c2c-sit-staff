@@ -311,10 +311,14 @@ export class AggregatorService {
     }
   }
 
-  // Get all aggregators with optional date filtering
-  static async getAllAggregators(startDate?: string, endDate?: string) {
+  // Get all aggregators with optional date filtering and active-only flag
+  static async getAllAggregators(startDate?: string, endDate?: string, activeOnly?: boolean) {
     try {
       const where: any = {};
+
+      if (activeOnly) {
+        where.isStage = false;
+      }
 
       if (startDate && endDate) {
         where.createdAt = {
@@ -324,7 +328,8 @@ export class AggregatorService {
 
       const aggregators = await Aggregator.findAll({
         where,
-        order: [['createdAt', 'DESC']]
+        attributes: ['id', 'name', 'picture', 'isEnabled', 'config', 'createdAt', 'updatedAt'],
+        order: [['createdAt', 'ASC']]
       });
       
       logger.info(`Retrieved ${aggregators.length} aggregators`);

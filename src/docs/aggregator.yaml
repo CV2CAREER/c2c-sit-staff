@@ -9,6 +9,8 @@ paths:
       description: |
         Retrieve all aggregators or a specific aggregator by ID.
         Optional date range filtering available.
+        Pass `active=true` to return only enabled (active) aggregators — used by the
+        campaign management Combobox to list selectable jobsite aggregators.
       operationId: getAggregators
       security:
         - bearerAuth: []
@@ -20,7 +22,18 @@ paths:
           schema:
             type: string
             format: string
-          description: Optional aggregator ID to retrieve single aggregator
+          description: Optional aggregator ID to retrieve a single aggregator
+        - in: query
+          name: active
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: |
+            When set to `"true"`, returns only production aggregators (`isStage = false`),
+            excluding test/stage entries. Includes both enabled and disabled real aggregators.
+            Used by the frontend campaign-mgt Combobox to populate selectable jobsite aggregator names.
+          example: "true"
         - in: query
           name: startDate
           required: false

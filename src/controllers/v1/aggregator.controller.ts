@@ -102,7 +102,7 @@ export const removeFromSlackQueue = catchAsyncError(
 export const getAggregators = catchAsyncError(
   async (req: Request, res: Response) => {
     try {
-      const { aid, startDate, endDate } = req.query;
+      const { aid, startDate, endDate, active } = req.query;
 
       if (aid) {
         const aggregator = await AggregatorService.getAggregatorById(aid as string);
@@ -111,7 +111,8 @@ export const getAggregators = catchAsyncError(
 
       const aggregators = await AggregatorService.getAllAggregators(
         startDate as string,
-        endDate as string
+        endDate as string,
+        active === "true"
       );
       
       res.apiSuccess(
