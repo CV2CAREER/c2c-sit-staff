@@ -79,7 +79,6 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   useEffect(() => {
     if (profile) {
       setApplicationData([
-        profile.statistics?.totalApplications ?? 0,
         profile.statistics?.successfulApplications ?? 0,
         profile.statistics?.failedApplications ?? 0,
         profile.aggregatorCount ?? 0
@@ -125,17 +124,8 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     
   const cardsData: cardsDataProps[] = [
     {
-      title: "Total Applications",
-      value: applicationData[0],
-      icon: {
-        name: Layers,
-        bgColor: "bg-blue-100",
-        color: "text-blue-700",
-      },
-    },
-    {
       title: "Successful Applications",
-      value: applicationData[1],
+      value: applicationData[0],
       icon: {
         name: Layers,
         bgColor: "bg-green-200",
@@ -144,7 +134,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     },
     {
       title: "Failed Applications",
-      value: applicationData[2],
+      value: applicationData[1],
       icon: {
         name: Layers,
         bgColor: "bg-red-200",
@@ -153,7 +143,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
     },
     {
       title: "Active Jobsites",
-      value: applicationData[3],
+      value: applicationData[2],
       icon: {
         name: Bot,
         bgColor: "bg-lightblue",
@@ -169,7 +159,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
         listOfValues={['', ...clientList?.map((value) => String(value.id))]}
         defaultValue={clientId as string | undefined}
         onChange={(e: any) => {
-          window.location.href = `/assistant/campaign-mgt/client/${e.id}`;
+          window.location.href = `/admin/campaign-mgt/client/${e.id}`;
         }}
         values={[{ Full_Name: 'All User', id: '' }, ...clientList]}
       />
@@ -204,7 +194,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
 
         {/* Insights Cards */}
         <section className="w-full lg:w-[60%] flex flex-col gap-8 lg:gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
             {isLoading
               ? Array(3)
                   .fill(0)

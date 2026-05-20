@@ -73,7 +73,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
       setApplicationData([
         clientCampaignData.data.statistics?.successfulApplications ?? 0,
         clientCampaignData.data.statistics?.failedApplications ?? 0,
-        0,
+        clientCampaignData.data.aggregatorCount ?? 0,
       ]);
     }
   }, [clientCampaignData]);

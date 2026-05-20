@@ -260,7 +260,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
         }
     }, [hasPremiumAccess]);
 
-    const jobsiteAggregatorsList = jobsiteAggregators?.data?.flatMap(
+    const jobsiteAggregatorsList = jobsiteAggregators?.flatMap(
         (aggregator: { name: string; picture: string }) => [
             {
                 label: aggregator.name.charAt(0).toUpperCase() + aggregator.name.slice(1),
