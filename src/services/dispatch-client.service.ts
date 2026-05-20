@@ -128,7 +128,7 @@ ${remainingCount > 0 ? `\n+${remainingCount} more client(s)` : ''}`;
         node: SlackNode.HUMAN_RESOURCE,
         provider: SlackProvider.GITHUB,
         severity: SlackSeverity.INFO,
-        trigger: "Client dispatch",
+        trigger: senderId,
         type: SlackEventType.USER_TRIGGERED,
         channel: SlackChannel.CRY_WOLF,
         body: formattedMessage,

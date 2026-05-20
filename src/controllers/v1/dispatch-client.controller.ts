@@ -26,7 +26,7 @@ export const dispatchClient = catchAsyncError(
     }
 
     const host = req.headers.host || req.headers.origin || "localhost";
-    const senderId = req.user?.email || 'System';
+    const senderId = `${req.user?.firstName}  ${req.user?.lastName}` ||req.user?.email || 'System';
     
     // Call the service to handle the dispatch logic
     const result = await dispatchClientToVA(pcId, clientIds, host, senderId);
