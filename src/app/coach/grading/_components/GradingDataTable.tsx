@@ -19,80 +19,101 @@ const GradingDataTable = ({ gradingState }: GradingDataTableProps) => {
   const sessions = sessionsDomain.data?.populatedSessions || [];
 
   const filteredSessions = React.useMemo(() => {
+    let list = sessions;
     if (gradingState === "Ungraded") {
-      return sessions.filter((s: any) => !s.isGraded && s.sessionStatus?.toLowerCase() === "completed");
+      list = sessions.filter((s: any) => !s.isGraded);
     }
     if (gradingState === "Graded") {
-      return sessions.filter((s: any) => s.isGraded);
+      list = sessions.filter((s: any) => s.isGraded);
     }
-    return sessions;
+    // Map to only the 7 desired fields (plus _id for row identification)
+    return list.map((s: any) => ({
+      _id: s.id,
+      name: `${s["client.firstName"] ?? ""} ${s["client.lastName"] ?? ""}`.trim(),
+      date: s.sessionDate ? new Date(s.sessionDate) : null,
+      startTime: s.time?.startTime ?? null,
+      endTime: s.time?.endTime ?? null,
+      sessionType: s.sessionType,
+      status: s.isGraded ? "Graded" : "Ungraded",
+      score: s.grading != null ? `${s.grading.score}/${s.grading.maxScore}` : "—",
+    }));
   }, [sessions, gradingState]);
 
   const modifyArray = (cols: any[]) => {
+    const hiddenFields = ["_id", "note", "updatedBy", "nominatedDeveloper"];
     return cols.map((col) => {
+      if (hiddenFields.includes(col.field)) {
+        return {
+          ...col,
+          width: 0,
+          headerName: "",
+          sortable: false,
+          filterable: false,
+          renderCell: () => null,
+        };
+      }
       if (col.field === "date") {
         return {
           ...col,
+          headerName: "Date",
+          width: 130,
           renderCell: (params: any) => (
             <span>{params.value ? format(new Date(params.value), "MMM dd, yyyy") : "N/A"}</span>
           ),
         };
       }
-      if (col.field === "time") {
+      if (col.field === "startTime") {
         return {
           ...col,
-          headerName: "Time",
-          renderCell: (params: any) => {
-            const time = params.value;
-            if (time?.startTime && time?.endTime) {
-              return <span>{time.startTime} - {time.endTime}</span>;
-            }
-            return <span>N/A</span>;
-          },
+          headerName: "Start Time",
+          width: 110,
+          renderCell: (params: any) => <span>{params.value ?? "N/A"}</span>,
         };
       }
-      if (col.field === "grading") {
+      if (col.field === "endTime") {
         return {
           ...col,
-          headerName: "Score",
-          renderCell: (params: any) => {
-            const grading = params.value;
-            if (grading?.score != null && grading?.maxScore != null) {
-              return (
-                <span className="font-semibold">
-                  {grading.score}/{grading.maxScore}
-                </span>
-              );
-            }
-            return <span className="text-gray-400">—</span>;
-          },
+          headerName: "End Time",
+          width: 110,
+          renderCell: (params: any) => <span>{params.value ?? "N/A"}</span>,
         };
       }
-      if (col.field === "isGraded") {
+      if (col.field === "sessionType") {
         return {
           ...col,
-          headerName: "Grading Status",
+          headerName: "Session Type",
+          width: 180,
           renderCell: (params: any) => (
-            <div className="flex items-center gap-2">
-              {params.value ? (
-                <span className="text-green-600 font-semibold text-xs">Graded</span>
-              ) : (
-                <Link 
-                  href={`/coach/${params.row.id}`}
-                  className="text-blue-600 hover:underline font-semibold text-xs bg-blue-50 px-2 py-1 rounded"
-                >
-                  Grade Session
-                </Link>
-              )}
-            </div>
+            <span className="capitalize">{params.value?.replace(/_/g, " ") ?? "N/A"}</span>
           ),
+        };
+      }
+      if (col.field === "status") {
+        return {
+          ...col,
+          headerName: "Status",
+          width: 160,
+          renderCell: (params: any) => {
+            const row = params.row;
+            if (row.status === "Graded") {
+              return <span className="text-green-600 font-semibold text-xs">Graded</span>;
+            }
+            return (
+              <Link
+                href={`/coach/${row._id}`}
+                className="text-blue-600 hover:underline font-semibold text-xs bg-blue-50 px-2 py-1 rounded"
+              >
+                Grade Session
+              </Link>
+            );
+          },
         };
       }
       return col;
     });
   };
 
-  const helpers = {}; // Standard helper object for NewTable
+  const helpers = {};
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
