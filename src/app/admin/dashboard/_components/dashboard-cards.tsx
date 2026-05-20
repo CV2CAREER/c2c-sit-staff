@@ -31,10 +31,6 @@ const DashboardCards = () => {
   const queryTotalUsersCount = totalUsersCountDomain;
   const queryTotalGuestsCount = totalGuestsCountDomain;
 
-  const applicationsData = useMemo(() => {
-    return queryOverallStats.data?.breakdown?.applications || { successful: 0, failed: 0 };
-  }, [queryOverallStats.data]);
-
   const usersData = useMemo(() => {
     return queryOverallStats.data?.breakdown?.users || { successful: 0, failed: 0 };
   }, [queryOverallStats.data]);
@@ -43,6 +39,14 @@ const DashboardCards = () => {
     return queryAggregatorsCount.data || { total: 0, active: 0 };
   }, [queryAggregatorsCount.data]);
 
+
+  const applicationsData = useMemo(() => {
+    return queryOverallStats.data?.subscriptionTiers?.totals?.activeSubscriptions ?? 0;
+  }, [queryOverallStats.data]);
+
+  const applicationsBreakdown = useMemo(() => {
+    return queryOverallStats.data?.breakdown?.applications || { successful: 0, failed: 0 };
+  }, [queryOverallStats.data]);
 
   if (queryOverallStats.isError) {
     toast.error("Could not load analytics data");
@@ -64,12 +68,12 @@ const DashboardCards = () => {
     },
     {
       title: "Active Subscriptions",
-      value: applicationsData?.successful || 0, // Proxy from plans.successful
+      value: applicationsData,
       linkIcon: false,
     },
     {
       title: "Inactive Subscriptions",
-      value: (queryTotalUsersCount.data ?? 0) - (applicationsData?.successful || 0),
+      value: (queryTotalUsersCount.data ?? 0) - applicationsData,
       linkIcon: false,
     },
     {
@@ -103,19 +107,19 @@ const DashboardCards = () => {
     },
     {
       title: "Total Applications",
-      value: (applicationsData?.successful || 0) + (applicationsData?.failed || 0),
+      value: (applicationsBreakdown?.successful || 0) + (applicationsBreakdown?.failed || 0),
       linkIcon: true,
       route: "/admin/job-applications",
     },
     {
       title: "Successful Applications",
-      value: applicationsData?.successful || 0,
+      value: applicationsBreakdown?.successful || 0,
       linkIcon: true,
       route: "/admin/job-applications",
     },
     {
       title: "Failed Applications",
-      value: applicationsData?.failed || 0,
+      value: applicationsBreakdown?.failed || 0,
       linkIcon: true,
       route: "/admin/job-applications",
     },
