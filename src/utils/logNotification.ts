@@ -1,3 +1,3 @@
-import { getServiceLogger } from "./createLogger";
+// import { getServiceLogger } from "./createLogger";
 
-const logger = getServiceLogger("notification-service");
+// const logger = getServiceLogger("notification-service");
