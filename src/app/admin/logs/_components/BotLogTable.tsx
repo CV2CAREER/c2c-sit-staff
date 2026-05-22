@@ -106,7 +106,7 @@ const BotLogTable = () => {
         }
       );
     } catch (error) {
-      console.error("Export error:", error);
+      // console.error("Export error:", error);
     }
   };
 

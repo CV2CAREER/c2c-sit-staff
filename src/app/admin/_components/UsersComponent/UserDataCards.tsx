@@ -73,10 +73,8 @@ const UserDataCards = ({
 
   // Transform the API data to match your component's expected structure
   const transformApiData = (apiData: any): UsersCountData => {
-    console.log("Transforming API data:", apiData);
     
     if (!apiData) {
-      console.log("No API data to transform");
       return {
         adminPersonnaCount: 0,
         guestPersonnaCount: 0,
@@ -103,21 +101,17 @@ const UserDataCards = ({
 
     // Check if the data is already in the correct format (has adminPersonnaCount)
     if (apiData.adminPersonnaCount !== undefined) {
-      console.log("Data already in correct format");
       return apiData;
     }
 
     // Check if data is nested in a 'data' property
     if (apiData.data && apiData.data.adminPersonnaCount !== undefined) {
-      console.log("Data found in apiData.data");
       return apiData.data;
     }
 
     // Check if data has subscriptionTiers structure (from your analytics)
     if (apiData) {
-      console.log("✅ Data has analytics v1 structure");
-      console.log("👉 userRoleCounts values:", apiData.userRoleCounts);
-      
+
       const tiers = apiData.subscriptionTiers?.tiers || [];
       const bronzeTier = tiers.find((t: any) => t.key === "bronze");
       const silverTier = tiers.find((t: any) => t.key === "silver");
@@ -154,7 +148,6 @@ const UserDataCards = ({
     }
 
     // If none of the above, return zeros and log the structure
-    console.log("Unknown data structure. First level keys:", Object.keys(apiData));
     return {
       adminPersonnaCount: 0,
       guestPersonnaCount: 0,
@@ -183,7 +176,6 @@ const UserDataCards = ({
     ? transformApiData(analytics.data)
     : undefined;
 
-  console.log("Actual analytics data", analytics.data)
 
   const isLoading = analytics.isLoading;
   const isError = analytics.isError;

@@ -76,9 +76,9 @@ export const useAuthMutations = () => {
       // The UI Login.tsx component handles toast display.
       // 403 = valid credentials but role not permitted by backend
       if (error?.statusCode === 403) {
-        console.warn("[auth.api] Login blocked — role not permitted by backend:", error.message);
+        // console.warn("[auth.api] Login blocked — role not permitted by backend:", error.message);
       } else {
-        console.error("[auth.api] Login error:", error.message);
+        // console.error("[auth.api] Login error:", error.message);
       }
     },
   });

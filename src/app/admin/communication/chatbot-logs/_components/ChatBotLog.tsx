@@ -80,7 +80,7 @@ const ChatBotLog = () => {
         const text = await response.text();
         setMessages(parseChatLogs(text));
       } catch (error) {
-        console.error("Failed to fetch log content:", error);
+        // console.error("Failed to fetch log content:", error);
         setMessages([]);
       } finally {
         setIsLogFetching(false);

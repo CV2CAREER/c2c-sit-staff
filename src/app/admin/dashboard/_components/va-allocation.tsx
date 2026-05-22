@@ -23,8 +23,8 @@ export default function VaAllocation() {
       try {
         setIsLoading(true);
         // Use the HTTPS endpoint
-        const apiUrl = "https://rat.staff.cvtocareer.com/api/v1/admin/client-allocation";
-        console.log("📡 Fetching from:", apiUrl);
+        const apiUrl = `${process.env.NEXT_PUBLIC_SERVER_URI}/api/v1/admin/client-allocation`;
+        // console.log("📡 Fetching from:", apiUrl);
         
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -34,26 +34,26 @@ export default function VaAllocation() {
           },
         });
         
-        console.log("📡 Response status:", response.status);
+        // console.log("📡 Response status:", response.status);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const jsonData = await response.json();
-        console.log("API Response:", jsonData);
+        // console.log("API Response:", jsonData);
         
         // Set the data directly from the response
         if (jsonData?.data?.parsedData) {
           setAllocations(jsonData.data.parsedData.result || []);
           setUnAllocatedClients(jsonData.data.parsedData.unAllocatedClients || []);
-          console.log("✅ Set allocations:", jsonData.data.parsedData.result.length);
-          console.log("✅ Set unallocated:", jsonData.data.parsedData.unAllocatedClients.length);
+          // console.log("✅ Set allocations:", jsonData.data.parsedData.result.length);
+          // console.log("✅ Set unallocated:", jsonData.data.parsedData.unAllocatedClients.length);
         } else {
-          console.error("Unexpected data structure:", jsonData);
+          // console.error("Unexpected data structure:", jsonData);
         }
       } catch (error) {
-        console.error("❌ Error fetching data:", error);
+        // console.error("❌ Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }

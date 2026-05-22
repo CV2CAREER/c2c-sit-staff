@@ -334,7 +334,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       }
 
     } catch (error: any) {
-      console.error('AI Extraction Error:', error);
+      // console.error('AI Extraction Error:', error);
       toast.dismiss(loadingToast);
       toast.error(error?.response?.data?.message || error?.message || 'Failed to process with AI');
     } finally {
@@ -370,7 +370,7 @@ const ManualApplicationsModal: React.FC<EditRoleModalProps> = ({
       }
 
     } catch (error: any) {
-      console.error('Save Error:', error);
+      // console.error('Save Error:', error);
       toast.dismiss(loadingToast);
       toast.error(error?.response?.data?.message || error?.message || 'Failed to save application');
     } finally {

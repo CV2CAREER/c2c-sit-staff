@@ -19,10 +19,10 @@ export const useVaAllocationsQueries = (options: any) => {
     queryFn: async () => {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:51001";
       const url = `${baseURL}/api/v1/admin/client-allocation`;
-      console.log("📡 Fetching VA allocations from:", url);
+      // console.log("📡 Fetching VA allocations from:", url);
       
       const response = await axios.get(url);
-      console.log("✅ VA allocations response:", response.data);
+      // console.log("✅ VA allocations response:", response.data);
       
       return response.data;
     },

@@ -118,7 +118,7 @@ const TrainChatbot = () => {
       setQuestion("");
       setResponse("");
     } catch (error) {
-      console.error("Save error:", error);
+      // console.error("Save error:", error);
     }
   };
 
@@ -140,7 +140,7 @@ const TrainChatbot = () => {
         }
       );
     } catch (error) {
-      console.error("Delete error:", error);
+      // console.error("Delete error:", error);
     } finally {
       setDeleteModalOpen(false);
       setQuestionToDelete(null);

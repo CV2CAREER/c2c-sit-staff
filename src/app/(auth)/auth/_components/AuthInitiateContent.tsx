@@ -33,7 +33,6 @@ export default function AuthInitiateContent() {
         const token = searchParams?.get("token");
 
         if (!token) {
-            console.warn("[StaffApp - Auth Initiate] No token found in URL.");
             setError("Authentication token missing. Please try again from the admin panel.");
             setStatus("Error");
             return;
@@ -60,7 +59,6 @@ export default function AuthInitiateContent() {
         }
 
         if (userError) {
-            console.error("[StaffApp - Auth Initiate] Profile fetch failed:", userError);
             setError("Session verification failed. Your token may be invalid or expired.");
             setStatus("Authentication Failed");
             // Optional: redirect to login after a delay

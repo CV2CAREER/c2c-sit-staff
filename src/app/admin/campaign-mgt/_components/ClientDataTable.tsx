@@ -70,7 +70,6 @@ const handleApiError = (error: any, defaultMessage: string = 'An error occurred'
                         error.message || 
                         defaultMessage;
     
-    console.error('API Error:', errorMessage, error);
     return errorMessage;
 };
 
@@ -90,7 +89,7 @@ const useClientPlan = (clientInfo: Client | null) => {
         }
                          
         if (!planValue) {
-            console.log("[ClientPlan] No plan value found for client:", clientInfo.name);
+            // console.log("[ClientPlan] No plan value found for client:", clientInfo.name);
             return false;
         }
 
@@ -107,7 +106,7 @@ const useClientPlan = (clientInfo: Client | null) => {
             plan.includes("elite")
         );
 
-        console.log(`[ClientPlan] Client: ${clientInfo.name}, Plan: ${plan}, IsPremium: ${isPremium}`);
+        // console.log(`[ClientPlan] Client: ${clientInfo.name}, Plan: ${plan}, IsPremium: ${isPremium}`);
 
         if (isPremium) return true;
 
@@ -275,7 +274,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
 
     const selectedAggValue = selectedAggregator?.value;
 
-    console.log(tableData, "Data to be filled in table")
+    // console.log(tableData, "Data to be filled in table")
 
     const handleUpdateKeywords = async () => {
         if (!clientId) {
@@ -325,7 +324,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
 
         } catch (error: any) {
             if (loadingToast) toast.dismiss(loadingToast);
-            console.error("Error pushing to aggregator queue:", error);
+            // console.error("Error pushing to aggregator queue:", error);
             const errorMessage = handleApiError(error, "An error occurred while pushing to the aggregator queue.");
             toast.error(errorMessage);
         } finally {
@@ -368,7 +367,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
         } catch (error: any) {
             if (loadingToast) toast.dismiss(loadingToast);
-            console.error("Error updating campaign sheet:", error);
+            // console.error("Error updating campaign sheet:", error);
             const errorMessage = handleApiError(error, "An error occurred while updating the campaign sheet");
             toast.error(errorMessage);
         }
@@ -405,11 +404,11 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
     // UPDATED useEffect to process applicationData correctly
     useEffect(() => {
         if (applicationData) {
-            console.log("Application data received:", applicationData);
+            // console.log("Application data received:", applicationData);
             
             // Check if the request was successful
             if (applicationData.success === false) {
-                console.error("API returned error:", applicationData.message);
+                // console.error("API returned error:", applicationData.message);
                 toast.error(applicationData.message || "Failed to fetch data");
                 setTableData([]);
                 setTotalTableCount(0);
@@ -429,7 +428,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
         } else if (applicationError) {
             setTableData([]);
             setTotalTableCount(0);
-            console.error("Error fetching application data:", applicationError);
+            // console.error("Error fetching application data:", applicationError);
             
             // Extract error message properly
             const errorMessage = handleApiError(applicationError, "Failed to fetch application data");
@@ -501,7 +500,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                 queryKey: ["admin-campaign-sheet"] 
             });
         } catch (error: any) {
-            console.log("[Save Multiple] Error occurred:", error);
+            // console.log("[Save Multiple] Error occurred:", error);
             const errorMessage = handleApiError(error, 'Something went wrong saving data');
             toast.error(errorMessage);
         } finally {
@@ -527,7 +526,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             });
             
         } catch (error: any) {
-            console.error(error);
+            // console.error(error);
             const errorMessage = handleApiError(error, 'Something went wrong recycling data');
             toast.error(errorMessage);
         } finally {

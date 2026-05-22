@@ -55,7 +55,7 @@ export function usePersonaSwitcher() {
 
         toast.success(`Now viewing as ${targetRole}`, { duration: 2000 });
       } catch (error) {
-        console.error("Failed to switch persona:", error);
+        // console.error("Failed to switch persona:", error);
         toast.error("Failed to switch persona");
         // Revert on error
         resetToOriginalRole();
@@ -86,7 +86,7 @@ export function usePersonaSwitcher() {
 
       toast.success(`Returned to ${previousRole} view`, { duration: 2000 });
     } catch (error) {
-      console.error("Failed to exit view-as mode:", error);
+      // console.error("Failed to exit view-as mode:", error);
       toast.error("Failed to exit view-as mode");
     } finally {
       endTransition();

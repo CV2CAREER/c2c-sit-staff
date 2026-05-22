@@ -101,7 +101,7 @@ export default function AgentInterface() {
       setInput("");
     } catch (error) {
       toast.error("Failed to send support message.");
-      console.error(error);
+      // console.error(error);
     }
   }, [activeChat, input, sendMessage]);
 
@@ -113,7 +113,7 @@ export default function AgentInterface() {
       toast.success("Support session closed.");
     } catch (error) {
       toast.error("Failed to close support session.");
-      console.error(error);
+      // console.error(error);
     }
   }, [activeChat, endSession]);
 
