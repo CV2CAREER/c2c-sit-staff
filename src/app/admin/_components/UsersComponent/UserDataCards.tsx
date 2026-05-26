@@ -123,20 +123,36 @@ const UserDataCards = ({
       // ALWAYS use userRoleCounts if available, never fall back only if absolutely needed
       const useUserRoles = !!apiData.userRoleCounts;
       
+      const adminCount = apiData.userRoleCounts.admin;
+      const guestCount = useUserRoles ? apiData.userRoleCounts.guest : 0;
+      const clientCount = useUserRoles ? apiData.userRoleCounts.client : apiData.breakdown?.users?.successful ?? 0;
+      const coachCount = useUserRoles ? apiData.userRoleCounts.coach : 0;
+      const partnerCount = useUserRoles ? apiData.userRoleCounts.partner : 0;
+      const salesCount = useUserRoles ? apiData.userRoleCounts.sales : 0;
+      const cseCount = useUserRoles ? apiData.userRoleCounts.cse : 0;
+      const testCount = useUserRoles ? apiData.userRoleCounts.test : apiData.breakdown?.applications?.failed ?? 0;
+      const pcCount = useUserRoles ? apiData.userRoleCounts.assistant : 0;
+      const businessCount = useUserRoles ? apiData.userRoleCounts.business : 0;
+      const techCount = useUserRoles ? apiData.userRoleCounts.technology : 0;
+      const loyalistCount = 0;
+
       return {
-        adminPersonnaCount: apiData.userRoleCounts.admin,
-        guestPersonnaCount: useUserRoles ? apiData.userRoleCounts.guest : 0,
-        clientPersonnaCount: useUserRoles ? apiData.userRoleCounts.client : apiData.breakdown?.users?.successful ?? 0,
-        coachesPersonnaCount: useUserRoles ? apiData.userRoleCounts.coach : 0,
-        partnersPersonnaCount: useUserRoles ? apiData.userRoleCounts.partner : 0,
-        salesPersonnaCount: useUserRoles ? apiData.userRoleCounts.sales : 0,
-        csePersonnaCount: useUserRoles ? apiData.userRoleCounts.cse : 0,
-        testPersonnaCount: useUserRoles ? apiData.userRoleCounts.test : apiData.breakdown?.applications?.failed ?? 0,
-        PCPersonaCount: useUserRoles ? apiData.userRoleCounts.assistant : 0,
-        businessCount: useUserRoles ? apiData.userRoleCounts.business : 0, 
-        technologyCount: useUserRoles ? apiData.userRoleCounts.technology : 0,
-        loyalistsPersonnaCount: 0,
-        totalActiveUsersCount: apiData.breakdown.users.successful  ?? 0,
+        adminPersonnaCount: adminCount,
+        guestPersonnaCount: guestCount,
+        clientPersonnaCount: clientCount,
+        coachesPersonnaCount: coachCount,
+        partnersPersonnaCount: partnerCount,
+        salesPersonnaCount: salesCount,
+        csePersonnaCount: cseCount,
+        testPersonnaCount: testCount,
+        PCPersonaCount: pcCount,
+        businessCount,
+        technologyCount: techCount,
+        loyalistsPersonnaCount: loyalistCount,
+        totalActiveUsersCount:
+          adminCount + guestCount + clientCount + coachCount +
+          partnerCount + salesCount + cseCount + testCount +
+          pcCount + businessCount + techCount + loyalistCount,
         bronzePlanCount: bronzeTier?.users ?? 0,
         emeraldPlanCount: emeraldTier?.users ?? 0,
         coralPlanCount: coralTier?.users ?? 0,
