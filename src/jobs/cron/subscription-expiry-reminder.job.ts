@@ -117,8 +117,8 @@ async function notifyMilestone(from: number, to: number, label: string, emoji: s
   ].join("\n");
 
   await SlackService.notify({
-    location: getEnvironmentFromHost(process.env.CLIENT_APP_DOMAIN || "localhost"),
-    host: process.env.CLIENT_APP_DOMAIN || "localhost",
+    location: getEnvironmentFromHost(process.env.CLIENT_APP_DOMAIN),
+    host: process.env.CLIENT_APP_DOMAIN,
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity,
