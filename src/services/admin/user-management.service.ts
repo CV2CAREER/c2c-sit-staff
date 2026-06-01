@@ -13,6 +13,7 @@ import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { Credentials } from "../../models/v1/credentials.model";
+import { setCachedUser } from "../cache/user.cache.service";
 
 export interface IJobPreferenceQuery {
   step01?: boolean;
@@ -122,6 +123,9 @@ class UserManagementService {
     if (hasChanges) {
       await user.save();
     }
+
+    // Update Redis cache with the updated user data
+    await setCachedUser(userId, user);
 
     logger.info(`User ${userId} updated by admin ${actorEmail || actorUserId}`);
 
