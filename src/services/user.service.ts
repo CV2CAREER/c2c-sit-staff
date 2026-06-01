@@ -26,10 +26,10 @@ export const handleGetUserInfo = async (userId: string) => {
 
   let user: User | null = await getCachedUser(userId);
 
-  if (user) logger.info("User fetched from REDIS");
-
-  if (!user) {
-    const user = await hopeUserIdExists(userId);
+  if (user) {
+    logger.info("User fetched from REDIS");
+  } else {
+    user = await hopeUserIdExists(userId);  // ✅ reassigns outer `user`
     setCachedUser(userId, user);
   }
 
