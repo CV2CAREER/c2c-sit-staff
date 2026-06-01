@@ -23,17 +23,15 @@ export const handleGetUserInfo = async (userId: string) => {
   if (!userId) {
     throw new ErrorHandler("Invalid user ID.", 400);
   }
-  const user = await hopeUserIdExists(userId);
 
-  // let user: User | null = await getCachedUser(userId);
+  let user: User | null = await getCachedUser(userId);
 
-  // if (user) logger.info("User fetched from REDIS");
+  if (user) logger.info("User fetched from REDIS");
 
-  // if (!user) {
-    
-
-  //   setCachedUser(userId, user);
-  // }
+  if (!user) {
+    const user = await hopeUserIdExists(userId);
+    setCachedUser(userId, user);
+  }
 
   return { user };
 };

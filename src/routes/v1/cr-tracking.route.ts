@@ -22,7 +22,7 @@ import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken"
 
 const crTrackingRouterV1 = Router();
 
-crTrackingRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistance"));
+crTrackingRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 crTrackingRouterV1.get("/", getCRTrackingEntries);
 crTrackingRouterV1.get("/options", getCROptions);
