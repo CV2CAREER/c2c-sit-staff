@@ -16,6 +16,8 @@ import {
   postAdminUsersExport,
   postAdminUsers,
   patchAdminUserPersona,
+  postAdminSendUserOtp,
+  postAdminVerifyUserOtp,
   getPlacementControllers,
   getAdminSchemaTables,
   postAdminSchemaTable,
@@ -544,6 +546,18 @@ adminRouterV1.patch(
   patchAdminUserPersona,
 );
 
+adminRouterV1.post(
+  "/users/:userId/send-otp",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminSendUserOtp,
+);
+adminRouterV1.post(
+  "/users/:userId/verify-otp",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminVerifyUserOtp,
+);
 adminRouterV1.patch(
   "/users/:userId/plan",
   checkBlacklistedTokens,
