@@ -17,8 +17,12 @@ import {
   postAdminUsers,
   patchAdminUserPersona,
   getPlacementControllers,
+  getAdminSchemaTables,
+  postAdminSchemaTable,
+  deleteAdminSchemaTable,
   getSchemaColumns,
   patchAdminThrottle,
+  deleteAdminThrottle,
   patchAdminBotToggle,
   postSchemaExpandColumn,
   unassignPlacementController,
@@ -472,6 +476,30 @@ adminRouterV1.patch(
   checkBlacklistedTokens,
   isUserAuthenticated,
   patchAdminThrottle,
+);
+adminRouterV1.delete(
+  "/throttle",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteAdminThrottle,
+);
+adminRouterV1.get(
+  "/schema",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminSchemaTables,
+);
+adminRouterV1.post(
+  "/schema",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminSchemaTable,
+);
+adminRouterV1.delete(
+  "/schema/:table",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteAdminSchemaTable,
 );
 adminRouterV1.get(
   "/schema/:tableName/columns",

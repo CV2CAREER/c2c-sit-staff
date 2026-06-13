@@ -119,6 +119,54 @@ class ThrottleApplicationService {
     };
   }
 
+  async deletePerAggregatorThrottle(
+    aggregatorName: string,
+    updatedByUserId: string,
+  ): Promise<AggregatorThrottleStatus> {
+    if (!aggregatorName || typeof aggregatorName !== "string") {
+      throw new ErrorHandler("Aggregator name is required for deletion.", 400);
+    }
+
+    const before = await this.getThrottleStatus();
+    const currentPerAggregator = before.config.perAggregator ?? {};
+
+    if (!(aggregatorName in currentPerAggregator)) {
+      throw new ErrorHandler(`Aggregator "${aggregatorName}" not found in throttle config.`, 404);
+    }
+
+    const { [aggregatorName]: _removed, ...remaining } = currentPerAggregator;
+
+    const updated: AggregatorThrottleConfigPayload = {
+      ...before.config,
+      perAggregator: Object.keys(remaining).length > 0 ? remaining : undefined,
+    };
+
+    const saved = await systemConfigApplicationService.set({
+      key: SYSTEM_CONFIG_KEY,
+      value: updated,
+      updatedByUserId,
+    });
+
+    await this.writeRedis(updated);
+
+    const status: AggregatorThrottleStatus = {
+      config: normalizeConfig(saved.value || {}),
+      updatedByUserId: saved.updatedByUserId ?? null,
+      updatedAt: saved.updatedAt,
+    };
+
+    await auditTrailApplicationService.log({
+      action: "AGGREGATOR_THROTTLE_DELETE",
+      actorUserId: updatedByUserId,
+      targetType: "SystemConfig",
+      targetKey: SYSTEM_CONFIG_KEY,
+      before,
+      after: status,
+    });
+
+    return status;
+  }
+
   async updateThrottle(input: UpdateAggregatorThrottleInput): Promise<AggregatorThrottleStatus> {
     if (!input || !input.config || typeof input.config !== "object") {
       throw new ErrorHandler("Invalid throttle update payload.", 400);

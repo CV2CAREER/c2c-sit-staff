@@ -575,6 +575,51 @@ export const patchAdminThrottle = catchAsyncError(
   },
 );
 
+export const deleteAdminThrottle = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const aggregator = req.body?.aggregator ?? req.query?.aggregator;
+    if (!aggregator || typeof aggregator !== "string") {
+      throw new ErrorHandler("Aggregator name is required.", 400);
+    }
+
+    const status = await throttleApplicationService.deletePerAggregatorThrottle(
+      aggregator,
+      user.id,
+    );
+
+    res.apiSuccess(status, `Throttle for "${aggregator}" deleted successfully`);
+  },
+);
+
+export const getAdminSchemaTables = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const tables = await schemaManagementApplicationService.listManagedTables();
+    res.apiSuccess({ tables }, "Schema tables retrieved successfully");
+  },
+);
+
+export const postAdminSchemaTable = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+    const tableName = String(req.body?.name || "").trim();
+    if (!tableName) throw new ErrorHandler("Table name is required.", 400);
+    await schemaManagementApplicationService.createCustomTable(tableName, user.id);
+    res.apiSuccess({ ok: true }, `Table '${tableName}' created successfully`);
+  },
+);
+
+export const deleteAdminSchemaTable = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+    const tableName = req.params.table;
+    await schemaManagementApplicationService.deleteCustomTable(tableName, user.id);
+    res.apiSuccess({ ok: true }, `Table '${tableName}' deleted successfully`);
+  },
+);
+
 export const getSchemaColumns = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
