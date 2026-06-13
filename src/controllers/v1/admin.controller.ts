@@ -772,11 +772,14 @@ export const postAdminUsers = catchAsyncError(
 
     const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
 
+    const host = req.headers.host || (req.headers.origin as string) || "localhost";
+
     const payload = await adminUserApplicationService.bulkAddUsers({
       users,
       actorUserId: user.id,
       actorEmail: user.email,
       reason,
+      host,
     });
 
     res.apiSuccess(payload, "Admin users added successfully");
@@ -803,6 +806,28 @@ export const patchAdminUserPersona = catchAsyncError(
     });
 
     res.apiSuccess(payload, "User persona assignment updated successfully");
+  },
+);
+
+export const postAdminSendUserOtp = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const { userId } = req.params;
+    if (!userId) throw new ErrorHandler("userId is required.", 400);
+    const payload = await adminUserApplicationService.sendUserVerificationOtp(userId);
+    res.apiSuccess(payload, "OTP sent successfully");
+  },
+);
+
+export const postAdminVerifyUserOtp = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const { userId } = req.params;
+    const otp = typeof req.body?.otp === "string" ? req.body.otp.trim() : "";
+    if (!userId) throw new ErrorHandler("userId is required.", 400);
+    if (!otp) throw new ErrorHandler("otp is required.", 400);
+    const payload = await adminUserApplicationService.verifyUserOtp(userId, otp);
+    res.apiSuccess(payload, "Email verified successfully");
   },
 );
 
