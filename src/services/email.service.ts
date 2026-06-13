@@ -315,3 +315,55 @@ export const sendReferralClaimedEmail = async (
     },
   });
 };
+
+interface ApplicationActionUserEmailOptions {
+  name: string;
+  email: string;
+  frontendUrl: string;
+  action: "start" | "end";
+}
+
+export const sendApplicationActionUserEmail = async (
+  options: ApplicationActionUserEmailOptions,
+): Promise<void> => {
+  const subject =
+    options.action === "start"
+      ? "Your Application Has Commenced"
+      : "Your Application Has Expired";
+  await sendMail({
+    email: options.email,
+    subject,
+    templateName: "application-action-user.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface ApplicationActionAdminEmailOptions {
+  name: string;
+  email: string;
+  triggeredBy: string;
+  action: "start" | "end";
+}
+
+export const sendApplicationActionAdminEmail = async (
+  options: ApplicationActionAdminEmailOptions,
+): Promise<void> => {
+  const subject =
+    options.action === "start"
+      ? `Application Commenced – ${options.name}`
+      : `Application Expired – ${options.name}`;
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject,
+    templateName: "application-action-admin.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
