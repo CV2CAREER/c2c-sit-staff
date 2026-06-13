@@ -97,6 +97,9 @@ export const ADMIN_RESOURCES = "/api/v1/resources";
 export const ADMIN_PROMOTION = "/api/v1/admin/promos";
 export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/admin/promos?id=${id}`;
 
+export const ADMIN_SEND_USER_OTP = (userId: string) => `/api/v1/admin/users/${userId}/send-otp`;
+export const ADMIN_VERIFY_USER_OTP = (userId: string) => `/api/v1/admin/users/${userId}/verify-otp`;
+
 // User Management Endpoints - Temidayo
 export const ADMIN_FEATURE_TITLES = "/api/v1/user-management/features";
 export const ADMIN_USER_PREFERENCES_V2 = (userId: string) => `/api/v1/user-management/users/${userId}/preferences`;
