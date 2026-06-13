@@ -1718,7 +1718,7 @@ export interface UpdateCampaignClientPayload {
   updatedAt?: string;
 }
 
-export const updateCampaignClient = async (id: string, data: UpdateCampaignClientPayload, requestorName?: string) => {
+export const updateCampaignClient = async (id: string, data: UpdateCampaignClientPayload, requestorName?: string, host?: string) => {
   logger.info(`Updating campaign client: ${id}`);
 
   if (!data || Object.keys(data).length === 0) {
@@ -1738,6 +1738,15 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
 
   // Use a loose record so delete and string-trim operations are type-safe
   const updateData: Record<string, unknown> = { ...actualData };
+
+  // Detect flight status trigger before processing
+  // When Capitalized is HOLD or FLIGHT/INFLIGHT, landOrLaunchCampaign handles the
+  // capitalized column + associated side effects (Active, SeekAnswerPriority, SeekAggregator, Slack)
+  const incomingCapitalized = (updateData['Capitalized'] as string | undefined)?.trim().toUpperCase();
+  const isFlightTrigger = incomingCapitalized === "HOLD" || incomingCapitalized === "FLIGHT" || incomingCapitalized === "INFLIGHT";
+  if (isFlightTrigger) {
+    delete updateData['Capitalized'];
+  }
 
   // Never touch immutable / foreign-key fields
   delete updateData['clientId'];
@@ -1896,6 +1905,12 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
         });
       }
     }
+  }
+
+  // Trigger flight toggle after the main update so landOrLaunchCampaign
+  // reads the original capitalized state and applies all side effects
+  if (isFlightTrigger) {
+    await landOrLaunchCampaign(id, host || "localhost", requestorName);
   }
 
   const updatedRecord = await Credentials.findByPk(id);
