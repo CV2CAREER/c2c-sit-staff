@@ -29,7 +29,7 @@ const navLinks : BlogMenuLinksProps[] = [
   { name: 'Posts', href: "/admin/blog", icon: Newspaper },
   { name: 'Stats', href: "/admin/blog/stats", icon: ChartNoAxesCombined },
   { name: 'Comments', href: "/admin/blog/comments", icon: MessageSquareText },
-  { name: 'View Blog', href: "https://sit.cvtocareer.com/blogging", icon: View }, //TODO: handle dynamic blog route
+  { name: 'View Blog', href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL}/blog`, icon: View }, //TODO: handle dynamic blog route
   { name: 'Recycle Bin', href: "/admin/blog/recycle-bin", icon: Recycle },
 ]
 
