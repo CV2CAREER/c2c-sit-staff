@@ -119,9 +119,17 @@ export default function LoginForm() {
   return (
     <Form {...form}>
       <form
-        className={`bg-white flex flex-col gap-9 rounded-lg px-4 md:px-12 py-2 md:py-7 shadow-xl w-full relative ${loginUserLoading || form.formState.isSubmitting ? 'opacity-75 pointer-events-none' : ''}`}
+        className={`className="bg-white flex flex-col gap-9 rounded-lg w-full px-4 md:px-12 py-4 md:py-7 shadow-xl font-poppins ${loginUserLoading || form.formState.isSubmitting ? 'opacity-75 pointer-events-none' : ''}`}
         onSubmit={form.handleSubmit(onSubmit)}
       >
+        <div className="flex flex-col gap-[4px]">
+          <h1 className="font-semibold text-xl md:text-3xl text-[#333333]">
+            Log In
+          </h1>
+          <p className="font-normal text-sm md:text-base text-[#555555]">
+            Please login to access your account 
+          </p>
+        </div>
         {/* Login Loading Overlay */}
         {(loginUserLoading || form.formState.isSubmitting) && (
           <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center z-10 rounded-lg">
@@ -148,7 +156,15 @@ export default function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <div className="flex justify-between items-center">
+                <FormLabel>Password</FormLabel>
+                <a
+                  // href="https://iat.customer.cvtocareer.com/forgot-password"
+                  className="text-[#008ED3] text-xs hover:underline"
+                >
+                  Forgot Password?
+                </a>
+              </div>
               <FormControl>
                 <div className="flex gap-3 justify-between items-center border rounded-md">
                   <Input
