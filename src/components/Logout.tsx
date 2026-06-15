@@ -13,7 +13,7 @@ export default function Logout() {
       className="flex flex-row gap-4 items-center text-gray-600 p-2 rounded-md hover:bg-lightblue cursor-pointer mt-auto"
     >
       <LogOut />
-      <p>Sign Out</p>
+      <p>Logout</p>
       <CustomUserLogoutModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(prev => (!prev))}
