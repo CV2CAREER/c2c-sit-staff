@@ -124,7 +124,6 @@ class UserManagementService {
       await user.save();
     }
 
-    // Update Redis cache with the updated user data
     await setCachedUser(userId, user);
 
     logger.info(`User ${userId} updated by admin ${actorEmail || actorUserId}`);
@@ -163,6 +162,7 @@ class UserManagementService {
           trigger: `User Updated: ${user.email}`,
           type: SlackEventType.ADMIN_ACTION,
           channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
           body: `User profile has been updated.\n\n👤 
           User: ${user.firstName} ${user.lastName} (${user.email})\n
           ✏️ Updated by: ${actorEmail || actorUserId}\n
@@ -247,6 +247,7 @@ class UserManagementService {
           trigger: `Document Approved: ${documentType} for ${user.email}`,
           type: SlackEventType.USER_TRIGGERED,
           channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
           body: `User document approved.\n\n👤 User: ${user.firstName} ${user.lastName}\n📄 Document: ${documentType}\n✅ Approved by: ${actorEmail || actorUserId}`
         });
         logger.info(`✅ Document ${documentType} approved for user ${user.id}`);
@@ -330,6 +331,7 @@ class UserManagementService {
           trigger: `Document Rejected: ${documentType} for ${user.email}`,
           type: SlackEventType.USER_TRIGGERED,
           channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
           body: `User document rejected.\n\n👤 User: ${user.firstName} ${user.lastName}\n📄 Document: ${documentType}\n❌ Rejected by: ${actorEmail || actorUserId}\n📝 Reason: ${reason}`
         });
         logger.info(`✅ Document ${documentType} rejected for user ${user.id}`);
@@ -408,6 +410,7 @@ class UserManagementService {
            trigger: `User Deleted: ${user.email}`,
            type: SlackEventType.USER_TRIGGERED,
            channel: SlackChannel.TOWN_CRIER,
+           teamMentions: "CSM",
            body: `User has been deleted (moved to recycle bin).\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n🗑️ Deleted by: ${actorEmail || actorUserId}`
          });
          logger.info(`✅ User ${userId} deleted by admin ${actorEmail || actorUserId}`);
@@ -475,6 +478,7 @@ class UserManagementService {
            trigger: `User Restored: ${user.email}`,
            type: SlackEventType.USER_TRIGGERED,
            channel: SlackChannel.TOWN_CRIER,
+           teamMentions: "CSM",
            body: `User account has been restored.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n✅ Restored by: ${actorEmail || actorUserId}`
          });
          logger.info(`✅ User ${userId} restored by admin ${actorEmail || actorUserId}`);
@@ -544,6 +548,7 @@ class UserManagementService {
            trigger: `User Permanently Deleted: ${user.email}`,
            type: SlackEventType.USER_TRIGGERED,
            channel: SlackChannel.TOWN_CRIER,
+           teamMentions: "CSM",
            body: `User account has been PERMANENTLY DELETED.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n⚠️ Purged by: ${actorEmail || actorUserId}\nThis action cannot be undone.`
          });
          logger.info(`✅ User ${userId} permanently deleted by admin ${actorEmail || actorUserId}`);
@@ -640,6 +645,7 @@ class UserManagementService {
           trigger: `Account Approved: ${user.email}`,
           type: SlackEventType.ADMIN_ACTION,
           channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
           body: `User account has been approved.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n✅ Approved by: ${actorEmail || actorUserId}`
         });
         logger.info(`✅ Account approved for user ${user.id}`);
@@ -688,6 +694,7 @@ class UserManagementService {
       trigger: `User Details Sample: ${user.email}`,
       type: SlackEventType.ADMIN_ACTION,
       channel: SlackChannel.TOWN_CRIER,
+      teamMentions: "CSM",
       body: `📋 User Details Sample Requested\n
 👤 **User**: ${user.firstName} ${user.lastName}
 📧 **Email**: ${user.email}
