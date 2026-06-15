@@ -15,6 +15,7 @@ export const ADMIN_QUESTIONS = "/api/v1/admin/interview-prep";
 export const ADMIN_FOLLOWERS = "/api/v1/analytics/followers";
 export const ADMIN_ANSWER_MODE = "/api/v1/admin/bot-toggle"; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = "/api/v1/admin/schema";
+export const ADMIN_SCHEMA_DELETE_TABLE = (table: string) => `/api/v1/admin/schema/${table}`;
 export const ADMIN_SCHEMA_EXPAND = "/api/v1/admin/schema/expand";
 export const ADMIN_SCHEMA_COLUMNS = (tableName: string) => `/api/v1/admin/schema/${tableName}/columns`;
 export const ADMIN_SCHEMA_DELETE_COLUMN = (tableName: string, columnName: string) => `/api/v1/admin/schema/${tableName}/columns/${columnName}`;
@@ -95,6 +96,9 @@ export const ADMIN_SLACK_QUEUE = "/api/v1/aggregator/slack/queue";
 export const ADMIN_RESOURCES = "/api/v1/resources";
 export const ADMIN_PROMOTION = "/api/v1/admin/promos";
 export const ADMIN_PROMOTION_WITH_ID = (id: string) => `/api/v1/admin/promos?id=${id}`;
+
+export const ADMIN_SEND_USER_OTP = (userId: string) => `/api/v1/admin/users/${userId}/send-otp`;
+export const ADMIN_VERIFY_USER_OTP = (userId: string) => `/api/v1/admin/users/${userId}/verify-otp`;
 
 // User Management Endpoints - Temidayo
 export const ADMIN_FEATURE_TITLES = "/api/v1/user-management/features";
