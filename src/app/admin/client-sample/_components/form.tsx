@@ -6,31 +6,7 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FaSpinner } from "react-icons/fa6";
 import { useAdminMutations, useAdminQueries } from "@/hooks/api/admin.api";
-
-const JOBSITE_OPTIONS = [
-  { value: "Select Jobsite", label: "Select Jobsite" },
-  { value: "ADECCO", label: "Adecco" },
-  { value: "ADECCO_STAGE", label: "Adecco Stage" },
-  { value: "Adzuna", label: "Adzuna" },
-  { value: "Adzuna_STAGE", label: "Adzuna Stage" },
-  { value: "CareerOne", label: "CareerOne" },
-  { value: "CareerOne_STAGE", label: "CareerOne Stage" },
-  { value: "JOBBANK", label: "Job Bank" },
-  { value: "JOBBANK_STAGE", label: "Job Bank Stage" },
-  { value: "Jobserve", label: "Jobserve" },
-  { value: "Jobserve_STAGE", label: "Jobserve Stage" },
-  { value: "Jora", label: "Jora" },
-  { value: "Jora_STAGE", label: "Jora Stage" },
-  { value: "LinkedIn", label: "LinkedIn" },
-  { value: "MichaelPage", label: "Michael Page" },
-  { value: "MichaelPage_STAGE", label: "Michael Page Stage" },
-  { value: "Randstad", label: "Randstad" },
-  { value: "Randstad_STAGE", label: "Randstad Stage" },
-  { value: "Reed", label: "Reed" },
-  { value: "Reed_STAGE", label: "Reed Stage" },
-  { value: "SEEK", label: "Seek" },
-  { value: "SEEK_STAGE", label: "Seek Stage" },
-];
+import { jobsiteOptions } from "./constants";
 
 const ENVIRONMENT_OPTIONS = [
   { value: "Select Environment", label: "Select Environment" },
@@ -96,7 +72,7 @@ export default function SampleForm({
         defaultValue="Select Jobsite"
         className="w-48 h-8 bg-white text-xs md:text-sm text-gray-500"
       >
-        {JOBSITE_OPTIONS.map((option) => (
+        {jobsiteOptions.map((option) => (
           <MenuItem
             key={option.value}
             value={option.value}
