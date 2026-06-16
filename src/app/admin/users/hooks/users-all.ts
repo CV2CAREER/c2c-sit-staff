@@ -107,10 +107,10 @@ export const useGetAllUsers = (options: {
   startDate?: string;
   endDate?: string;
 } = {}) => {
-  const { 
-    enabled = true, 
-    page = 1, 
-    limit = 50,
+  const {
+    enabled = true,
+    page,
+    limit,
     active,
     recycle,
     q,
@@ -120,8 +120,10 @@ export const useGetAllUsers = (options: {
     endDate
   } = options;
 
-  const params: Record<string, any> = { page, limit };
-  
+  const params: Record<string, any> = {};
+
+  if (page !== undefined) params.page = page;
+  if (limit !== undefined) params.limit = limit;
   // Send boolean values as string 'true'/'false' as expected by Express backend parser
   if (active !== undefined) params.active = String(active);
   if (recycle !== undefined) params.recycle = String(recycle);
@@ -133,13 +135,13 @@ export const useGetAllUsers = (options: {
 
   // Stringify parameters for stable query key to prevent infinite re-renders
   const queryKey = useMemo(() => [
-    "users-all", 
-    page, 
-    limit, 
-    active ?? null, 
-    recycle ?? null, 
-    q ?? null, 
-    userType ?? null, 
+    "users-all",
+    page ?? null,
+    limit ?? null,
+    active ?? null,
+    recycle ?? null,
+    q ?? null,
+    userType ?? null,
     plan ?? null,
     startDate ?? null,
     endDate ?? null
