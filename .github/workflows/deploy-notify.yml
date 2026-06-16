@@ -1,0 +1,78 @@
+﻿name: Deployment Notification
+
+on:
+  push:
+    branches: [rat, sit, iat, uat, main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve environment
+        id: env
+        run: |
+          case "${{ github.ref_name }}" in
+            rat)  echo "env=RAT"  >> "$GITHUB_OUTPUT" ;;
+            sit)  echo "env=SIT"  >> "$GITHUB_OUTPUT" ;;
+            iat)  echo "env=IAT"  >> "$GITHUB_OUTPUT" ;;
+            uat)  echo "env=UAT"  >> "$GITHUB_OUTPUT" ;;
+            main) echo "env=PROD" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1 | sed 's/"/\\"/g')
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"text\": \"Deployment to ${{ steps.env.outputs.env }}\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \"*Deployment STARTED*\n*Repo:* \`${{ github.repository }}\`\n*Branch:* \`${{ github.ref_name }}\` -> *${{ steps.env.outputs.env }}*\n*By:* ${{ github.actor }}\n*Commit:* \`${{ github.sha }}\`\n> ${COMMIT_MSG}\"
+                  }
+                }
+              ]
+            }"
+
+      - name: Post-deploy health check
+        id: health
+        continue-on-error: true
+        run: |
+          sleep 30
+          case "${{ steps.env.outputs.env }}" in
+            RAT)  URL="https://rat.customer.cvtocareer.com"  ;;
+            SIT)  URL="https://sit.customer.cvtocareer.com"  ;;
+            IAT)  URL="https://iat.customer.cvtocareer.com"  ;;
+            UAT)  URL="https://uat.customer.cvtocareer.com"  ;;
+            PROD) URL="https://www.cvtocareer.com"           ;;
+          esac
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "result=Healthy ($STATUS)" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=Unhealthy ($STATUS)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify Slack — Health Result
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"text\": \"Health check — ${{ steps.env.outputs.env }}\",
+              \"blocks\": [{
+                \"type\": \"section\",
+                \"text\": {
+                  \"type\": \"mrkdwn\",
+                  \"text\": \"*Post-Deploy Health — ${{ steps.env.outputs.env }}*\n${{ steps.health.outputs.url }} -> ${{ steps.health.outputs.result }}\n*Repo:* \`${{ github.repository }}\`\"
+                }
+              }]
+            }"
