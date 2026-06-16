@@ -364,12 +364,14 @@ export const getAdminAnalytics = catchAsyncError(
           ? (req.query as any).endDate
           : undefined;
 
+    const bypassCache = req.query.bypassCache === "true" || req.query.bypassCache === "1";
+
     logger.info(
-      `Processing analytics request for admin ${user.email} (from=${from ?? "default"}, to=${to ?? "default"})`,
+      `Processing analytics request for admin ${user.email} (from=${from ?? "default"}, to=${to ?? "default"}, bypassCache=${bypassCache})`,
     );
 
     const [analytics, subscriptionTiers, userRoleCounts, userReturnCounts] = await Promise.all([
-      analyticsApplicationService.getSuccessfulVsFailedMetrics({ from, to }),
+      analyticsApplicationService.getSuccessfulVsFailedMetrics({ from, to, bypassCache }),
       subscriptionTierAggregatorApplicationService.getRealtimeTierAnalytics(false),
       analyticsApplicationService.getUserRoleCounts(),
       analyticsApplicationService.getUserReturnCounts(),
@@ -575,6 +577,51 @@ export const patchAdminThrottle = catchAsyncError(
   },
 );
 
+export const deleteAdminThrottle = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const aggregator = req.body?.aggregator ?? req.query?.aggregator;
+    if (!aggregator || typeof aggregator !== "string") {
+      throw new ErrorHandler("Aggregator name is required.", 400);
+    }
+
+    const status = await throttleApplicationService.deletePerAggregatorThrottle(
+      aggregator,
+      user.id,
+    );
+
+    res.apiSuccess(status, `Throttle for "${aggregator}" deleted successfully`);
+  },
+);
+
+export const getAdminSchemaTables = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const tables = await schemaManagementApplicationService.listManagedTables();
+    res.apiSuccess({ tables }, "Schema tables retrieved successfully");
+  },
+);
+
+export const postAdminSchemaTable = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+    const tableName = String(req.body?.name || "").trim();
+    if (!tableName) throw new ErrorHandler("Table name is required.", 400);
+    await schemaManagementApplicationService.createCustomTable(tableName, user.id);
+    res.apiSuccess({ ok: true }, `Table '${tableName}' created successfully`);
+  },
+);
+
+export const deleteAdminSchemaTable = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+    const tableName = req.params.table;
+    await schemaManagementApplicationService.deleteCustomTable(tableName, user.id);
+    res.apiSuccess({ ok: true }, `Table '${tableName}' deleted successfully`);
+  },
+);
+
 export const getSchemaColumns = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
@@ -727,11 +774,14 @@ export const postAdminUsers = catchAsyncError(
 
     const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
 
+    const host = req.headers.host || (req.headers.origin as string) || "localhost";
+
     const payload = await adminUserApplicationService.bulkAddUsers({
       users,
       actorUserId: user.id,
       actorEmail: user.email,
       reason,
+      host,
     });
 
     res.apiSuccess(payload, "Admin users added successfully");
@@ -758,6 +808,28 @@ export const patchAdminUserPersona = catchAsyncError(
     });
 
     res.apiSuccess(payload, "User persona assignment updated successfully");
+  },
+);
+
+export const postAdminSendUserOtp = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const { userId } = req.params;
+    if (!userId) throw new ErrorHandler("userId is required.", 400);
+    const payload = await adminUserApplicationService.sendUserVerificationOtp(userId);
+    res.apiSuccess(payload, "OTP sent successfully");
+  },
+);
+
+export const postAdminVerifyUserOtp = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const { userId } = req.params;
+    const otp = typeof req.body?.otp === "string" ? req.body.otp.trim() : "";
+    if (!userId) throw new ErrorHandler("userId is required.", 400);
+    if (!otp) throw new ErrorHandler("otp is required.", 400);
+    const payload = await adminUserApplicationService.verifyUserOtp(userId, otp);
+    res.apiSuccess(payload, "Email verified successfully");
   },
 );
 
