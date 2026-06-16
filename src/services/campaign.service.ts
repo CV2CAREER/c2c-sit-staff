@@ -1312,11 +1312,9 @@ export const submitJobMatchRequest = async (
 export const getCampaignClients = async (
   active: string = "true",
   searchQuery?: string,
-  page: number = 1,
-  limit: number = 20,
 ) => {
   logger.info(
-    `Fetching campaign clients, active: ${active}, search: ${searchQuery || "none"}, page: ${page}, limit: ${limit}`,
+    `Fetching campaign clients, active: ${active}, search: ${searchQuery || "none"}`,
   );
 
   let whereClause: any = {};
@@ -1366,13 +1364,9 @@ export const getCampaignClients = async (
     };
   }
 
-  const offset = (page - 1) * limit;
-
   const campaigns = await Credentials.findAll({
     where: whereClause,
     order: [["createdAt", "DESC"]],
-    limit: limit,
-    offset: offset,
     raw: true
   });
 
@@ -1404,9 +1398,6 @@ export const getCampaignClients = async (
   return {
     campaigns: campaignsWithAggregators,
     totalCount,
-    currentPage: page,
-    totalPages: Math.ceil(totalCount / limit),
-    limit,
   };
 };
 
