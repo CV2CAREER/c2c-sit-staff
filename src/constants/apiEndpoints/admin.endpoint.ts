@@ -69,7 +69,7 @@ export const ADMIN_APPLICATION_EMAILS = "/api/v1/admin/applications/emails";
 export const ADMIN_DOCUMENTS = "/api/v1/document";
 export const ADMIN_UPLOAD_DOCUMENTS = "/api/v1/admin/documents/upload";
 export const ADMIN_DOCUMENTS_GET_SIGNED_URL = "/api/v1/admin/documents/get-signed-url";
-export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/upload-cv-cover-letter";
+export const ADMIN_DOCUMENT_REVIEW = "/api/v1/admin/documents/upload-cv-cover-letter"; // /v1/admin/documents/upload-cv-cover-letter
 export const ADMIN_USER_PREFERENCES = "/api/v1/admin/users/preferences";
 export const ADMIN_JOB_PREFERENCES = "/api/v1/admin/job-preferences";
 export const ADMIN_ACCESS_LEVELS = "/api/v1/admin/access-levels";
@@ -113,7 +113,7 @@ export const ADMIN_USER_PROGRESS = (userId: string) => `/api/v1/user-management/
 // User Campaign Management Page - Temidayo
 export const ADMIN_CAMPAIGN = "/api/v1/campaigns/clients";
 export const ADMIN_SEND_PREFERENCE_EMAIL = "/api/v1/campaigns/preferences/notify";
-export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/campaigns/preferences/notify"; 
+export const ADMIN_SEND_PREFERENCE_EMAIL_BY_ID = "/api/v1/campaigns/preferences/notify";
 export const ADMIN_GENERATE_PASSWORD = "/api/v1/campaigns/credentials/generate-password";
 export const ADMIN_DISPATCH_CREDENTIALS = "/api/v1/campaigns/credentials/dispatch";
 export const ADMIN_BOT_CONTROL = "/api/v1/campaigns/aggregators/toggle";
@@ -121,7 +121,7 @@ export const ADMIN_CAMPAIGN_JOBS_EXTRACT = "/api/v1/campaigns/jobs/extract";
 export const ADMIN_CAMPAIGN_JOBS_SAVE = "/api/v1/campaigns/jobs/save";
 export const ADMIN_UPLOADS_GENERATE_KEYWORDS = "/api/v1/uploads/generate-keywords";
 export const ADMIN_CAMPAIGN_GET_CLIENTS = "/api/v1/campaigns/clients";
-export const ADMIN_DISPATCH_SAMPLE = (clientId: string ) => `/api/v1/campaigns/clients/${clientId}/dispatch-samples`;
+export const ADMIN_DISPATCH_SAMPLE = (clientId: string) => `/api/v1/campaigns/clients/${clientId}/dispatch-samples`;
 export const ADMIN_ASSIGN_VA = "/api/v1/campaigns/va/assign";
 export const ADMIN_CAMPAIGN_AGGREGATORS_LIST = (userId: string | number) => `/api/v1/campaigns/aggregators/list/${userId}`;
 export const ADMIN_CLIENT_APPLICATIONS = (clientId: string | number) => `/api/v1/campaigns/clients/${clientId}/applications`;
