@@ -1,11 +1,11 @@
 "use client";
 import PageHeader from "@/components/PageHeader/PageHeader";
-import { useState, useRef } from "react";
-import Select from "react-select";
 import { Button } from "@/components/ui/button";
-import { CircleAlert, Loader2 } from "lucide-react";
 import { useFetchData, useMutateData } from "@/hooks/useApi";
+import { CircleAlert, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import Select from "react-select";
 
 interface UserOption {
   value: string;
@@ -39,7 +39,10 @@ export default function ViewAsUserAdminPage() {
     enabled: true,
   });
 
-  const { mutate: viewAsUser, isPending } = useMutateData<ViewAsUserResponse, ViewAsUserRequest>({
+  const { mutate: viewAsUser, isPending } = useMutateData<
+    ViewAsUserResponse,
+    ViewAsUserRequest
+  >({
     url: "/api/v1/view-as-user",
     method: "POST",
     mutationKey: ["admin", "view-as-user"],
