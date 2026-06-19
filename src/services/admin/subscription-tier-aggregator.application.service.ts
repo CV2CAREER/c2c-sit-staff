@@ -90,64 +90,36 @@ class SubscriptionTierAggregatorApplicationService {
 
     return sequelize.query<TierCountRow>(
       `
-        WITH active_plans AS (
+        WITH all_paid_plans AS (
           SELECT
-            p.id,
             p."userId",
-            p."featureId",
-            p."createdAt",
-            p."updatedAt"
+            LOWER(COALESCE(NULLIF(TRIM(p.title), ''), 'unclassified')) AS tier_key
           FROM plans p
           WHERE p."deletedAt" IS NULL
             AND p."paymentStatus" = 'completed'
-            AND p."hasExpired" IS FALSE
-            AND (p."expiresAt" IS NULL OR p."expiresAt" >= CURRENT_DATE)
         ),
-        latest_plan_by_user AS (
-          SELECT DISTINCT ON (ap."userId")
-            ap."userId",
-            ap."featureId"
-          FROM active_plans ap
-          ORDER BY ap."userId", ap."createdAt" DESC, ap."updatedAt" DESC, ap.id DESC
-        ),
-        tier_user_counts AS (
+        tier_plan_counts AS (
           SELECT
-            LOWER(
-              COALESCE(
-                NULLIF(TRIM(CAST(f.tier AS TEXT)), ''),
-                NULLIF(TRIM(f.title), ''),
-                'unknown'
-              )
-            ) AS "tierKey",
+            tier_key AS "tierKey",
             COUNT(*)::bigint AS "userCount"
-          FROM latest_plan_by_user lpu
-          INNER JOIN features f
-            ON f.id = lpu."featureId"
-          WHERE LOWER(
-            COALESCE(
-              NULLIF(TRIM(CAST(f.tier AS TEXT)), ''),
-              NULLIF(TRIM(f.title), ''),
-              'unknown'
-            )
-          ) <> 'free'
-          GROUP BY "tierKey"
+          FROM all_paid_plans
+          WHERE tier_key <> 'free'
+          GROUP BY tier_key
         ),
         subscription_totals AS (
-          SELECT COUNT(*)::bigint AS "activeSubscriptions"
-          FROM active_plans
-        ),
-        subscriber_totals AS (
-          SELECT COUNT(*)::bigint AS "activeSubscribers"
-          FROM latest_plan_by_user
+          SELECT
+            COUNT(*)::bigint                    AS "activeSubscriptions",
+            COUNT(DISTINCT "userId")::bigint    AS "activeSubscribers"
+          FROM all_paid_plans
+          WHERE tier_key <> 'free'
         )
         SELECT
-          tuc."tierKey",
-          tuc."userCount",
-          subscriber_totals."activeSubscribers" AS "activeSubscribers",
-          subscription_totals."activeSubscriptions" AS "activeSubscriptions"
-        FROM subscription_totals
-        CROSS JOIN subscriber_totals
-        LEFT JOIN tier_user_counts tuc ON TRUE;
+          tpc."tierKey",
+          tpc."userCount",
+          st."activeSubscribers",
+          st."activeSubscriptions"
+        FROM subscription_totals st
+        LEFT JOIN tier_plan_counts tpc ON TRUE;
       `,
       {
         type: QueryTypes.SELECT,
@@ -174,11 +146,24 @@ class SubscriptionTierAggregatorApplicationService {
       ? toNumber(rows[0].activeSubscriptions)
       : 0;
 
-    const tiers: TierSnapshot[] = TIER_OVERVIEW_ORDER.map((tier) => ({
-      key: tier.key,
-      label: tier.label,
-      users: allPaidTierCounts[tier.key] || 0,
-    }));
+    // Start with the predefined order, then append any tier found in the DB
+    // that isn't already listed (e.g. "emerald", future tiers, etc.)
+    const knownKeys = new Set(TIER_OVERVIEW_ORDER.map((t) => t.key));
+
+    const tiers: TierSnapshot[] = [
+      ...TIER_OVERVIEW_ORDER.map((tier) => ({
+        key: tier.key,
+        label: tier.label,
+        users: allPaidTierCounts[tier.key] || 0,
+      })),
+      ...Object.entries(allPaidTierCounts)
+        .filter(([key]) => !knownKeys.has(key))
+        .map(([key, count]) => ({
+          key,
+          label: key.charAt(0).toUpperCase() + key.slice(1),
+          users: count,
+        })),
+    ];
 
     const sixTierUsers = tiers.reduce((acc, tier) => acc + tier.users, 0);
 
