@@ -57,17 +57,43 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Profile Update Notification</h1>
-        </div>
+        <!-- Header -->
+      <div
+        style="
+          background-color: #004174;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <img
+          src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+          alt="CVtoCAREER Logo"
+          style="
+            display: block;
+            margin: 0 auto 16px auto;
+            width: 149px;
+            height: 32px;
+          "
+        />
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Profile Update Notification
+        </h1>
+      </div>
         <div class="content">
             <p>Dear <%= name %>,</p>
             <p>Your profile has been successfully updated. The changes have been applied to your account.</p>
             <p>If you did not make these changes, please contact our support team immediately.</p>
             <p>Thank you for using our service!</p>
         </div>
-        <div class="footer">
-            <p>&copy; <%= new Date().getFullYear() %> Your Company Name. All rights reserved.</p>
+        <div
+        style="
+          padding: 16px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">&copy; <%= new Date().getFullYear() %> Your Company Name. All rights reserved.</p>
         </div>
     </div>
 </body>
