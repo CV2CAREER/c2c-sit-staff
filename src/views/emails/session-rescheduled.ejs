@@ -44,11 +44,14 @@
     </style>
   </head>
   <body>
-    <div class="header">
-      <div class="header-content">
-        <img src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801" alt="CV To Career" />
+    <!-- Header -->
+      <div style="background-color: #004174; padding: 28px 32px; text-align: center">
+        <img 
+          src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801" 
+          alt="CVtoCAREER Logo" 
+          style="display: block; margin: 0 auto 16px auto; width: 149px; height: 32px"
+        />
       </div>
-    </div>
 
     <div class="content">
       <div class="notice-box">
@@ -215,27 +218,18 @@
       </div>
     </div>
 
-    <div class="footer">
-      <div class="footer-logo">
-        <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/laigusbucket/bea7d3a092f0710b014b1f203.png?GoogleAccessId=firebase-adminsdk-f76vf%40cvtocareer-394713.iam.gserviceaccount.com&Expires=4070905200&Signature=gWB9jqmAcwN9nLbugMdOj%2FD0BROrGRX4a8qnGa9cZGuOkc0Z2M9itk0pzUtoUtyedrxv%2B2hO%2BFqDqlduJ6J7WqVBAJ3wQ17oe72S5BwTvRXEY3Q7OM%2B9wuxsFsSwgrtfldf79sly6nIJQCXqb94FDFL661YxCbeGN%2BIq0j2volsUvmKtParJXXLo3LO%2BBmOms1nVf6HHldXbD%2FfMno5f%2FB8wj%2FLDF%2FvMk5LfTsISh0kSOXmvfRNQvktImOAH2rTt%2B6ejVByGrxstPLhViGGI0BSIWEOn0oFaihxHK3Lo%2B3T0WePp5Q0PoYFrERpTtGReyZFGIVc%2Bs%2B9PReVzHoL86g%3D%3D" alt="CVtoCAREER" />
+    <!-- Footer -->
+      <div
+        style="
+          padding: 16px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">
+          © <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
       </div>
-      <div class="social-links">
-        <a href="https://facebook.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png" alt="Facebook" /></a>
-        <a href="https://x.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png" alt="X" /></a>
-        <a href="https://youtube.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png" alt="YouTube" /></a>
-        <a href="mailto:deliveryteam@cvtocareer.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png" alt="Email" /></a>
-        <a href="https://instagram.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png" alt="Instagram" /></a>
-        <a href="https://linkedin.com"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png" alt="LinkedIn" /></a>
-        <a href="https://www.tiktok.com/@cvtocareer?lang=en"><img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_tiktok.png" alt="TikTok" /></a>
-      </div>
-      <p class="copyright">© <%= currentYear %> CVtoCAREER. All rights reserved.</p>
-      <div class="footer-links">
-        <a href="<%= frontendUrl %>/dashboard/account?run=unsubscribe">Unsubscribe</a>
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <a href="<%= frontendUrl %>/privacy-policy">Privacy Policy</a>
-        &nbsp;&nbsp;|&nbsp;&nbsp;
-        <a href="<%= frontendUrl %>">Web</a>
-      </div>
-    </div>
   </body>
 </html>
