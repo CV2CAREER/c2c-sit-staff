@@ -10,10 +10,16 @@ export interface AnswerModeItem {
   status: "True" | "False";
 }
 
+export interface ApiTableColumn {
+  name: string;
+  isDynamic?: boolean;
+}
+
 export interface ApiTable {
   _id: string;
   name: string;
-  columns: string[];
+  isCodebase?: boolean;
+  columns: ApiTableColumn[];
 }
 
 export interface Throttle {

@@ -31,12 +31,6 @@ export default async function LoginPage() {
         </main>
 
         <article className="w-[976px] flex flex-col gap-[32px] justify-center p-8 lg:p-16">
-          <div>
-            <h1 className="font-semibold text-3xl text-[#333333]">Log in</h1>
-            <p className="font-normal text-base text-[#333333]">
-              Log into your account
-            </p>
-          </div>
           <Suspense fallback={<div className="text-sm text-gray-500 animate-pulse">Loading login form...</div>}>
             <LoginForm />
           </Suspense>

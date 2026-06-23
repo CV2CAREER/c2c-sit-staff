@@ -6,9 +6,10 @@ import { AdminQueriesOptions, VaAllocationsResponse } from "./types";
 const normalizeApplicationCounts = (payload: any) => {
   const source = payload?.data ?? payload;
 
-  // Check if it's the consolidated analytics payload
+  // Consolidated analytics payload
   if (source?.breakdown?.applications) {
     return {
+      totalCount: source.totalApplications ?? (source.breakdown.applications.total ?? (source.breakdown.applications.successful + source.breakdown.applications.failed)),
       successCount: source.breakdown.applications.successful || 0,
       failedCount: source.breakdown.applications.failed || 0,
     };
@@ -36,6 +37,7 @@ const normalizeApplicationCounts = (payload: any) => {
     0;
 
   return {
+    totalCount: (source?.totalApplications ?? 0) || (successCount + failedCount),
     successCount,
     failedCount,
   };
@@ -111,8 +113,7 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
   const overallStats = useFetchData<any>({
     method: "GET",
     url: endpoints.ADMIN_STATS,
-    params: { from: startDate, to: endDate },
-    queryKey: ["admin-overall-stats", startDate, endDate],
+    queryKey: ["admin-overall-stats"],
     enabled: fetchOverallStats || fetchApplicationsCount,
   });
 
@@ -268,7 +269,7 @@ export const useDashboardQueries = (options: AdminQueriesOptions) => {
     },
     totalApplicationsCard: {
       title: "Total Applications",
-      data: (mappedApplicationsCount?.successCount || 0) + (mappedApplicationsCount?.failedCount || 0),
+      data: mappedApplicationsCount?.totalCount ?? 0,
     },
     successfulApplicationsCard: {
       title: "Successful Applications",

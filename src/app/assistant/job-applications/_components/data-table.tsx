@@ -13,9 +13,9 @@ import CustomSelectDropDown from "@/components/ui/custom-select-dropdown";
 
 const applicationStatusList = [
   { value: "all", label: "All" },
-  { value: "failed", label: "Failed" },
-  { value: "sample", label: "Sample" },
-  { value: "successful", label: "Successful" },
+  { value: "Failed", label: "Failed" },
+  { value: "Sample", label: "Sample" },
+  { value: "Successful", label: "Successful" },
 ];
 
 const aggregatorsList = [

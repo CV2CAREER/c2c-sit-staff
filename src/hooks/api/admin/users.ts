@@ -581,16 +581,21 @@ export const useUsersMutations = () => {
         toast.error("Failed to reverse user ID");
       },
     }),
-    applicationEmailMutation: useMutateData<any, { type: string; name: string; email: string }>({
+    applicationEmailMutation: useMutateData<any, { type: string; name: string; email: string; userId: string }>({
       method: "POST",
       url: endpoints.ADMIN_APPLICATION_EMAILS,
       mutationKey: ["admin-application-email"],
+      onMutate: () => {
+        toast.loading("Processing application action...", { id: "application-action" });
+      },
       onSuccess: () => {
+        toast.dismiss("application-action");
         invalidateAllUsersQueries();
-        toast.success("Application email sent successfully");
+        toast.success("Application action completed successfully");
       },
       onError: () => {
-        toast.error("Failed to send application email");
+        toast.dismiss("application-action");
+        toast.error("Failed to process application action");
       },
     }),
     dispatchSampleMutation: useMutateData<any, { clientId: string }>({

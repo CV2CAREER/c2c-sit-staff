@@ -34,20 +34,25 @@ const AppModal: React.FC<ModalProps> = ({
       }}
     >
       <DialogContent
-        className={`fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] p-8 shadow-lg
-        max-h-[650px] overflow-y-auto custom-scrollbar bg-white rounded-lg ${contentClassName || 'max-w-md w-full'}`}
+        className={`fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] shadow-lg
+        bg-white rounded-lg overflow-hidden [&>button:last-child]:hidden ${contentClassName || 'max-w-md w-full'}`}
         onInteractOutside={(e: any) => {
           if (!closeOnOutsideClick) {
             e.preventDefault();
           }
         }}
       >
-        <DialogHeader>
-          <DialogTitle className={title ? "text-2xl font-bold mb-4 text-black" : "sr-only"}>
-            {title || "Dialog"}
-          </DialogTitle>
-        </DialogHeader>
-        {children}
+        <DialogTitle className={title ? "sr-only" : "sr-only"}>
+          {title || "Dialog"}
+        </DialogTitle>
+        {title && (
+          <div className="px-8 pt-8 pb-0">
+            <h2 className="text-2xl font-bold mb-4 text-black">{title}</h2>
+          </div>
+        )}
+        <div className="max-h-[650px] overflow-y-auto custom-scrollbar">
+          {children}
+        </div>
       </DialogContent>
     </Dialog>
   );

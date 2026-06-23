@@ -6,10 +6,11 @@ import toast from "react-hot-toast";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { BOT_NAMES } from "@/utils/constants";
-import { 
+import {
   Throttle,
   CreateTablePayload,
   ApiTable,
+  ApiTableColumn,
   BotStatus,
   AnswerModeItem,
 } from "@/types/admin.types";
@@ -75,39 +76,47 @@ export const useSystemQueries = (options: AdminQueriesOptions) => {
       }))
     : [];
 
-  const HARDCODED_TABLES = [
-    "Users",
-    "Partners",
-    "Referrers",
-    "SalesConsultants",
-    "CustomerServices",
-    "Locations",
-    "AggregatorThrottleConfigs",
-    "Plans",
-    "Profiles"
-  ];
-
-  const tables = useFetchData<any>({
+  // Fetch the full list of managed tables from the API
+  const tableList = useFetchData<any>({
     method: "GET",
-    url: tableName ? endpoints.ADMIN_SCHEMA_COLUMNS(tableName.toLowerCase()) : endpoints.ADMIN_TABLE_MANAGER,
-    queryKey: ["admin-schema", tableName || "all"],
+    url: endpoints.ADMIN_TABLE_MANAGER,
+    queryKey: ["admin-schema-tables"],
+    enabled: fetchTables && !tableName,
+  });
+
+  // Fetch columns for a specific table when tableName is provided
+  const tableColumns = useFetchData<any>({
+    method: "GET",
+    url: endpoints.ADMIN_SCHEMA_COLUMNS(tableName ?? ""),
+    queryKey: ["admin-schema", tableName || ""],
     enabled: fetchTables && !!tableName,
   });
 
   const mappedTables: ApiTable[] = useMemo(() => {
-    if (tableName && tables.data?.data?.columns) {
+    if (tableName && tableColumns.data?.data?.columns) {
       return [{
         _id: tableName,
         name: tableName,
-        columns: tables.data.data.columns.map((c: any) => c.name)
+        isCodebase: true,
+        columns: (tableColumns.data.data.columns as any[]).map((c) => ({
+          name: typeof c === "string" ? c : c.name,
+          isDynamic: typeof c === "object" ? Boolean(c.isDynamic) : false,
+        })) as ApiTableColumn[],
       }];
     }
-    return HARDCODED_TABLES.map(table => ({
-      _id: table,
-      name: table,
-      columns: []
-    }));
-  }, [tables.data, tableName]);
+    if (!tableName && tableList.data?.data?.tables) {
+      return (tableList.data.data.tables as { name: string; isCodebase: boolean }[]).map((t) => ({
+        _id: t.name,
+        name: t.name,
+        isCodebase: t.isCodebase,
+        columns: [],
+      }));
+    }
+    return [];
+  }, [tableColumns.data, tableList.data, tableName]);
+
+  // Merge loading state for the tablesDomain
+  const tables = tableName ? tableColumns : tableList;
 
   const throttles = useFetchData<any>({
     method: "GET",
@@ -322,7 +331,7 @@ export const useSystemMutations = () => {
     }),
     deleteTableMutation: useMutateData<any, { table: string }>({
       method: "DELETE",
-      url: endpoints.ADMIN_TABLE_MANAGER,
+      url: (data) => endpoints.ADMIN_SCHEMA_DELETE_TABLE(data.table),
       mutationKey: ["admin-delete-table"],
       onSuccess: () => {},
       onError: () => {},
@@ -331,7 +340,7 @@ export const useSystemMutations = () => {
       mutationKey: ["admin-delete-column"],
       mutationFn: async ({ tableName, columnName }: { tableName: string; columnName: string }) => {
         const response = await axiosInstance.delete(
-          endpoints.ADMIN_SCHEMA_DELETE_COLUMN(tableName.toLowerCase(), columnName)
+          endpoints.ADMIN_SCHEMA_DELETE_COLUMN(tableName, columnName)
         );
         return response.data;
       },
@@ -350,8 +359,8 @@ export const useSystemMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
-    deleteThrottleMutation: useMutateData<any, any>({
-      method: "PATCH",
+    deleteThrottleMutation: useMutateData<any, { aggregator: string }>({
+      method: "DELETE",
       url: endpoints.ADMIN_THROTTLE,
       mutationKey: ["admin-delete-throttle"],
       onSuccess: () => {},
