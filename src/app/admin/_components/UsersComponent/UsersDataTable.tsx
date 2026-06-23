@@ -117,10 +117,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     .filter(Boolean);
 
   // New GET /v1/user/all endpoint replacing old API call
-  const allUsers = useGetAllUsers({ 
+  const allUsers = useGetAllUsers({
     enabled: true,
-    page: 1,
-    limit: 50,
     active: usersDataState === "active" ? true : undefined,
     recycle: usersDataState === "recycle" ? true : undefined,
     q: searchQuery,

@@ -68,6 +68,15 @@ export const useApplicationTracker = ({
     ...(filters.source !== "all" && { source: filters.source }),
   };
 
+  const normalizeStatus = (status?: string) => {
+    if (!status || status === "all") return undefined;
+    const normalized = status.toLowerCase();
+    if (normalized === "successful") return "Successful";
+    if (normalized === "failed") return "Failed";
+    if (normalized === "sample") return "Sample";
+    return status;
+  };
+
   const applicationsQuery = useFetchData<ApplicationListPayload>({
     method: "GET",
     url: ADMIN_APPLICATIONS,
@@ -75,7 +84,7 @@ export const useApplicationTracker = ({
       ...baseParams,
       page: page + 1,
       pageSize,
-      ...(filters.status !== "all" && { status: filters.status }),
+      ...(filters.status !== "all" && { status: normalizeStatus(filters.status) }),
     },
     queryKey: ["application-tracker", state, filters, page, pageSize],
     enabled: true,
@@ -84,7 +93,7 @@ export const useApplicationTracker = ({
   const successfulCountQuery = useFetchData<ApplicationListPayload>({
     method: "GET",
     url: ADMIN_APPLICATIONS,
-    params: { ...baseParams, page: 1, pageSize: 1, status: "successful" },
+    params: { ...baseParams, page: 1, pageSize: 1, status: normalizeStatus("successful") },
     queryKey: ["application-tracker-count-successful", state, filters.aggregator, filters.source],
     enabled: true,
     staleEarly: true,
@@ -93,7 +102,7 @@ export const useApplicationTracker = ({
   const failedCountQuery = useFetchData<ApplicationListPayload>({
     method: "GET",
     url: ADMIN_APPLICATIONS,
-    params: { ...baseParams, page: 1, pageSize: 1, status: "failed" },
+    params: { ...baseParams, page: 1, pageSize: 1, status: normalizeStatus("failed") },
     queryKey: ["application-tracker-count-failed", state, filters.aggregator, filters.source],
     enabled: true,
     staleEarly: true,

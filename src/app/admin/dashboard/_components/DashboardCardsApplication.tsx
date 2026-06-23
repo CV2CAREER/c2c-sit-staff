@@ -1,49 +1,16 @@
 "use client";
 import React from "react";
-import { Tabs, Tab } from "@heroui/tabs";
 import DashboardSkeleton from "@/components/reusable/DashboardLoadingSkeleton";
-import moment from "moment";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 
 const DashboardCardsApplication: React.FC = () => {
-  const [selected, setSelected] = React.useState("six-months");
-
-  // Calculate startDate and endDate based on selected period
-  const { startDate, endDate } = React.useMemo(() => {
-    const now = moment();
-    let start: moment.Moment;
-
-    switch (selected) {
-      case "last-24-hrs":
-        start = now.clone().subtract(1, "days");
-        break;
-      case "last-week":
-        start = now.clone().subtract(7, "days");
-        break;
-      case "last-month":
-        start = now.clone().subtract(1, "months");
-        break;
-      case "six-months":
-      default:
-        start = now.clone().subtract(6, "months");
-        break;
-    }
-
-    return {
-      startDate: start.format("YYYY-MM-DD"),
-      endDate: now.format("YYYY-MM-DD"),
-    };
-  }, [selected]);
-
-  const { 
+  const {
     totalApplicationsCard,
     successfulApplicationsCard,
     failedApplicationsCard,
-    applicationsCountDomain 
+    applicationsCountDomain
   } = useAdminQueries({
     fetchApplicationsCount: true,
-    startDate,
-    endDate
   });
 
   const isLoading = applicationsCountDomain.isLoading;
@@ -62,26 +29,9 @@ const DashboardCardsApplication: React.FC = () => {
       data: failedApplicationsCard.data,
     }
   ];
-  
 
   return (
     <section>
-      <div className="w-fit ml-auto">
-        <Tabs
-          aria-label="Options"
-          color="primary"
-          size="sm"
-          radius="full"
-          selectedKey={selected}
-          onSelectionChange={(key) => setSelected(key.toString())}
-        >
-          <Tab key="last-24-hrs" title="Last 24hrs" textValue="Last 24hrs" />
-          <Tab key="last-week" title="Last Week" textValue="Last Week" />
-          <Tab key="last-month" title="Last Month" textValue="Last Month" />
-          <Tab key="six-months" title="Six Months" textValue="Six Months" />
-        </Tabs>
-      </div>
-
       <div className="flex flex-col md:flex-row flex-wrap gap-3 mt-4">
         {
           isLoading
