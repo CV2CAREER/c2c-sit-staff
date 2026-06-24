@@ -94,8 +94,8 @@ export default function AccessLevelsPage() {
                 <tr key={item._id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                   <td className="border border-gray-300 p-2.5">{item.name}</td>
                   <td className="border border-gray-300 p-2.5">{item.description}</td>
-                  <td className="border border-gray-300 p-2.5 truncate" style={{ maxWidth: "475px" }} title={(item.personas ?? []).join(", ")}>
-                    {(item.personas ?? []).join(", ")}
+                  <td className="border border-gray-300 p-2.5 truncate" style={{ maxWidth: "475px" }} title={(Array.isArray(item.personas) ? item.personas : []).join(", ")}>
+                    {(Array.isArray(item.personas) ? item.personas : []).join(", ")}
                   </td>
                   <td className="border border-gray-300 p-2.5" style={{ minWidth: "235px" }}>
                     <button className="bg-gray-300 p-2 rounded-sm text-sm" onClick={() => setSelectedAccessLevel(item)}>
@@ -177,7 +177,7 @@ export default function AccessLevelsPage() {
             getOptionLabel={(user: any) => `${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
             getOptionValue={(user: any) => user?._id}
             onChange={(value) => setSelectedRemoveAccessClient(value as User)}
-            isOptionDisabled={(user: any) => !!selectedRemoveAccess?.personas?.includes(user.role)}
+                  isOptionDisabled={(user: any) => !!selectedRemoveAccess?.personas && (Array.isArray(selectedRemoveAccess.personas) ? selectedRemoveAccess.personas.includes(user.role) : false)}
           />
           <button
             onClick={() => {
