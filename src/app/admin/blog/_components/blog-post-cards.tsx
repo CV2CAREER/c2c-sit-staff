@@ -18,6 +18,7 @@ import ActionsMenu, { DefaultActions } from "@/components/ActionsMenu/ActionsMen
 import { PostActionDialogs } from "./dialogs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ADMIN_BLOG_EDIT_POST } from "@/constants/apiEndpoints/admin.endpoint";
 
 type PostCardType = "active-posts" | "recycle-bin"
 const filterLists = [
@@ -81,7 +82,7 @@ const PostCard: React.FC<{post: IBlogPost; type: PostCardType}> = ({post, type})
   const router = useRouter()
 
   const handleEditRedirect = () => {
-    router.push(`/admin/blog/edit-post?id=${post._id}`);
+    router.push(ADMIN_BLOG_EDIT_POST(post._id));
   };
 
 
@@ -91,8 +92,8 @@ const PostCard: React.FC<{post: IBlogPost; type: PostCardType}> = ({post, type})
         <div className="flex justify-between items-center gap-5">
           <div className="flex items-center gap-3">
             <span className="inline-block font-bold border rounded-sm py-1 px-3">{post.title.charAt(0)}</span>
-            <Link href={`/admin/blog/blog-details?id=${post._id}`}>
-            <h2 className="text-[15px] md:text-lg"  >{post.title}</h2>
+            <Link href={ADMIN_BLOG_EDIT_POST(post._id)}>
+              <h2 className="text-[15px] md:text-lg"  >{post.title}</h2>
             </Link>
           </div>
           <div className="text-[13px]">

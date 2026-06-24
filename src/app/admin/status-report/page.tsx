@@ -62,7 +62,7 @@ const StatusReportPage = () => {
     } else {
       setError(null);
     }
-  }, [consolidatedBotDomain.data, botStatusError]);
+  }, [consolidatedBotDomain.data?.status, botStatusError]);
 
   const getBotError = (botName: string): string | null => {
     return botStatusError?.message || null;

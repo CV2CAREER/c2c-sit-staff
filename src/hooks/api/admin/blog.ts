@@ -131,7 +131,7 @@ export const useBlogMutations = () => {
   const updatePost = useMutation({
     mutationKey: ["admin-update-blog-post"],
     mutationFn: async ({ id, values }: { id: string; values: Partial<IBlogPost> }) => {
-      const response = await axiosInstance.patch(endpoints.ADMIN_BLOG_WITH_ID(id), values);
+      const response = await axiosInstance.patch(endpoints.ADMIN_BLOG_EDIT_POST(id), values);
       return response.data;
     },
     onSuccess: (_, variables) => {

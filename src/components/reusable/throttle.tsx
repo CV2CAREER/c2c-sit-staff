@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { CircularProgress } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { useQueryClient } from "@tanstack/react-query";
 import { Throttle } from "@/types/admin.types";
@@ -99,11 +101,12 @@ const AggregatorsThrottle = () => {
       };
     }
 
+    const toastId = toast.loading(`Updating throttle for ${aggregator}...`);
     updateThrottleMutation.mutate(
       payload,
       {
         onSuccess: () => {
-          toast.success("Throttle updated successfully");
+          toast.success("Throttle updated successfully", { id: toastId, duration: 4000 });
           setEditedThrottles((prev) => {
             const newState = { ...prev };
             delete newState[id];
@@ -112,7 +115,7 @@ const AggregatorsThrottle = () => {
           invalidateThrottles();
         },
         onError: (error) => {
-          toast.error(error.message || "Failed to update throttle");
+          toast.error(error.message || "Failed to update throttle", { id: toastId, duration: 4000 });
         },
       }
     );
@@ -121,24 +124,16 @@ const AggregatorsThrottle = () => {
   const handleDeleteThrottle = (id: number, aggregator: string) => {
     if (!window.confirm(`Are you sure you want to delete the throttle for ${aggregator}?`)) return;
 
-    // Backend delete for perAggregator usually involves removing the key.
-    // Assuming backend PATCH with null/undefined key might work or it might need a specialized DELETE.
-    // For now, we'll try to set it to null in PATCH.
+    const toastId = toast.loading(`Deleting throttle for ${aggregator}...`);
     deleteThrottleMutation.mutate(
-      { 
-        config: { 
-          perAggregator: { 
-            [aggregator]: null 
-          } 
-        } 
-      },
+      { aggregator },
       {
         onSuccess: () => {
-          toast.success("Throttle deleted successfully");
+          toast.success("Throttle deleted successfully", { id: toastId, duration: 4000 });
           invalidateThrottles();
         },
         onError: (error) => {
-          toast.error(error.message || "Failed to delete throttle");
+          toast.error(error.message || "Failed to delete throttle", { id: toastId, duration: 4000 });
         },
       }
     );
@@ -172,10 +167,11 @@ const AggregatorsThrottle = () => {
               ) : (
                 throttles.map((throttle: Throttle) => {
                   const isUpdating = updateThrottleMutation.isPending && updateThrottleMutation.variables?.id === throttle.id;
-                  const isDeleting = deleteThrottleMutation.isPending && deleteThrottleMutation.variables?.id === throttle.id;
+                  const isDeleting = deleteThrottleMutation.isPending && deleteThrottleMutation.variables?.aggregator === throttle.aggregator;
                   const currentValue = editedThrottles[throttle.id] ?? throttle.value;
                   const isEdited = editedThrottles[throttle.id] !== undefined && editedThrottles[throttle.id] !== throttle.value;
                   const isDisabled = isUpdating || isDeleting;
+                  const isGlobal = throttle.id <= 0;
 
                   return (
                     <tr key={throttle.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
@@ -196,22 +192,22 @@ const AggregatorsThrottle = () => {
                         <button
                           onClick={() => handleUpdateThrottle(throttle.id, throttle.aggregator)}
                           disabled={!isEdited || isDisabled || currentValue === "" || isNaN(Number(currentValue))}
-                          className={`bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors ${
+                          className={`bg-blue-500 text-black p-2 rounded-lg hover:bg-blue-600 transition-colors ${
                             (!isEdited || isDisabled || currentValue === "" || isNaN(Number(currentValue))) ? "opacity-30 cursor-not-allowed" : ""
                           }`}
                           title="Save Change"
                         >
-                          {isUpdating ? <CircularProgress size={16} color="inherit" /> : "Save"}
+                          {isUpdating ? <CircularProgress size={16} color="inherit" /> : <SaveIcon fontSize="small" />}
                         </button>
                         <button
                           onClick={() => handleDeleteThrottle(throttle.id, throttle.aggregator)}
-                          disabled={isDisabled}
+                          disabled={isDisabled || isGlobal}
                           className={`bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition-colors ${
-                            isDisabled ? "opacity-50 cursor-not-allowed" : ""
+                            (isDisabled || isGlobal) ? "opacity-30 cursor-not-allowed" : ""
                           }`}
-                          title="Delete Throttle"
+                          title={isGlobal ? "Global throttles cannot be deleted" : "Delete Throttle"}
                         >
-                          {isDeleting ? <CircularProgress size={16} color="inherit" /> : "Delete"}
+                          {isDeleting ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon fontSize="small" />}
                         </button>
                       </td>
                     </tr>

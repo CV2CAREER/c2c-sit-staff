@@ -42,7 +42,7 @@ const ControlPanelPage = () => {
         data={aggregatorsDomain.data || []}
       />
 
-      <SlackIdManager loading={aggregatorsDomain.isLoading} queue={"CSM"} title={"C and S"} />
+      <SlackIdManager loading={aggregatorsDomain.isLoading} queue={"CSM"} title={"WFC"} />
       <SlackIdManager loading={aggregatorsDomain.isLoading} queue={"DEVOPS"} title={"Digital Traceability Log"}/>
       <SlackIdManager loading={aggregatorsDomain.isLoading} queue={"WALLET"} title={"Wallet"}/>
       <SlackIdManager loading={aggregatorsDomain.isLoading} queue={"SLACK_USERS"} title={"Aggregator"}/>
