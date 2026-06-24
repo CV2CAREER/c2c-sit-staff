@@ -2153,7 +2153,7 @@ export const dispatchSampleResults = async (
 export const getClientApplicationsByClientId = async (
   clientId: string,
   page: number = 1,
-  pageSize: number = 15,
+  pageSize: number = 50,
   filters?: {
     isDeleted?: boolean;
     status?: string;

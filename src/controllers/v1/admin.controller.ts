@@ -692,6 +692,9 @@ export const getAdminTableMetadata = catchAsyncError(
 export const getAdminUsers = catchAsyncError(async (req: Request, res: Response) => {
   const user = ensureAdmin(req);
 
+  const variant =
+    typeof req.query.variant === "string" ? req.query.variant.trim() : "";
+
   const page = toOptionalNumber(req.query.page);
   const limit = toOptionalNumber(req.query.limit);
   const search =
@@ -715,6 +718,19 @@ export const getAdminUsers = catchAsyncError(async (req: Request, res: Response)
       : typeof req.query.to === "string"
         ? req.query.to
         : undefined;
+
+  // Handle variant=all: return ALL users without pagination
+  if (variant === "all") {
+    const users = await getAllUsersService({});
+    res.apiSuccess(
+      {
+        users,
+        count: users.length,
+      },
+      "All users retrieved successfully",
+    );
+    return;
+  }
 
   const hasTableFilters =
     q !== undefined ||
