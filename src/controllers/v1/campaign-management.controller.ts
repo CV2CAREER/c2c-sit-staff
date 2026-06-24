@@ -592,7 +592,7 @@ export const triggerSubscriptionExpiryReminder = catchAsyncError(async (_req: Re
 export const getClientApplications = catchAsyncError(async (req: Request, res: Response) => {
   const { clientId } = req.params;
   const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 15;
+  const pageSize = parseInt(req.query.pageSize as string) || 50;
   const isDeleted = req.query.isDeleted !== undefined ? req.query.isDeleted === "true" : undefined;
   const status = req.query.status as string | undefined;
   const source = req.query.source as string | undefined;
