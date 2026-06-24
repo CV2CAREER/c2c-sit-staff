@@ -16,9 +16,15 @@ import {
   postAdminUsersExport,
   postAdminUsers,
   patchAdminUserPersona,
+  postAdminSendUserOtp,
+  postAdminVerifyUserOtp,
   getPlacementControllers,
+  getAdminSchemaTables,
+  postAdminSchemaTable,
+  deleteAdminSchemaTable,
   getSchemaColumns,
   patchAdminThrottle,
+  deleteAdminThrottle,
   patchAdminBotToggle,
   postSchemaExpandColumn,
   unassignPlacementController,
@@ -473,6 +479,30 @@ adminRouterV1.patch(
   isUserAuthenticated,
   patchAdminThrottle,
 );
+adminRouterV1.delete(
+  "/throttle",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteAdminThrottle,
+);
+adminRouterV1.get(
+  "/schema",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  getAdminSchemaTables,
+);
+adminRouterV1.post(
+  "/schema",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminSchemaTable,
+);
+adminRouterV1.delete(
+  "/schema/:table",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  deleteAdminSchemaTable,
+);
 adminRouterV1.get(
   "/schema/:tableName/columns",
   checkBlacklistedTokens,
@@ -516,6 +546,18 @@ adminRouterV1.patch(
   patchAdminUserPersona,
 );
 
+adminRouterV1.post(
+  "/users/:userId/send-otp",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminSendUserOtp,
+);
+adminRouterV1.post(
+  "/users/:userId/verify-otp",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  postAdminVerifyUserOtp,
+);
 adminRouterV1.patch(
   "/users/:userId/plan",
   checkBlacklistedTokens,

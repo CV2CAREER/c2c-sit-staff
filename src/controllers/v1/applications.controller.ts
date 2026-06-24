@@ -3,6 +3,12 @@ import { ApplicationService } from "../../services/application.service";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
+import { User } from "../../models/v1/user.model";
+import { Progress, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
+import { sendApplicationActionUserEmail, sendApplicationActionAdminEmail } from "../../services/email.service";
+import { SlackService } from "../../services/slack.service";
+import { getEnvironmentFromHost } from "../../utils/slack-helpers";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "../../config/env";
 
 const logger = getServiceLogger("applications-controller");
 
@@ -111,6 +117,102 @@ export const permanentDeleteApplication = catchAsyncError(
       res.apiSuccess(result, "Application permanently deleted");
     } catch (error: any) {
       logger.error(`Failed to permanently delete application: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
+/**
+ * POST /v1/admin/applications/emails
+ * Start or end a client's application by setting their progress milestone.
+ * type=ADMIN-APPLICATION-START → APPLICATION_COMMENCED
+ * type=ADMIN-APPLICATION-END   → APPLICATION_EXPIRED
+ */
+export const postApplicationEmail = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const { type, userId } = req.body;
+
+      logger.info(`[ApplicationEmail] Request — type: ${type}, userId: ${userId}`);
+
+      if (!type || !userId) {
+        logger.warn(`[ApplicationEmail] Missing required fields — type: ${type}, userId: ${userId}`);
+        return res.apiError(new ErrorHandler("type and userId are required", 400));
+      }
+
+      let progress: Progress;
+      let label: string;
+      if (type === "ADMIN-APPLICATION-START") {
+        progress = Progress.APPLICATION_COMMENCED;
+        label = "started";
+      } else if (type === "ADMIN-APPLICATION-END") {
+        progress = Progress.APPLICATION_EXPIRED;
+        label = "ended";
+      } else {
+        logger.warn(`[ApplicationEmail] Unknown type: ${type}`);
+        return res.apiError(new ErrorHandler(`Unknown application email type: ${type}`, 400));
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        logger.warn(`[ApplicationEmail] User not found for id: ${userId}`);
+        return res.apiError(new ErrorHandler(`User not found`, 404));
+      }
+
+      await user.update({ progress });
+
+      const clientName = `${user.firstName} ${user.lastName}`;
+      const actor = req.user as User;
+      const triggeredBy = actor
+        ? `${actor.firstName || ""} ${actor.lastName || ""}`.trim() || actor.email
+        : "Admin";
+      const host = (req.headers.host || req.headers.origin || "localhost") as string;
+      const action = type === "ADMIN-APPLICATION-START" ? "start" : "end";
+
+      logger.info(`[ApplicationEmail] User ${user.id} progress set to "${progress}" via type "${type}"`);
+
+      res.apiSuccess(null, `Application ${label} successfully`);
+
+      setImmediate(async () => {
+        try {
+          await Promise.all([
+            sendApplicationActionUserEmail({
+              name: clientName,
+              email: user.email,
+              frontendUrl: CLIENT_APP_DOMAIN || "",
+              action,
+            }),
+            sendApplicationActionAdminEmail({
+              name: clientName,
+              email: user.email,
+              triggeredBy,
+              action,
+            }),
+          ]);
+        } catch (emailErr: any) {
+          logger.error(`[ApplicationEmail] Email send failed for user ${user.id}: ${emailErr.message}`);
+        }
+
+        try {
+          const location = getEnvironmentFromHost(host);
+          await SlackService.notify({
+            node: SlackNode.APPLICATION,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            type: SlackEventType.ADMIN_ACTION,
+            body: `Application *${action === "start" ? "commenced" : "expired"}* for client *${clientName}* (${user.email}).`,
+            channel: SlackChannel.TOWN_CRIER,
+            teamMentions: "CSM",
+            trigger: triggeredBy,
+            host,
+            location,
+          });
+        } catch (slackErr: any) {
+          logger.error(`[ApplicationEmail] Slack notify failed for user ${user.id}: ${slackErr.message}`);
+        }
+      });
+    } catch (error: any) {
+      logger.error(`Failed to process application email action: ${error.message}`);
       return res.apiError(new ErrorHandler(error.message, 500));
     }
   }

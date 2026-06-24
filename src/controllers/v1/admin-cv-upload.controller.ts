@@ -1,11 +1,16 @@
 import fs from "fs/promises";
+import path from "path";
 import { Request, Response } from "express";
 import formidable, { type File as FormidableFile, type Files } from "formidable";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { UploadService } from "../../services/admin-upload.service";
-import { UploadType } from "../../utils/enum";
+import { SlackService } from "../../services/slack.service";
+import { sendMail } from "../../config/sendGrid";
+import { TEAM_EMAIL } from "../../config/env";
+import { UploadType, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
+import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import {
   generateUniqueFilename,
   uploadBufferToStorage,
@@ -123,6 +128,60 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
         userId,
         documents,
       );
+
+      // Send background notifications using setImmediate to avoid blocking the response
+      setImmediate(async () => {
+        const documentTypes = documents
+          .map((doc) => doc.type)
+          .join(", ");
+
+        const slackHost = req.get("host") || process.env.CLIENT_APP_DOMAIN || "localhost";
+        const environment = getEnvironmentFromHost(slackHost);
+
+        // Send Slack notification
+        SlackService.notify({
+          location: environment,
+          host: slackHost,
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          type: SlackEventType.DOCUMENT_UPLOAD,
+          trigger: `Documents Uploaded by ${(req as any).user?.firstName} ${(req as any).user?.lastName}`,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          body: `Admin has uploaded revised documents for user.\n\n👤 User ID: ${userId}\n📄 Documents: ${documentTypes}\n📊 Count: ${uploads.length}`,
+        }).catch((err) => {
+          logger.error(
+            `Failed to send Slack notification for CV/Cover Letter upload: ${err.message}`,
+          );
+        });
+
+        // Send email notification to team
+        if (TEAM_EMAIL) {
+          try {
+            await sendMail({
+              email: TEAM_EMAIL,
+              subject: `📄 Revised Document Uploaded - by ${(req as any).user?.firstName} ${(req as any).user?.lastName}`,
+              templateName: "admin-revised-documents.ejs",
+              templateDir: path.resolve(__dirname, "../../views/emails"),
+              templateData: {
+                title: "Document Upload Notification",
+                message: `Admin has uploaded Revised documents for user.`,
+                userId,
+                documentTypes,
+                uploadCount: uploads.length,
+                timestamp: new Date().toLocaleString(),
+                currentYear: new Date().getFullYear(),
+              },
+            });
+            logger.info(`✅ Team notification email sent for CV/Cover Letter upload`);
+          } catch (emailError: any) {
+            logger.error(
+              `Failed to send team email notification: ${emailError?.message || emailError}`,
+            );
+          }
+        }
+      });
 
       return res.apiSuccess(
         { uploads },

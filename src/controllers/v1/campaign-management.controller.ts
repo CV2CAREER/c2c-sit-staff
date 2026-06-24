@@ -423,8 +423,9 @@ export const saveJob = catchAsyncError(async (req: Request, res: Response) => {
     const { id } = req.params;
     const data = req.body as UpdateCampaignClientPayload;
     const requestorName = `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim();
+    const host = (req.headers.host || req.headers.origin || "localhost") as string;
 
-    const result = await updateCampaignClient(id, data, requestorName);
+    const result = await updateCampaignClient(id, data, requestorName, host);
     
     res.status(200).json({
       success: true,

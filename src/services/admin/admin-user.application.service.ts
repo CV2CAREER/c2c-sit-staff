@@ -1,13 +1,17 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { Op, QueryTypes } from "sequelize";
-import { BCRYPT_SALT_ROUNDS } from "../../config/env";
+import { BCRYPT_SALT_ROUNDS, CLIENT_APP_DOMAIN } from "../../config/env";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
+import OTPToken from "../../models/v1/otpToken.model";
 import { User } from "../../models/v1/user.model";
+import { sendNewOTPEmail } from "../../services/email.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { getSequelize } from "../../utils/sequelize";
-import { Role } from "../../utils/enum";
+import { Role, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
+import { SlackService } from "../slack.service";
+import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 
 export interface GetAdminUsersInput {
   page?: number;
@@ -35,10 +39,15 @@ interface BulkPersonaAssignmentInput {
 
 interface AddUserInputItem {
   firstName: string;
+  middleName?: string;
   lastName: string;
   email: string;
-  role?: "guest" | "coach" | "admin";
+  role?: string;
+  gender?: string;
+  phoneNumber?: string;
+  whatsappNumber?: string;
   country?: string;
+  currentCityOfResidence?: string;
   password?: string;
   isActive?: boolean;
   isEmailVerified?: boolean;
@@ -46,10 +55,15 @@ interface AddUserInputItem {
 
 interface NormalizedAddUserInputItem {
   firstName: string;
+  middleName?: string;
   lastName: string;
   email: string;
-  role: "guest" | "coach" | "admin";
+  role: string;
+  gender?: string;
+  phoneNumber?: string;
+  whatsappNumber?: string;
   country: string;
+  currentCityOfResidence?: string;
   password?: string;
   isActive: boolean;
   isEmailVerified: boolean;
@@ -60,6 +74,7 @@ interface BulkAddUsersInput {
   actorUserId: string;
   actorEmail?: string;
   reason?: string;
+  host?: string;
 }
 
 interface AdminUserItem {
@@ -145,7 +160,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 200;
 const MAX_BULK_ASSIGNMENTS = 200;
 const MAX_BULK_CREATE_USERS = 200;
-const PERSONA_ROLES = [Role.GUEST, Role.COACH, Role.ADMIN] as const;
+const ALL_CREATABLE_ROLES = new Set(Object.values(Role));
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_COUNTRY = "Unknown";
 const BCRYPT_ROUNDS =
@@ -162,8 +177,8 @@ const normalizeRole = (value?: string): string | undefined => {
   return normalized.length > 0 ? normalized : undefined;
 };
 
-const isPersonaRole = (value: string): value is "guest" | "coach" | "admin" =>
-  PERSONA_ROLES.includes(value as any);
+const isCreatableRole = (value: string): boolean =>
+  ALL_CREATABLE_ROLES.has(value as Role);
 
 const sanitizeString = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
@@ -244,10 +259,15 @@ class AdminUserApplicationService {
     const normalized: NormalizedAddUserInputItem[] = [];
     for (const item of users) {
       const firstName = sanitizeString(item?.firstName);
+      const middleName = sanitizeString(item?.middleName) || undefined;
       const lastName = sanitizeString(item?.lastName);
       const email = normalizeEmail(item?.email);
       const role = normalizeRole(item?.role) || Role.GUEST;
+      const gender = sanitizeString(item?.gender) || undefined;
+      const phoneNumber = sanitizeString(item?.phoneNumber) || undefined;
+      const whatsappNumber = sanitizeString(item?.whatsappNumber) || undefined;
       const country = sanitizeString(item?.country) || DEFAULT_COUNTRY;
+      const currentCityOfResidence = sanitizeString(item?.currentCityOfResidence) || undefined;
       const password = sanitizeString(item?.password);
 
       if (!firstName) {
@@ -259,9 +279,9 @@ class AdminUserApplicationService {
       if (!EMAIL_REGEX.test(email)) {
         throw new ErrorHandler("Each user must include a valid email.", 400);
       }
-      if (!isPersonaRole(role)) {
+      if (!isCreatableRole(role)) {
         throw new ErrorHandler(
-          "Each user role must be one of: guest, coach, admin.",
+          `Invalid role. Valid roles: ${Array.from(ALL_CREATABLE_ROLES).join(", ")}`,
           400,
         );
       }
@@ -278,14 +298,19 @@ class AdminUserApplicationService {
       seenEmails.add(email);
       normalized.push({
         firstName,
+        middleName,
         lastName,
         email,
         role,
+        gender,
+        phoneNumber,
+        whatsappNumber,
         country,
+        currentCityOfResidence,
         password: password || undefined,
         isActive: typeof item?.isActive === "boolean" ? item.isActive : true,
         isEmailVerified:
-          typeof item?.isEmailVerified === "boolean" ? item.isEmailVerified : true,
+          typeof item?.isEmailVerified === "boolean" ? item.isEmailVerified : false,
       });
     }
 
@@ -388,7 +413,7 @@ class AdminUserApplicationService {
       `
         SELECT LOWER(email) AS email
         FROM users
-        WHERE LOWER(email) = ANY(:emails)
+        WHERE LOWER(email) IN (:emails)
           AND "deletedAt" IS NULL;
       `,
       {
@@ -418,11 +443,16 @@ class AdminUserApplicationService {
         const createdUser = await User.create(
           {
             firstName: userInput.firstName,
+            middleName: userInput.middleName,
             lastName: userInput.lastName,
             email: userInput.email,
             password: hashedPassword,
             role: userInput.role as Role,
+            gender: userInput.gender,
+            phoneNumber: userInput.phoneNumber,
+            whatsappNumber: userInput.whatsappNumber,
             country: userInput.country,
+            currentCityOfResidence: userInput.currentCityOfResidence,
             isActive: userInput.isActive,
             isEmailVerified: userInput.isEmailVerified,
             updatedBy: input.actorEmail || actorUserId,
@@ -467,6 +497,40 @@ class AdminUserApplicationService {
       `Bulk add users done by ${actorUserId}: requested=${users.length}, created=${created.length}, skipped=${skipped.length}`,
     );
 
+    if (created.length > 0) {
+      setImmediate(async () => {
+        try {
+          const actor = await User.findOne({
+            where: { id: actorUserId },
+            attributes: ["firstName", "lastName"],
+          });
+          const actorName = actor
+            ? `${actor.firstName} ${actor.lastName}`
+            : input.actorEmail || actorUserId;
+          const host = input.host || "localhost";
+          const location = getEnvironmentFromHost(host);
+          const userLines = created
+            .map((u) => `• ${u.firstName} ${u.lastName} (${u.email}) — role: ${u.role}`)
+            .join("\n");
+          await SlackService.notify({
+            node: SlackNode.USER_MANAGEMENT,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            trigger: actorName,
+            type: SlackEventType.ADMIN_ACTION,
+            channel: SlackChannel.TOWN_CRIER,
+            teamMentions: "CSM",
+            host,
+            location,
+            body: `Admin added ${created.length} new user${created.length > 1 ? "s" : ""}.\n${userLines}`,
+          });
+          logger.info(`Slack notified: ${created.length} user(s) added by ${actorName}`);
+        } catch (err) {
+          logger.error(`Slack notification failed for admin user add: ${err}`);
+        }
+      });
+    }
+
     return {
       created,
       skipped,
@@ -500,7 +564,8 @@ class AdminUserApplicationService {
         throw new ErrorHandler("Each assignment must include a valid userId.", 400);
       }
       const role = normalizeRole(assignment.role);
-      if (!role || !isPersonaRole(role)) {
+      const PERSONA_ROLES = [Role.GUEST, Role.COACH, Role.ADMIN] as const;
+      if (!role || !(PERSONA_ROLES as readonly string[]).includes(role)) {
         throw new ErrorHandler(
           "Each assignment role must be one of: guest, coach, admin.",
           400,
@@ -512,7 +577,7 @@ class AdminUserApplicationService {
       seen.add(assignment.userId);
       normalizedAssignments.push({
         userId: assignment.userId,
-        role,
+        role: role as "guest" | "coach" | "admin",
       });
     }
 
@@ -637,6 +702,61 @@ class AdminUserApplicationService {
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  async sendUserVerificationOtp(userId: string): Promise<{ ok: true }> {
+    const user = await User.findOne({ where: { id: userId, deletedAt: null } });
+    if (!user) throw new ErrorHandler("User not found.", 404);
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, BCRYPT_ROUNDS);
+
+    await OTPToken.create({
+      otp: hashedOtp,
+      type: "admin_email_verification",
+      userId: user.id,
+      revoked: false,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    await sendNewOTPEmail({
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      frontendUrl: CLIENT_APP_DOMAIN || "",
+      otp,
+    });
+
+    logger.info(`Sent admin email verification OTP to user ${userId}`);
+    return { ok: true };
+  }
+
+  async verifyUserOtp(userId: string, otp: string): Promise<{ ok: true }> {
+    const user = await User.findOne({ where: { id: userId, deletedAt: null } });
+    if (!user) throw new ErrorHandler("User not found.", 404);
+
+    const token = await OTPToken.findOne({
+      where: {
+        userId,
+        type: "admin_email_verification",
+        revoked: false,
+        expiresAt: { [Op.gt]: new Date() },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (!token) throw new ErrorHandler("No valid OTP found. Please request a new one.", 400);
+
+    const match = await bcrypt.compare(otp, token.otp);
+    if (!match) throw new ErrorHandler("Invalid OTP.", 400);
+
+    token.revoked = true;
+    await token.save();
+
+    user.isEmailVerified = true;
+    await user.save();
+
+    logger.info(`User ${userId} email verified via admin OTP`);
+    return { ok: true };
   }
 }
 
