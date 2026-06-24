@@ -43,7 +43,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
   const { dispatchClientMutation } = useAdminMutations();
 
   const clientsData = clientsDomain.data;
-  const users = Array.isArray(clientsData) ? clientsData : (clientsData?.items ?? []);
+  const users = Array.isArray(clientsData) ? clientsData : (clientsData?.users ?? []);
 
   const pcsData = pcsDomain.data;
   const vas = Array.isArray(pcsData) ? pcsData : [];
