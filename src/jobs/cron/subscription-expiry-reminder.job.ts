@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { Op } from "sequelize";
 import { Plan } from "../../models/v1/plan.model";
+import { User } from "../../models/v1/user.model";
 import { Credentials } from "../../models/v1/credentials.model";
 import { getServiceLogger } from "../../utils/createLogger";
 import { SlackService } from "../../services/slack.service";
@@ -128,6 +129,25 @@ async function notifyMilestone(from: number, to: number, label: string, emoji: s
     teamMentions: "CSM",
     body,
   });
+
+  if (from === 0) {
+    await Promise.all(
+      plans.map(async (plan) => {
+        await User.update(
+          {
+            campaignActive: false,
+            hasActiveSubscription: false,
+            selectedPlan: null,
+            plan: null,
+            planId: null,
+          },
+          { where: { id: plan.userId } },
+        );
+
+        logger.info(`Marked plan ${plan.id} as expired for user ${plan.userId} and reset user subscription fields`);
+      }),
+    );
+  }
 
   logger.info(`📢 Sent ${label} expiry reminder for ${plans.length} client(s)`);
 }
