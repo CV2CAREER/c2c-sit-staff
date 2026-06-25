@@ -1270,99 +1270,99 @@ export const updateJobApplicationStatus = async (
 
   await application.update(updateData);
 
-  // if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
-  //   // Validate that client exists
-  //   const clientExists = await Credentials.findOne({
-  //     where: {
-  //       clientId: application.client_id,
-  //       isDeleted: false,
-  //     },
-  //   });
+  if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
+    // Validate that client exists
+    const clientExists = await Credentials.findOne({
+      where: {
+        clientId: application.client_id,
+        isDeleted: false,
+      },
+    });
 
-  //   let clientId;
+    if (!clientExists) {
+      throw new Error(`Client not found with ID: ${clientExists.id}`);
+    }
 
-  //   if (!clientExists) {
-  //     clientId = clientExists.id;
-  //     throw new Error(`Client not found with ID: ${clientId}`);
-  //   }
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
-  //   const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    let environment = process.env.NODE_ENV || 'development';
+    if (environment === 'preview') {
+      environment = 'staging';
+    }
 
-  //   let environment = process.env.NODE_ENV || 'development';
-  //   if (environment === 'preview') {
-  //     environment = 'staging';
-  //   }
+    logger.info(
+      `Saving job application for client: ${clientExists.id} by user: ${fullName}`
+    );
 
-  //   logger.info(
-  //     `Saving job application for client: ${clientId} by user: ${fullName}`
-  //   );
+    const match = application.Job_Title.match(
+      /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
+    );
 
-  //   const match = application.Job_Title.match(
-  //     /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
-  //   );
+    const jobTitleUrl = match
+      ? {
+          url: match[1],
+          title: match[2],
+        }
+      : null;
 
-  //   const jobTitleUrl = match
-  //     ? {
-  //         url: match[1],
-  //         title: match[2],
-  //       }
-  //     : null;
+    // Prepare data for Flask API
+    const requestData = {
+      environment,
+      client_id: clientExists.id,
+      submitted_by: fullName,
+      vaEmail: clientExists?.AssignedPCEmail || '',
+      job_data: {
+        job_title: jobTitleUrl.title,
+        company: application.Advertiser,
+        location: application.Location,
+        job_url: jobTitleUrl.url,
+        job_id: application.JobId,
+        job_type: application.Job_Type,
+        country: application.Country,
+        internal_jobsite: application.Internal_Jobsite || 'C2C',
+        external_jobsite: application.External_Jobsite,
+      },
+    };
+    console.log(requestData);
 
-  //   // Prepare data for Flask API
-  //   const requestData = {
-  //     environment,
-  //     client_id: clientId,
-  //     submitted_by: fullName,
-  //     vaEmail: clientExists?.AssignedPCEmail || '',
-  //     job_data: {
-  //       job_title: jobTitleUrl.title,
-  //       company: application.Advertiser,
-  //       location: application.Location,
-  //       job_url: jobTitleUrl.url,
-  //       job_id: application.JobId,
-  //       job_type: application.Job_Type,
-  //       country: application.Country,
-  //       internal_jobsite: application.Internal_Jobsite || 'C2C',
-  //       external_jobsite: application.External_Jobsite,
-  //     },
-  //   };
+    // Log payload with user information
+    logger.info(
+      `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
+      requestData
+    );
 
-  //   // Log payload with user information
-  //   logger.info(
-  //     `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
-  //     requestData
-  //   );
+    // Call Flask Save Application API
+    const axios = require('axios');
+    const flaskResponse = await axios.post(
+      `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+      requestData,
+      { timeout: 60000 }
+    );
 
-  //   // Call Flask Save Application API
-  //   const axios = require('axios');
-  //   const flaskResponse = await axios.post(
-  //     `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
-  //     requestData,
-  //     { timeout: 60000 }
-  //   );
+    if (!flaskResponse.data.success) {
+      throw new Error(
+        flaskResponse.data.message || 'Failed to save application to database.'
+      );
+    }
 
-  //   if (!flaskResponse.data.success) {
-  //     throw new Error(
-  //       flaskResponse.data.message || 'Failed to save application to database.'
-  //     );
-  //   }
+    logger.info(
+      `Job application saved successfully for client: ${clientExists.id}`
+    );
+    // const applicationPayload = {
+    //   Client: application.Client,
+    //   Country: application.Country,
+    //   Status: 'SUBMITTED',
+    //   Job_Title: application.Job_Title,
+    //   JobId: application.JobId,
+    //   Location: application.Location,
+    //   Advertiser: application.Advertiser,
+    //   client_id: parseInt(clientExists.id),
+    //   id: parseInt(clientExists.id),
+    //   ApplicationSubmittedBy: fullName || 'N/A',
+    // };
 
-  //   logger.info(`Job application saved successfully for client: ${clientId}`);
-  //   // const applicationPayload = {
-  //   //   Client: application.Client,
-  //   //   Country: application.Country,
-  //   //   Status: 'SUBMITTED',
-  //   //   Job_Title: application.Job_Title,
-  //   //   JobId: application.JobId,
-  //   //   Location: application.Location,
-  //   //   Advertiser: application.Advertiser,
-  //   //   client_id: parseInt(clientExists.id),
-  //   //   id: parseInt(clientExists.id),
-  //   //   ApplicationSubmittedBy: fullName || 'N/A',
-  //   // };
-
-  //   // await Application.create(applicationPayload);
-  // }
+    // await Application.create(applicationPayload);
+  }
 
   logger.info(
     `Manual application updated successfully for applicationId: ${applicationId}`
