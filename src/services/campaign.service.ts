@@ -1384,20 +1384,35 @@ export const assignVAToClient = async (
   vaEmail: string | null,
   host: string,
   updatedBy?: string,
-  variant: 'Discovery' | 'Vet' | 'Completed' = 'Discovery'
+  variant: 'DPC' | 'VPC' | 'SPC' = 'DPC'
 ) => {
   logger.info(
     `Processing ${variant} assignment for credId=${credId}, vaEmail=${vaEmail}`
   );
 
-  const resolveFieldNames = (v: 'Discovery' | 'Vet' | 'Completed') => {
-    if (v === 'Vet') {
-      return { emailField: 'AssignedVetEmail' as const, nameField: 'AssignedVetName' as const, displayLabel: 'Vet', slackChannel: SlackChannel.VA };
+  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC') => {
+    if (v === 'VPC') {
+      return {
+        emailField: 'AssignedVetEmail' as const,
+        nameField: 'AssignedVetName' as const,
+        displayLabel: 'Vet',
+        slackChannel: SlackChannel.VA,
+      };
     }
-    if (v === 'Completed') {
-      return { emailField: 'AssignedCompletedEmail' as const, nameField: 'AssignedCompletedName' as const, displayLabel: 'Completed', slackChannel: SlackChannel.VA };
+    if (v === 'SPC') {
+      return {
+        emailField: 'AssignedCompletedEmail' as const,
+        nameField: 'AssignedCompletedName' as const,
+        displayLabel: 'Completed',
+        slackChannel: SlackChannel.VA,
+      };
     }
-    return { emailField: 'AssignedPCEmail' as const, nameField: 'AssignedPCName' as const, displayLabel: 'PC', slackChannel: SlackChannel.VA };
+    return {
+      emailField: 'AssignedPCEmail' as const,
+      nameField: 'AssignedPCName' as const,
+      displayLabel: 'PC',
+      slackChannel: SlackChannel.VA,
+    };
   };
 
   const fields = resolveFieldNames(variant);
@@ -1441,7 +1456,9 @@ export const assignVAToClient = async (
           ? `<@${slackId}>`
           : `${targetUser.firstName} ${targetUser.lastName}`;
       } else {
-        logger.warn(`${fields.displayLabel} not found for email=${currentEmail}`);
+        logger.warn(
+          `${fields.displayLabel} not found for email=${currentEmail}`
+        );
         const currentName = (targetCred as any)[fields.nameField];
         tagName = currentName || currentEmail;
       }
@@ -1476,7 +1493,9 @@ export const assignVAToClient = async (
       updatedBy: updatedBy,
     } as any);
 
-    logger.info(`${fields.displayLabel} unassigned successfully for credId=${credId}`);
+    logger.info(
+      `${fields.displayLabel} unassigned successfully for credId=${credId}`
+    );
 
     return {
       success: true,
@@ -1526,7 +1545,9 @@ export const assignVAToClient = async (
     }
   });
 
-  logger.info(`${fields.displayLabel} assigned successfully for credId=${credId} to ${vaEmail}`);
+  logger.info(
+    `${fields.displayLabel} assigned successfully for credId=${credId} to ${vaEmail}`
+  );
 
   return {
     success: true,
