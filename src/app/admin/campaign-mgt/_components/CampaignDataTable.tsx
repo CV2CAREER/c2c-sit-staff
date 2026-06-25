@@ -299,6 +299,16 @@ const queryClient = useQueryClient();
         VaEmail: client.AssignedPCEmail ?? null,
         AssignedPCName: client.AssignedPCName ?? null,
         AssignedPCEmail: client.AssignedPCEmail ?? null,
+        // ── Vet assignment ─
+        VetName: client.AssignedVetName ?? null,
+        VetEmail: client.AssignedVetEmail ?? null,
+        AssignedVetName: client.AssignedVetName ?? null,
+        AssignedVetEmail: client.AssignedVetEmail ?? null,
+        // ── Completed assignment ─
+        CompletedName: client.AssignedCompletedName ?? null,
+        CompletedEmail: client.AssignedCompletedEmail ?? null,
+        AssignedCompletedName: client.AssignedCompletedName ?? null,
+        AssignedCompletedEmail: client.AssignedCompletedEmail ?? null,
         updateBy: client.updatedBy ?? null,
 
         // ── Metadata ──────────────────────────────────────────────

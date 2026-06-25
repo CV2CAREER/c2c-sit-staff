@@ -684,8 +684,16 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
               </div>
 
               <div className="flex flex-col gap-1">
-                <label htmlFor="">Placement Controller</label>
-                <VACell data={client}/>
+                <label htmlFor="">Discovery Placement Controller</label>
+                <VACell data={client} variant="Discovery"/>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Vetting Placement Controller</label>
+                <VACell data={client} variant="Vet"/>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Completed Placement Controller</label>
+                <VACell data={client} variant="Completed"/>
               </div>
             </form>
           </Form>

@@ -50,6 +50,10 @@ const campaignTableKeys: (keyof CampaignTableColType)[] = [
   "ExternalPassword",
   "VaName",
   "VaEmail",
+  "VetName",
+  "VetEmail",
+  "CompletedName",
+  "CompletedEmail",
   "Last_Application",
   "First_Application",
   "First_Application_Aggregator",
@@ -127,11 +131,27 @@ const handleTableHeader = (key: string) => {
   }
 
   if (key === "VaName") {
-    return "PC Name"
+    return "DPC Name"
   }
 
   if (key === "VaEmail") {
-    return "PC Email"
+    return "DPC Email"
+  }
+
+  if (key === "VetName") {
+    return "VPC Name"
+  }
+
+  if (key === "VetEmail") {
+    return "VPC Email"
+  }
+
+  if (key === "CompletedName") {
+    return "SPC Name"
+  }
+
+  if (key === "CompletedEmail") {
+    return "SPC Email"
   }
 
   // Replace underscores with spaces, insert spaces before uppercase letters (camelCase), then capitalize each word
@@ -176,22 +196,22 @@ export const tableColumns: GridColDef[] = [
             case 'expired':
               bgColor = 'bg-red-600';
               textColor = 'text-white';
-              icon = '🚫';
+              icon = '\u{1F6AB}';
               break;
             case 'critical':
               bgColor = 'bg-red-500';
               textColor = 'text-white';
-              icon = '⚠️';
+              icon = '\u26A0\uFE0F';
               break;
             case 'warning':
               bgColor = 'bg-yellow-400';
               textColor = 'text-gray-900';
-              icon = '⚡';
+              icon = '\u26A1';
               break;
             case 'normal':
               bgColor = 'bg-green-100';
               textColor = 'text-green-800';
-              icon = '✓';
+              icon = '\u2713';
               break;
           }
 
@@ -218,7 +238,7 @@ export const tableColumns: GridColDef[] = [
                 ? 'bg-red-600 text-white'
                 : 'bg-green-100 text-green-800'
               }`}>
-              {isExpired ? '🚫 EXPIRED' : '✓ Active'}
+              {isExpired ? '\u{1F6AB} EXPIRED' : '\u2713 Active'}
             </div>
           );
         },

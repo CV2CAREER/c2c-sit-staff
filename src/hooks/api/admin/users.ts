@@ -557,7 +557,7 @@ export const useUsersMutations = () => {
         toast.error("Failed to permanently delete user");
       },
     }),
-    assignVaMutation: useMutateData<any, { credId: string; vaEmail: string | null; host?: string }>({
+    assignVaMutation: useMutateData<any, { credId: string; vaEmail: string | null; host?: string; variant?: 'Discovery' | 'Vet' | 'Completed' }>({
       method: "POST",
       url: endpoints.ADMIN_ASSIGN_VA,
       mutationKey: ["admin-assign-va"],
