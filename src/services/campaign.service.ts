@@ -1280,7 +1280,7 @@ export const updateJobApplicationStatus = async (
     });
 
     if (!clientExists) {
-      throw new Error(`Client not found with ID: ${clientExists.id}`);
+      throw new Error(`Client not found with ID: ${application?.client_id}`);
     }
 
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
@@ -1312,10 +1312,10 @@ export const updateJobApplicationStatus = async (
       submitted_by: fullName,
       vaEmail: clientExists?.AssignedPCEmail || '',
       job_data: {
-        job_title: jobTitleUrl.title,
+        job_title: jobTitleUrl?.title || 'N/A',
         company: application.Advertiser,
         location: application.Location,
-        job_url: jobTitleUrl.url,
+        job_url: jobTitleUrl?.url || 'N/A',
         job_id: application.JobId,
         job_type: application.Job_Type,
         country: application.Country,
