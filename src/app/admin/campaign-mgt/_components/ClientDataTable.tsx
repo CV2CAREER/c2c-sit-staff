@@ -88,6 +88,14 @@ const handleApiError = (
   return errorMessage;
 };
 
+const toTitleCase = (value?: string) =>
+  value ? value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : 'N/A';
+const colors = {
+  HQA: '#2BC07A',
+  MQA: '#F4A91A',
+  LQA: '#EC4040',
+};
+
 // Custom hook for client plan management
 const useClientPlan = (clientInfo: Client | null) => {
   const hasPremiumAccess = useMemo(() => {
@@ -501,7 +509,7 @@ const ClientDataTable: React.FC<{
   const isDataOptionLoading =
     dataOption?.value === 'job_applications'
       ? isClientApplicationsLoading
-      : dataOption?.value === 'sample_results'
+      : dataOption?.value === 'manual_discovery'
         ? isSampleResultsLoading
         : isApplicationLoading;
 
@@ -526,25 +534,24 @@ const ClientDataTable: React.FC<{
       id: item?.id,
       Client:
         `${item?.user?.firstName ?? ''} ${item?.user?.lastName ?? ''}`.trim(),
-      Job_Id: item?.JobId ?? '',
-      Job_Title: label,
-      Job_Title_Url: url,
-      Job_Location: item?.Location ?? '',
-      Job_Type: item?.Job_Type ?? '',
-      Application_Status: item?.Status ?? 'Unattended',
+      Job_Id: item?.JobId ?? 'N/A',
+      Job_Title: item?.Job_Title,
+      Job_Location: item?.Location ?? 'N/A',
+      Job_Type: item?.Job_Type ?? 'N/A',
+      Application_Status: toTitleCase(item?.Status || 'Unattended'),
       Quality_Score: item?.QualityScore ?? '',
-      Discovered_By: item?.DiscoveredBy ?? '',
-      Timestamp_Discovered: item?.DiscoveryDate ?? '',
-      Vetted_By: item?.VettedBy ?? '',
-      Timestamp_Vetted: item?.VettedDate ?? '',
-      Submitted_By: item?.ApplicationSubmittedBy ?? '',
-      Timestamp_Submitted: item?.ApplicationSubmissionDate ?? '',
-      Date_Advertised: item?.createdAt ?? '',
-      Advertiser: item?.Advertiser ?? '',
-      External_Jobsite: item?.External_Jobsite ?? '',
-      Internal_Jobsite: item?.Internal_Jobsite ?? '',
-      Client_Id: item?.Client ?? '',
-      Updated_At: item?.updatedAt ?? '',
+      Discovered_By: item?.DiscoveredBy ?? 'N/A',
+      Timestamp_Discovered: item?.DiscoveryDate ?? 'N/A',
+      Vetted_By: item?.VettedBy ?? 'N/A',
+      Timestamp_Vetted: item?.VettedDate ?? 'N/A',
+      Submitted_By: item?.ApplicationSubmittedBy ?? 'N/A',
+      Timestamp_Submitted: item?.ApplicationSubmissionDate ?? 'N/A',
+      Date_Advertised: item?.createdAt ?? 'N/A',
+      Advertiser: item?.Advertiser ?? 'N/A',
+      External_Jobsite: item?.External_Jobsite ?? 'N/A',
+      Internal_Jobsite: item?.Internal_Jobsite ?? 'N/A',
+      Client_Id: item?.Client ?? 'N/A',
+      Updated_At: item?.updatedAt ?? 'N/A',
       user: item?.user,
     };
   };
@@ -560,6 +567,7 @@ const ClientDataTable: React.FC<{
         minWidth: 260,
         flex: 1,
         renderCell: (params: any) => {
+          console.log(params.row);
           const match = params.row?.Job_Title.match(
             /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
           );
@@ -594,12 +602,20 @@ const ClientDataTable: React.FC<{
         renderCell: (params: any) => (
           <div
             onClick={() => {
+              const status = (params.value || '').toLowerCase();
+
+              const blocked =
+                !isEditable ||
+                ['submitted', 'skipped', 'expired'].includes(status);
+
+              if (blocked) return;
+
               setSelectedRow(params.row);
               setIsStatusModalOpen(true);
             }}
             className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 hover:underline"
           >
-            {params.value || 'Unattended'}
+            {toTitleCase(params.value)}
           </div>
         ),
       },
@@ -607,19 +623,23 @@ const ClientDataTable: React.FC<{
         field: 'Quality_Score',
         headerName: 'Quality Score',
         width: 140,
-        renderCell: (params: any) => (
-          <span
-            className={`font-medium px-2 py-1 rounded ${
-              params.value >= 80
-                ? 'text-green-700 bg-green-100'
-                : params.value >= 60
-                  ? 'text-yellow-700 bg-yellow-100'
-                  : 'text-red-700 bg-red-100'
-            }`}
-          >
-            {params.value ?? 'N/A'}
-          </span>
-        ),
+        renderCell: (params: any) => {
+          const color =
+            params.value in colors
+              ? colors[params.value as keyof typeof colors]
+              : '#999';
+          return (
+            <span
+              style={{
+                color,
+                padding: '2px 3px',
+                background: `${color}20`,
+              }}
+            >
+              {params.value || 'N/A'}
+            </span>
+          );
+        },
       },
       { field: 'Discovered_By', headerName: 'Discovered By', width: 170 },
       {
@@ -746,7 +766,7 @@ const ClientDataTable: React.FC<{
     if (!value) return [];
 
     let rawColumns: GridColDef[] =
-      value === 'sample_results'
+      value === 'manual_discovery'
         ? sampleResultColumns
         : (singleCampaignColumns(value) as GridColDef[]);
 
@@ -759,6 +779,14 @@ const ClientDataTable: React.FC<{
             renderCell: (params: any) => (
               <div
                 onClick={() => {
+                  const status = (params.value || '').toLowerCase();
+
+                  const blocked =
+                    !isEditable ||
+                    ['submitted', 'skipped', 'expired'].includes(status);
+
+                  if (blocked) return;
+
                   setSelectedRow(params.row);
                   setIsStatusModalOpen(true);
                 }}
@@ -774,19 +802,23 @@ const ClientDataTable: React.FC<{
           return {
             ...col,
             width: 140,
-            renderCell: (params: any) => (
-              <span
-                className={`font-medium px-2 py-1 rounded ${
-                  params.value >= 80
-                    ? 'text-green-700 bg-green-100'
-                    : params.value >= 60
-                      ? 'text-yellow-700 bg-yellow-100'
-                      : 'text-red-700 bg-red-100'
-                }`}
-              >
-                {params.value}
-              </span>
-            ),
+            renderCell: (params: any) => {
+              const color =
+                params.value in colors
+                  ? colors[params.value as keyof typeof colors]
+                  : '#999';
+              return (
+                <span
+                  style={{
+                    color,
+                    border: `1px solid ${color}`,
+                    background: `${color}20`,
+                  }}
+                >
+                  {params.value || 'N/A'}
+                </span>
+              );
+            },
           };
         }
 
@@ -815,7 +847,7 @@ const ClientDataTable: React.FC<{
   ]);
 
   const fetchSampleResults = useCallback(async () => {
-    if (dataOption?.value !== 'sample_results') return;
+    if (dataOption?.value !== 'manual_discovery') return;
 
     try {
       setIsSampleResultsLoading(true);
@@ -920,65 +952,6 @@ const ClientDataTable: React.FC<{
         table !== 'sample_results'
     );
   }, [table]);
-
-  // ==================== DUMMY DATA FOR MANUAL DISCOVERY ====================
-  // useEffect(() => {
-  //   if (
-  //     dataOption?.value === 'manual_discovery' ||
-  //     dataOption?.value === 'manual_discovery_stage'
-  //   ) {
-  //     const dummyData = [
-  //       {
-  //         id: 1,
-  //         Client: 'Test Client',
-  //         Job_Id: 'JOB-98765',
-  //         Job_Title: 'Senior Full Stack Developer',
-  //         Job_Location: 'Sydney, NSW',
-  //         Application_Status: 'Unattended',
-  //         Quality_Score: 85,
-  //         Discovered_By: 'Admin',
-  //         Timestamp_Discovered: '2026-06-22 14:30',
-  //         Vetted_By: '',
-  //         Timestamp_Vetted: '',
-  //         Submitted_By: '',
-  //         Timestamp_Submitted: '',
-  //       },
-  //       {
-  //         id: 2,
-  //         Client: 'Test Client',
-  //         Job_Id: 'JOB-98764',
-  //         Job_Title: 'React Native Mobile Developer',
-  //         Job_Location: 'Melbourne, VIC',
-  //         Application_Status: 'Vetted',
-  //         Quality_Score: 92,
-  //         Discovered_By: 'John Doe',
-  //         Timestamp_Discovered: '2026-06-21 09:15',
-  //         Vetted_By: 'Sarah Chen',
-  //         Timestamp_Vetted: '2026-06-22 10:45',
-  //         Submitted_By: '',
-  //         Timestamp_Submitted: '',
-  //       },
-  //       {
-  //         id: 3,
-  //         Client: 'Test Client',
-  //         Job_Id: 'JOB-98763',
-  //         Job_Title: 'Backend Engineer - Node.js',
-  //         Job_Location: 'Brisbane, QLD',
-  //         Application_Status: 'Submitted',
-  //         Quality_Score: 78,
-  //         Discovered_By: 'Admin',
-  //         Timestamp_Discovered: '2026-06-20 16:20',
-  //         Vetted_By: 'Michael Ross',
-  //         Timestamp_Vetted: '2026-06-21 11:30',
-  //         Submitted_By: 'Emma Watson',
-  //         Timestamp_Submitted: '2026-06-22 08:10',
-  //       },
-  //     ];
-
-  //     setTableData(dummyData);
-  //     setTotalTableCount(dummyData.length);
-  //   }
-  // }, [dataOption?.value]);
 
   const handleFillDropDown = (values: any) => {
     if (typeof values.value === 'object') {
@@ -1606,7 +1579,7 @@ const ClientDataTable: React.FC<{
         applicationId={selectedRow?.id ?? ''}
         initialStatus={selectedRow?.Application_Status || 'Unattended'}
         onUpdated={async () => {
-          if (dataOption?.value === 'sample_results') {
+          if (dataOption?.value === 'manual_discovery') {
             await fetchSampleResults();
           } else {
             setMakeQuery(true);
