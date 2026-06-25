@@ -1,69 +1,113 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from 'react';
+import axiosInstance from '@/services/api-client';
+import toast from 'react-hot-toast';
 
 interface UpdateJobStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (status: string, qualityTags?: string[]) => void;
+  applicationId: string;
   initialStatus?: string;
+  onUpdated?: () => Promise<void> | void;
 }
+
+const statusOptions = [
+  'Unattended',
+  'Vetted',
+  'Submitted',
+  'Skipped',
+  'Expired',
+] as const;
+
+const qualityTags = [
+  { label: 'HQA', color: 'bg-green-600' },
+  { label: 'MQA', color: 'bg-orange-500' },
+  { label: 'LQA', color: 'bg-red-500' },
+];
 
 const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   isOpen,
   onClose,
-  onConfirm,
-  initialStatus = "Unattended",
+  applicationId,
+  initialStatus = 'Unattended',
+  onUpdated,
 }) => {
   const [selectedStatus, setSelectedStatus] = useState(initialStatus);
-  const [selectedQualityTags, setSelectedQualityTags] = useState<string[]>([]);
+  const [selectedQualityTag, setSelectedQualityTag] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const statusOptions = [
-    "Unattended",
-    "Vetted",
-    "Submitted",
-    "Skipped",
-    "Expired",
-  ];
-
-  const qualityTags = [
-    { label: "HQA", color: "bg-green-500" },
-    { label: "MQA", color: "bg-orange-500" },
-    { label: "LQA", color: "bg-red-500" },
-  ];
-
-  const toggleQualityTag = (tag: string) => {
-    if (selectedQualityTags.includes(tag)) {
-      setSelectedQualityTags(selectedQualityTags.filter((t) => t !== tag));
-    } else {
-      setSelectedQualityTags([...selectedQualityTags, tag]);
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedStatus(initialStatus || 'Unattended');
+      setSelectedQualityTag('');
     }
-  };
+  }, [isOpen, initialStatus]);
 
-  const handleConfirm = () => {
-    onConfirm(
-      selectedStatus,
-      selectedStatus === "Vetted" ? selectedQualityTags : undefined,
-    );
-    onClose();
+  const handleConfirm = async () => {
+    if (!applicationId) {
+      toast.error('Application id is missing.');
+      return;
+    }
+
+    if (selectedStatus === 'Vetted' && !selectedQualityTag) {
+      toast.error('Select one quality tag before confirming.');
+      return;
+    }
+
+    const payload: Record<string, string> = {
+      applicationId,
+      status: selectedStatus.toUpperCase(),
+    };
+
+    if (selectedStatus === 'Vetted') {
+      payload.qualityScore = selectedQualityTag;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await axiosInstance.post(
+        '/api/v1/campaigns/clients/applications/update-status',
+        payload
+      );
+
+      if (response.data?.success === false) {
+        throw new Error(response.data?.message || 'Failed to update status');
+      }
+
+      toast.success(
+        response.data?.message || 'Application status updated successfully'
+      );
+
+      await onUpdated?.();
+      onClose();
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to update status';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b">
-          <h2 className="text-2xl font-semibold text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="border-b p-6">
+          <h2 className="text-center text-2xl font-semibold">
             Update Job Status
           </h2>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-6">
+        <div className="space-y-6 p-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
               Status <span className="text-red-500">*</span>
             </label>
 
@@ -72,11 +116,11 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                 value={selectedStatus}
                 onChange={(e) => {
                   setSelectedStatus(e.target.value);
-                  if (e.target.value !== "Vetted") {
-                    setSelectedQualityTags([]);
+                  if (e.target.value !== 'Vetted') {
+                    setSelectedQualityTag('');
                   }
                 }}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {statusOptions.map((status) => (
                   <option key={status} value={status}>
@@ -84,29 +128,36 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                   </option>
                 ))}
               </select>
+
               <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
                 ▼
               </div>
             </div>
           </div>
 
-          {/* Quality Tags - Only show when Vetted is selected */}
-          {selectedStatus === "Vetted" && (
+          {selectedStatus === 'Vetted' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="mb-3 block text-sm font-medium text-gray-700">
                 Quality Assessment
               </label>
-              <div className="flex gap-3">
+
+              <div className="flex flex-wrap gap-3">
                 {qualityTags.map(({ label, color }) => {
-                  const isSelected = selectedQualityTags.includes(label);
+                  const isSelected = selectedQualityTag === label;
+
                   return (
                     <button
                       key={label}
-                      onClick={() => toggleQualityTag(label)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                      type="button"
+                      onClick={() =>
+                        setSelectedQualityTag((prev) =>
+                          prev === label ? '' : label
+                        )
+                      }
+                      className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
                         isSelected
-                          ? `${color} text-white border-transparent`
-                          : "bg-white border-gray-300 hover:bg-gray-50"
+                          ? `${color} border-transparent text-white`
+                          : 'border-gray-300 bg-white hover:bg-gray-50'
                       }`}
                     >
                       {label}
@@ -114,28 +165,32 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                   );
                 })}
               </div>
-              {selectedQualityTags.length > 0 && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Selected: {selectedQualityTags.join(", ")}
+
+              {selectedQualityTag && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Selected: {selectedQualityTag}
                 </p>
               )}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t bg-gray-50 flex gap-3 justify-end">
+        <div className="flex gap-3 border-t bg-gray-50 p-6">
           <button
+            type="button"
             onClick={onClose}
-            className="s-6 py-2.5 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+            className="w-full rounded-lg px-6 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:w-auto"
           >
             Cancel
           </button>
+
           <button
+            type="button"
             onClick={handleConfirm}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            disabled={isSubmitting}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-gray-700 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
-            Confirm
+            {isSubmitting ? 'Saving...' : 'Confirm'}
           </button>
         </div>
       </div>

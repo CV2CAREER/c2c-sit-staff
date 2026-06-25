@@ -1,38 +1,40 @@
 /* eslint-disable */
 //app/admin/campaign-mgt/_components/ClientDataTable.tsx
-"use client";
-import CustomButton from "@/components/CustomButton/CustomButton";
-import CustomModal from "@/components/CustomModal/CustomModal";
-import ManualApplicationsModal from "@/components/modals/ManualApplication";
-import JobMatchTriggerModal from "@/components/modals/MatchJobs";
-import LoadingSpinner from "@/components/reusable/LoadingSpinner";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Combobox } from "@/components/ui/combobox";
+'use client';
+import axiosInstance from '@/services/api-client';
+import { useParams } from 'next/navigation';
+import CustomButton from '@/components/CustomButton/CustomButton';
+import CustomModal from '@/components/CustomModal/CustomModal';
+import ManualApplicationsModal from '@/components/modals/ManualApplication';
+import JobMatchTriggerModal from '@/components/modals/MatchJobs';
+import LoadingSpinner from '@/components/reusable/LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useAdminMutations, useAdminQueries } from "@/hooks/api/admin.api";
-import { useCampaignMutations } from "@/hooks/api/admin/campaign";
-import { useConfirmationModal } from "@/hooks/useConfirmationModule";
-import { ButtonProperties } from "@/lib/helpers";
-import { ClientTableInformationEnum } from "@/types/enum";
-import { StyledDataGridPro } from "@/utils/table";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useAdminMutations, useAdminQueries } from '@/hooks/api/admin.api';
+import { useCampaignMutations } from '@/hooks/api/admin/campaign';
+import { useConfirmationModal } from '@/hooks/useConfirmationModule';
+import { ButtonProperties } from '@/lib/helpers';
+import { ClientTableInformationEnum } from '@/types/enum';
+import { StyledDataGridPro } from '@/utils/table';
 import {
   GRID_CHECKBOX_SELECTION_COL_DEF,
   GridColDef,
   GridToolbar,
   GridToolbarContainer,
-} from "@mui/x-data-grid-pro";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React, { useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
-import { FiLoader } from "react-icons/fi";
+} from '@mui/x-data-grid-pro';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import { FiLoader } from 'react-icons/fi';
 import {
   AdeccoDropDownModal,
   AdzunaDropDownModal,
@@ -42,10 +44,10 @@ import {
   LinkedinDropDownModal,
   ReedDropDownModal,
   SeekFillDropDownModal,
-} from "./CampaignFillDown";
-import { singleCampaignColumns } from "./clientCampaignTableColumns";
-import UpdateJobStatusModal from "./JobStatusModal";
-import { modifyCampaignActionsColAndRows } from "./tableColumns";
+} from './CampaignFillDown';
+import { singleCampaignColumns } from './clientCampaignTableColumns';
+import UpdateJobStatusModal from './JobStatusModal';
+import { modifyCampaignActionsColAndRows } from './tableColumns';
 // Add these imports at the top
 
 /*---- Data / Interfaces ----*/
@@ -68,13 +70,13 @@ interface Client {
     Craft?: string;
     [key: string]: any;
   };
-  source: "mongodb" | "master_credentials" | "client";
+  source: 'mongodb' | 'master_credentials' | 'client';
 }
 
 // Helper function for consistent API error handling
 const handleApiError = (
   error: any,
-  defaultMessage: string = "An error occurred",
+  defaultMessage: string = 'An error occurred'
 ): string => {
   const errorMessage =
     error.response?.data?.error ||
@@ -98,7 +100,7 @@ const useClientPlan = (clientInfo: Client | null) => {
     if (!planValue) {
       const plansObj = clientInfo.plans;
       const planFromPlans =
-        typeof plansObj === "string"
+        typeof plansObj === 'string'
           ? plansObj
           : plansObj?.title || plansObj?.name;
       planValue = planFromPlans || clientInfo.plan;
@@ -113,20 +115,20 @@ const useClientPlan = (clientInfo: Client | null) => {
 
     // Comprehensive check for premium plan keywords
     const isPremium =
-      plan.includes("gold") ||
-      plan.includes("platinum") ||
-      plan.includes("platnium") || // Handle common typo
-      plan.includes("platium") || // Handle another common misspelling
-      plan.includes("premium") ||
-      plan.includes("diamond") ||
-      plan.includes("elite");
+      plan.includes('gold') ||
+      plan.includes('platinum') ||
+      plan.includes('platnium') || // Handle common typo
+      plan.includes('platium') || // Handle another common misspelling
+      plan.includes('premium') ||
+      plan.includes('diamond') ||
+      plan.includes('elite');
 
     // console.log(`[ClientPlan] Client: ${clientInfo.name}, Plan: ${plan}, IsPremium: ${isPremium}`);
 
     if (isPremium) return true;
 
     // Fallback: check raw plans object if it's a NormalizedPlan or has nested properties
-    if (clientInfo.plans && typeof clientInfo.plans === "object") {
+    if (clientInfo.plans && typeof clientInfo.plans === 'object') {
       const rawTitle =
         clientInfo.plans.title ||
         clientInfo.plans.name ||
@@ -134,11 +136,11 @@ const useClientPlan = (clientInfo: Client | null) => {
       if (rawTitle) {
         const normalizedTitle = rawTitle.toString().toLowerCase();
         if (
-          normalizedTitle.includes("gold") ||
-          normalizedTitle.includes("platinum") ||
-          normalizedTitle.includes("platinium") ||
-          normalizedTitle.includes("platium") ||
-          normalizedTitle.includes("premium")
+          normalizedTitle.includes('gold') ||
+          normalizedTitle.includes('platinum') ||
+          normalizedTitle.includes('platinium') ||
+          normalizedTitle.includes('platium') ||
+          normalizedTitle.includes('premium')
         ) {
           return true;
         }
@@ -162,16 +164,16 @@ const useClientPlan = (clientInfo: Client | null) => {
 };
 
 const dataOptionsList = [
-  { value: "questions", label: "Answered Questions" },
-  { value: "discovery", label: "Discovery" },
-  { value: "manual_discovery", label: "Manual Discovery" },
-  { value: "campaign", label: "Campaign" },
-  { value: "job_applications", label: "Job Applications" },
-  { value: "sample_results", label: "Sample Results" },
+  { value: 'questions', label: 'Answered Questions' },
+  { value: 'discovery', label: 'Discovery' },
+  { value: 'manual_discovery', label: 'Manual Discovery' },
+  { value: 'campaign', label: 'Campaign' },
+  { value: 'job_applications', label: 'Job Applications' },
+  { value: 'sample_results', label: 'Sample Results' },
 ];
 
 const isStage = (tableName: string): boolean => {
-  return tableName.toLowerCase().includes("_stage");
+  return tableName.toLowerCase().includes('_stage');
 };
 
 /**
@@ -183,11 +185,11 @@ const ClientDataTable: React.FC<{
   route: string;
 }> = ({ clientId, route }: { clientId: string | number; route: string }) => {
   const [sampleRunEnvironment, setSampleRunEnvironment] = React.useState<
-    "LIVE" | "TEST" | null
-  >("TEST");
+    'LIVE' | 'TEST' | null
+  >('TEST');
   const [defaultAggregatorValue, setDefaultAggregatorValue] = React.useState<
     string | null
-  >("seek");
+  >('seek');
 
   const [dataOption, setDataOption] = React.useState<{
     label: string;
@@ -197,12 +199,12 @@ const ClientDataTable: React.FC<{
     label: string;
     value: string;
   } | null>({
-    label: "Seek",
-    value: "seek",
+    label: 'Seek',
+    value: 'seek',
   });
   const [aggregatorDataState, setAggregatorDataState] = React.useState<
-    "active" | "recycle"
-  >("active");
+    'active' | 'recycle'
+  >('active');
   const [tableData, setTableData] = useState<any[]>([]);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
@@ -214,12 +216,12 @@ const ClientDataTable: React.FC<{
   const [isApplicationmodalOpen, setIsApplicationModalOpen] = useState(false);
   const [isJobMatchModalOpen, setIsJobMatchModalOpen] = useState(false);
   const [tableDisplay, setTableDisplay] = useState<
-    "data-option" | "aggregator" | null
-  >("aggregator");
+    'data-option' | 'aggregator' | null
+  >('aggregator');
   const [totalTableCount, setTotalTableCount] = useState(0);
   const [isEditable, setIsEditable] = useState(false);
   const [jobApplicationsStatusFilter, setJobApplicationsStatusFilter] =
-    useState<"Successful" | "Failed" | null>(null);
+    useState<'Successful' | 'Failed' | null>(null);
   const [loaders, setLoaders] = useState({
     isPushingToQueue: false,
     isUpdatingKeywords: false,
@@ -231,9 +233,9 @@ const ClientDataTable: React.FC<{
     columnName?: string;
     value?: string;
   }>({});
-  const [ColumnValue, setColumnValue] = useState<string>("Active");
+  const [ColumnValue, setColumnValue] = useState<string>('Active');
   const [saveMultiple, setSaveMultiple] = useState(false);
-  const [fillCountry, setFillCountry] = useState("");
+  const [fillCountry, setFillCountry] = useState('');
   const [isdeletingAll, setIsdeletingAll] = useState(false);
   const [isPrimary, setIsPrimary] = useState(true);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -246,10 +248,10 @@ const ClientDataTable: React.FC<{
       clientId: clientId.toString(),
       fetchSingleClient: true,
       fetchAggregators: true,
-      fetchCampaignSheet: tableDisplay === "aggregator",
-      fetchClientApplications: dataOption?.value === "job_applications",
+      fetchCampaignSheet: tableDisplay === 'aggregator',
+      fetchClientApplications: dataOption?.value === 'job_applications',
       campaignOptions: {
-        active: aggregatorDataState === "active" ? "true" : "false",
+        active: aggregatorDataState === 'active' ? 'true' : 'false',
         aggregator: selectedAggregator?.value,
         dataOption: dataOption?.value,
         tableDisplay: tableDisplay ?? undefined,
@@ -267,7 +269,7 @@ const ClientDataTable: React.FC<{
       jobApplicationsStatusFilter,
       paginationModel.pageSize,
       paginationModel.page,
-    ],
+    ]
   );
 
   const {
@@ -307,14 +309,9 @@ const ClientDataTable: React.FC<{
     error: clientApplicationsError,
   } = clientApplicationsDomain;
 
-  const isDataOptionLoading =
-    dataOption?.value === "job_applications"
-      ? isClientApplicationsLoading
-      : isApplicationLoading;
-
   // Use the custom hook for client plan management
   const { hasPremiumAccess, canUseSecondaryProfile, planName } = useClientPlan(
-    (clientInfo as unknown as Client) || null,
+    (clientInfo as unknown as Client) || null
   );
   const showSecondarySwitch = canUseSecondaryProfile;
 
@@ -336,10 +333,10 @@ const ClientDataTable: React.FC<{
         label:
           aggregator.name.charAt(0).toUpperCase() +
           aggregator.name.slice(1) +
-          " STAGE",
-        value: aggregator.name.toLowerCase() + "_stage",
+          ' STAGE',
+        value: aggregator.name.toLowerCase() + '_stage',
       },
-    ],
+    ]
   );
 
   const selectedAggValue = selectedAggregator?.value;
@@ -348,11 +345,11 @@ const ClientDataTable: React.FC<{
 
   const handleUpdateKeywords = async () => {
     if (!clientId) {
-      return toast.error("Client ID is required to generate keywords");
+      return toast.error('Client ID is required to generate keywords');
     }
 
     const loadingToast = toast.loading(
-      "Generating keywords and role titles from resume...",
+      'Generating keywords and role titles from resume...'
     );
 
     try {
@@ -365,13 +362,13 @@ const ClientDataTable: React.FC<{
         increment: false,
       });
 
-      toast.success("Keywords and role titles generated successfully");
+      toast.success('Keywords and role titles generated successfully');
       toast.dismiss(loadingToast);
-      queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
+      queryClient.invalidateQueries({ queryKey: ['admin-campaign-sheet'] });
     } catch (error) {
       const errorMessage = handleApiError(
         error,
-        "Failed to generate keywords from resume",
+        'Failed to generate keywords from resume'
       );
       toast.error(errorMessage);
       toast.dismiss(loadingToast);
@@ -383,26 +380,26 @@ const ClientDataTable: React.FC<{
   const pushToAggQueue = async () => {
     let loadingToast: string | undefined;
     try {
-      const loadingToast = toast.loading("Pushing to aggregator queue...");
+      const loadingToast = toast.loading('Pushing to aggregator queue...');
       setLoaders((prev) => ({ ...prev, isPushingToQueue: true }));
 
       const response = await addToClientQueueMutation.mutateAsync({
-        queue: selectedAggregator?.value ?? "",
-        environment: sampleRunEnvironment ?? "TEST",
-        aggregator: selectedAggregator?.value ?? "",
+        queue: selectedAggregator?.value ?? '',
+        environment: sampleRunEnvironment ?? 'TEST',
+        aggregator: selectedAggregator?.value ?? '',
         clientId: clientId.toString(),
       });
 
       toast.dismiss(loadingToast);
       toast.success(
-        response.message || "Successfully pushed to aggregator queue",
+        response.message || 'Successfully pushed to aggregator queue'
       );
     } catch (error: any) {
       if (loadingToast) toast.dismiss(loadingToast);
       // console.error("Error pushing to aggregator queue:", error);
       const errorMessage = handleApiError(
         error,
-        "An error occurred while pushing to the aggregator queue.",
+        'An error occurred while pushing to the aggregator queue.'
       );
       toast.error(errorMessage);
     } finally {
@@ -413,19 +410,19 @@ const ClientDataTable: React.FC<{
   const dispatchUserSampleAction = useMutation({
     mutationFn: async (userId: string) => {
       setLoaders((prev) => ({ ...prev, isDispatchingSample: true }));
-      toast.loading("Dispatching Samples");
+      toast.loading('Dispatching Samples');
       return dispatchSampleMutation.mutateAsync({ clientId: userId });
     },
     onSuccess: (data: any) => {
       setLoaders((prev) => ({ ...prev, isDispatchingSample: false }));
-      toast.success(data.message || "Samples dispatched for user");
-      queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
+      toast.success(data.message || 'Samples dispatched for user');
+      queryClient.invalidateQueries({ queryKey: ['admin-campaign-sheet'] });
     },
     onError: (error: any) => {
       setLoaders((prev) => ({ ...prev, isDispatchingSample: false }));
       const errorMessage = handleApiError(
         error,
-        "Could not dispatch user samples",
+        'Could not dispatch user samples'
       );
       toast.error(errorMessage);
     },
@@ -433,12 +430,12 @@ const ClientDataTable: React.FC<{
 
   const handleOverrideIncrement = async (
     env: string,
-    action: "override" | "increment",
+    action: 'override' | 'increment'
   ) => {
     let loadingToast: string | undefined;
     try {
       loadingToast = toast.loading(
-        `${action === "override" ? "Overriding" : "Incrementing"} role title and keywords...`,
+        `${action === 'override' ? 'Overriding' : 'Incrementing'} role title and keywords...`
       );
 
       await syncAggregatorsMutation.mutateAsync({
@@ -448,17 +445,17 @@ const ClientDataTable: React.FC<{
       });
 
       toast.dismiss(loadingToast);
-      const actionVerb = action === "override" ? "overridden" : "incremented";
+      const actionVerb = action === 'override' ? 'overridden' : 'incremented';
       toast.success(
-        `Successfully ${actionVerb} role title and keywords to ${env}`,
+        `Successfully ${actionVerb} role title and keywords to ${env}`
       );
-      queryClient.invalidateQueries({ queryKey: ["admin-campaign-sheet"] });
+      queryClient.invalidateQueries({ queryKey: ['admin-campaign-sheet'] });
     } catch (error: any) {
       if (loadingToast) toast.dismiss(loadingToast);
       // console.error("Error updating campaign sheet:", error);
       const errorMessage = handleApiError(
         error,
-        "An error occurred while updating the campaign sheet",
+        'An error occurred while updating the campaign sheet'
       );
       toast.error(errorMessage);
     }
@@ -491,12 +488,256 @@ const ClientDataTable: React.FC<{
   //   );
   // }, [selectedAggregator, dataOption, isEditable, tableData]);
 
+  const params = useParams<{ id?: string }>();
+  const resolvedClientId = String(params?.id ?? clientId);
+
+  const [isSampleResultsLoading, setIsSampleResultsLoading] = useState(false);
+
+  // const isDataOptionLoading =
+  //   dataOption?.value === 'job_applications'
+  //     ? isClientApplicationsLoading
+  //     : isApplicationLoading;
+
+  const isDataOptionLoading =
+    dataOption?.value === 'job_applications'
+      ? isClientApplicationsLoading
+      : dataOption?.value === 'sample_results'
+        ? isSampleResultsLoading
+        : isApplicationLoading;
+
+  const parseHyperlinkFormula = (value?: string | null) => {
+    if (!value) return { url: '', label: '' };
+
+    const match = value.match(/^=HYPERLINK\("([^"]+)"\s*,\s*"([^"]+)"\)$/i);
+    if (!match) {
+      return { url: value, label: value };
+    }
+
+    return {
+      url: match[1],
+      label: match[2],
+    };
+  };
+
+  const mapSampleResultRow = (item: any) => {
+    const { url, label } = parseHyperlinkFormula(item?.Job_Title);
+
+    return {
+      id: item?.id,
+      Client:
+        `${item?.user?.firstName ?? ''} ${item?.user?.lastName ?? ''}`.trim(),
+      Job_Id: item?.JobId ?? '',
+      Job_Title: label,
+      Job_Title_Url: url,
+      Job_Location: item?.Location ?? '',
+      Job_Type: item?.Job_Type ?? '',
+      Application_Status: item?.Status ?? 'Unattended',
+      Quality_Score: item?.QualityScore ?? '',
+      Discovered_By: item?.DiscoveredBy ?? '',
+      Timestamp_Discovered: item?.DiscoveryDate ?? '',
+      Vetted_By: item?.VettedBy ?? '',
+      Timestamp_Vetted: item?.VettedDate ?? '',
+      Submitted_By: item?.ApplicationSubmittedBy ?? '',
+      Timestamp_Submitted: item?.ApplicationSubmissionDate ?? '',
+      Date_Advertised: item?.createdAt ?? '',
+      Advertiser: item?.Advertiser ?? '',
+      External_Jobsite: item?.External_Jobsite ?? '',
+      Internal_Jobsite: item?.Internal_Jobsite ?? '',
+      Client_Id: item?.Client ?? '',
+      Updated_At: item?.updatedAt ?? '',
+      user: item?.user,
+    };
+  };
+
+  const sampleResultColumns = useMemo<GridColDef[]>(
+    () => [
+      { field: 'id', headerName: 'Id', width: 140 },
+      { field: 'Client', headerName: 'Client', width: 180 },
+      { field: 'Job_Id', headerName: 'Job Id', width: 180 },
+      {
+        field: 'Job_Title',
+        headerName: 'Job Title',
+        minWidth: 260,
+        flex: 1,
+        renderCell: (params: any) => {
+          const match = params.row?.Job_Title.match(
+            /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
+          );
+
+          const jobTitleUrl = match
+            ? {
+                url: match[1],
+                title: match[2],
+              }
+            : null;
+          return (
+            <a
+              href={jobTitleUrl?.title || '#'}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+              onClick={(e) => {
+                if (!jobTitleUrl?.url) e.preventDefault();
+              }}
+            >
+              {jobTitleUrl?.url || 'N/A'}
+            </a>
+          );
+        },
+      },
+      { field: 'Job_Location', headerName: 'Job Location', width: 220 },
+      { field: 'Job_Type', headerName: 'Job Type', width: 160 },
+      {
+        field: 'Application_Status',
+        headerName: 'Application Status',
+        width: 180,
+        renderCell: (params: any) => (
+          <div
+            onClick={() => {
+              setSelectedRow(params.row);
+              setIsStatusModalOpen(true);
+            }}
+            className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            {params.value || 'Unattended'}
+          </div>
+        ),
+      },
+      {
+        field: 'Quality_Score',
+        headerName: 'Quality Score',
+        width: 140,
+        renderCell: (params: any) => (
+          <span
+            className={`font-medium px-2 py-1 rounded ${
+              params.value >= 80
+                ? 'text-green-700 bg-green-100'
+                : params.value >= 60
+                  ? 'text-yellow-700 bg-yellow-100'
+                  : 'text-red-700 bg-red-100'
+            }`}
+          >
+            {params.value ?? 'N/A'}
+          </span>
+        ),
+      },
+      { field: 'Discovered_By', headerName: 'Discovered By', width: 170 },
+      {
+        field: 'Timestamp_Discovered',
+        headerName: 'Timestamp Discovered',
+        width: 220,
+      },
+      { field: 'Vetted_By', headerName: 'Vetted By', width: 160 },
+      { field: 'Timestamp_Vetted', headerName: 'Timestamp Vetted', width: 200 },
+      { field: 'Submitted_By', headerName: 'Submitted By', width: 160 },
+      {
+        field: 'Timestamp_Submitted',
+        headerName: 'Timestamp Submitted',
+        width: 210,
+      },
+      { field: 'Date_Advertised', headerName: 'Date Advertised', width: 200 },
+      { field: 'Advertiser', headerName: 'Advertiser', width: 200 },
+      { field: 'External_Jobsite', headerName: 'External Jobsite', width: 180 },
+      { field: 'Internal_Jobsite', headerName: 'Internal Jobsite', width: 180 },
+      { field: 'Client_Id', headerName: 'Client Id', width: 160 },
+      { field: 'Updated_At', headerName: 'Updated At', width: 200 },
+    ],
+    []
+  );
+
+  // const columns = useMemo(() => {
+  //   let value;
+
+  //   if (tableDisplay === 'aggregator') {
+  //     value = selectedAggregator?.value ?? 'seek';
+  //   } else if (tableDisplay === 'data-option') {
+  //     value = dataOption?.value;
+  //   } else {
+  //     return [];
+  //   }
+
+  //   if (!value) return [];
+
+  //   let rawColumns = singleCampaignColumns(value) as GridColDef[];
+
+  //   // ==================== SPECIAL HANDLING FOR MANUAL DISCOVERY ====================
+  //   if (value === 'manual_discovery' || value === 'manual_discovery_stage') {
+  //     rawColumns = singleCampaignColumns(value) as GridColDef[]; // This will now work after you add it to columnKeys
+
+  //     // Optional: Add custom renderers / styling specific to Manual Discovery
+  //     rawColumns = rawColumns.map((col: any) => {
+  //       // Make Application Status clickable
+  //       if (col.field === 'Application_Status') {
+  //         return {
+  //           ...col,
+  //           width: 180,
+  //           renderCell: (params: any) => (
+  //             <div
+  //               onClick={() => {
+  //                 setSelectedRow(params.row);
+  //                 setIsStatusModalOpen(true);
+  //               }}
+  //               className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 hover:underline"
+  //             >
+  //               {params.value || 'Unattended'}
+  //             </div>
+  //           ),
+  //         };
+  //       }
+
+  //       if (col.field === 'Quality_Score') {
+  //         return {
+  //           ...col,
+  //           width: 140,
+  //           renderCell: (params: any) => (
+  //             <span
+  //               className={`font-medium px-2 py-1 rounded ${
+  //                 params.value >= 80
+  //                   ? 'text-green-700 bg-green-100'
+  //                   : params.value >= 60
+  //                     ? 'text-yellow-700 bg-yellow-100'
+  //                     : 'text-red-700 bg-red-100'
+  //               }`}
+  //             >
+  //               {params.value}
+  //             </span>
+  //           ),
+  //         };
+  //       }
+
+  //       // You can add more custom columns here in the future
+  //       // if (col.field === "Application_Status") { ... }
+
+  //       return col;
+  //     });
+  //   }
+  //   // ============================================================================
+
+  //   return modifyCampaignActionsColAndRows(
+  //     rawColumns,
+  //     aggregatorDataState,
+  //     isEditable,
+  //     'admin',
+  //     selectedAggregator?.value ?? dataOption?.value ?? 'seek',
+  //     'campaign-client',
+  //     tableData,
+  //     setTableData
+  //   );
+  // }, [
+  //   tableDisplay,
+  //   selectedAggregator,
+  //   dataOption,
+  //   isEditable,
+  //   aggregatorDataState,
+  //   tableData,
+  // ]);
+
   const columns = useMemo(() => {
     let value;
 
-    if (tableDisplay === "aggregator") {
-      value = selectedAggregator?.value ?? "seek";
-    } else if (tableDisplay === "data-option") {
+    if (tableDisplay === 'aggregator') {
+      value = selectedAggregator?.value ?? 'seek';
+    } else if (tableDisplay === 'data-option') {
       value = dataOption?.value;
     } else {
       return [];
@@ -504,16 +745,14 @@ const ClientDataTable: React.FC<{
 
     if (!value) return [];
 
-    let rawColumns = singleCampaignColumns(value) as GridColDef[];
+    let rawColumns: GridColDef[] =
+      value === 'sample_results'
+        ? sampleResultColumns
+        : (singleCampaignColumns(value) as GridColDef[]);
 
-    // ==================== SPECIAL HANDLING FOR MANUAL DISCOVERY ====================
-    if (value === "manual_discovery" || value === "manual_discovery_stage") {
-      rawColumns = singleCampaignColumns(value) as GridColDef[]; // This will now work after you add it to columnKeys
-
-      // Optional: Add custom renderers / styling specific to Manual Discovery
+    if (value === 'manual_discovery' || value === 'manual_discovery_stage') {
       rawColumns = rawColumns.map((col: any) => {
-        // Make Application Status clickable
-        if (col.field === "Application_Status") {
+        if (col.field === 'Application_Status') {
           return {
             ...col,
             width: 180,
@@ -525,13 +764,13 @@ const ClientDataTable: React.FC<{
                 }}
                 className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
-                {params.value || "Unattended"}
+                {params.value || 'Unattended'}
               </div>
             ),
           };
         }
 
-        if (col.field === "Quality_Score") {
+        if (col.field === 'Quality_Score') {
           return {
             ...col,
             width: 140,
@@ -539,10 +778,10 @@ const ClientDataTable: React.FC<{
               <span
                 className={`font-medium px-2 py-1 rounded ${
                   params.value >= 80
-                    ? "text-green-700 bg-green-100"
+                    ? 'text-green-700 bg-green-100'
                     : params.value >= 60
-                      ? "text-yellow-700 bg-yellow-100"
-                      : "text-red-700 bg-red-100"
+                      ? 'text-yellow-700 bg-yellow-100'
+                      : 'text-red-700 bg-red-100'
                 }`}
               >
                 {params.value}
@@ -551,23 +790,19 @@ const ClientDataTable: React.FC<{
           };
         }
 
-        // You can add more custom columns here in the future
-        // if (col.field === "Application_Status") { ... }
-
         return col;
       });
     }
-    // ============================================================================
 
     return modifyCampaignActionsColAndRows(
       rawColumns,
       aggregatorDataState,
       isEditable,
-      "admin",
-      selectedAggregator?.value ?? dataOption?.value ?? "seek",
-      "campaign-client",
+      'admin',
+      selectedAggregator?.value ?? dataOption?.value ?? 'seek',
+      'campaign-client',
       tableData,
-      setTableData,
+      setTableData
     );
   }, [
     tableDisplay,
@@ -576,7 +811,44 @@ const ClientDataTable: React.FC<{
     isEditable,
     aggregatorDataState,
     tableData,
+    sampleResultColumns,
   ]);
+
+  const fetchSampleResults = useCallback(async () => {
+    if (dataOption?.value !== 'sample_results') return;
+
+    try {
+      setIsSampleResultsLoading(true);
+
+      const response = await axiosInstance.get(
+        `/api/v1/campaigns/clients/${resolvedClientId}/applications/manual`
+      );
+
+      if (response.data?.success === false) {
+        throw new Error(
+          response.data?.message || 'Failed to fetch sample results'
+        );
+      }
+
+      const rows = response.data?.data?.data ?? [];
+      const mappedRows = rows.map(mapSampleResultRow);
+
+      setTableData(mappedRows);
+      setTotalTableCount(
+        response.data?.data?.pagination?.totalCount ?? mappedRows.length
+      );
+    } catch (error: any) {
+      setTableData([]);
+      setTotalTableCount(0);
+      toast.error(handleApiError(error, 'Failed to fetch sample results'));
+    } finally {
+      setIsSampleResultsLoading(false);
+    }
+  }, [dataOption?.value, resolvedClientId, isApplicationmodalOpen]);
+
+  useEffect(() => {
+    fetchSampleResults();
+  }, [fetchSampleResults]);
 
   // UPDATED useEffect to process applicationData correctly
   useEffect(() => {
@@ -586,7 +858,7 @@ const ClientDataTable: React.FC<{
       // Check if the request was successful
       if (applicationData.success === false) {
         // console.error("API returned error:", applicationData.message);
-        toast.error(applicationData.message || "Failed to fetch data");
+        toast.error(applicationData.message || 'Failed to fetch data');
         setTableData([]);
         setTotalTableCount(0);
         return;
@@ -610,14 +882,14 @@ const ClientDataTable: React.FC<{
       // Extract error message properly
       const errorMessage = handleApiError(
         applicationError,
-        "Failed to fetch application data",
+        'Failed to fetch application data'
       );
       toast.error(errorMessage);
     }
   }, [applicationData, applicationError]);
 
   useEffect(() => {
-    if (dataOption?.value !== "job_applications") return;
+    if (dataOption?.value !== 'job_applications') return;
     if (clientApplicationsData) {
       const applications = clientApplicationsData?.data?.data ?? [];
       const total = clientApplicationsData?.data?.pagination?.totalCount ?? 0;
@@ -626,12 +898,12 @@ const ClientDataTable: React.FC<{
     } else if (clientApplicationsError) {
       setTableData([]);
       setTotalTableCount(0);
-      toast.error("Failed to fetch client applications");
+      toast.error('Failed to fetch client applications');
     }
   }, [clientApplicationsData, clientApplicationsError, dataOption?.value]);
 
   useEffect(() => {
-    if (!selectedAggregator && tableDisplay === "aggregator") {
+    if (!selectedAggregator && tableDisplay === 'aggregator') {
       setMakeQuery(true);
     }
   }, []);
@@ -639,84 +911,84 @@ const ClientDataTable: React.FC<{
   const table =
     selectedAggregator?.value.toLowerCase() ??
     dataOption?.value.toLowerCase() ??
-    "seek";
+    'seek';
 
   useEffect(() => {
     setShowFillDown(
-      table != "questions" &&
-        table !== "job_applications" &&
-        table !== "sample_results",
+      table != 'questions' &&
+        table !== 'job_applications' &&
+        table !== 'sample_results'
     );
   }, [table]);
 
   // ==================== DUMMY DATA FOR MANUAL DISCOVERY ====================
-  useEffect(() => {
-    if (
-      dataOption?.value === "manual_discovery" ||
-      dataOption?.value === "manual_discovery_stage"
-    ) {
-      const dummyData = [
-        {
-          id: 1,
-          Client: "Test Client",
-          Job_Id: "JOB-98765",
-          Job_Title: "Senior Full Stack Developer",
-          Job_Location: "Sydney, NSW",
-          Application_Status: "Unattended",
-          Quality_Score: 85,
-          Discovered_By: "Admin",
-          Timestamp_Discovered: "2026-06-22 14:30",
-          Vetted_By: "",
-          Timestamp_Vetted: "",
-          Submitted_By: "",
-          Timestamp_Submitted: "",
-        },
-        {
-          id: 2,
-          Client: "Test Client",
-          Job_Id: "JOB-98764",
-          Job_Title: "React Native Mobile Developer",
-          Job_Location: "Melbourne, VIC",
-          Application_Status: "Vetted",
-          Quality_Score: 92,
-          Discovered_By: "John Doe",
-          Timestamp_Discovered: "2026-06-21 09:15",
-          Vetted_By: "Sarah Chen",
-          Timestamp_Vetted: "2026-06-22 10:45",
-          Submitted_By: "",
-          Timestamp_Submitted: "",
-        },
-        {
-          id: 3,
-          Client: "Test Client",
-          Job_Id: "JOB-98763",
-          Job_Title: "Backend Engineer - Node.js",
-          Job_Location: "Brisbane, QLD",
-          Application_Status: "Submitted",
-          Quality_Score: 78,
-          Discovered_By: "Admin",
-          Timestamp_Discovered: "2026-06-20 16:20",
-          Vetted_By: "Michael Ross",
-          Timestamp_Vetted: "2026-06-21 11:30",
-          Submitted_By: "Emma Watson",
-          Timestamp_Submitted: "2026-06-22 08:10",
-        },
-      ];
+  // useEffect(() => {
+  //   if (
+  //     dataOption?.value === 'manual_discovery' ||
+  //     dataOption?.value === 'manual_discovery_stage'
+  //   ) {
+  //     const dummyData = [
+  //       {
+  //         id: 1,
+  //         Client: 'Test Client',
+  //         Job_Id: 'JOB-98765',
+  //         Job_Title: 'Senior Full Stack Developer',
+  //         Job_Location: 'Sydney, NSW',
+  //         Application_Status: 'Unattended',
+  //         Quality_Score: 85,
+  //         Discovered_By: 'Admin',
+  //         Timestamp_Discovered: '2026-06-22 14:30',
+  //         Vetted_By: '',
+  //         Timestamp_Vetted: '',
+  //         Submitted_By: '',
+  //         Timestamp_Submitted: '',
+  //       },
+  //       {
+  //         id: 2,
+  //         Client: 'Test Client',
+  //         Job_Id: 'JOB-98764',
+  //         Job_Title: 'React Native Mobile Developer',
+  //         Job_Location: 'Melbourne, VIC',
+  //         Application_Status: 'Vetted',
+  //         Quality_Score: 92,
+  //         Discovered_By: 'John Doe',
+  //         Timestamp_Discovered: '2026-06-21 09:15',
+  //         Vetted_By: 'Sarah Chen',
+  //         Timestamp_Vetted: '2026-06-22 10:45',
+  //         Submitted_By: '',
+  //         Timestamp_Submitted: '',
+  //       },
+  //       {
+  //         id: 3,
+  //         Client: 'Test Client',
+  //         Job_Id: 'JOB-98763',
+  //         Job_Title: 'Backend Engineer - Node.js',
+  //         Job_Location: 'Brisbane, QLD',
+  //         Application_Status: 'Submitted',
+  //         Quality_Score: 78,
+  //         Discovered_By: 'Admin',
+  //         Timestamp_Discovered: '2026-06-20 16:20',
+  //         Vetted_By: 'Michael Ross',
+  //         Timestamp_Vetted: '2026-06-21 11:30',
+  //         Submitted_By: 'Emma Watson',
+  //         Timestamp_Submitted: '2026-06-22 08:10',
+  //       },
+  //     ];
 
-      setTableData(dummyData);
-      setTotalTableCount(dummyData.length);
-    }
-  }, [dataOption?.value]);
+  //     setTableData(dummyData);
+  //     setTotalTableCount(dummyData.length);
+  //   }
+  // }, [dataOption?.value]);
 
   const handleFillDropDown = (values: any) => {
-    if (typeof values.value === "object") {
-      values.value = values.value.map((el: any) => el.value).join(",");
+    if (typeof values.value === 'object') {
+      values.value = values.value.map((el: any) => el.value).join(',');
     }
     setTableData((prevData) => {
       const updatedData = prevData.map((el) => {
         if (
-          values.columnName === "Active" ||
-          values.columnName === "Include_Cover_Letter"
+          values.columnName === 'Active' ||
+          values.columnName === 'Include_Cover_Letter'
         ) {
           // @ts-ignore
           el[values.columnName] = Boolean(values.value);
@@ -734,21 +1006,21 @@ const ClientDataTable: React.FC<{
 
   const saveMultipleData = async () => {
     try {
-      toast.loading("Saving data...");
+      toast.loading('Saving data...');
       const response = await updateCampaignSheetMutation.mutateAsync({
         table: table,
         data: tableData,
       });
 
-      toast.success(response.message || "Data created successfully");
+      toast.success(response.message || 'Data created successfully');
       queryClient.invalidateQueries({
-        queryKey: ["admin-campaign-sheet"],
+        queryKey: ['admin-campaign-sheet'],
       });
     } catch (error: any) {
       // console.log("[Save Multiple] Error occurred:", error);
       const errorMessage = handleApiError(
         error,
-        "Something went wrong saving data",
+        'Something went wrong saving data'
       );
       toast.error(errorMessage);
     } finally {
@@ -759,24 +1031,24 @@ const ClientDataTable: React.FC<{
   const handleDeleteAll = async () => {
     try {
       setIsdeletingAll(true);
-      toast.loading("Recycling all data...");
+      toast.loading('Recycling all data...');
 
       const response = await deleteCampaignSheetMutation.mutateAsync({
         entity: table,
         table: table,
         id: clientId,
-        action: "soft-delete",
+        action: 'soft-delete',
       });
 
-      toast.success(response.message || "Data recycled successfully");
+      toast.success(response.message || 'Data recycled successfully');
       queryClient.invalidateQueries({
-        queryKey: ["admin-campaign-sheet"],
+        queryKey: ['admin-campaign-sheet'],
       });
     } catch (error: any) {
       // console.error(error);
       const errorMessage = handleApiError(
         error,
-        "Something went wrong recycling data",
+        'Something went wrong recycling data'
       );
       toast.error(errorMessage);
     } finally {
@@ -789,7 +1061,7 @@ const ClientDataTable: React.FC<{
       <GridToolbarContainer>
         <div className="flex flex-row justify-center items-center gap-2">
           <GridToolbar />
-          {isEditable && table === "sample_results" && (
+          {isEditable && table === 'sample_results' && (
             <CustomButton
               customClass="!h-[2.75rem] !w-[200px] !rounded-[0.25rem] bg-red-500 hover:bg-red-400 text-white font-semibold mb-4"
               handleClick={handleDeleteAll}
@@ -815,11 +1087,11 @@ const ClientDataTable: React.FC<{
               placeholder="Select Aggregator"
               selectedItem={selectedAggregator}
               setSelectedItem={(agg) => {
-                if (typeof agg === "object") {
+                if (typeof agg === 'object') {
                   setSelectedAggregator(agg);
                   setDataOption(null);
                   setMakeQuery(true);
-                  setTableDisplay("aggregator");
+                  setTableDisplay('aggregator');
                 }
               }}
               loading={isJobsiteAggregatorsLoading}
@@ -827,11 +1099,11 @@ const ClientDataTable: React.FC<{
             />
             <Select
               onValueChange={(value) => {
-                if (value === "active") {
-                  setAggregatorDataState("active");
+                if (value === 'active') {
+                  setAggregatorDataState('active');
                   setMakeQuery(true);
                 } else {
-                  setAggregatorDataState("recycle");
+                  setAggregatorDataState('recycle');
                   setMakeQuery(true);
                 }
               }}
@@ -839,9 +1111,9 @@ const ClientDataTable: React.FC<{
               <SelectTrigger className="w-[180px] bg-white shadow-md">
                 <SelectValue
                   placeholder={
-                    aggregatorDataState === "active"
-                      ? "Active Data"
-                      : "Recycle Bin"
+                    aggregatorDataState === 'active'
+                      ? 'Active Data'
+                      : 'Recycle Bin'
                   }
                 />
               </SelectTrigger>
@@ -855,44 +1127,44 @@ const ClientDataTable: React.FC<{
               placeholder="Select Data Option"
               selectedItem={dataOption}
               setSelectedItem={(option) => {
-                if (typeof option === "object") {
+                if (typeof option === 'object') {
                   setSelectedAggregator(null);
 
-                  if (option.value === "campaign") {
-                    window.location.href = "/admin/campaign-mgt";
+                  if (option.value === 'campaign') {
+                    window.location.href = '/admin/campaign-mgt';
                     return;
                   }
 
-                  if (option.value === "discovery") {
+                  if (option.value === 'discovery') {
                     window.location.href = `/admin/campaign-mgt/client/${clientId}`;
                     return;
                   }
 
-                  if (option.value === "manual_discovery") {
+                  if (option.value === 'manual_discovery') {
                     setDataOption(option);
                     setMakeQuery(true);
-                    setTableDisplay("data-option");
+                    setTableDisplay('data-option');
                     return;
                   }
 
                   setDataOption(option);
                   setMakeQuery(true);
-                  setTableDisplay("data-option");
+                  setTableDisplay('data-option');
                 }
               }}
               noItemsMessage="No option found"
             />
             <Select
               onValueChange={(value) =>
-                value === "LIVE"
-                  ? setSampleRunEnvironment("LIVE")
-                  : setSampleRunEnvironment("TEST")
+                value === 'LIVE'
+                  ? setSampleRunEnvironment('LIVE')
+                  : setSampleRunEnvironment('TEST')
               }
             >
               <SelectTrigger className="w-[180px] bg-white shadow-md">
                 <SelectValue
                   placeholder={
-                    sampleRunEnvironment === "LIVE" ? "Live" : "Test"
+                    sampleRunEnvironment === 'LIVE' ? 'Live' : 'Test'
                   }
                 />
               </SelectTrigger>
@@ -901,14 +1173,14 @@ const ClientDataTable: React.FC<{
                 <SelectItem value="TEST">Test</SelectItem>
               </SelectContent>
             </Select>
-            {dataOption?.value === "job_applications" && (
+            {dataOption?.value === 'job_applications' && (
               <Select
                 onValueChange={(value) => {
-                  if (value === "Successful") {
-                    setJobApplicationsStatusFilter("Successful");
+                  if (value === 'Successful') {
+                    setJobApplicationsStatusFilter('Successful');
                     setMakeQuery(true);
-                  } else if (value === "Failed") {
-                    setJobApplicationsStatusFilter("Failed");
+                  } else if (value === 'Failed') {
+                    setJobApplicationsStatusFilter('Failed');
                     setMakeQuery(true);
                   }
                 }}
@@ -926,15 +1198,15 @@ const ClientDataTable: React.FC<{
         </section>
 
         <section className="flex flex-wrap gap-4 mb-9">
-          {tableDisplay === "aggregator" && (
+          {tableDisplay === 'aggregator' && (
             <Button
               className="w-full md:w-fit bg-green-700 hover:bg-green-80"
               disabled={loaders.isPushingToQueue}
               onClick={() => {
                 openConfirmationModal({
-                  title: "Run Client Sample",
+                  title: 'Run Client Sample',
                   description:
-                    "Are you sure you want to run the client sample?",
+                    'Are you sure you want to run the client sample?',
                   onConfirm: () => {
                     pushToAggQueue();
                   },
@@ -944,15 +1216,15 @@ const ClientDataTable: React.FC<{
               Run Client Sample
             </Button>
           )}
-          {tableDisplay === "aggregator" && (
+          {tableDisplay === 'aggregator' && (
             <Button
               className="w-full md:w-fit"
               disabled={loaders.isUpdatingKeywords}
               onClick={() => {
                 openConfirmationModal({
-                  title: "Update Role",
+                  title: 'Update Role',
                   description:
-                    "Are you sure you want to update the role title and keywords?",
+                    'Are you sure you want to update the role title and keywords?',
                   onConfirm: () => {
                     handleUpdateKeywords();
                   },
@@ -963,10 +1235,10 @@ const ClientDataTable: React.FC<{
             </Button>
           )}
 
-          {tableDisplay === "aggregator" &&
+          {tableDisplay === 'aggregator' &&
             selectedAggregator?.value &&
             (() => {
-              const env = isStage(selectedAggregator?.value) ? "Live" : "Stage";
+              const env = isStage(selectedAggregator?.value) ? 'Live' : 'Stage';
               return (
                 <>
                   <Button
@@ -974,11 +1246,11 @@ const ClientDataTable: React.FC<{
                     disabled={loaders.isUpdatingKeywords}
                     onClick={() => {
                       openConfirmationModal({
-                        title: "Override Inputs",
+                        title: 'Override Inputs',
                         description:
-                          "Are you sure you want to override the inputs?",
+                          'Are you sure you want to override the inputs?',
                         onConfirm: () => {
-                          handleOverrideIncrement(env, "override");
+                          handleOverrideIncrement(env, 'override');
                         },
                       });
                     }}
@@ -991,11 +1263,11 @@ const ClientDataTable: React.FC<{
                     disabled={loaders.isUpdatingKeywords}
                     onClick={() => {
                       openConfirmationModal({
-                        title: "Increment Inputs",
+                        title: 'Increment Inputs',
                         description:
-                          "Are you sure you want to increment the inputs?",
+                          'Are you sure you want to increment the inputs?',
                         onConfirm: () => {
-                          handleOverrideIncrement(env, "increment");
+                          handleOverrideIncrement(env, 'increment');
                         },
                       });
                     }}
@@ -1005,7 +1277,7 @@ const ClientDataTable: React.FC<{
                 </>
               );
             })()}
-          {tableDisplay === "data-option" && (
+          {tableDisplay === 'data-option' && (
             <>
               <Button
                 className="w-full md:w-fit"
@@ -1028,8 +1300,8 @@ const ClientDataTable: React.FC<{
                 disabled={loaders.isUpdatingKeywords}
                 onClick={() => {
                   openConfirmationModal({
-                    title: "Dispatch Samples",
-                    description: "Are you sure you want to dispatch samples?",
+                    title: 'Dispatch Samples',
+                    description: 'Are you sure you want to dispatch samples?',
                     onConfirm: () => {
                       dispatchUserSampleAction.mutate(clientId as string);
                     },
@@ -1039,7 +1311,7 @@ const ClientDataTable: React.FC<{
                 {loaders.isDispatchingSample ? (
                   <FiLoader className="animate-spin text-base" />
                 ) : (
-                  "Dispatch Samples"
+                  'Dispatch Samples'
                 )}
               </Button>
             </>
@@ -1059,11 +1331,11 @@ const ClientDataTable: React.FC<{
               onClick={() => setIsPrimary((prev) => !prev)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 isPrimary
-                  ? "bg-blue text-white hover:bg-blue-700"
-                  : "bg-green-600 text-white hover:bg-green-700"
+                  ? 'bg-blue text-white hover:bg-blue-700'
+                  : 'bg-green-600 text-white hover:bg-green-700'
               }`}
             >
-              {isPrimary ? "Using Primary Profile" : "Using Secondary Profile"}
+              {isPrimary ? 'Using Primary Profile' : 'Using Secondary Profile'}
             </button>
           </div>
         ) : (
@@ -1080,7 +1352,7 @@ const ClientDataTable: React.FC<{
               className="bg-white"
               checked={isEditable}
               onClick={() => setIsEditable(!isEditable)}
-            />{" "}
+            />{' '}
             Allow Editing
           </div>
         }
@@ -1090,7 +1362,7 @@ const ClientDataTable: React.FC<{
       <section>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-2xl font-bold">
-            {table.charAt(0).toUpperCase() + table.slice(1).replace("_", " ")}{" "}
+            {table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
             table
           </h2>
           {isEditable && (
@@ -1107,7 +1379,7 @@ const ClientDataTable: React.FC<{
         </div>
 
         <div className="h-[800px] w-full">
-          {tableDisplay === "aggregator" && (
+          {tableDisplay === 'aggregator' && (
             <StyledDataGridPro
               initialState={{
                 pinnedColumns: {
@@ -1134,10 +1406,10 @@ const ClientDataTable: React.FC<{
               columnBufferPx={5}
               loading={isApplicationLoading}
               pagination
-              pinnedColumns={{ left: ["__check__", "actions"] }}
+              pinnedColumns={{ left: ['__check__', 'actions'] }}
             />
           )}
-          {tableDisplay === "data-option" && (
+          {tableDisplay === 'data-option' && (
             <StyledDataGridPro
               initialState={{
                 pinnedColumns: {
@@ -1165,7 +1437,7 @@ const ClientDataTable: React.FC<{
               columnBufferPx={5}
               loading={isDataOptionLoading}
               pagination
-              pinnedColumns={{ left: ["__check__", "actions"] }}
+              pinnedColumns={{ left: ['__check__', 'actions'] }}
             />
           )}
         </div>
@@ -1227,7 +1499,7 @@ const ClientDataTable: React.FC<{
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
                 fillDownValues={fillDownValues}
-                fillCountry={"United Kingdom"}
+                fillCountry={'United Kingdom'}
               />
             )}
 
@@ -1240,7 +1512,7 @@ const ClientDataTable: React.FC<{
                 setColumnValue={setColumnValue}
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
-                fillCountry={"Australia"}
+                fillCountry={'Australia'}
                 fillDownValues={fillDownValues}
               />
             )}
@@ -1255,7 +1527,7 @@ const ClientDataTable: React.FC<{
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
                 fillDownValues={fillDownValues}
-                fillCountry={"United Kingdom"}
+                fillCountry={'United Kingdom'}
               />
             )}
 
@@ -1268,7 +1540,7 @@ const ClientDataTable: React.FC<{
                 setColumnValue={setColumnValue}
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
-                fillCountry={"Australia"}
+                fillCountry={'Australia'}
                 fillDownValues={fillDownValues}
               />
             )}
@@ -1282,7 +1554,7 @@ const ClientDataTable: React.FC<{
                 setColumnValue={setColumnValue}
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
-                fillCountry={"United Kingdom"}
+                fillCountry={'United Kingdom'}
                 fillDownValues={fillDownValues}
               />
             )}
@@ -1304,7 +1576,7 @@ const ClientDataTable: React.FC<{
                 setColumnValue={setColumnValue}
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
-                fillCountry={"Australia"}
+                fillCountry={'Australia'}
                 fillDownValues={fillDownValues}
               />
             )}
@@ -1318,7 +1590,7 @@ const ClientDataTable: React.FC<{
                 setColumnValue={setColumnValue}
                 setFillDownValues={setFillDownValues}
                 handleFillDropDown={handleFillDropDown}
-                fillCountry={"United Kingdom"}
+                fillCountry={'United Kingdom'}
                 fillDownValues={fillDownValues}
               />
             )}
@@ -1327,36 +1599,17 @@ const ClientDataTable: React.FC<{
       {/* Update Job Status Modal */}
       <UpdateJobStatusModal
         isOpen={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
-        initialStatus={selectedRow?.Application_Status || "Unattended"}
-        onConfirm={async (newStatus: string, qualityTags?: string[]) => {
-          if (!selectedRow) return;
-
-          try {
-            // Update local state immediately (optimistic update)
-            setTableData((prev) =>
-              prev.map((row: any) =>
-                row.id === selectedRow.id
-                  ? {
-                      ...row,
-                      Application_Status: newStatus,
-                      ...(newStatus === "Vetted" && qualityTags
-                        ? { Quality_Score: qualityTags.length * 30 } // Example logic
-                        : {}),
-                    }
-                  : row,
-              ),
-            );
-
-            // TODO: Call your API here to persist the change
-            // await updateManualDiscoveryStatus(selectedRow.id, newStatus, qualityTags);
-
-            toast.success(`Status updated to ${newStatus}`);
-          } catch (error) {
-            toast.error("Failed to update status");
-          } finally {
-            setIsStatusModalOpen(false);
-            setSelectedRow(null);
+        onClose={() => {
+          setIsStatusModalOpen(false);
+          setSelectedRow(null);
+        }}
+        applicationId={selectedRow?.id ?? ''}
+        initialStatus={selectedRow?.Application_Status || 'Unattended'}
+        onUpdated={async () => {
+          if (dataOption?.value === 'sample_results') {
+            await fetchSampleResults();
+          } else {
+            setMakeQuery(true);
           }
         }}
       />
