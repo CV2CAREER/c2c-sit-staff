@@ -1,35 +1,60 @@
-"use client"
-import { useState, useRef } from "react";
+"use client";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { RotateCcw, Trash2, MoreHorizontal, UserPen } from "lucide-react";
-import { UseMutationResult, useQueryClient } from "@tanstack/react-query";
-import EditTableModal from "./EditActionModal";
 import { UsersTableColType } from "@/types/admin";
-import toast from "react-hot-toast";
-import { IoDocument } from "react-icons/io5";
-import { ImProfile } from "react-icons/im";
 import { EmojiTransportationOutlined } from "@mui/icons-material";
-import { useApproveDocument, useRejectDocument, useApproveUserAccount, useDeleteUser, useSendSlackSample, useGetUserPendingDocuments, useSoftDeleteUser, useRestoreUser, usePurgeUser } from "../hooks/users-all";
+import { UseMutationResult, useQueryClient } from "@tanstack/react-query";
+import { MoreHorizontal, RotateCcw, Trash2, UserPen } from "lucide-react";
+import { useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { ImProfile } from "react-icons/im";
+import { IoDocument } from "react-icons/io5";
+import EditTableModal from "./EditActionModal";
+
+import {
+  useApproveDocument,
+  useApproveUserAccount,
+  useGetUserPendingDocuments,
+  usePurgeUser,
+  useRejectDocument,
+  useRestoreUser,
+  useSendSlackSample,
+  useSoftDeleteUser,
+} from "../hooks/users-all";
+
+// ==================== TYPES ====================
+
+type ActionType =
+  | "edit"
+  | "soft-delete"
+  | "accept-documents"
+  | "dispatch-sample-result"
+  | "reject-documents"
+  | "view-documents"
+  | "view-profile"
+  | "approve-account"
+  | "restore"
+  | "delete";
 
 interface UserActionsProps {
   user: UsersTableColType;
-  actions: ["edit", "soft-delete", "accept-documents", "dispatch-sample-result", "reject-documents", "view-documents", "view-profile", "approve-account"] | ["restore", "delete"];
+  actions: ActionType[] | ["restore", "delete"];
   editUserAction?: UseMutationResult<
     any,
     Error,
@@ -37,43 +62,253 @@ interface UserActionsProps {
   >;
 }
 
-export default function UsersTableActions({
-  user,
-  actions,
-}: UserActionsProps) {
+// ==================== ACTION CONFIG ====================
+
+const ACTION_CONFIG: Record<
+  ActionType,
+  { label: string; icon: React.ReactNode; className?: string }
+> = {
+  edit: { label: "Edit User", icon: <UserPen /> },
+  "soft-delete": {
+    label: "Delete User",
+    icon: <Trash2 />,
+    className: "text-red-600",
+  },
+  "accept-documents": { label: "Accept Documents", icon: <IoDocument /> },
+  "approve-account": { label: "Approve Account", icon: <IoDocument /> },
+  "reject-documents": { label: "Reject Documents", icon: <IoDocument /> },
+  "dispatch-sample-result": {
+    label: "Dispatch Sample",
+    icon: <EmojiTransportationOutlined />,
+  },
+  "view-documents": { label: "View Documents", icon: <IoDocument /> },
+  "view-profile": { label: "View Profile", icon: <ImProfile /> },
+  restore: { label: "Restore User", icon: <RotateCcw /> },
+  delete: {
+    label: "Delete User",
+    icon: <Trash2 />,
+    className: "text-red-600",
+  },
+};
+
+// ==================== SUB COMPONENTS ====================
+
+function ConfirmationDialog({
+  title,
+  description,
+  confirmText,
+  variant = "default",
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  description: string;
+  confirmText: string;
+  variant?: "default" | "destructive";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+      </DialogHeader>
+      <DialogFooter>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          variant={variant === "destructive" ? "destructive" : "default"}
+          onClick={onConfirm}
+        >
+          {confirmText}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function DocumentsActionDialog({
+  title,
+  description,
+  variant = "approve",
+  selectedDocuments,
+  setSelectedDocuments,
+  pendingDocuments,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  description: string;
+  variant?: "approve" | "reject";
+  selectedDocuments: Set<string>;
+  setSelectedDocuments: (docs: Set<string>) => void;
+  pendingDocuments: any;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const color = variant === "approve" ? "blue" : "red";
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+
+        {pendingDocuments.isLoading && (
+          <div className="py-4 text-sm text-gray-500">Loading documents...</div>
+        )}
+
+        {pendingDocuments.data && (
+          <div className="py-4 space-y-2 max-h-[320px] overflow-y-auto">
+            {(pendingDocuments.data as any)?.data?.map((doc: any) => (
+              <div
+                key={doc.id}
+                className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors border ${
+                  selectedDocuments.has(doc.id)
+                    ? `bg-${color}-50 border-${color}-200`
+                    : "bg-gray-50 border-transparent"
+                }`}
+                onClick={() => {
+                  const newSet = new Set(selectedDocuments);
+                  if (newSet.has(doc.id)) newSet.delete(doc.id);
+                  else newSet.add(doc.id);
+                  setSelectedDocuments(newSet);
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDocuments.has(doc.id)}
+                  onChange={() => {}}
+                  className={`h-4 w-4 rounded border-gray-300 focus:ring-${color}-500 text-${color}-600`}
+                />
+                <IoDocument
+                  className={`w-5 h-5 ${selectedDocuments.has(doc.id) ? `text-${color}-600` : `text-${color}-500`}`}
+                />
+                <div className="flex-1">
+                  <div className="font-medium">{doc.document.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {doc.type} - {doc.status}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogHeader>
+
+      <DialogFooter>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setSelectedDocuments(new Set());
+            onCancel();
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant={variant === "reject" ? "destructive" : "default"}
+          disabled={selectedDocuments.size === 0}
+          onClick={onConfirm}
+        >
+          {variant === "approve" ? "Approve" : "Reject"} Selected (
+          {selectedDocuments.size})
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+// ==================== MAIN COMPONENT ====================
+
+export default function UsersTableActions({ user, actions }: UserActionsProps) {
   const queryClient = useQueryClient();
-  const [activeDialog, setActiveDialog] = useState<
-    "edit" | "accept-documents" | "approve-account" | "dispatch-sample-result" | "reject-documents" | "view-documents" | "view-profile" | "soft-delete" | "restore" | "delete" | null
-  >(null);
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
+  const [activeDialog, setActiveDialog] = useState<ActionType | null>(null);
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
+    new Set(),
+  );
+
   const toastIdRef = useRef<string | null>(null);
 
-  /* ---- Mutations & Queries ---- */
+  // Hooks
   const approveDocument = useApproveDocument();
   const rejectDocument = useRejectDocument();
   const approveUserAccount = useApproveUserAccount();
-  const deleteUser = useDeleteUser();
-  const sendSlackSample = useSendSlackSample();
   const softDeleteUser = useSoftDeleteUser();
   const restoreUser = useRestoreUser();
   const purgeUser = usePurgeUser();
-  
+  const sendSlackSample = useSendSlackSample();
+
   const pendingDocuments = useGetUserPendingDocuments(user.id, {
-    enabled: activeDialog === "accept-documents" || activeDialog === "reject-documents"
+    enabled:
+      activeDialog === "accept-documents" ||
+      activeDialog === "reject-documents",
   });
-  
-  /* ---- Render ---- */
+
+  // ==================== HANDLERS ====================
+
+  const handleMutation = (
+    mutationFn: any,
+    successMsg: string,
+    errorMsg: string,
+    onSuccessExtra?: () => void,
+  ) => {
+    const toastId = toast.loading("Processing...");
+    mutationFn({
+      onSuccess: () => {
+        toast.dismiss(toastId);
+        toast.success(successMsg);
+        queryClient.invalidateQueries({ queryKey: ["users-all"] });
+        onSuccessExtra?.();
+        setActiveDialog(null);
+      },
+      onError: () => {
+        toast.dismiss(toastId);
+        toast.error(errorMsg);
+      },
+    });
+  };
+
+  const handleDocumentsAction = async (isApprove: boolean) => {
+    const toastId = toast.loading(
+      `${isApprove ? "Approving" : "Rejecting"} ${selectedDocuments.size} document(s)...`,
+    );
+    const mutation = isApprove ? approveDocument : rejectDocument;
+
+    try {
+      await Promise.all(
+        Array.from(selectedDocuments).map((docId) =>
+          mutation.mutateAsync({ documentId: docId }),
+        ),
+      );
+      toast.dismiss(toastId);
+      toast.success(
+        `${selectedDocuments.size} document(s) ${isApprove ? "approved" : "rejected"} successfully`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["user-pending-documents"] });
+      setSelectedDocuments(new Set());
+      setActiveDialog(null);
+    } catch {
+      toast.dismiss(toastId);
+      toast.error(
+        `Failed to ${isApprove ? "approve" : "reject"} some documents`,
+      );
+    }
+  };
+
+  // ==================== RENDER ====================
+
   return (
-    <Dialog
-      open={activeDialog !== null}
-      onOpenChange={() => setActiveDialog(null)}
-    >
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem
@@ -83,427 +318,156 @@ export default function UsersTableActions({
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
-          
+
           {actions.map((action) => {
-            switch (action) {
-              case "edit":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("edit")}
-                    key="edit"
-                  >
-                    <UserPen />
-                    <span>Edit User</span>
-                  </DropdownMenuItem>
-                );
-              case "soft-delete":
-                return (
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => setActiveDialog("soft-delete")}
-                    key="soft-delete"
-                  >
-                    <Trash2 />
-                    <span>Delete User</span>
-                  </DropdownMenuItem>
-                );
-              case "accept-documents":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("accept-documents")}
-                    key="accept-documents"
-                  >
-                    <IoDocument/>
-                    <span>Accept Documents</span>
-                  </DropdownMenuItem>
-                );
-              case "approve-account":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("approve-account")}
-                    key="approve-account"
-                  >
-                    <IoDocument/>
-                    <span>Approve Account</span>
-                  </DropdownMenuItem>
-                );
-              case "reject-documents":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("reject-documents")}
-                    key="reject-documents"
-                  >
-                    <IoDocument/>
-                    <span>Reject Documents</span>
-                  </DropdownMenuItem>
-                );
-              case "dispatch-sample-result":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("dispatch-sample-result")}
-                    key="dispatch-sample-result"
-                  >
-                    <EmojiTransportationOutlined/>
-                    <span>Dispatch Sample</span>
-                  </DropdownMenuItem>
-                );
-              case "view-documents":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => window.open(`/admin/users/${user.id}`, '_blank')}
-                    key="view-documents"
-                  >
-                    <IoDocument/>
-                    <span>View Documents</span>
-                  </DropdownMenuItem>
-                );
-              case "view-profile":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => window.open(`/admin/users/${user.id}`, '_blank')}
-                    key="view-profile"
-                  >
-                    <ImProfile/>
-                    <span>View Profile</span>
-                  </DropdownMenuItem>
-                );
-              case "restore":
-                return (
-                  <DropdownMenuItem
-                    onClick={() => setActiveDialog("restore")}
-                    key="restore"
-                  >
-                    <RotateCcw />
-                    <span>Restore User</span>
-                  </DropdownMenuItem>
-                );
-              case "delete":
-                return (
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={() => setActiveDialog("delete")}
-                    key="delete"
-                  >
-                    <Trash2 />
-                    <span>Delete User</span>
-                  </DropdownMenuItem>
-                );
-              default:
-                return null;
-            }
+            const config = ACTION_CONFIG[action];
+            if (!config) return null;
+
+            const isExternalLink =
+              action === "view-documents" || action === "view-profile";
+
+            return (
+              <DropdownMenuItem
+                key={action}
+                className={config.className}
+                onClick={() => {
+                  if (isExternalLink) {
+                    window.open(`/admin/users/${user.id}`, "_blank");
+                  } else {
+                    setActiveDialog(action);
+                  }
+                }}
+              >
+                {config.icon}
+                <span>{config.label}</span>
+              </DropdownMenuItem>
+            );
           })}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {activeDialog === "edit" && (
-        <EditTableModal
-          user={user}
-          setDialog={setActiveDialog}
-          // editUserAction={() => editUserAction}
-        />
-      )}
+      {/* Dialogs */}
+      <Dialog
+        open={activeDialog !== null}
+        onOpenChange={() => setActiveDialog(null)}
+      >
+        {/* Edit Modal */}
+        {activeDialog === "edit" && (
+          <EditTableModal user={user} setDialog={setActiveDialog} />
+        )}
 
-      {activeDialog === "soft-delete" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              This user will be moved to the Recycle bin.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                const toastId = toast.loading("Moving user to recycle bin...");
-                softDeleteUser.mutate({ userId: user.id }, {
-                  onSuccess: () => {
-                    toast.dismiss(toastId);
-                    toast.success("User moved to recycle bin successfully");
-                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                    setActiveDialog(null);
-                  },
-                  onError: () => {
-                    toast.dismiss(toastId);
-                    toast.error("Failed to move user to recycle bin");
-                  }
-                });
-              }}
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {/* Simple Confirmation Dialogs */}
+        {activeDialog === "soft-delete" && (
+          <ConfirmationDialog
+            title="Are you sure?"
+            description="This user will be moved to the Recycle bin."
+            confirmText="Confirm"
+            variant="destructive"
+            onConfirm={() =>
+              handleMutation(
+                (opts: any) => softDeleteUser.mutate({ userId: user.id }, opts),
+                "User moved to recycle bin successfully",
+                "Failed to move user to recycle bin",
+              )
+            }
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "restore" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              This user will be restored to the active users table.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                const toastId = toast.loading("Restoring user...");
-                restoreUser.mutate({ userId: user.id }, {
-                  onSuccess: () => {
-                    toast.dismiss(toastId);
-                    toast.success("User restored successfully");
-                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                    setActiveDialog(null);
-                  },
-                  onError: () => {
-                    toast.dismiss(toastId);
-                    toast.error("Failed to restore user");
-                  }
-                });
-              }}
-            >
-              Restore
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {activeDialog === "restore" && (
+          <ConfirmationDialog
+            title="Are you sure?"
+            description="This user will be restored to the active users table."
+            confirmText="Restore"
+            onConfirm={() =>
+              handleMutation(
+                (opts: any) => restoreUser.mutate({ userId: user.id }, opts),
+                "User restored successfully",
+                "Failed to restore user",
+              )
+            }
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "delete" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              This user will be deleted permanently from our server! This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setActiveDialog(null)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                const toastId = toast.loading("Permanently deleting user...");
-                purgeUser.mutate({ userId: user.id }, {
-                  onSuccess: () => {
-                    toast.dismiss(toastId);
-                    toast.success("User permanently deleted");
-                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                    setActiveDialog(null);
-                  },
-                  onError: () => {
-                    toast.dismiss(toastId);
-                    toast.error("Failed to delete user permanently");
-                  }
-                });
-              }}
-            >
-              Permanently Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {activeDialog === "delete" && (
+          <ConfirmationDialog
+            title="Are you sure?"
+            description="This user will be deleted permanently from our server! This action cannot be undone."
+            confirmText="Permanently Delete"
+            variant="destructive"
+            onConfirm={() =>
+              handleMutation(
+                (opts: any) => purgeUser.mutate({ userId: user.id }, opts),
+                "User permanently deleted",
+                "Failed to delete user permanently",
+              )
+            }
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "accept-documents" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Approve User Documents</DialogTitle>
-            <DialogDescription>
-              The following pending documents will be approved:
-            </DialogDescription>
-            
-            {pendingDocuments.isLoading && (
-              <div className="py-4 text-sm text-gray-500">Loading documents...</div>
-            )}
-            
-            {pendingDocuments.data && (
-              <div className="py-4 space-y-2 max-h-[320px] overflow-y-auto">
-                {(pendingDocuments.data as any)?.data?.map((doc: any) => (
-                  <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors ${selectedDocuments.has(doc.id) ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-transparent'}`} onClick={() => {
-                    const newSelected = new Set(selectedDocuments);
-                    if (newSelected.has(doc.id)) {
-                      newSelected.delete(doc.id);
-                    } else {
-                      newSelected.add(doc.id);
-                    }
-                    setSelectedDocuments(newSelected);
-                  }}>
-                    <input type="checkbox" checked={selectedDocuments.has(doc.id)} onChange={() => {}} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                    <IoDocument className={`w-5 h-5 ${selectedDocuments.has(doc.id) ? 'text-blue-600' : 'text-blue-500'}`} />
-                    <div className="flex-1">
-                      <div className="font-medium">{doc.document.name}</div>
-                      <div className="text-sm text-gray-500">{doc.type} - {doc.status}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => {
-              setSelectedDocuments(new Set());
-              setActiveDialog(null);
-            }}>Cancel</Button>
-            <Button
-              disabled={selectedDocuments.size === 0}
-              onClick={() => {
-                const toastId = toast.loading(`Approving ${selectedDocuments.size} document(s)...`);
-                
-                // Approve each selected document
-                Promise.all(
-                  Array.from(selectedDocuments).map(docId => 
-                    approveDocument.mutateAsync({ documentId: docId })
-                  )
-                ).then(() => {
-                  toast.dismiss(toastId);
-                  toast.success(`${selectedDocuments.size} document(s) approved successfully`);
-                  setSelectedDocuments(new Set());
-                  queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                  queryClient.invalidateQueries({ queryKey: ["user-pending-documents"] });
-                  setActiveDialog(null);
-                }).catch(() => {
-                  toast.dismiss(toastId);
-                  toast.error("Failed to approve some documents");
-                });
-              }}
-            >
-              Approve Selected ({selectedDocuments.size})
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {activeDialog === "approve-account" && (
+          <ConfirmationDialog
+            title="Are you sure?"
+            description={`Approve ${user?.role} account for this user`}
+            confirmText="Approve Account"
+            onConfirm={() =>
+              handleMutation(
+                (opts: any) =>
+                  approveUserAccount.mutate({ userId: user.id }, opts),
+                "Account approved successfully",
+                "Failed to approve account",
+              )
+            }
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "approve-account" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              Approve {user?.role} account for this user
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                const toastId = toast.loading("Approving account...");
-                approveUserAccount.mutate({ userId: user.id }, {
-                  onSuccess: () => {
-                    toast.dismiss(toastId);
-                    toast.success("Account approved successfully");
-                    queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                  },
-                  onError: () => {
-                    toast.dismiss(toastId);
-                    toast.error("Failed to approve account");
-                  }
-                });
-                setActiveDialog(null);
-              }}
-            >
-              Approve Account
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {activeDialog === "dispatch-sample-result" && (
+          <ConfirmationDialog
+            title="Are you sure?"
+            description="Sample results for this user will be dispatched"
+            confirmText="Dispatch Samples"
+            onConfirm={() =>
+              handleMutation(
+                (opts: any) =>
+                  sendSlackSample.mutate({ userId: user.id }, opts),
+                "Sample dispatched successfully",
+                "Failed to dispatch sample",
+              )
+            }
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "reject-documents" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject User Documents</DialogTitle>
-            <DialogDescription>
-              The following pending documents will be rejected:
-            </DialogDescription>
-            
-            {pendingDocuments.isLoading && (
-              <div className="py-4 text-sm text-gray-500">Loading documents...</div>
-            )}
-            
-            {pendingDocuments.data && (
-              <div className="py-4 space-y-2 max-h-[320px] overflow-y-auto">
-                {(pendingDocuments.data as any)?.data?.map((doc: any) => (
-                  <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-colors ${selectedDocuments.has(doc.id) ? 'bg-red-50 border border-red-200' : 'bg-gray-50 border border-transparent'}`} onClick={() => {
-                    const newSelected = new Set(selectedDocuments);
-                    if (newSelected.has(doc.id)) {
-                      newSelected.delete(doc.id);
-                    } else {
-                      newSelected.add(doc.id);
-                    }
-                    setSelectedDocuments(newSelected);
-                  }}>
-                    <input type="checkbox" checked={selectedDocuments.has(doc.id)} onChange={() => {}} className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
-                    <IoDocument className={`w-5 h-5 ${selectedDocuments.has(doc.id) ? 'text-red-600' : 'text-red-500'}`} />
-                    <div className="flex-1">
-                      <div className="font-medium">{doc.document.name}</div>
-                      <div className="text-sm text-gray-500">{doc.type} - {doc.status}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => {
-              setSelectedDocuments(new Set());
-              setActiveDialog(null);
-            }}>Cancel</Button>
-            <Button variant="destructive"
-              disabled={selectedDocuments.size === 0}
-              onClick={() => {
-                const toastId = toast.loading(`Rejecting ${selectedDocuments.size} document(s)...`);
-                
-                // Reject each selected document
-                Promise.all(
-                  Array.from(selectedDocuments).map(docId => 
-                    rejectDocument.mutateAsync({ documentId: docId })
-                  )
-                ).then(() => {
-                  toast.dismiss(toastId);
-                  toast.success(`${selectedDocuments.size} document(s) rejected successfully`);
-                  setSelectedDocuments(new Set());
-                  queryClient.invalidateQueries({ queryKey: ["users-all"] });
-                  queryClient.invalidateQueries({ queryKey: ["user-pending-documents"] });
-                  setActiveDialog(null);
-                }).catch(() => {
-                  toast.dismiss(toastId);
-                  toast.error("Failed to reject some documents");
-                });
-              }}
-            >
-              Reject Selected ({selectedDocuments.size})
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
+        {/* Documents Dialogs */}
+        {activeDialog === "accept-documents" && (
+          <DocumentsActionDialog
+            title="Approve User Documents"
+            description="The following pending documents will be approved:"
+            variant="approve"
+            selectedDocuments={selectedDocuments}
+            setSelectedDocuments={setSelectedDocuments}
+            pendingDocuments={pendingDocuments}
+            onConfirm={() => handleDocumentsAction(true)}
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
 
-      {activeDialog === "dispatch-sample-result" && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              Sample results for this user will be dispatched
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                const toastId = toast.loading("Dispatching sample...");
-                sendSlackSample.mutate({ userId: user.id }, {
-                  onSuccess: () => {
-                    toast.dismiss(toastId);
-                    toast.success("Sample dispatched successfully");
-                  },
-                  onError: () => {
-                    toast.dismiss(toastId);
-                    toast.error("Failed to dispatch sample");
-                  }
-                });
-                setActiveDialog(null);
-              }}
-            >
-              Dispatch Samples
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      )}
-    </Dialog>
+        {activeDialog === "reject-documents" && (
+          <DocumentsActionDialog
+            title="Reject User Documents"
+            description="The following pending documents will be rejected:"
+            variant="reject"
+            selectedDocuments={selectedDocuments}
+            setSelectedDocuments={setSelectedDocuments}
+            pendingDocuments={pendingDocuments}
+            onConfirm={() => handleDocumentsAction(false)}
+            onCancel={() => setActiveDialog(null)}
+          />
+        )}
+      </Dialog>
+    </>
   );
 }
