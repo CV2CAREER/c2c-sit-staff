@@ -400,11 +400,16 @@ export const assignVA = catchAsyncError(async (req: Request, res: Response) => {
     ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
     : undefined;
 
-  const validVariant: 'Discovery' | 'Vet' | 'Completed' = 
-    variant === 'Vet' ? 'Vet' :
-    variant === 'Completed' ? 'Completed' : 'Discovery';
+  const validVariant: 'DPC' | 'VPC' | 'SPC' =
+    variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
 
-  const result = await assignVAToClient(credId, vaEmail, host, updatedByName, validVariant);
+  const result = await assignVAToClient(
+    credId,
+    vaEmail,
+    host,
+    updatedByName,
+    validVariant
+  );
 
   res.status(200).json(result);
 });
