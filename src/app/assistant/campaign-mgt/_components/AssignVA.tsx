@@ -7,12 +7,14 @@ import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface VACellProps {
-    data: null | any
+    data: null | any;
+    variant?: 'Discovery' | 'Vet' | 'Completed';
 }
 
-export const VACell = ({ data = null } : VACellProps) => {
+export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => {
+    const emailField = variant === 'Vet' ? 'VetEmail' : variant === 'Completed' ? 'CompletedEmail' : 'VaEmail';
     const [selected, setSelected] = useState<any>(null);
-    const [unassign, setUnassign] = useState(data?.VaEmail);
+    const [unassign, setUnassign] = useState(data?.[emailField]);
     const queryClient = useQueryClient();
 
     const { pcsDomain: { data: vaData, isError } } = useAdminQueries({ fetchPCs: true });
@@ -27,30 +29,34 @@ export const VACell = ({ data = null } : VACellProps) => {
     }, [isError]);
 
     useEffect(() => {
-        if (vas.length && data?.VaEmail) {
-            setSelected(vas.find((v: any) => v.email === data.VaEmail));
+        const currentEmail = data?.[emailField];
+        if (vas.length && currentEmail) {
+            setSelected(vas.find((v: any) => v.email === currentEmail));
         } else {
             setSelected(null);
         }
-    }, [vaData, data?.VaEmail]);
+    }, [vaData, data?.[emailField]]);
+
+    const label = variant === 'Vet' ? 'Vet' : variant === 'Completed' ? 'Completed' : 'Discovery';
 
     async function assignVa(credId: string, VaEmail: string | null) {
         const tId = toast.loading(
-            VaEmail ? 'Updating assigned PC' : 'Unassigning PC...'
+            VaEmail ? `Updating assigned ${label}` : `Unassigning ${label}...`
         );
 
         try {
             await assignVaMutation.mutateAsync({
                 credId,
                 vaEmail: VaEmail || null,
+                variant,
             });
 
             queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
 
             toast.success(
                 VaEmail
-                    ? 'Assigned PC updated successfully.'
-                    : 'PC unassigned successfully.',
+                    ? `Assigned ${label} updated successfully.`
+                    : `${label} unassigned successfully.`,
                 { id: tId }
             );
         } catch (err: Error | any) {
@@ -58,7 +64,7 @@ export const VACell = ({ data = null } : VACellProps) => {
                 err?.response?.data?.message ??
                 err?.message ??
                 err?.response?.message ??
-                'Failed to assign/unassign PC',
+                `Failed to assign/unassign ${label}`,
                 { id: tId }
             );
         }
@@ -96,7 +102,7 @@ export const VACell = ({ data = null } : VACellProps) => {
     return (
         <SearchSelect
             name="VA"
-            placeholder="Assign a PC"
+            placeholder={`Assign a ${label}`}
             className="w-full"
             options={options}
             onChange={(e: SingleValue<OptionType>) => {
