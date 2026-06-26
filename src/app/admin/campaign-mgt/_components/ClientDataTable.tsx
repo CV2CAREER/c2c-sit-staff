@@ -630,10 +630,9 @@ const ClientDataTable: React.FC<{
               : '#999';
           return (
             <span
+              className="rounded-md px-3 py-1 text-xs font-bold text-white"
               style={{
-                color,
-                padding: '2px 3px',
-                background: `${color}20`,
+                background: `${color}`,
               }}
             >
               {params.value || 'N/A'}
@@ -809,10 +808,9 @@ const ClientDataTable: React.FC<{
                   : '#999';
               return (
                 <span
+                  className="rounded-md px-3 py-1 text-xs font-bold text-white"
                   style={{
-                    color,
-                    border: `1px solid ${color}`,
-                    background: `${color}20`,
+                    background: `${color}`,
                   }}
                 >
                   {params.value || 'N/A'}
