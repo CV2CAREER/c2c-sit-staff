@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '@/services/api-client';
 import toast from 'react-hot-toast';
 
@@ -12,6 +12,12 @@ interface UpdateJobStatusModalProps {
   onUpdated?: () => Promise<void> | void;
 }
 
+const qualityTags = [
+  { label: 'HQA', bg: '#2BC07A' },
+  { label: 'MQA', bg: '#F4A91A' },
+  { label: 'LQA', bg: '#EC4040' },
+];
+
 const statusOptions = [
   'Unattended',
   'Vetted',
@@ -20,11 +26,9 @@ const statusOptions = [
   'Expired',
 ] as const;
 
-const qualityTags = [
-  { label: 'HQA', color: 'bg-green-600' },
-  { label: 'MQA', color: 'bg-orange-500' },
-  { label: 'LQA', color: 'bg-red-500' },
-];
+type StatusOption = (typeof statusOptions)[number];
+
+const qualityStatuses: StatusOption[] = ['Vetted'];
 
 const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   isOpen,
@@ -33,24 +37,61 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   initialStatus = 'Unattended',
   onUpdated,
 }) => {
-  const [selectedStatus, setSelectedStatus] = useState(initialStatus);
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [selectedQualityTag, setSelectedQualityTag] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dropOpen, setDropOpen] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  const current = initialStatus.toLowerCase();
+
+  let available: StatusOption[] = [...statusOptions];
+
+  // Ensure the incoming status is one of the allowed options
+  const currentStatus: StatusOption = statusOptions.includes(
+    initialStatus as StatusOption
+  )
+    ? (initialStatus as StatusOption)
+    : 'Unattended';
+
+  if (current === 'vetted') {
+    available = available.filter((s) => s !== 'Unattended');
+  }
+
+  if (['submitted', 'skipped', 'expired'].includes(current)) {
+    available = [currentStatus];
+  }
 
   useEffect(() => {
     if (isOpen) {
       setSelectedStatus(initialStatus || 'Unattended');
       setSelectedQualityTag('');
+      setDropOpen(false);
     }
   }, [isOpen, initialStatus]);
+
+  // ✅ Removed click-outside listener — dropdown only closes when user
+  // explicitly toggles it or selects a non-quality option
+
+  const handleSelectOption = (val: string) => {
+    setSelectedStatus(val);
+    setSelectedQualityTag('');
+    // ✅ Only close for options that don't need a quality tag
+    if (!qualityStatuses.includes(val as StatusOption)) {
+      setDropOpen(false);
+    }
+    // For Vetted / Completed keep dropdown open so user picks a pill
+  };
 
   const handleConfirm = async () => {
     if (!applicationId) {
       toast.error('Application id is missing.');
       return;
     }
-
-    if (selectedStatus === 'Vetted' && !selectedQualityTag) {
+    if (
+      qualityStatuses.includes(selectedStatus as StatusOption) &&
+      !selectedQualityTag
+    ) {
       toast.error('Select one quality tag before confirming.');
       return;
     }
@@ -59,27 +100,23 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
       applicationId,
       status: selectedStatus.toUpperCase(),
     };
-
-    if (selectedStatus === 'Vetted') {
+    if (qualityStatuses.includes(selectedStatus as StatusOption)) {
       payload.qualityScore = selectedQualityTag;
     }
 
     try {
       setIsSubmitting(true);
-
       const response = await axiosInstance.post(
         '/api/v1/campaigns/clients/applications/update-status',
         payload
       );
-
       if (response.data?.success === false) {
+        setIsSubmitting(false);
         throw new Error(response.data?.message || 'Failed to update status');
       }
-
       toast.success(
         response.data?.message || 'Application status updated successfully'
       );
-
       await onUpdated?.();
       onClose();
     } catch (error: any) {
@@ -96,99 +133,139 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
 
   if (!isOpen) return null;
 
+  const needsQuality = qualityStatuses.includes(selectedStatus as StatusOption);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="border-b p-6">
-          <h2 className="text-center text-2xl font-semibold">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div
+        className="w-full rounded-2xl bg-white shadow-2xl"
+        style={{ maxWidth: 360 }}
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-5">
+          <h2 className="text-center text-lg font-semibold text-gray-900">
             Update Job Status
           </h2>
         </div>
 
-        <div className="space-y-6 p-6">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
-              Status <span className="text-red-500">*</span>
-            </label>
+        {/* Body */}
+        <div className="px-6 pb-5">
+          <label className="mb-2 block text-sm text-gray-500">
+            Status <span className="text-red-500">*</span>
+          </label>
 
-            <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value);
-                  if (e.target.value !== 'Vetted') {
-                    setSelectedQualityTag('');
-                  }
-                }}
-                className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div ref={dropRef}>
+            {/* Trigger — only toggle, never auto-close */}
+            <button
+              type="button"
+              onClick={() => setDropOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 transition-colors hover:border-gray-300 focus:outline-none"
+            >
+              <span>
+                {selectedStatus}
+                {selectedQualityTag && (
+                  <span className="ml-2 text-gray-400">
+                    · {selectedQualityTag}
+                  </span>
+                )}
+              </span>
+              <svg
+                className={`h-4 w-4 text-gray-400 transition-transform ${dropOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
               >
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
 
-              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                ▼
-              </div>
-            </div>
-          </div>
-
-          {selectedStatus === 'Vetted' && (
-            <div>
-              <label className="mb-3 block text-sm font-medium text-gray-700">
-                Quality Assessment
-              </label>
-
-              <div className="flex flex-wrap gap-3">
-                {qualityTags.map(({ label, color }) => {
-                  const isSelected = selectedQualityTag === label;
+            {/* Inline panel */}
+            {dropOpen && (
+              <div className="mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
+                {available.map((val, i) => {
+                  const showPills =
+                    qualityStatuses.includes(val) && selectedStatus === val;
 
                   return (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() =>
-                        setSelectedQualityTag((prev) =>
-                          prev === label ? '' : label
-                        )
-                      }
-                      className={`rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                        isSelected
-                          ? `${color} border-transparent text-white`
-                          : 'border-gray-300 bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      {label}
-                    </button>
+                    <React.Fragment key={val}>
+                      <div
+                        className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-gray-800 hover:bg-gray-50"
+                        onClick={() => handleSelectOption(val)}
+                      >
+                        <span
+                          className={
+                            selectedStatus === val ? 'font-medium' : ''
+                          }
+                        >
+                          {val}
+                        </span>
+                        {selectedStatus === val && (
+                          <span className="text-gray-700">✓</span>
+                        )}
+                      </div>
+
+                      {/* Quality pills — shown under Vetted or Completed when selected */}
+                      {showPills && (
+                        <div className="flex gap-2 pb-3 pl-8 pr-4">
+                          {qualityTags.map(({ label, bg }) => {
+                            const isSelected = selectedQualityTag === label;
+                            return (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedQualityTag((prev) =>
+                                    prev === label ? '' : label
+                                  );
+                                }}
+                                style={{
+                                  background: bg,
+                                  outline: isSelected
+                                    ? `2px solid ${bg}`
+                                    : 'none',
+                                  outlineOffset: isSelected ? 2 : 0,
+                                }}
+                                className="rounded-md px-3 py-1 text-xs font-bold text-white transition-all hover:opacity-85"
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {i < statusOptions.length - 1 && (
+                        <div className="border-t border-gray-100" />
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </div>
-
-              {selectedQualityTag && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Selected: {selectedQualityTag}
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-3 border-t bg-gray-50 p-6">
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 pb-6">
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-lg px-6 py-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:w-auto"
+            className="rounded-lg bg-gray-100 px-6 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
           >
             Cancel
           </button>
-
           <button
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-gray-700 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="rounded-lg px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: '#0e9bd9' }}
           >
             {isSubmitting ? 'Saving...' : 'Confirm'}
           </button>
