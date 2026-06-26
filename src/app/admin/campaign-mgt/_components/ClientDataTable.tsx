@@ -539,7 +539,14 @@ const ClientDataTable: React.FC<{
       Job_Location: item?.Location ?? 'N/A',
       Job_Type: item?.Job_Type ?? 'N/A',
       Application_Status: toTitleCase(item?.Status || 'Unattended'),
-      Quality_Score: item?.QualityScore ?? '',
+      Quality_Score:
+        (item?.Status || 'unattended').toLowerCase() === 'Unattended'
+          ? 'TBD'
+          : ['skipped', 'expired'].includes(
+                (item?.Status || 'unattended').toLowerCase()
+              )
+            ? 'N/A'
+            : (item?.QualityScore ?? ''),
       Discovered_By: item?.DiscoveredBy ?? 'N/A',
       Timestamp_Discovered: item?.DiscoveryDate ?? 'N/A',
       Vetted_By: item?.VettedBy ?? 'N/A',
