@@ -1395,7 +1395,7 @@ export const assignVAToClient = async (
       return {
         emailField: 'AssignedVetEmail' as const,
         nameField: 'AssignedVetName' as const,
-        displayLabel: 'Vet',
+        displayLabel: 'VPC',
         slackChannel: SlackChannel.VA,
       };
     }
@@ -1403,14 +1403,14 @@ export const assignVAToClient = async (
       return {
         emailField: 'AssignedCompletedEmail' as const,
         nameField: 'AssignedCompletedName' as const,
-        displayLabel: 'Completed',
+        displayLabel: 'SPC',
         slackChannel: SlackChannel.VA,
       };
     }
     return {
       emailField: 'AssignedPCEmail' as const,
       nameField: 'AssignedPCName' as const,
-      displayLabel: 'PC',
+      displayLabel: 'DPC',
       slackChannel: SlackChannel.VA,
     };
   };
