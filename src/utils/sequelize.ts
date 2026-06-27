@@ -35,7 +35,7 @@ export const createSequelize = () => {
             require: true, // necessary for managed DBs like DigitalOcean / Heroku
             rejectUnauthorized: false, // allows self-signed certs
           },
-          statement_timeout: 30000, // 30s query timeout
+          statement_timeout: 60000, // 60s query timeout
         },
         pool: {
           max: 50, // max concurrent connections
