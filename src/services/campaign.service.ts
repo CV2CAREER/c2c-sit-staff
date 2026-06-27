@@ -1278,8 +1278,8 @@ export const updateJobApplicationStatus = async (
   applicationId: string,
   status: string,
   user: any,
-  qualityScore?: string | null,
   host: string,
+  qualityScore?: string | null,
   updatedBy?: string
 ) => {
   logger.info(
