@@ -117,6 +117,22 @@ export class Credentials extends Model {
   AssignedPCEmail?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedVetName?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedVetEmail?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedCompletedName?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING(128))
+  AssignedCompletedEmail?: string;
+
+  @AllowNull(true)
   @Default('FLIGHT')
   @Column(DataType.STRING(32))
   capitalized?: string;

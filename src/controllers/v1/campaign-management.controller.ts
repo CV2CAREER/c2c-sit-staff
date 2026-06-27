@@ -358,12 +358,19 @@ export const saveJobManually = catchAsyncError(
     logger.info('Processing job save request');
     const { clientId, joblink, jobData } = req.body;
     const user = (req as any).user;
+    const host = req.get('host') || '';
+    const authenticatedUser = (req as any).user;
+    const updatedByName = authenticatedUser
+      ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
+      : undefined;
 
     const result = await saveManualApplication(
       clientId,
       joblink,
       jobData,
-      user
+      user,
+      host,
+      updatedByName
     );
 
     res.status(200).json(result);
@@ -375,32 +382,47 @@ export const updateJobApplicationStatusManually = catchAsyncError(
     logger.info('Processing update job application status');
     const { applicationId, status, qualityScore } = req.body;
     const user = (req as any).user;
-    console.log(req.body);
+    const host = req.get('host') || '';
+    const authenticatedUser = (req as any).user;
+    const updatedByName = authenticatedUser
+      ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
+      : undefined;
     const result = await updateJobApplicationStatus(
       applicationId,
       status,
       user,
-      qualityScore
+      host,
+      qualityScore,
+      updatedByName
     );
     res.status(200).json(result);
   }
 );
 
 /**
- * Assign/Unassign VA to client
+ * Assign/Unassign VA (Discovery / Vet / Completed) to client
  * POST /api/v1/campaigns/va/assign
  */
 export const assignVA = catchAsyncError(async (req: Request, res: Response) => {
   logger.info('Processing VA assignment request');
 
-  const { vaEmail, credId } = req.body;
+  const { vaEmail, credId, variant } = req.body;
   const host = req.get('host') || '';
   const authenticatedUser = (req as any).user;
   const updatedByName = authenticatedUser
     ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
     : undefined;
 
-  const result = await assignVAToClient(credId, vaEmail, host, updatedByName);
+  const validVariant: 'DPC' | 'VPC' | 'SPC' =
+    variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
+
+  const result = await assignVAToClient(
+    credId,
+    vaEmail,
+    host,
+    updatedByName,
+    validVariant
+  );
 
   res.status(200).json(result);
 });

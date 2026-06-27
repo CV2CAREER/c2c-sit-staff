@@ -741,28 +741,30 @@ paths:
     post:
       tags:
         - Campaign Management
-      summary: Assign or Unassign VA (Virtual Assistant) to client profile
-      parameters:
-        - name: credId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Client credential ID
+      summary: Assign or Unassign VA (Discovery / Vet / Completed) to client profile
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - credId
               properties:
+                credId:
+                  type: string
+                  description: Client credential ID
                 vaEmail:
                   type: string
                   nullable: true
-                  description: VA email address (pass null to unassign)
-                host:
+                  description: Email of user to assign (or "Unassigned"/"Unassign" to unassign)
+                variant:
                   type: string
-                  description: Current host environment for Slack notification routing
+                  enum: [Discovery, Vet, Completed]
+                  default: Discovery
+                  description: Type of assignment (Discovery = default, Vet = AssignedVet, Completed = AssignedCompleted)
       responses:
         '200':
           description: VA assigned/unassigned successfully
@@ -775,12 +777,20 @@ paths:
                     type: boolean
                   message:
                     type: string
+                  variant:
+                    type: string
+                    enum: [Discovery, Vet, Completed]
+                    description: The variant that was operated on
                   vaName:
                     type: string
-                    description: Full name of assigned VA (only when assigning)
+                    description: Full name of assigned user (only when assigning)
                   vaEmail:
                     type: string
-                    description: Email of assigned VA (only when assigning)
+                    description: Email of assigned user (only when assigning)
+        '401':
+          description: Unauthorized
+        '404':
+          description: Client or user not found
 
   /v1/campaigns/clients/{clientId}/dispatch-samples:
     patch:
@@ -996,12 +1006,32 @@ paths:
                   type: string
                   maxLength: 128
                   nullable: true
-                  description: Assigned VA full name
+                  description: Assigned PC (VA) full name
                 AssignedPCEmail:
                   type: string
                   maxLength: 128
                   nullable: true
-                  description: Assigned VA email address
+                  description: Assigned PC (VA) email address
+                AssignedVetName:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned Vet controller full name
+                AssignedVetEmail:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned Vet controller email address
+                AssignedCompletedName:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned Completed controller full name
+                AssignedCompletedEmail:
+                  type: string
+                  maxLength: 128
+                  nullable: true
+                  description: Assigned Completed controller email address
                 seekExternalCredentials:
                   type: object
                   description: Nested JSONB field - all properties inside can be updated directly

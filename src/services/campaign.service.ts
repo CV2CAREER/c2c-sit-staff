@@ -21,6 +21,7 @@ import {
 import {
   getEnvironmentFromHost,
   getSlackIdByEmail,
+  getSlackIdOrName,
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
 import { Op, Sequelize } from 'sequelize';
@@ -1139,7 +1140,9 @@ export const saveManualApplication = async (
   clientId: string,
   joblink: string,
   jobData: any,
-  user: any
+  user: any,
+  host: string,
+  updatedBy?: string
 ) => {
   logger.info(`Saving manual application for client: ${clientId}`);
 
@@ -1214,6 +1217,56 @@ export const saveManualApplication = async (
     `Manual application saved successfully. ID: ${manualApplication.id}`
   );
 
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const message = `
+    :mag: *JOB DISCOVERED — Awaiting Vetting*
+
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${joblink}|${jobData.job_title}>
+    • *Company:* ${jobData.company || 'N/A'}
+    • *Location:* ${jobData.location || 'N/A'}
+    • *Source:* ${jobData.job_site_name || 'N/A'}
+    • *Status:* Unattended
+    • *Environment:* ${host}
+
+    ${vpcName} please vet within 4 hours.
+    `;
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
+
   return {
     success: true,
     message: 'Manual application saved successfully.',
@@ -1225,7 +1278,9 @@ export const updateJobApplicationStatus = async (
   applicationId: string,
   status: string,
   user: any,
-  qualityScore?: string | null
+  host: string,
+  qualityScore?: string | null,
+  updatedBy?: string
 ) => {
   logger.info(
     `Updating manual application status for applicationId: ${applicationId}`
@@ -1255,6 +1310,77 @@ export const updateJobApplicationStatus = async (
     updatedAt: currentDate,
   };
 
+  // Validate that client exists
+  const clientExists = await Credentials.findOne({
+    where: {
+      clientId: application.client_id,
+      isDeleted: false,
+    },
+  });
+
+  if (!clientExists) {
+    throw new Error(`Client not found with ID: ${application?.client_id}`);
+  }
+
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const spcName = await getSlackIdOrName(
+    clientExists?.AssignedCompletedEmail,
+    clientExists?.AssignedCompletedName
+  );
+
+  const match = application.Job_Title.match(
+    /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
+  );
+
+  const jobTitleUrl = match
+    ? {
+        url: match[1],
+        title: match[2],
+      }
+    : null;
+
+  const qualityEmoji =
+    qualityScore === 'HQA'
+      ? ':large_green_circle:'
+      : qualityScore === 'MQA'
+        ? ':large_orange_circle:'
+        : ':red_circle:';
+  const terminalEmoji =
+    status.toLowerCase() === 'expired' ? ':hourglass:' : ':arrow_right_hook:';
+  const toTitleCase = (value?: string) =>
+    value
+      ? value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'N/A';
+
+  let message = `${terminalEmoji} *JOB ${status}*
+
+    • *VPC:* ${vpcName}
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+    • *Company:* ${application.Advertiser}
+    • *Status:* ${toTitleCase(status)}
+    • *Environment:* ${host}
+
+    ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
+
   if (statusUpper === 'VETTED') {
     if (qualityScore == null || qualityScore === '') {
       throw new Error('qualityScore is required when status is VETTED');
@@ -1263,6 +1389,20 @@ export const updateJobApplicationStatus = async (
     updateData.QualityScore = qualityScore;
     updateData.VettedBy = fullName || null;
     updateData.VettedDate = currentDate;
+
+    message = `
+      :white_check_mark: *JOB VETTED* — ${qualityScore}
+
+      • *VPC:* ${vpcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Quality:* ${qualityScore} ${qualityEmoji}
+      • *Status:* Vetted
+      • *Environment:* ${host}
+
+      ${spcName} please submit.
+    `;
   } else if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
     updateData.ApplicationSubmittedBy = fullName || null;
     updateData.ApplicationSubmissionDate = currentDate;
@@ -1271,17 +1411,19 @@ export const updateJobApplicationStatus = async (
   await application.update(updateData);
 
   if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
-    // Validate that client exists
-    const clientExists = await Credentials.findOne({
-      where: {
-        clientId: application.client_id,
-        isDeleted: false,
-      },
-    });
+    message = `
+      :inbox_tray: *JOB SUBMITTED* — Lifecycle Complete
 
-    if (!clientExists) {
-      throw new Error(`Client not found with ID: ${application?.client_id}`);
-    }
+      • *SPC:* ${spcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Location:* ${application.Location}
+      • *Source:* N/A
+      • *Quality:* ${application.QualityScore}
+      • *Status:* Submitted
+      • *Environment:* ${host}
+    `;
 
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
@@ -1293,17 +1435,6 @@ export const updateJobApplicationStatus = async (
     logger.info(
       `Saving job application for client: ${clientExists.id} by user: ${fullName}`
     );
-
-    const match = application.Job_Title.match(
-      /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
-    );
-
-    const jobTitleUrl = match
-      ? {
-          url: match[1],
-          title: match[2],
-        }
-      : null;
 
     // Prepare data for Flask API
     const requestData = {
@@ -1348,21 +1479,25 @@ export const updateJobApplicationStatus = async (
     logger.info(
       `Job application saved successfully for client: ${clientExists.id}`
     );
-    // const applicationPayload = {
-    //   Client: application.Client,
-    //   Country: application.Country,
-    //   Status: 'SUBMITTED',
-    //   Job_Title: application.Job_Title,
-    //   JobId: application.JobId,
-    //   Location: application.Location,
-    //   Advertiser: application.Advertiser,
-    //   client_id: parseInt(clientExists.id),
-    //   id: parseInt(clientExists.id),
-    //   ApplicationSubmittedBy: fullName || 'N/A',
-    // };
-
-    // await Application.create(applicationPayload);
   }
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
 
   logger.info(
     `Manual application updated successfully for applicationId: ${applicationId}`
@@ -1376,97 +1511,52 @@ export const updateJobApplicationStatus = async (
 };
 
 /**
- * Assign or Unassign VA to client profile
+ * Assign or Unassign VA (PC / Vet / Completed) to client profile
+ * variant can be: 'PC' (default), 'Vet', 'Completed'
  */
 export const assignVAToClient = async (
   credId: string,
   vaEmail: string | null,
   host: string,
-  updatedBy?: string
+  updatedBy?: string,
+  variant: 'DPC' | 'VPC' | 'SPC' = 'DPC'
 ) => {
   logger.info(
-    `Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`
+    `Processing ${variant} assignment for credId=${credId}, vaEmail=${vaEmail}`
   );
 
-  if (
+  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC') => {
+    if (v === 'VPC') {
+      return {
+        emailField: 'AssignedVetEmail' as const,
+        nameField: 'AssignedVetName' as const,
+        displayLabel: 'VPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'SPC') {
+      return {
+        emailField: 'AssignedCompletedEmail' as const,
+        nameField: 'AssignedCompletedName' as const,
+        displayLabel: 'SPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    return {
+      emailField: 'AssignedPCEmail' as const,
+      nameField: 'AssignedPCName' as const,
+      displayLabel: 'DPC',
+      slackChannel: SlackChannel.VA,
+    };
+  };
+
+  const fields = resolveFieldNames(variant);
+
+  const isUnassign =
     !vaEmail ||
     vaEmail.trim() === 'Unassigned' ||
     vaEmail.trim() === 'Unassign' ||
-    vaEmail.trim() === 'unassign'
-  ) {
-    logger.info(`Unassigning VA for credId=${credId}`);
-
-    const targetCred = await Credentials.findOne({ where: { id: credId } });
-    if (!targetCred) {
-      logger.warn(`Client profile not found for credId=${credId}`);
-      throw new Error('Client profile not found');
-    }
-
-    const user = await User.findOne({
-      where: { id: targetCred.clientId },
-    });
-
-    if (!user) {
-      logger.warn('User not found');
-    }
-
-    let targetVa = null;
-    let tagName = 'Previously assigned VA';
-    let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
-
-    // Only lookup VA if there is actually an existing assigned email
-    if (targetCred.AssignedPCEmail) {
-      targetVa = await User.findOne({
-        where: { email: targetCred.AssignedPCEmail },
-      });
-
-      if (targetVa) {
-        const slackId = await getSlackIdByEmail(targetCred.AssignedPCEmail);
-        tagName = slackId
-          ? `<@${slackId}>`
-          : `${targetVa.firstName} ${targetVa.lastName}`;
-      } else {
-        logger.warn(`TPA not found for email=${targetCred.AssignedPCEmail}`);
-        tagName = targetCred.AssignedPCName || targetCred.AssignedPCEmail;
-      }
-    }
-
-    const message = `VA Unassignment for ${fullName}.
-*Success*: ${tagName} has been unassigned specifically from this client profile.
-*Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
-*Next Step*: TPA to hand over any pending items if applicable.`;
-
-    setImmediate(async () => {
-      try {
-        await SlackService.notify({
-          location: getEnvironmentFromHost(host || ''),
-          host: host || '',
-          node: SlackNode.HUMAN_RESOURCE,
-          provider: SlackProvider.HUBSTAFF,
-          severity: SlackSeverity.INFO,
-          trigger: updatedBy,
-          type: SlackEventType.USER_TRIGGERED,
-          channel: SlackChannel.VA,
-          body: message,
-        });
-      } catch (err) {
-        logger.error(`❌ Slack notification failed: ${err}`);
-      }
-    });
-
-    await targetCred.update({
-      AssignedPCName: null,
-      AssignedPCEmail: null,
-      updatedBy: updatedBy,
-    } as any);
-
-    logger.info(`VA unassigned successfully for credId=${credId}`);
-
-    return {
-      success: true,
-      message: 'TPA unassigned successfully',
-    };
-  }
+    vaEmail.trim() === 'unassign';
 
   const targetCred = await Credentials.findOne({ where: { id: credId } });
   if (!targetCred) {
@@ -1482,17 +1572,83 @@ export const assignVAToClient = async (
     logger.warn('User not found');
   }
 
-  let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
+  const fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
 
+  if (isUnassign) {
+    logger.info(`Unassigning ${fields.displayLabel} for credId=${credId}`);
+
+    const currentEmail = (targetCred as any)[fields.emailField];
+    let tagName = `Previously assigned ${fields.displayLabel}`;
+
+    if (currentEmail) {
+      const targetUser = await User.findOne({
+        where: { email: currentEmail },
+      });
+
+      if (targetUser) {
+        const slackId = await getSlackIdByEmail(currentEmail);
+        tagName = slackId
+          ? `<@${slackId}>`
+          : `${targetUser.firstName} ${targetUser.lastName}`;
+      } else {
+        logger.warn(
+          `${fields.displayLabel} not found for email=${currentEmail}`
+        );
+        const currentName = (targetCred as any)[fields.nameField];
+        tagName = currentName || currentEmail;
+      }
+    }
+
+    const message = `${fields.displayLabel} Unassignment for ${fullName}.
+*Success*: ${tagName} has been unassigned specifically from this client profile.
+*Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
+*Next Step*: Team to hand over any pending items if applicable.`;
+
+    setImmediate(async () => {
+      try {
+        await SlackService.notify({
+          location: getEnvironmentFromHost(host || ''),
+          host: host || '',
+          node: SlackNode.HUMAN_RESOURCE,
+          provider: SlackProvider.HUBSTAFF,
+          severity: SlackSeverity.INFO,
+          trigger: updatedBy,
+          type: SlackEventType.USER_TRIGGERED,
+          channel: fields.slackChannel,
+          body: message,
+        });
+      } catch (err) {
+        logger.error(`❌ Slack notification failed: ${err}`);
+      }
+    });
+
+    await targetCred.update({
+      [fields.nameField]: null,
+      [fields.emailField]: null,
+      updatedBy: updatedBy,
+    } as any);
+
+    logger.info(
+      `${fields.displayLabel} unassigned successfully for credId=${credId}`
+    );
+
+    return {
+      success: true,
+      message: `${fields.displayLabel} unassigned successfully`,
+      variant,
+    };
+  }
+
+  // --- Assignment ---
   const targetVa = await User.findOne({ where: { email: vaEmail } });
   if (!targetVa) {
-    logger.warn(`TPA not found for email=${vaEmail}`);
-    throw new Error('TPA not found');
+    logger.warn(`${fields.displayLabel} not found for email=${vaEmail}`);
+    throw new Error(`${fields.displayLabel} not found`);
   }
 
   await targetCred.update({
-    AssignedPCEmail: vaEmail,
-    AssignedPCName: `${targetVa.firstName} ${targetVa.lastName}`,
+    [fields.emailField]: vaEmail,
+    [fields.nameField]: `${targetVa.firstName} ${targetVa.lastName}`,
     updatedBy: updatedBy,
   } as any);
 
@@ -1501,7 +1657,7 @@ export const assignVAToClient = async (
     ? `<@${slackId}>`
     : `${targetVa?.firstName} ${targetVa?.lastName}`;
 
-  const message = `VA Assignment for ${fullName}.
+  const message = `${fields.displayLabel} Assignment for ${fullName}.
 *Success*: ${tagName} has been assigned to this client profile.
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
@@ -1516,7 +1672,7 @@ export const assignVAToClient = async (
         severity: SlackSeverity.INFO,
         trigger: updatedBy,
         type: SlackEventType.USER_TRIGGERED,
-        channel: SlackChannel.VA,
+        channel: fields.slackChannel,
         body: message,
       });
     } catch (err) {
@@ -1524,11 +1680,14 @@ export const assignVAToClient = async (
     }
   });
 
-  logger.info(`VA assigned successfully for credId=${credId} to ${vaEmail}`);
+  logger.info(
+    `${fields.displayLabel} assigned successfully for credId=${credId} to ${vaEmail}`
+  );
 
   return {
     success: true,
-    message: 'TPA updated successfully',
+    message: `${fields.displayLabel} updated successfully`,
+    variant,
     vaName: `${targetVa?.firstName} ${targetVa?.lastName}`,
     vaEmail: vaEmail,
   };
@@ -2070,6 +2229,10 @@ export const updateCampaignClient = async (
     'seekLoginType',
     'AssignedPCName',
     'AssignedPCEmail',
+    'AssignedVetName',
+    'AssignedVetEmail',
+    'AssignedCompletedName',
+    'AssignedCompletedEmail',
   ]);
 
   // Form field names that must be renamed to match the actual Credentials column name
