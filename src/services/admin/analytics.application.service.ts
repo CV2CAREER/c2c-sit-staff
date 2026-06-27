@@ -6,7 +6,7 @@ import ErrorHandler from "../../utils/errorHandler";
 import { isRedisUsable } from "../../utils/helpers";
 import { getSequelize } from "../../utils/sequelize";
 import { enumerateDates, normalizeDateRange } from "../../utils/date-range";
-import { getApplicationsTableShape } from "./analytics.table-shape.service";
+import { getApplicationsTableShape, clearApplicationsTableShapeCache } from "./analytics.table-shape.service";
 import { Role } from "../../utils/enum";
 
 const logger = getServiceLogger("analytics-application-service");
@@ -20,6 +20,7 @@ export interface AnalyticsWindowInput {
 interface SourceMetrics {
   successful: number;
   failed: number;
+  total?: number;
 }
 
 export interface AnalyticsResponse {
@@ -32,6 +33,7 @@ export interface AnalyticsResponse {
     failed: number;
   };
   breakdown: Record<string, SourceMetrics>;
+  totalApplications: number;
   generatedAt: string;
 }
 
@@ -39,6 +41,7 @@ interface SourceMetricsRow {
   source: string;
   successful: string | number;
   failed: string | number;
+  total?: string | number;
 }
 
 const DEFAULT_LOOKBACK_DAYS = 30;
@@ -48,8 +51,9 @@ const APPLICATIONS_TABLE = "applications";
 const ANALYTICS_TIME_ZONE = "Africa/Lagos";
 
 export const ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY =
-  "admin:analytics:dashboard:v1:latest";
-export const ADMIN_ANALYTICS_DAILY_CACHE_KEY = "admin:analytics:daily:v1";
+  "admin:analytics:dashboard:v2:latest";
+export const ADMIN_ANALYTICS_DAILY_CACHE_KEY = "admin:analytics:daily:v2";
+const ADMIN_ANALYTICS_ALLTIME_CACHE_KEY = "admin:analytics:v2:all-time";
 
 
 const toNumber = (value: string | number): number => Number(value) || 0;
@@ -128,64 +132,67 @@ const buildDailySeriesCache = (
 };
 
 class AnalyticsApplicationService {
-  private buildApplicationsSelect(shape: {
-    createdAtColumn: string;
-    deletedAtColumn?: string;
-    statusColumn: string;
-  }): string {
+  private buildApplicationsSelect(
+    shape: {
+      createdAtColumn: string;
+      deletedAtColumn?: string;
+      statusColumn: string;
+      statusColumns?: string[];
+    },
+    dateRange?: { fromIso: string; toIso: string },
+  ): string {
     const createdAtColumn = quoteIdentifier(shape.createdAtColumn);
-    const statusColumn = quoteIdentifier(shape.statusColumn);
-    const normalizedStatus = `LOWER(CAST(${statusColumn} AS TEXT))`;
     const deletedAtCondition = shape.deletedAtColumn
       ? `AND ${quoteIdentifier(shape.deletedAtColumn)} IS NULL`
+      : `AND "isDeleted" = false`;
+    const dateCondition = dateRange
+      ? `AND ${createdAtColumn} >= :from AND ${createdAtColumn} < :to`
       : "";
 
     return `
       SELECT
         'applications'::text AS source,
-        COUNT(*) FILTER (
-          WHERE app_scope.normalized_status = 'successful'
-        )::bigint AS successful,
-        COUNT(*) FILTER (
-          WHERE app_scope.normalized_status = 'failed'
-        )::bigint AS failed
-      FROM (
-        SELECT ${normalizedStatus} AS normalized_status
-        FROM ${APPLICATIONS_TABLE}
-        WHERE ${createdAtColumn} >= :from
-          AND ${createdAtColumn} < :to
-          ${deletedAtCondition}
-      ) AS app_scope
+        COUNT(*)::bigint AS total,
+        COUNT(*) FILTER (WHERE "Status" = 'Successful')::bigint AS successful,
+        COUNT(*) FILTER (WHERE "Status" IS DISTINCT FROM 'Successful')::bigint AS failed
+      FROM ${APPLICATIONS_TABLE}
+      WHERE 1=1
+        ${dateCondition}
+        ${deletedAtCondition}
     `;
   }
 
-  private async buildSourceSelects(): Promise<string[]> {
+  private async buildSourceSelects(dateRange?: { fromIso: string; toIso: string }): Promise<string[]> {
+    const dateCondition = dateRange
+      ? `AND "createdAt" >= :from AND "createdAt" < :to`
+      : "";
+
     const sourceSelects = [
       `
         SELECT
           'plans'::text AS source,
+          NULL::bigint AS total,
           COUNT(*) FILTER (WHERE "paymentStatus" = 'completed')::bigint AS successful,
           COUNT(*) FILTER (WHERE "paymentStatus" = 'failed')::bigint AS failed
         FROM plans
-        WHERE "createdAt" >= :from
-          AND "createdAt" < :to
-          AND "deletedAt" IS NULL
+        WHERE "deletedAt" IS NULL
+          ${dateCondition}
       `,
       `
         SELECT
           'users'::text AS source,
+          NULL::bigint AS total,
           COUNT(*) FILTER (WHERE "applicationStatus" = 'Commenced')::bigint AS successful,
           COUNT(*) FILTER (WHERE "applicationStatus" = 'Expired')::bigint AS failed
         FROM users
-        WHERE "createdAt" >= :from
-          AND "createdAt" < :to
-          AND "deletedAt" IS NULL
+        WHERE "deletedAt" IS NULL
+          ${dateCondition}
       `,
     ];
 
     const applicationsTableShape = await getApplicationsTableShape();
     if (applicationsTableShape) {
-      sourceSelects.push(this.buildApplicationsSelect(applicationsTableShape));
+      sourceSelects.push(this.buildApplicationsSelect(applicationsTableShape, dateRange));
     }
 
     return sourceSelects;
@@ -196,25 +203,21 @@ class AnalyticsApplicationService {
       WITH source_counts AS (
         ${sourceSelects.join("\nUNION ALL\n")}
       )
-      SELECT source, successful, failed
+      SELECT source, total, successful, failed
       FROM source_counts
     `;
   }
 
   private async executeAggregateQuery(
-    fromIso: string,
-    toIso: string,
+    dateRange?: { fromIso: string; toIso: string },
   ): Promise<SourceMetricsRow[]> {
     const sequelize = getSequelize();
-    const sourceSelects = await this.buildSourceSelects();
+    const sourceSelects = await this.buildSourceSelects(dateRange);
     const query = this.buildAggregateQuery(sourceSelects);
 
     return sequelize.query<SourceMetricsRow>(query, {
       type: QueryTypes.SELECT,
-      replacements: {
-        from: fromIso,
-        to: toIso,
-      },
+      replacements: dateRange ? { from: dateRange.fromIso, to: dateRange.toIso } : {},
     });
   }
 
@@ -419,6 +422,7 @@ class AnalyticsApplicationService {
       range: { from: `${fromDay}T00:00:00.000Z`, to: `${toDayExclusive}T00:00:00.000Z` },
       metrics,
       breakdown,
+      totalApplications: breakdown.applications?.total ?? (breakdown.applications ? breakdown.applications.successful + breakdown.applications.failed : 0),
       generatedAt: cache.generatedAt,
     };
   }
@@ -432,6 +436,7 @@ class AnalyticsApplicationService {
       acc[row.source] = {
         successful: toNumber(row.successful),
         failed: toNumber(row.failed),
+        ...(row.total !== undefined && { total: toNumber(row.total) }),
       };
       return acc;
     }, {});
@@ -445,6 +450,9 @@ class AnalyticsApplicationService {
       { successful: 0, failed: 0 },
     );
 
+    const appBreakdown = breakdown.applications;
+    const totalApplications = appBreakdown?.total ?? (appBreakdown ? appBreakdown.successful + appBreakdown.failed : 0);
+
     return {
       range: {
         from: fromIso,
@@ -452,15 +460,17 @@ class AnalyticsApplicationService {
       },
       metrics,
       breakdown,
+      totalApplications,
       generatedAt: new Date().toISOString(),
     };
   }
 
   private async computePayload(
-    fromIso: string,
-    toIso: string,
+    dateRange?: { fromIso: string; toIso: string },
   ): Promise<AnalyticsResponse> {
-    const rows = await this.executeAggregateQuery(fromIso, toIso);
+    const rows = await this.executeAggregateQuery(dateRange);
+    const fromIso = dateRange?.fromIso ?? new Date(0).toISOString();
+    const toIso = dateRange?.toIso ?? new Date().toISOString();
     return this.buildPayload(rows, fromIso, toIso);
   }
 
@@ -498,12 +508,7 @@ class AnalyticsApplicationService {
   }
 
   async warmDashboardCache(trigger = "manual"): Promise<AnalyticsResponse> {
-    const window = resolveWindow({});
-    const fromIso = window.fromIso;
-    const toIso = window.toIso;
-    const windowCacheKey = buildWindowCacheKey(fromIso, toIso);
-
-    const payload = await this.computePayload(fromIso, toIso);
+    const payload = await this.computePayload();
 
     const redis = await getConnectedRedis();
     if (isRedisUsable(redis)) {
@@ -516,16 +521,14 @@ class AnalyticsApplicationService {
         ),
         this.writeCachedPayload(
           redis,
-          windowCacheKey,
+          ADMIN_ANALYTICS_ALLTIME_CACHE_KEY,
           payload,
-          WINDOW_CACHE_TTL_SECONDS,
+          DASHBOARD_CACHE_TTL_SECONDS,
         ),
       ]);
     }
 
-    logger.info(
-      `Dashboard analytics cache warmed (trigger=${trigger}, from=${fromIso}, to=${toIso})`,
-    );
+    logger.info(`Dashboard analytics cache warmed (trigger=${trigger}, all-time)`);
 
     return payload;
   }
@@ -533,11 +536,45 @@ class AnalyticsApplicationService {
   async getSuccessfulVsFailedMetrics(
     input: AnalyticsWindowInput,
   ): Promise<AnalyticsResponse> {
+    const isAllTime = isDefaultWindowRequest(input);
+
+    if (isAllTime) {
+      if (input.bypassCache) {
+        clearApplicationsTableShapeCache();
+      }
+
+      let redis: any = null;
+      if (!input.bypassCache) {
+        redis = await getConnectedRedis();
+        if (isRedisUsable(redis) && redis) {
+          const cached = await this.readCachedPayload(redis, ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY)
+            ?? await this.readCachedPayload(redis, ADMIN_ANALYTICS_ALLTIME_CACHE_KEY);
+          if (cached) {
+            logger.info("Analytics all-time cache hit.");
+            return cached;
+          }
+        }
+      }
+
+      const payload = await this.computePayload();
+
+      if (!input.bypassCache) {
+        const redisForWrite = redis ?? await getConnectedRedis();
+        if (isRedisUsable(redisForWrite) && redisForWrite) {
+          await Promise.all([
+            this.writeCachedPayload(redisForWrite, ADMIN_ANALYTICS_ALLTIME_CACHE_KEY, payload, DASHBOARD_CACHE_TTL_SECONDS),
+            this.writeCachedPayload(redisForWrite, ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY, payload, DASHBOARD_CACHE_TTL_SECONDS),
+          ]);
+        }
+      }
+
+      return payload;
+    }
+
     const window = resolveWindow(input);
     const fromIso = window.fromIso;
     const toIso = window.toIso;
     const windowCacheKey = buildWindowCacheKey(fromIso, toIso);
-    const useDashboardCache = isDefaultWindowRequest(input);
 
     let redis: any = null;
     let hasUsableRedis = false;
@@ -545,53 +582,22 @@ class AnalyticsApplicationService {
       redis = await getConnectedRedis();
       hasUsableRedis = isRedisUsable(redis);
 
-      // If the request is whole-day aligned (common for UI start/end date filters),
-      // prefer summing from the daily cache over running a live aggregation query.
-      if (
-        hasUsableRedis &&
-        redis &&
-        !useDashboardCache &&
-        window.isWholeDays
-      ) {
+      if (hasUsableRedis && redis && window.isWholeDays) {
         const dailyCache = await this.readDailySeriesCache(redis);
         if (dailyCache) {
           const cacheLookbackMs = dailyCache.lookbackDays * 24 * 60 * 60 * 1000;
           if (window.from.getTime() < Date.now() - cacheLookbackMs - 24 * 60 * 60 * 1000) {
             logger.info("Analytics daily cache miss: range outside cache lookback.");
           } else {
-          const fromDay = formatDayInTz(window.from);
-          const toDayExclusive = formatDayInTz(window.to);
-          const payloadFromDaily = this.sumDailySeries(
-            dailyCache,
-            fromDay,
-            toDayExclusive,
-          );
-
-          // Preserve accurate ISO window boundaries for the response.
-          payloadFromDaily.range.from = fromIso;
-          payloadFromDaily.range.to = toIso;
-
-          await this.writeCachedPayload(
-            redis,
-            windowCacheKey,
-            payloadFromDaily,
-            WINDOW_CACHE_TTL_SECONDS,
-          );
-
-          logger.info("Analytics served from daily cache series.");
-          return payloadFromDaily;
+            const fromDay = formatDayInTz(window.from);
+            const toDayExclusive = formatDayInTz(window.to);
+            const payloadFromDaily = this.sumDailySeries(dailyCache, fromDay, toDayExclusive);
+            payloadFromDaily.range.from = fromIso;
+            payloadFromDaily.range.to = toIso;
+            await this.writeCachedPayload(redis, windowCacheKey, payloadFromDaily, WINDOW_CACHE_TTL_SECONDS);
+            logger.info("Analytics served from daily cache series.");
+            return payloadFromDaily;
           }
-        }
-      }
-
-      if (hasUsableRedis && redis && useDashboardCache) {
-        const dashboardCached = await this.readCachedPayload(
-          redis,
-          ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY,
-        );
-        if (dashboardCached) {
-          logger.info("Analytics dashboard cache hit.");
-          return dashboardCached;
         }
       }
 
@@ -604,45 +610,29 @@ class AnalyticsApplicationService {
       }
     }
 
-    const payload = await this.computePayload(fromIso, toIso);
+    const payload = await this.computePayload({ fromIso, toIso });
 
     if (!input.bypassCache && hasUsableRedis && redis) {
-      await this.writeCachedPayload(
-        redis,
-        windowCacheKey,
-        payload,
-        WINDOW_CACHE_TTL_SECONDS,
-      );
-
-      if (useDashboardCache) {
-        await this.writeCachedPayload(
-          redis,
-          ADMIN_ANALYTICS_DASHBOARD_CACHE_KEY,
-          payload,
-          DASHBOARD_CACHE_TTL_SECONDS,
-        );
-      }
+      await this.writeCachedPayload(redis, windowCacheKey, payload, WINDOW_CACHE_TTL_SECONDS);
     }
 
     return payload;
   }
 
   async explainSuccessfulVsFailedMetrics(input: AnalyticsWindowInput) {
-    const window = resolveWindow(input);
-    const fromIso = window.fromIso;
-    const toIso = window.toIso;
+    const isAllTime = isDefaultWindowRequest(input);
+    const dateRange = isAllTime
+      ? undefined
+      : (() => { const w = resolveWindow(input); return { fromIso: w.fromIso, toIso: w.toIso }; })();
 
-    const sourceSelects = await this.buildSourceSelects();
+    const sourceSelects = await this.buildSourceSelects(dateRange);
     const query = this.buildAggregateQuery(sourceSelects);
     const sequelize = getSequelize();
     const explainRows = await sequelize.query<any>(
       `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) ${query}`,
       {
         type: QueryTypes.SELECT,
-        replacements: {
-          from: fromIso,
-          to: toIso,
-        },
+        replacements: dateRange ? { from: dateRange.fromIso, to: dateRange.toIso } : {},
       },
     );
 
