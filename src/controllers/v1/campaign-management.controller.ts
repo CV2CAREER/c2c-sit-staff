@@ -747,7 +747,7 @@ export const getClientApplications = catchAsyncError(
   async (req: Request, res: Response) => {
     const { clientId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 15;
+    const pageSize = parseInt(req.query.pageSize as string) || 500;
     const isDeleted =
       req.query.isDeleted !== undefined
         ? req.query.isDeleted === 'true'
@@ -776,7 +776,7 @@ export const getClientManualApplications = catchAsyncError(
   async (req: Request, res: Response) => {
     const { clientId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 15;
+    const pageSize = parseInt(req.query.pageSize as string) || 500;
     const isDeleted =
       req.query.isDeleted !== undefined
         ? req.query.isDeleted === 'true'

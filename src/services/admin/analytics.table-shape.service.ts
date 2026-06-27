@@ -14,6 +14,7 @@ export interface ApplicationsTableShape {
   createdAtColumn: string;
   deletedAtColumn?: string;
   statusColumn: string;
+  statusColumns: string[]; // all matching status columns (e.g. both "Status" and "status")
 }
 
 const logger = getServiceLogger("analytics-table-shape-service");
@@ -44,18 +45,18 @@ const pickColumn = (
   availableColumns: string[],
   preferredColumns: string[],
 ): string | undefined => {
-  const columnsByLowerCase = new Map(
-    availableColumns.map((column) => [column.toLowerCase(), column]),
-  );
+  const preferredLower = new Set(preferredColumns.map((c) => c.toLowerCase()));
+  return availableColumns.find((col) => preferredLower.has(col.toLowerCase()));
+};
 
-  for (const preferredColumn of preferredColumns) {
-    const found = columnsByLowerCase.get(preferredColumn.toLowerCase());
-    if (found) {
-      return found;
-    }
-  }
-
-  return undefined;
+// Returns ALL columns whose lowercase name matches any preferred name.
+// Handles cases where a table has both "Status" and "status" as separate columns.
+const pickAllColumns = (
+  availableColumns: string[],
+  preferredColumns: string[],
+): string[] => {
+  const preferredLower = new Set(preferredColumns.map((c) => c.toLowerCase()));
+  return availableColumns.filter((col) => preferredLower.has(col.toLowerCase()));
 };
 
 const readApplicationsTableShape = async (): Promise<ApplicationsTableShape | null> => {
@@ -94,7 +95,8 @@ const readApplicationsTableShape = async (): Promise<ApplicationsTableShape | nu
   const columnNames = columns.map((row) => row.column_name);
 
   const createdAtColumn = pickColumn(columnNames, APPLICATIONS_CREATED_AT_COLUMNS);
-  const statusColumn = pickColumn(columnNames, APPLICATIONS_STATUS_COLUMNS);
+  const statusColumns = pickAllColumns(columnNames, APPLICATIONS_STATUS_COLUMNS);
+  const statusColumn = statusColumns[0];
   const deletedAtColumn = pickColumn(columnNames, APPLICATIONS_DELETED_AT_COLUMNS);
 
   if (!createdAtColumn || !statusColumn) {
@@ -104,10 +106,15 @@ const readApplicationsTableShape = async (): Promise<ApplicationsTableShape | nu
     return null;
   }
 
+  logger.info(
+    `Applications table shape: createdAt=${createdAtColumn}, statusColumns=${statusColumns.join(",")}, deletedAt=${deletedAtColumn ?? "none"}`,
+  );
+
   return {
     createdAtColumn,
     deletedAtColumn,
     statusColumn,
+    statusColumns,
   };
 };
 
