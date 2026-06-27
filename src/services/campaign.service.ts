@@ -21,6 +21,7 @@ import {
 import {
   getEnvironmentFromHost,
   getSlackIdByEmail,
+  getSlackIdOrName,
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
 import { Op, Sequelize } from 'sequelize';
@@ -1139,7 +1140,9 @@ export const saveManualApplication = async (
   clientId: string,
   joblink: string,
   jobData: any,
-  user: any
+  user: any,
+  host: string,
+  updatedBy?: string
 ) => {
   logger.info(`Saving manual application for client: ${clientId}`);
 
@@ -1214,6 +1217,56 @@ export const saveManualApplication = async (
     `Manual application saved successfully. ID: ${manualApplication.id}`
   );
 
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const message = `
+    :mag: *JOB DISCOVERED — Awaiting Vetting*
+
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${joblink}|${jobData.job_title}>
+    • *Company:* ${jobData.company || 'N/A'}
+    • *Location:* ${jobData.location || 'N/A'}
+    • *Source:* ${jobData.job_site_name || 'N/A'}
+    • *Status:* Unattended
+    • *Environment:* ${host}
+
+    ${vpcName} please vet within 4 hours.
+    `;
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
+
   return {
     success: true,
     message: 'Manual application saved successfully.',
@@ -1225,7 +1278,9 @@ export const updateJobApplicationStatus = async (
   applicationId: string,
   status: string,
   user: any,
-  qualityScore?: string | null
+  qualityScore?: string | null,
+  host: string,
+  updatedBy?: string
 ) => {
   logger.info(
     `Updating manual application status for applicationId: ${applicationId}`
@@ -1255,6 +1310,77 @@ export const updateJobApplicationStatus = async (
     updatedAt: currentDate,
   };
 
+  // Validate that client exists
+  const clientExists = await Credentials.findOne({
+    where: {
+      clientId: application.client_id,
+      isDeleted: false,
+    },
+  });
+
+  if (!clientExists) {
+    throw new Error(`Client not found with ID: ${application?.client_id}`);
+  }
+
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const spcName = await getSlackIdOrName(
+    clientExists?.AssignedCompletedEmail,
+    clientExists?.AssignedCompletedName
+  );
+
+  const match = application.Job_Title.match(
+    /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
+  );
+
+  const jobTitleUrl = match
+    ? {
+        url: match[1],
+        title: match[2],
+      }
+    : null;
+
+  const qualityEmoji =
+    qualityScore === 'HQA'
+      ? ':large_green_circle:'
+      : qualityScore === 'MQA'
+        ? ':large_orange_circle:'
+        : ':red_circle:';
+  const terminalEmoji =
+    status.toLowerCase() === 'expired' ? ':hourglass:' : ':arrow_right_hook:';
+  const toTitleCase = (value?: string) =>
+    value
+      ? value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'N/A';
+
+  let message = `${terminalEmoji} *JOB ${status}*
+
+    • *VPC:* ${vpcName}
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+    • *Company:* ${application.Advertiser}
+    • *Status:* ${toTitleCase(status)}
+    • *Environment:* ${host}
+
+    ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
+
   if (statusUpper === 'VETTED') {
     if (qualityScore == null || qualityScore === '') {
       throw new Error('qualityScore is required when status is VETTED');
@@ -1263,6 +1389,20 @@ export const updateJobApplicationStatus = async (
     updateData.QualityScore = qualityScore;
     updateData.VettedBy = fullName || null;
     updateData.VettedDate = currentDate;
+
+    message = `
+      :white_check_mark: *JOB VETTED* — ${qualityScore}
+
+      • *VPC:* ${vpcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Quality:* ${qualityScore} ${qualityEmoji}
+      • *Status:* Vetted
+      • *Environment:* ${host}
+
+      ${spcName} please submit.
+    `;
   } else if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
     updateData.ApplicationSubmittedBy = fullName || null;
     updateData.ApplicationSubmissionDate = currentDate;
@@ -1271,17 +1411,19 @@ export const updateJobApplicationStatus = async (
   await application.update(updateData);
 
   if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
-    // Validate that client exists
-    const clientExists = await Credentials.findOne({
-      where: {
-        clientId: application.client_id,
-        isDeleted: false,
-      },
-    });
+    message = `
+      :inbox_tray: *JOB SUBMITTED* — Lifecycle Complete
 
-    if (!clientExists) {
-      throw new Error(`Client not found with ID: ${application?.client_id}`);
-    }
+      • *SPC:* ${spcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Location:* ${application.Location}
+      • *Source:* N/A
+      • *Quality:* ${application.QualityScore}
+      • *Status:* Submitted
+      • *Environment:* ${host}
+    `;
 
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
@@ -1293,17 +1435,6 @@ export const updateJobApplicationStatus = async (
     logger.info(
       `Saving job application for client: ${clientExists.id} by user: ${fullName}`
     );
-
-    const match = application.Job_Title.match(
-      /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
-    );
-
-    const jobTitleUrl = match
-      ? {
-          url: match[1],
-          title: match[2],
-        }
-      : null;
 
     // Prepare data for Flask API
     const requestData = {
@@ -1348,21 +1479,25 @@ export const updateJobApplicationStatus = async (
     logger.info(
       `Job application saved successfully for client: ${clientExists.id}`
     );
-    // const applicationPayload = {
-    //   Client: application.Client,
-    //   Country: application.Country,
-    //   Status: 'SUBMITTED',
-    //   Job_Title: application.Job_Title,
-    //   JobId: application.JobId,
-    //   Location: application.Location,
-    //   Advertiser: application.Advertiser,
-    //   client_id: parseInt(clientExists.id),
-    //   id: parseInt(clientExists.id),
-    //   ApplicationSubmittedBy: fullName || 'N/A',
-    // };
-
-    // await Application.create(applicationPayload);
   }
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
 
   logger.info(
     `Manual application updated successfully for applicationId: ${applicationId}`

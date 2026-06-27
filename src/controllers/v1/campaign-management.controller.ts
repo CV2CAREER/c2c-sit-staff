@@ -358,12 +358,19 @@ export const saveJobManually = catchAsyncError(
     logger.info('Processing job save request');
     const { clientId, joblink, jobData } = req.body;
     const user = (req as any).user;
+    const host = req.get('host') || '';
+    const authenticatedUser = (req as any).user;
+    const updatedByName = authenticatedUser
+      ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
+      : undefined;
 
     const result = await saveManualApplication(
       clientId,
       joblink,
       jobData,
-      user
+      user,
+      host,
+      updatedByName
     );
 
     res.status(200).json(result);
@@ -375,12 +382,18 @@ export const updateJobApplicationStatusManually = catchAsyncError(
     logger.info('Processing update job application status');
     const { applicationId, status, qualityScore } = req.body;
     const user = (req as any).user;
-    console.log(req.body);
+    const host = req.get('host') || '';
+    const authenticatedUser = (req as any).user;
+    const updatedByName = authenticatedUser
+      ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
+      : undefined;
     const result = await updateJobApplicationStatus(
       applicationId,
       status,
       user,
-      qualityScore
+      qualityScore,
+      host,
+      updatedByName
     );
     res.status(200).json(result);
   }
