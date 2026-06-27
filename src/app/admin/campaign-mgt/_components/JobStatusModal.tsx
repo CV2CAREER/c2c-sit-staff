@@ -43,6 +43,25 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
+  const current = initialStatus.toLowerCase();
+
+  let available: StatusOption[] = [...statusOptions];
+
+  // Ensure the incoming status is one of the allowed options
+  const currentStatus: StatusOption = statusOptions.includes(
+    initialStatus as StatusOption
+  )
+    ? (initialStatus as StatusOption)
+    : 'Unattended';
+
+  if (current === 'vetted') {
+    available = available.filter((s) => s !== 'Unattended');
+  }
+
+  if (['submitted', 'skipped', 'expired'].includes(current)) {
+    available = [currentStatus];
+  }
+
   useEffect(() => {
     if (isOpen) {
       setSelectedStatus(initialStatus || 'Unattended');
@@ -145,7 +164,9 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
               <span>
                 {selectedStatus}
                 {selectedQualityTag && (
-                  <span className="ml-2 text-gray-400">· {selectedQualityTag}</span>
+                  <span className="ml-2 text-gray-400">
+                    · {selectedQualityTag}
+                  </span>
                 )}
               </span>
               <svg
@@ -155,14 +176,18 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                 stroke="currentColor"
                 strokeWidth={2}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
 
             {/* Inline panel */}
             {dropOpen && (
               <div className="mt-1.5 w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-                {statusOptions.map((val, i) => {
+                {available.map((val, i) => {
                   const showPills =
                     qualityStatuses.includes(val) && selectedStatus === val;
 
@@ -172,7 +197,11 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                         className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-gray-800 hover:bg-gray-50"
                         onClick={() => handleSelectOption(val)}
                       >
-                        <span className={selectedStatus === val ? 'font-medium' : ''}>
+                        <span
+                          className={
+                            selectedStatus === val ? 'font-medium' : ''
+                          }
+                        >
                           {val}
                         </span>
                         {selectedStatus === val && (
@@ -197,7 +226,9 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                                 }}
                                 style={{
                                   background: bg,
-                                  outline: isSelected ? `2px solid ${bg}` : 'none',
+                                  outline: isSelected
+                                    ? `2px solid ${bg}`
+                                    : 'none',
                                   outlineOffset: isSelected ? 2 : 0,
                                 }}
                                 className="rounded-md px-3 py-1 text-xs font-bold text-white transition-all hover:opacity-85"

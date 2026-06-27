@@ -1,16 +1,16 @@
 /* eslint-disable */
-import React, { SetStateAction } from "react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import React, { SetStateAction } from 'react';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import {
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -18,21 +18,21 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { UseMutationResult, useQueryClient } from "@tanstack/react-query";
-import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
-import { Switch } from "@/components/ui/switch";
-import { DatePicker } from "antd"; // Import DatePicker from antd
-import moment from "moment"; // Import moment
-import SearchSelect from "@/components/ui/react-select";
-import { OptionType } from "@/types";
-import { SingleValue } from "react-select";
-import countryList from "react-select-country-list";
-import { CampaignTableColType } from "@/types/admin";
-import toast from "react-hot-toast";
-import { validateHeaderName } from "http";
-import { VACell } from "./AssignVA";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { UseMutationResult, useQueryClient } from '@tanstack/react-query';
+import { ApiError, ApiSuccess } from '@/types/apiResponse.types';
+import { Switch } from '@/components/ui/switch';
+import { DatePicker } from 'antd'; // Import DatePicker from antd
+import moment from 'moment'; // Import moment
+import SearchSelect from '@/components/ui/react-select';
+import { OptionType } from '@/types';
+import { SingleValue } from 'react-select';
+import countryList from 'react-select-country-list';
+import { CampaignTableColType } from '@/types/admin';
+import toast from 'react-hot-toast';
+import { validateHeaderName } from 'http';
+import { VACell } from './AssignVA';
 
 const formSchema = z.object({
   Full_Name: z.string().min(2).max(50).optional().nullable(),
@@ -72,7 +72,7 @@ const formSchema = z.object({
   Alias_Email: z.string().email().optional().nullable(),
   Alias_Password: z.string().optional().nullable(),
   VaName: z.string().optional().nullable(),
-  Assurance: z.string().optional().nullable()
+  Assurance: z.string().optional().nullable(),
 });
 
 type CampaignFormValues = z.infer<typeof formSchema>;
@@ -81,7 +81,7 @@ interface EditTableModalProps {
   client: CampaignTableColType;
   setDialog: (
     value: SetStateAction<
-     "edit" | "soft-delete" | "restore" | "delete" | "generateAQ" | null
+      'edit' | 'soft-delete' | 'restore' | 'delete' | 'generateAQ' | null
     >
   ) => void;
   editClientAction: () => UseMutationResult<
@@ -93,16 +93,16 @@ interface EditTableModalProps {
 
 const capitalizedData = [
   {
-    value: "HOLD",
-    label: "HOLD",
+    value: 'HOLD',
+    label: 'HOLD',
   },
   {
-    value: "FLIGHT",
-    label: "FLIGHT",
+    value: 'FLIGHT',
+    label: 'FLIGHT',
   },
   {
-    value: "EMPLOYED",
-    label: "EMPLOYED",
+    value: 'EMPLOYED',
+    label: 'EMPLOYED',
   },
 ];
 
@@ -112,7 +112,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   editClientAction,
 }) => {
   const queryClient = useQueryClient();
-  
+
   const countries = countryList()
     .getData()
     .map((country) => ({ ...country, value: country.label }));
@@ -129,44 +129,45 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      Full_Name: getField("Full_Name"),
-      First_Name: getField("First_Name"),
-      Middle_Name: getField("Middle_Name"),
-      Last_Name: getField("Last_Name"),
-      Plan: getField("Plan"),
-      ReturnCount: getField("ReturnCount") || null,
-      Order: getField("Order"),
-      SeekSubStartDate: getField("SeekSubStartDate"),
-      Assurance: getField("Assurance"),
-      SeekWeeklyMax: getField("SeekWeeklyMax"),
-      SeekSubDurDays: getField("SeekSubDurDays"),
-      GraceDuration: getField("GraceDuration"),
-      Capitalized: getField("Capitalized"),
-      Country: getField("Country"),
+      Full_Name: getField('Full_Name'),
+      First_Name: getField('First_Name'),
+      Middle_Name: getField('Middle_Name'),
+      Last_Name: getField('Last_Name'),
+      Plan: getField('Plan'),
+      ReturnCount: getField('ReturnCount') || null,
+      Order: getField('Order'),
+      SeekSubStartDate: getField('SeekSubStartDate'),
+      Assurance: getField('Assurance'),
+      SeekWeeklyMax: getField('SeekWeeklyMax'),
+      SeekSubDurDays: getField('SeekSubDurDays'),
+      GraceDuration: getField('GraceDuration'),
+      Capitalized: getField('Capitalized'),
+      Country: getField('Country'),
       Active: client.Active ?? false,
       SeekAnswerPriority: client.SeekAnswerPriority ?? false,
-      Seek_Aggregator: getField("Seek_Aggregator") ?? false,
-      Linkedin_Aggregator: getField("Linkedin_Aggregator") ?? false,
-      Jobserve_Aggregator: getField("Jobserve_Aggregator") ?? false,
-      EscapeCity_Aggregator: getField("EscapeCity_Aggregator") ?? false,
-      WorkforceAustralia_Aggregator: getField("WorkforceAustralia_Aggregator") ?? false,
-      Indeed_Aggregator: getField("Indeed_Aggregator") ?? false,
-      Monster_Aggregator: getField("Monster_Aggregator") ?? false,
-      Jora_Aggregator: getField("Jora_Aggregator") ?? false,
-      Adzuna_Aggregator: getField("Adzuna_Aggregator") ?? false,
-      CareerOne_Aggregator: getField("CareerOne_Aggregator") ?? false,
-      Reed_Aggregator: getField("Reed_Aggregator") ?? false,
-      Adecco_Aggregator: getField("Adecco_Aggregator") ?? 0,
-      CVLibrary_Aggregator: getField("CVLibrary_Aggregator") ?? false,
-      NHSJobs_Aggregator: getField("NHSJobs_Aggregator") ?? false,
-      Throttle_Listing: getField("Throttle_Listing") ?? false,
-      Throttle_Duration: getField("Throttle_Duration") ?? null,
-      Batch: getField("Batch") ?? null,
-      Craft: getField("Craft") ?? null,
-      Status: getField("Status") ?? null,
-      Alias_Email: getField("Alias_Email") ?? null,
-      Alias_Password: getField("Alias_Password") ?? null,
-      VaName: getField("VaName") ?? null
+      Seek_Aggregator: getField('Seek_Aggregator') ?? false,
+      Linkedin_Aggregator: getField('Linkedin_Aggregator') ?? false,
+      Jobserve_Aggregator: getField('Jobserve_Aggregator') ?? false,
+      EscapeCity_Aggregator: getField('EscapeCity_Aggregator') ?? false,
+      WorkforceAustralia_Aggregator:
+        getField('WorkforceAustralia_Aggregator') ?? false,
+      Indeed_Aggregator: getField('Indeed_Aggregator') ?? false,
+      Monster_Aggregator: getField('Monster_Aggregator') ?? false,
+      Jora_Aggregator: getField('Jora_Aggregator') ?? false,
+      Adzuna_Aggregator: getField('Adzuna_Aggregator') ?? false,
+      CareerOne_Aggregator: getField('CareerOne_Aggregator') ?? false,
+      Reed_Aggregator: getField('Reed_Aggregator') ?? false,
+      Adecco_Aggregator: getField('Adecco_Aggregator') ?? 0,
+      CVLibrary_Aggregator: getField('CVLibrary_Aggregator') ?? false,
+      NHSJobs_Aggregator: getField('NHSJobs_Aggregator') ?? false,
+      Throttle_Listing: getField('Throttle_Listing') ?? false,
+      Throttle_Duration: getField('Throttle_Duration') ?? null,
+      Batch: getField('Batch') ?? null,
+      Craft: getField('Craft') ?? null,
+      Status: getField('Status') ?? null,
+      Alias_Email: getField('Alias_Email') ?? null,
+      Alias_Password: getField('Alias_Password') ?? null,
+      VaName: getField('VaName') ?? null,
     },
   });
 
@@ -180,11 +181,11 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
         const currentValue = getField(key);
 
         let processedValue: typeof value | undefined = value;
-        if (typeof processedValue === "string") {
+        if (typeof processedValue === 'string') {
           processedValue = processedValue.trim() as any;
         }
         // Treat empty string as "no change"
-        if (processedValue === "" || processedValue === null) {
+        if (processedValue === '' || processedValue === null) {
           return acc;
         }
 
@@ -199,32 +200,37 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
 
     // If there are no changes, return early
     if (Object.keys(updatedData).length === 0) {
-      toast("No changes detected.");
+      toast('No changes detected.');
       setDialog(null);
     } else {
-      toast.loading("Updating client...");
-      
-      editClientAction().mutate({
-        clientId: client.id,
-        data: {
-          ...updatedData,
+      toast.loading('Updating client...');
+
+      editClientAction().mutate(
+        {
+          clientId: client.id,
+          data: {
+            ...updatedData,
+          },
         },
-      }, {
-        onSuccess: () => {
-          toast.dismiss();
-          toast.success("Client has been updated successfully");
-          setDialog(null);
-          
-          // Refresh campaign clients table
-          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
-        },
-        onError: (err) => {
-          toast.dismiss();
-          toast.error(err.message || "Failed to update client");
+        {
+          onSuccess: () => {
+            toast.dismiss();
+            toast.success('Client has been updated successfully');
+            setDialog(null);
+
+            // Refresh campaign clients table
+            queryClient.invalidateQueries({
+              queryKey: ['admin-fetch-campaign-clients'],
+            });
+          },
+          onError: (err) => {
+            toast.dismiss();
+            toast.error(err.message || 'Failed to update client');
+          },
         }
-      });
+      );
     }
-  }
+  };
 
   return (
     <DialogContent className="h-[70vh] overflow-auto">
@@ -244,10 +250,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Itoro" 
-                          {...field} 
-                          value={field.value ?? ""} 
+                        <Input
+                          placeholder="Itoro"
+                          {...field}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -261,10 +267,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Middle Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Itoro" 
-                          {...field} 
-                          value={field.value ?? ""} 
+                        <Input
+                          placeholder="Itoro"
+                          {...field}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -281,10 +287,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Doe" 
-                          {...field} 
-                          value={field.value ?? ""} 
+                        <Input
+                          placeholder="Doe"
+                          {...field}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -301,7 +307,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Plan"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -321,7 +327,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Alias Email"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -338,7 +344,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Alias Password"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -358,7 +364,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Return Count"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -375,7 +381,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Order"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -395,7 +401,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           type="date"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -411,9 +417,20 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormControl>
                         <DatePicker
                           format="DD-MM-YYYY"
-                          value={field.value ? moment(field.value, ["DD-MM-YYYY", moment.ISO_8601]) : null}
+                          value={
+                            field.value
+                              ? moment(field.value, [
+                                  'DD-MM-YYYY',
+                                  moment.ISO_8601,
+                                ])
+                              : null
+                          }
                           onChange={(dateMoment: moment.Moment | null) => {
-                            field.onChange(dateMoment ? dateMoment.format("DD-MM-YYYY") : null);
+                            field.onChange(
+                              dateMoment
+                                ? dateMoment.format('DD-MM-YYYY')
+                                : null
+                            );
                           }}
                           className="w-full"
                         />
@@ -436,7 +453,9 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                           type="number"
                           placeholder="Sub Duration Days"
                           value={field.value as number}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value))
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -449,15 +468,17 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Grace Duration</FormLabel>
-                        <FormControl>
+                      <FormControl>
                         <Input
                           type="number"
                           placeholder="Grace Duration"
                           {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value))
+                          }
                         />
-                        </FormControl>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -469,64 +490,64 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   control={form.control}
                   name="Capitalized"
                   render={({ field }) => (
-                  <FormItem className="">
-                    <FormLabel>Capitalized</FormLabel>
-                    <FormControl>
-                    <SearchSelect
-                      name="Capitalized"
-                      placeholder="Capitalized"
-                      className="col-span-full text-[#455A64] w-full"
-                      options={capitalizedData}
-                      onChange={(e: SingleValue<OptionType>) => {
-                      if (e) {
-                        form.setValue("Capitalized", e.value);
-                      }
-                      return false;
-                      }}
-                      onBlur={field.onBlur}
-                      value={
-                      (form.getValues("Capitalized") &&
-                        capitalizedData.find(
-                        (c) => c.value === form.getValues("Capitalized")
-                        )) ||
-                      null
-                      }
-                    />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                    <FormItem className="">
+                      <FormLabel>Capitalized</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          name="Capitalized"
+                          placeholder="Capitalized"
+                          className="col-span-full text-[#455A64] w-full"
+                          options={capitalizedData}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Capitalized', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Capitalized') &&
+                              capitalizedData.find(
+                                (c) => c.value === form.getValues('Capitalized')
+                              )) ||
+                            null
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="Country"
                   render={({ field }) => (
-                  <FormItem className="w-[50%]">
-                    <FormLabel>Country</FormLabel>
-                    <FormControl>
-                    <SearchSelect
-                      name="Country"
-                      placeholder="Country of Residence"
-                      className="col-span-full text-[#455A64] w-full"
-                      options={countries}
-                      onChange={(e: SingleValue<OptionType>) => {
-                      if (e) {
-                        form.setValue("Country", e.value);
-                      }
-                      return false;
-                      }}
-                      onBlur={field.onBlur}
-                      value={
-                      (form.getValues("Country") &&
-                        countries.find(
-                        (c) => c.value === form.getValues("Country")
-                        )) ||
-                      null
-                      }
-                    />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                    <FormItem className="w-[50%]">
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          name="Country"
+                          placeholder="Country of Residence"
+                          className="col-span-full text-[#455A64] w-full"
+                          options={countries}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Country', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Country') &&
+                              countries.find(
+                                (c) => c.value === form.getValues('Country')
+                              )) ||
+                            null
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
                 />
               </div>
@@ -622,7 +643,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Switch
                           checked={field.value as any}
                           onCheckedChange={field.onChange}
-                          />
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -638,7 +659,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Switch
                           checked={field.value as any}
                           onCheckedChange={field.onChange}
-                          />
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -657,7 +678,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Batch"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -674,7 +695,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           placeholder="Craft"
                           {...field}
-                          value={field.value ?? ""}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -685,15 +706,15 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
 
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Discovery Placement Controller</label>
-                <VACell data={client} variant="Discovery"/>
+                <VACell data={client} variant="DPC" />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Vetting Placement Controller</label>
-                <VACell data={client} variant="Vet"/>
+                <VACell data={client} variant="VPC" />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="">Completed Placement Controller</label>
-                <VACell data={client} variant="Completed"/>
+                <label htmlFor="">Submission Placement Controller</label>
+                <VACell data={client} variant="SPC" />
               </div>
             </form>
           </Form>
