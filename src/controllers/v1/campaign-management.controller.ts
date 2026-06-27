@@ -391,8 +391,8 @@ export const updateJobApplicationStatusManually = catchAsyncError(
       applicationId,
       status,
       user,
-      qualityScore,
       host,
+      qualityScore,
       updatedByName
     );
     res.status(200).json(result);
