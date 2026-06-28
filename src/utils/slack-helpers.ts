@@ -45,12 +45,12 @@ export const sendStandardSlackNotification = async (
     const location = params.location ?? getEnvironmentFromHost(params.host);
 
     let channel = params.channel ?? SlackChannel.CRY_WOLF;
-    if (
-      channel === SlackChannel.CRY_WOLF &&
-      location === SlackLocation.PRODUCTION
-    ) {
-      channel = SlackChannel.TOWN_CRIER;
-    }
+    // if (
+    //   channel === SlackChannel.CRY_WOLF &&
+    //   location === SlackLocation.PRODUCTION
+    // ) {
+    //   channel = SlackChannel.TOWN_CRIER;
+    // }
 
     // Add mentions if teammate mentions are requested
     let mentions;
