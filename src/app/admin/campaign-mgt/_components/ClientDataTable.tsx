@@ -1366,9 +1366,9 @@ const ClientDataTable: React.FC<{
               }}
               paginationModel={paginationModel}
               slots={{
-                toolbar: EditToolbar as any,
                 loadingOverlay: LoadingSpinner,
               }}
+              showToolbar={true}
               rows={tableData}
               rowHeight={38}
               rowReordering
@@ -1396,9 +1396,9 @@ const ClientDataTable: React.FC<{
               }}
               paginationModel={paginationModel}
               slots={{
-                toolbar: EditToolbar as any,
                 loadingOverlay: LoadingSpinner,
               }}
+              showToolbar={true}
               rows={tableData}
               rowHeight={38}
               rowReordering
