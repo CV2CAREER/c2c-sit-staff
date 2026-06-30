@@ -71,7 +71,7 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
                 displayValue: ""
             },
             {
-                title: "Preferred Locations",
+                title: "Preferred States",
                 key: "locations",
                 inputType: "multiSelect",
                 options: [],
@@ -79,8 +79,24 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
                 displayValue: ""
             },
             {
-                title: "Excluded Locations",
+                title: "Excluded States",
                 key: "stateExcluded",
+                inputType: "multiSelect",
+                options: [],
+                value: "",
+                displayValue: ""
+            },
+            {
+                title: "Preferred Cities",
+                key: "city",
+                inputType: "multiSelect",
+                options: [],
+                value: "",
+                displayValue: ""
+            },
+            {
+                title: "Excluded Cities",
+                key: "cityExcluded",
                 inputType: "multiSelect",
                 options: [],
                 value: "",
@@ -144,6 +160,27 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
             {
                 title: "Excluded Industries",
                 key: "industriesExcluded",
+                inputType: "multiSelect",
+                options: [],
+                value: "",
+                displayValue: ""
+            }
+        ]
+    },
+    {
+        title: "Classifications",
+        fields: [
+            {
+                title: "Preferred Classifications",
+                key: "classifications",
+                inputType: "multiSelect",
+                options: [],
+                value: "",
+                displayValue: ""
+            },
+            {
+                title: "Excluded Classifications",
+                key: "classificationsExcluded",
                 inputType: "multiSelect",
                 options: [],
                 value: "",
