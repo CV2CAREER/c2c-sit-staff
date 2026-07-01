@@ -23,11 +23,17 @@ const logger = getServiceLogger('pipeline-leaderboard-job');
 
 function getYesterdayRange(): { start: Date; end: Date } {
   const now = new Date();
+
+  // Yesterday 12:00:00.000 AM
   const start = new Date(now);
   start.setDate(start.getDate() - 1);
   start.setHours(0, 0, 0, 0);
+
+  // Yesterday 11:59:59.999 PM
   const end = new Date(now);
-  end.setHours(0, 0, 0, 0);
+  end.setDate(end.getDate() - 1);
+  end.setHours(23, 59, 59, 999);
+
   return { start, end };
 }
 
@@ -554,13 +560,13 @@ async function buildVettingSection(
     const pc = entries[i];
     const tag = await tagPC(pc.pcName, emailLookup);
     lines.push(
-      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted (${pc.high}H / ${pc.med}M / ${pc.low}L) • ${pc.unattended} Unattended`
+      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted (${pc.high}H / ${pc.med}M / ${pc.low}L) • ${pc.unattended} Pending Vetting`
     );
 
     const sorted = [...pc.clients.values()].sort((a, b) => b.count - a.count);
     for (const c of sorted) {
       lines.push(
-        `   • *${c.clientName}:* ${c.count} (H=${c.high} M=${c.med} L=${c.low}) • ${c.unattended} Unattended`
+        `   • *${c.clientName}:* ${c.count} (H=${c.high} M=${c.med} L=${c.low}) • ${c.unattended} Pending Vetting`
       );
     }
   }
@@ -589,13 +595,13 @@ async function buildSubmissionSection(
     const pc = entries[i];
     const tag = await tagPC(pc.pcName, emailLookup);
     lines.push(
-      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted (${pc.high}H / ${pc.med}M / ${pc.low}L) • ${pc.unattended} Unattended`
+      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted• ${pc.unattended} Pending Submission`
     );
 
     const sorted = [...pc.clients.values()].sort((a, b) => b.count - a.count);
     for (const c of sorted) {
       lines.push(
-        `   • *${c.clientName}:* ${c.count} (H=${c.high} M=${c.med} L=${c.low}) • ${c.unattended} Unattended`
+        `   • *${c.clientName}:* ${c.count} • ${c.unattended} Pending Submission`
       );
     }
   }
@@ -744,11 +750,11 @@ export async function runPipelineLeaderboardJob() {
 }
 
 /**
- * Cron job: runs daily at 9:05 AM WAT (08:05 UTC) — 5 min after the ops report.
+ * Cron job: runs daily at 12:00 AM WAT (Africa/Lagos timezone).
  */
 export function createPipelineLeaderboardJob() {
   return cron.schedule(
-    '5 8 * * *',
+    '0 0 * * *',
     async () => {
       try {
         await runPipelineLeaderboardJob();
