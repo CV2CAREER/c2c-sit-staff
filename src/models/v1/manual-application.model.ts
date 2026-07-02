@@ -45,6 +45,10 @@ export class ManualApplication extends Model {
   @Column(DataType.TEXT)
   Status?: string;
 
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  StatusReason?: string;
+
   @Default('N/A')
   @Column(DataType.STRING(700))
   Job_Title!: string;
