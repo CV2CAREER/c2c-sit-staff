@@ -1,41 +1,50 @@
-import cron from "node-cron";
-import { Op } from "sequelize";
-import { ManualApplication } from "../../models/v1/manual-application.model";
-import { Credentials } from "../../models/v1/credentials.model";
-import { User } from "../../models/v1/user.model";
-import { getServiceLogger } from "../../utils/createLogger";
-import { SlackService } from "../../services/slack.service";
-import { getEnvironmentFromHost, getSlackIdOrName } from "../../utils/slack-helpers";
+import cron from 'node-cron';
+import { Op } from 'sequelize';
+import { ManualApplication } from '../../models/v1/manual-application.model';
+import { Credentials } from '../../models/v1/credentials.model';
+import { User } from '../../models/v1/user.model';
+import { getServiceLogger } from '../../utils/createLogger';
+import { SlackService } from '../../services/slack.service';
+import {
+  getEnvironmentFromHost,
+  getSlackIdOrName,
+} from '../../utils/slack-helpers';
 import {
   SlackChannel,
   SlackEventType,
   SlackNode,
   SlackProvider,
   SlackSeverity,
-} from "../../utils/enum";
+} from '../../utils/enum';
 
-const logger = getServiceLogger("pipeline-leaderboard-job");
+const logger = getServiceLogger('pipeline-leaderboard-job');
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function getYesterdayRange(): { start: Date; end: Date } {
   const now = new Date();
+
+  // Yesterday 12:00:00.000 AM
   const start = new Date(now);
   start.setDate(start.getDate() - 1);
   start.setHours(0, 0, 0, 0);
+
+  // Yesterday 11:59:59.999 PM
   const end = new Date(now);
-  end.setHours(0, 0, 0, 0);
+  end.setDate(end.getDate() - 1);
+  end.setHours(23, 59, 59, 999);
+
   return { start, end };
 }
 
 function getYesterdayLabel(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "Africa/Lagos",
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Africa/Lagos',
   });
 }
 
@@ -66,29 +75,116 @@ interface PCEntry {
   high: number;
   med: number;
   low: number;
+  unattended: number;
   // clientId → stats
-  clients: Map<string, { clientName: string } & QualityCount>;
+  clients: Map<
+    string,
+    {
+      clientName: string;
+      unattended: number;
+    } & QualityCount
+  >;
 }
 
 // ─── Fetch active clients from Credentials + User join ────────────────────────
+
+async function fetchUnattendedCounts(
+  clientIds: string[],
+  start: Date,
+  end: Date
+): Promise<Map<string, number>> {
+  const rows = await ManualApplication.findAll({
+    where: {
+      client_id: {
+        [Op.in]: clientIds,
+      },
+      isDeleted: false,
+      Status: 'UNATTENDED',
+      DiscoveryDate: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    },
+    attributes: [
+      'client_id',
+      [
+        ManualApplication.sequelize!.fn(
+          'COUNT',
+          ManualApplication.sequelize!.col('id')
+        ),
+        'count',
+      ],
+    ],
+    group: ['client_id'],
+    raw: true,
+  });
+
+  const map = new Map<string, number>();
+
+  for (const row of rows as any[]) {
+    map.set(row.client_id, Number(row.count));
+  }
+
+  return map;
+}
+
+async function fetchAwaitingSubmissionCounts(
+  clientIds: string[],
+  start: Date,
+  end: Date
+): Promise<Map<string, number>> {
+  const rows = await ManualApplication.findAll({
+    where: {
+      client_id: {
+        [Op.in]: clientIds,
+      },
+      isDeleted: false,
+      Status: 'VETTED',
+      VettedDate: {
+        [Op.gte]: start,
+        [Op.lt]: end,
+      },
+    },
+    attributes: [
+      'client_id',
+      [
+        ManualApplication.sequelize!.fn(
+          'COUNT',
+          ManualApplication.sequelize!.col('id')
+        ),
+        'count',
+      ],
+    ],
+    group: ['client_id'],
+    raw: true,
+  });
+
+  const map = new Map<string, number>();
+
+  for (const row of rows as any[]) {
+    map.set(row.client_id, Number(row.count));
+  }
+
+  return map;
+}
 
 async function fetchAllActiveClients(): Promise<ClientInfo[]> {
   const credentials = await Credentials.findAll({
     where: { Active: true, deletedAt: null },
     attributes: [
-      "clientId",
-      "AssignedPCName",
-      "AssignedPCEmail",
-      "AssignedVetName",
-      "AssignedVetEmail",
-      "AssignedCompletedName",
-      "AssignedCompletedEmail",
+      'clientId',
+      'AssignedPCName',
+      'AssignedPCEmail',
+      'AssignedVetName',
+      'AssignedVetEmail',
+      'AssignedCompletedName',
+      'AssignedCompletedEmail',
     ],
     include: [
       {
         model: User,
-        as: "client",
-        attributes: ["id", "firstName", "lastName", "email"],
+        as: 'client',
+        attributes: ['id', 'firstName', 'lastName', 'email'],
         required: false,
       },
     ],
@@ -98,7 +194,7 @@ async function fetchAllActiveClients(): Promise<ClientInfo[]> {
     const cred = c as any;
     const user = cred.client;
     const fullName = user
-      ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email
+      ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
       : `Client ${cred.clientId}`;
     return {
       clientId: cred.clientId,
@@ -115,11 +211,13 @@ async function fetchAllActiveClients(): Promise<ClientInfo[]> {
 
 // ─── Quality score bucketing ──────────────────────────────────────────────────
 
-function bucketQuality(score: string | null | undefined): "high" | "med" | "low" {
-  const s = (score || "").toUpperCase().trim();
-  if (s === "H" || s === "HQA" || s === "HIGH") return "high";
-  if (s === "M" || s === "MQA" || s === "MEDIUM" || s === "MED") return "med";
-  return "low";
+function bucketQuality(
+  score: string | null | undefined
+): 'high' | 'med' | 'low' {
+  const s = (score || '').toUpperCase().trim();
+  if (s === 'H' || s === 'HQA' || s === 'HIGH') return 'high';
+  if (s === 'M' || s === 'MQA' || s === 'MEDIUM' || s === 'MED') return 'med';
+  return 'low';
 }
 
 // ─── Fetch ManualApplication rows for yesterday ───────────────────────────────
@@ -137,7 +235,9 @@ async function fetchDiscoveryRowsYesterday(
     where: {
       client_id: { [Op.in]: clientIds },
       isDeleted: false,
-      DiscoveredBy: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }, { [Op.ne]: "N/A" }] },
+      DiscoveredBy: {
+        [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
+      },
       [Op.or]: [
         { DiscoveryDate: { [Op.gte]: start, [Op.lt]: end } },
         {
@@ -146,7 +246,7 @@ async function fetchDiscoveryRowsYesterday(
         },
       ],
     },
-    attributes: ["client_id", "DiscoveredBy"],
+    attributes: ['client_id', 'DiscoveredBy'],
     raw: true,
   });
   return rows as any[];
@@ -156,12 +256,16 @@ async function fetchVettingRowsYesterday(
   clientIds: string[],
   start: Date,
   end: Date
-): Promise<Array<{ client_id: string; VettedBy: string; QualityScore: string | null }>> {
+): Promise<
+  Array<{ client_id: string; VettedBy: string; QualityScore: string | null }>
+> {
   const rows = await ManualApplication.findAll({
     where: {
       client_id: { [Op.in]: clientIds },
       isDeleted: false,
-      VettedBy: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }, { [Op.ne]: "N/A" }] },
+      VettedBy: {
+        [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
+      },
       [Op.or]: [
         { VettedDate: { [Op.gte]: start, [Op.lt]: end } },
         {
@@ -170,7 +274,7 @@ async function fetchVettingRowsYesterday(
         },
       ],
     },
-    attributes: ["client_id", "VettedBy", "QualityScore"],
+    attributes: ['client_id', 'VettedBy', 'QualityScore'],
     raw: true,
   });
   return rows as any[];
@@ -185,7 +289,9 @@ async function fetchSubmissionRowsYesterday(
     where: {
       client_id: { [Op.in]: clientIds },
       isDeleted: false,
-      ApplicationSubmittedBy: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }, { [Op.ne]: "N/A" }] },
+      ApplicationSubmittedBy: {
+        [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
+      },
       [Op.or]: [
         { ApplicationSubmissionDate: { [Op.gte]: start, [Op.lt]: end } },
         {
@@ -194,7 +300,7 @@ async function fetchSubmissionRowsYesterday(
         },
       ],
     },
-    attributes: ["client_id", "ApplicationSubmittedBy"],
+    attributes: ['client_id', 'ApplicationSubmittedBy'],
     raw: true,
   });
   return rows as any[];
@@ -213,15 +319,31 @@ function aggregateDiscovery(
     if (!pcName) continue;
 
     if (!pcMap.has(pcName)) {
-      pcMap.set(pcName, { pcName, pcEmail: null, total: 0, high: 0, med: 0, low: 0, clients: new Map() });
+      pcMap.set(pcName, {
+        pcName,
+        pcEmail: null,
+        total: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+        unattended: 0,
+        clients: new Map(),
+      });
     }
     const entry = pcMap.get(pcName)!;
     entry.total++;
 
     const clientId = row.client_id;
-    const clientName = clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
+    const clientName =
+      clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
     if (!entry.clients.has(clientId)) {
-      entry.clients.set(clientId, { clientName, count: 0, high: 0, med: 0, low: 0 });
+      entry.clients.set(clientId, {
+        clientName,
+        count: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+      });
     }
     entry.clients.get(clientId)!.count++;
   }
@@ -230,8 +352,13 @@ function aggregateDiscovery(
 }
 
 function aggregateVetting(
-  rows: Array<{ client_id: string; VettedBy: string; QualityScore: string | null }>,
-  clientMap: Map<string, ClientInfo>
+  rows: Array<{
+    client_id: string;
+    VettedBy: string;
+    QualityScore: string | null;
+  }>,
+  clientMap: Map<string, ClientInfo>,
+  unattendedMap: Map<string, number>
 ): PCEntry[] {
   const pcMap = new Map<string, PCEntry>();
 
@@ -240,25 +367,44 @@ function aggregateVetting(
     if (!pcName) continue;
 
     if (!pcMap.has(pcName)) {
-      pcMap.set(pcName, { pcName, pcEmail: null, total: 0, high: 0, med: 0, low: 0, clients: new Map() });
+      pcMap.set(pcName, {
+        pcName,
+        pcEmail: null,
+        total: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+        unattended: 0,
+        clients: new Map(),
+      });
     }
     const entry = pcMap.get(pcName)!;
     entry.total++;
 
     const bucket = bucketQuality(row.QualityScore);
-    if (bucket === "high") entry.high++;
-    else if (bucket === "med") entry.med++;
+    if (bucket === 'high') entry.high++;
+    else if (bucket === 'med') entry.med++;
     else entry.low++;
 
     const clientId = row.client_id;
-    const clientName = clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
+    const clientName =
+      clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
     if (!entry.clients.has(clientId)) {
-      entry.clients.set(clientId, { clientName, count: 0, high: 0, med: 0, low: 0 });
+      entry.clients.set(clientId, {
+        clientName,
+        count: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+        unattended: unattendedMap.get(clientId) ?? 0,
+      });
+      entry.unattended += unattendedMap.get(clientId) ?? 0;
     }
+
     const c = entry.clients.get(clientId)!;
     c.count++;
-    if (bucket === "high") c.high++;
-    else if (bucket === "med") c.med++;
+    if (bucket === 'high') c.high++;
+    else if (bucket === 'med') c.med++;
     else c.low++;
   }
 
@@ -267,7 +413,8 @@ function aggregateVetting(
 
 function aggregateSubmission(
   rows: Array<{ client_id: string; ApplicationSubmittedBy: string }>,
-  clientMap: Map<string, ClientInfo>
+  clientMap: Map<string, ClientInfo>,
+  unattendedMap: Map<string, number>
 ): PCEntry[] {
   const pcMap = new Map<string, PCEntry>();
 
@@ -276,16 +423,35 @@ function aggregateSubmission(
     if (!pcName) continue;
 
     if (!pcMap.has(pcName)) {
-      pcMap.set(pcName, { pcName, pcEmail: null, total: 0, high: 0, med: 0, low: 0, clients: new Map() });
+      pcMap.set(pcName, {
+        pcName,
+        pcEmail: null,
+        total: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+        unattended: 0,
+        clients: new Map(),
+      });
     }
     const entry = pcMap.get(pcName)!;
     entry.total++;
 
     const clientId = row.client_id;
-    const clientName = clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
+    const clientName =
+      clientMap.get(clientId)?.clientName ?? `Client ${clientId}`;
     if (!entry.clients.has(clientId)) {
-      entry.clients.set(clientId, { clientName, count: 0, high: 0, med: 0, low: 0 });
+      entry.clients.set(clientId, {
+        clientName,
+        count: 0,
+        high: 0,
+        med: 0,
+        low: 0,
+        unattended: unattendedMap.get(clientId) ?? 0,
+      });
+      entry.unattended += unattendedMap.get(clientId) ?? 0;
     }
+
     entry.clients.get(clientId)!.count++;
   }
 
@@ -303,9 +469,12 @@ async function buildPCEmailLookup(): Promise<Map<string, string>> {
   const creds = await Credentials.findAll({
     where: { Active: true, deletedAt: null },
     attributes: [
-      "AssignedPCName",    "AssignedPCEmail",
-      "AssignedVetName",   "AssignedVetEmail",
-      "AssignedCompletedName", "AssignedCompletedEmail",
+      'AssignedPCName',
+      'AssignedPCEmail',
+      'AssignedVetName',
+      'AssignedVetEmail',
+      'AssignedCompletedName',
+      'AssignedCompletedEmail',
     ],
     raw: true,
   });
@@ -318,7 +487,10 @@ async function buildPCEmailLookup(): Promise<Map<string, string>> {
     if (c.AssignedVetName && c.AssignedVetEmail)
       lookup.set(c.AssignedVetName.trim(), c.AssignedVetEmail.trim());
     if (c.AssignedCompletedName && c.AssignedCompletedEmail)
-      lookup.set(c.AssignedCompletedName.trim(), c.AssignedCompletedEmail.trim());
+      lookup.set(
+        c.AssignedCompletedName.trim(),
+        c.AssignedCompletedEmail.trim()
+      );
   }
 
   return lookup;
@@ -326,7 +498,10 @@ async function buildPCEmailLookup(): Promise<Map<string, string>> {
 
 // ─── Slack tag helper ─────────────────────────────────────────────────────────
 
-async function tagPC(name: string, emailLookup: Map<string, string>): Promise<string> {
+async function tagPC(
+  name: string,
+  emailLookup: Map<string, string>
+): Promise<string> {
   const email = emailLookup.get(name);
   if (email) return getSlackIdOrName(email);
   return name;
@@ -339,15 +514,15 @@ async function buildDiscoverySection(
   emailLookup: Map<string, string>
 ): Promise<string> {
   const lines: string[] = [
-    "─────────────────────────────────────────────────",
-    "*:mag: DISCOVERY TEAM — Ranked Biggest to Smallest*",
-    "─────────────────────────────────────────────────",
+    '─────────────────────────────────────────────────',
+    '*:mag: DISCOVERY TEAM — Ranked Biggest to Smallest*',
+    '─────────────────────────────────────────────────',
   ];
 
   if (entries.length === 0) {
-    lines.push("_No discovery activity yesterday._");
-    lines.push("");
-    return lines.join("\n");
+    lines.push('_No discovery activity yesterday._');
+    lines.push('');
+    return lines.join('\n');
   }
 
   for (let i = 0; i < entries.length; i++) {
@@ -361,8 +536,8 @@ async function buildDiscoverySection(
     }
   }
 
-  lines.push("");
-  return lines.join("\n");
+  lines.push('');
+  return lines.join('\n');
 }
 
 async function buildVettingSection(
@@ -370,34 +545,34 @@ async function buildVettingSection(
   emailLookup: Map<string, string>
 ): Promise<string> {
   const lines: string[] = [
-    "─────────────────────────────────────────────────",
-    "*:white_check_mark: VETTING TEAM — Ranked Biggest to Smallest*",
-    "─────────────────────────────────────────────────",
+    '─────────────────────────────────────────────────',
+    '*:white_check_mark: VETTING TEAM — Ranked Biggest to Smallest*',
+    '─────────────────────────────────────────────────',
   ];
 
   if (entries.length === 0) {
-    lines.push("_No vetting activity yesterday._");
-    lines.push("");
-    return lines.join("\n");
+    lines.push('_No vetting activity yesterday._');
+    lines.push('');
+    return lines.join('\n');
   }
 
   for (let i = 0; i < entries.length; i++) {
     const pc = entries[i];
     const tag = await tagPC(pc.pcName, emailLookup);
     lines.push(
-      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted _(${pc.high}H / ${pc.med}M / ${pc.low}L)_`
+      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted (${pc.high}H / ${pc.med}M / ${pc.low}L) • ${pc.unattended} Pending Vetting`
     );
 
     const sorted = [...pc.clients.values()].sort((a, b) => b.count - a.count);
     for (const c of sorted) {
       lines.push(
-        `   • *${c.clientName}:* ${c.count}  _(H=${c.high} M=${c.med} L=${c.low})_`
+        `   • *${c.clientName}:* ${c.count} (H=${c.high} M=${c.med} L=${c.low}) • ${c.unattended} Pending Vetting`
       );
     }
   }
 
-  lines.push("");
-  return lines.join("\n");
+  lines.push('');
+  return lines.join('\n');
 }
 
 async function buildSubmissionSection(
@@ -405,30 +580,34 @@ async function buildSubmissionSection(
   emailLookup: Map<string, string>
 ): Promise<string> {
   const lines: string[] = [
-    "─────────────────────────────────────────────────",
-    "*:inbox_tray: SUBMISSION TEAM — Ranked Biggest to Smallest*",
-    "─────────────────────────────────────────────────",
+    '─────────────────────────────────────────────────',
+    '*:inbox_tray: SUBMISSION TEAM — Ranked Biggest to Smallest*',
+    '─────────────────────────────────────────────────',
   ];
 
   if (entries.length === 0) {
-    lines.push("_No submission activity yesterday._");
-    lines.push("");
-    return lines.join("\n");
+    lines.push('_No submission activity yesterday._');
+    lines.push('');
+    return lines.join('\n');
   }
 
   for (let i = 0; i < entries.length; i++) {
     const pc = entries[i];
     const tag = await tagPC(pc.pcName, emailLookup);
-    lines.push(`*${i + 1}.* ${tag} — *${pc.total}* applications submitted`);
+    lines.push(
+      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted• ${pc.unattended} Pending Submission`
+    );
 
     const sorted = [...pc.clients.values()].sort((a, b) => b.count - a.count);
     for (const c of sorted) {
-      lines.push(`   • *${c.clientName}:* ${c.count}`);
+      lines.push(
+        `   • *${c.clientName}:* ${c.count} • ${c.unattended} Pending Submission`
+      );
     }
   }
 
-  lines.push("");
-  return lines.join("\n");
+  lines.push('');
+  return lines.join('\n');
 }
 
 async function buildMissingPCSection(
@@ -436,9 +615,9 @@ async function buildMissingPCSection(
   emailLookup: Map<string, string>
 ): Promise<string> {
   const lines: string[] = [
-    "─────────────────────────────────────────────────",
-    "*:rotating_light: CLIENTS MISSING PC ASSIGNMENT*",
-    "─────────────────────────────────────────────────",
+    '─────────────────────────────────────────────────',
+    '*:rotating_light: CLIENTS MISSING PC ASSIGNMENT*',
+    '─────────────────────────────────────────────────',
   ];
 
   // Only flag clients missing at least one PC
@@ -447,9 +626,9 @@ async function buildMissingPCSection(
     .sort((a, b) => a.clientName.localeCompare(b.clientName));
 
   if (flagged.length === 0) {
-    lines.push("_✅ All active clients have full PC assignments._");
-    lines.push("");
-    return lines.join("\n");
+    lines.push('_✅ All active clients have full PC assignments._');
+    lines.push('');
+    return lines.join('\n');
   }
 
   for (const c of flagged) {
@@ -480,14 +659,14 @@ async function buildMissingPCSection(
     }
   }
 
-  lines.push("");
-  return lines.join("\n");
+  lines.push('');
+  return lines.join('\n');
 }
 
 // ─── Main job logic ───────────────────────────────────────────────────────────
 
 export async function runPipelineLeaderboardJob() {
-  logger.info("🏆 Running Pipeline Performance Leaderboard job...");
+  logger.info('🏆 Running Pipeline Performance Leaderboard job...');
 
   const { start, end } = getYesterdayRange();
 
@@ -497,7 +676,7 @@ export async function runPipelineLeaderboardJob() {
   ]);
 
   if (clients.length === 0) {
-    logger.info("No active clients found, skipping leaderboard.");
+    logger.info('No active clients found, skipping leaderboard.');
     return;
   }
 
@@ -515,9 +694,24 @@ export async function runPipelineLeaderboardJob() {
     `Fetched yesterday: discovery=${discoveryRows.length} vetting=${vettingRows.length} submission=${submissionRows.length}`
   );
 
-  const discoveryEntries  = aggregateDiscovery(discoveryRows, clientMap);
-  const vettingEntries    = aggregateVetting(vettingRows, clientMap);
-  const submissionEntries = aggregateSubmission(submissionRows, clientMap);
+  const unattendedMap = await fetchUnattendedCounts(clientIds, start, end);
+  const vettedMap = await fetchAwaitingSubmissionCounts(clientIds, start, end);
+
+  const discoveryEntries = aggregateDiscovery(discoveryRows, clientMap);
+  const vettingEntries = aggregateVetting(
+    vettingRows,
+    clientMap,
+    unattendedMap
+  );
+  const submissionEntries = aggregateSubmission(
+    submissionRows,
+    clientMap,
+    vettedMap
+  );
+
+  console.table(discoveryEntries);
+  console.table(vettingEntries);
+  console.table(submissionEntries);
 
   const [discoverySection, vettingSection, submissionSection, missingSection] =
     await Promise.all([
@@ -526,16 +720,19 @@ export async function runPipelineLeaderboardJob() {
       buildSubmissionSection(submissionEntries, emailLookup),
       buildMissingPCSection(clients, emailLookup),
     ]);
+  logger.info(
+    `Built sections: discovery=${discoverySection.length} vetting=${vettingSection.length} submission=${submissionSection.length} missing=${missingSection.length}`
+  );
 
   const body = [
     `:trophy: *Pipeline Performance Leaderboard — ${getYesterdayLabel()}*`,
-    "",
+    '',
     discoverySection,
     vettingSection,
     submissionSection,
-    missingSection,
+    // missingSection,
     `_Automated check · ${new Date().toISOString()}_`,
-  ].join("\n");
+  ].join('\n');
 
   await SlackService.notify({
     location: getEnvironmentFromHost(process.env.CLIENT_APP_DOMAIN),
@@ -543,21 +740,21 @@ export async function runPipelineLeaderboardJob() {
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
-    trigger: "Pipeline Performance Leaderboard",
+    trigger: 'Pipeline Performance Leaderboard',
     type: SlackEventType.SYSTEM_JOB,
     channel: SlackChannel.JOB_PIPELINE,
     body,
   });
 
-  logger.info("✅ Pipeline Performance Leaderboard sent successfully");
+  logger.info('✅ Pipeline Performance Leaderboard sent successfully');
 }
 
 /**
- * Cron job: runs daily at 9:05 AM WAT (08:05 UTC) — 5 min after the ops report.
+ * Cron job: runs daily at 12:00 AM WAT (Africa/Lagos timezone).
  */
 export function createPipelineLeaderboardJob() {
   return cron.schedule(
-    "5 8 * * *",
+    '0 0 * * *',
     async () => {
       try {
         await runPipelineLeaderboardJob();
@@ -567,7 +764,7 @@ export function createPipelineLeaderboardJob() {
     },
     {
       scheduled: false,
-      timezone: "Africa/Lagos",
+      timezone: 'Africa/Lagos',
     } as any
   );
 }
