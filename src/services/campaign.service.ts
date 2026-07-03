@@ -2040,7 +2040,7 @@ export const landOrLaunchCampaign = async (
         severity: SlackSeverity.INFO,
         trigger: slackTrigger,
         type: SlackEventType.ADMIN_ACTION,
-        channel: SlackChannel.VA,
+        channel: SlackChannel.TOWN_CRIER,
         teamMentions: 'CSM',
         body: slackBody,
       });
@@ -2639,8 +2639,6 @@ export const dispatchSampleResults = async (
  */
 export const getClientApplicationsByClientId = async (
   clientId: string,
-  page: number = 1,
-  pageSize: number = 50,
   filters?: {
     isDeleted?: boolean;
     status?: string;
@@ -2648,9 +2646,7 @@ export const getClientApplicationsByClientId = async (
     aggregator?: string;
   }
 ) => {
-  logger.info(
-    `Fetching applications for client_id: ${clientId} (page: ${page}, size: ${pageSize})`
-  );
+  logger.info(`Fetching all applications for client_id: ${clientId}`);
 
   const where: Record<string, any> = { client_id: clientId };
 
@@ -2667,7 +2663,10 @@ export const getClientApplicationsByClientId = async (
     where.Internal_Jobsite = filters.aggregator;
   }
 
-  const { count, rows } = await Application.findAndCountAll({
+  // Fetch the full filtered set (ordered newest-first by Timestamp) so we can
+  // collapse duplicate records. The aggregator can re-insert the same job
+  // application as new UUID rows, which otherwise surface as repeated rows.
+  const allRows = await Application.findAndCountAll({
     where,
     include: [
       {
@@ -2676,29 +2675,40 @@ export const getClientApplicationsByClientId = async (
         attributes: ['id', 'email', 'firstName', 'lastName'],
       },
     ],
-    order: [['createdAt', 'DESC']],
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
+    order: [['Timestamp', 'DESC']],
     raw: true,
     nest: true,
   });
 
+  // Collapse rows that are identical across every business column, keeping the
+  // most recent copy (rows are ordered Timestamp DESC). We intentionally key on
+  // the full record minus its identity/audit fields so genuinely-distinct rows
+  // that happen to share a placeholder JobId ('N/A') are preserved.
+  const seen = new Set<string>();
+  const dedupedRows = allRows.rows.filter((row: any) => {
+    const { id, createdAt, updatedAt, user, ...identity } = row;
+    const key = JSON.stringify(identity);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const totalCount = dedupedRows.length;
+
+  // Unique job count for this client (distinct JobId, ignoring retries).
   const uniqueCount = await Application.count({
     where,
     distinct: true,
     col: 'JobId',
   });
 
-  logger.info(`Found ${count} applications for client_id ${clientId}`);
+  logger.info(
+    `Found ${allRows.count} raw / ${totalCount} distinct applications for client_id ${clientId}`
+  );
 
   return {
-    data: rows,
-    pagination: {
-      totalCount: count,
-      currentPage: page,
-      pageSize,
-      totalPages: Math.ceil(count / pageSize),
-    },
+    data: dedupedRows,
+    totalCount,
     uniqueCount,
   };
 };
