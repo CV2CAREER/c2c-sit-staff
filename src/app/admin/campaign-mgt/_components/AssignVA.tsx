@@ -1,23 +1,30 @@
-import SearchSelect from "@/components/ui/react-select";
-import { OptionType } from "@/types";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { SingleValue } from "react-select";
-import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
-import { useQueryClient } from "@tanstack/react-query";
+import SearchSelect from '@/components/ui/react-select';
+import { OptionType } from '@/types';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { SingleValue } from 'react-select';
+import { useAdminQueries, useAdminMutations } from '@/hooks/api/admin.api';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface VACellProps {
     data: null | any;
-    variant?: 'Discovery' | 'Vet' | 'Completed';
+    variant?: 'DPC' | 'VPC' | 'SPC';
 }
 
-export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => {
-    const emailField = variant === 'Vet' ? 'VetEmail' : variant === 'Completed' ? 'CompletedEmail' : 'VaEmail';
+export const VACell = ({ data = null, variant = 'DPC' }: VACellProps) => {
+    const emailField =
+        variant === 'VPC'
+            ? 'VetEmail'
+            : variant === 'SPC'
+              ? 'CompletedEmail'
+              : 'VaEmail';
     const [selected, setSelected] = useState<any>(null);
     const [unassign, setUnassign] = useState(data?.[emailField]);
     const queryClient = useQueryClient();
 
-    const { pcsDomain: { data: vaData, isError } } = useAdminQueries({ fetchPCs: true });
+    const {
+        pcsDomain: { data: vaData, isError },
+    } = useAdminQueries({ fetchPCs: true });
     const vas = Array.isArray(vaData) ? vaData : ((vaData as any)?.items ?? []);
 
     const { assignVaMutation } = useAdminMutations();
@@ -37,7 +44,7 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
         }
     }, [vaData, data?.[emailField]]);
 
-    const label = variant === 'Vet' ? 'Vet' : variant === 'Completed' ? 'Completed' : 'Discovery';
+    const label = variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
 
     async function assignVa(credId: string, VaEmail: string | null) {
         const tId = toast.loading(
@@ -51,7 +58,9 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
                 variant,
             });
 
-            queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
+            queryClient.invalidateQueries({
+                queryKey: ['admin-fetch-campaign-clients'],
+            });
 
             toast.success(
                 VaEmail
@@ -62,9 +71,9 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
         } catch (err: Error | any) {
             toast.error(
                 err?.response?.data?.message ??
-                err?.message ??
-                err?.response?.message ??
-                `Failed to assign/unassign ${label}`,
+                    err?.message ??
+                    err?.response?.message ??
+                    `Failed to assign/unassign ${label}`,
                 { id: tId }
             );
         }
@@ -87,17 +96,13 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
         }
     };
 
-
     const options = [
-        ...(unassign
-            ? [{ label: 'Unassign', value: '__unassign__' }]
-            : []),
+        ...(unassign ? [{ label: 'Unassign', value: '__unassign__' }] : []),
         ...vas.map((o: any) => ({
             label: `${o?.firstName ?? ''} ${o?.lastName ?? ''}`,
             value: o?.email,
         })),
     ];
-
 
     return (
         <SearchSelect
@@ -106,7 +111,6 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
             className="w-full"
             options={options}
             onChange={(e: SingleValue<OptionType>) => {
-
                 if (e) {
                     handleChange(e);
                 }
@@ -115,9 +119,9 @@ export const VACell = ({ data = null, variant = 'Discovery' } : VACellProps) => 
             value={
                 selected
                     ? {
-                        label: `${selected.firstName} ${selected.lastName}`,
-                        value: selected.email,
-                    }
+                          label: `${selected.firstName} ${selected.lastName}`,
+                          value: selected.email,
+                      }
                     : null
             }
         />
