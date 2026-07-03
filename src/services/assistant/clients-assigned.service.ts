@@ -5,8 +5,10 @@ import { Op } from "sequelize";
 
 /**
  * Service to fetch clients assigned to the current assistant.
- * Assignment is stored in the Credentials table via AssignedPCEmail
- * (the assistant's email) which links clients to their assistant.
+ * Assignment is stored in the Credentials table via:
+ * - AssignedPCEmail (DPC clients)
+ * - AssignedVetEmail (VPC clients)
+ * - AssignedCompletedEmail (SPC clients)
  */
 export class ClientsAssignedService {
   /**
@@ -30,19 +32,67 @@ export class ClientsAssignedService {
       };
     }
 
-    // Query all Credentials where the assistant's email matches AssignedPCEmail
+    // Query all Credentials where the assistant's email matches any assigned field
     const credentials = await Credentials.findAll({
       where: {
-        AssignedPCEmail: assistant.email,
+        [Op.or]: [
+          { AssignedPCEmail: assistant.email },
+          { AssignedVetEmail: assistant.email },
+          { AssignedCompletedEmail: assistant.email }
+        ],
         isDeleted: false
       },
-      attributes: ['id', 'clientId', 'seekEmail', 'currentCity', 'onboardingDate', 'referrer', 'AssignedPCName', 'AssignedPCEmail', 'capitalized', 'Active', 'SeekAnswerPriority', 'SeekAggregator', 'SeekSubStartDate', 'blacklisted'],
+      attributes: [
+        'id', 'clientId', 'seekEmail', 'currentCity', 'onboardingDate', 
+        'referrer', 'AssignedPCName', 'AssignedPCEmail', 
+        'AssignedVetName', 'AssignedVetEmail',
+        'AssignedCompletedName', 'AssignedCompletedEmail',
+        'capitalized', 'Active', 'SeekAnswerPriority', 
+        'SeekAggregator', 'SeekSubStartDate', 'blacklisted'
+      ],
       raw: true
     });
 
-    const clientIds = credentials
-      .map(cred => cred.clientId)
-      .filter(Boolean) as string[];
+    // Group credentials by clientId and determine assignment types
+    const credentialsMap = new Map<string, {
+      credential: any,
+      assignedTypes: string[]
+    }>();
+
+    for (const cred of credentials) {
+      if (!cred.clientId) continue;
+
+      const types: string[] = [];
+      
+      if (cred.AssignedPCEmail === assistant.email) {
+        types.push('DPC');
+      }
+      if (cred.AssignedVetEmail === assistant.email) {
+        types.push('VPC');
+      }
+      if (cred.AssignedCompletedEmail === assistant.email) {
+        types.push('SPC');
+      }
+
+      // If this client already exists, merge the types
+      if (credentialsMap.has(cred.clientId)) {
+        const existing = credentialsMap.get(cred.clientId)!;
+        const mergedTypes = [...new Set([...existing.assignedTypes, ...types])];
+        // Keep the most complete credential record (prefer the one with more fields)
+        // Or keep the first one - whichever logic you prefer
+        credentialsMap.set(cred.clientId, {
+          credential: existing.credential,
+          assignedTypes: mergedTypes
+        });
+      } else {
+        credentialsMap.set(cred.clientId, {
+          credential: cred,
+          assignedTypes: types
+        });
+      }
+    }
+
+    const clientIds = Array.from(credentialsMap.keys());
 
     if (clientIds.length === 0) {
       return {
@@ -67,14 +117,6 @@ export class ClientsAssignedService {
       raw: true
     });
 
-    // Build a map of clientId -> credentials for quick lookup
-    const credentialsMap = new Map<string, any>();
-    for (const cred of credentials) {
-      if (cred.clientId) {
-        credentialsMap.set(cred.clientId, cred);
-      }
-    }
-
     const clientUserIds = clients.map(c => c.id);
 
     // Get applications for these clients
@@ -95,9 +137,15 @@ export class ClientsAssignedService {
       app.Status === 'PENDING' || app.Status === 'NEW' || app.Application_Mode === 'UNATTENDED'
     ).length;
 
-    // Enrich client data with credentials
+    // Enrich client data with credentials and assignment types
     const clientData = clients.map(client => {
-      const creds = credentialsMap.get(client.id);
+      const credentialData = credentialsMap.get(client.id);
+      const cred = credentialData?.credential;
+      const assignedTypes = credentialData?.assignedTypes || [];
+
+      // Create a display name for the assignment type
+      const assignmentTypeDisplay = assignedTypes.join(', ') + (assignedTypes.length > 1 ? ' Client' : ' Client');
+
       return {
         id: client.id,
         firstName: client.firstName,
@@ -107,26 +155,32 @@ export class ClientsAssignedService {
         applicationStatus: client.applicationStatus,
         progress: client.progress,
         createdAt: client.createdAt,
-        credentials: creds ? {
-          id: creds.id,
-          seekEmail: creds.seekEmail,
-          currentCity: creds.currentCity,
-          onboardingDate: creds.onboardingDate,
-          referrer: creds.referrer,
-          AssignedPCName: creds.AssignedPCName,
-          AssignedPCEmail: creds.AssignedPCEmail,
-          capitalized: creds.capitalized,
-          Active: creds.Active,
-          SeekAnswerPriority: creds.SeekAnswerPriority,
-          SeekAggregator: creds.SeekAggregator,
-          SeekSubStartDate: creds.SeekSubStartDate,
-          blacklisted: creds.blacklisted
+        assignedTypes: assignedTypes, // ['DPC', 'VPC', 'SPC']
+        assignmentTypeDisplay: assignmentTypeDisplay,
+        credentials: cred ? {
+          id: cred.id,
+          seekEmail: cred.seekEmail,
+          currentCity: cred.currentCity,
+          onboardingDate: cred.onboardingDate,
+          referrer: cred.referrer,
+          AssignedPCName: cred.AssignedPCName,
+          AssignedPCEmail: cred.AssignedPCEmail,
+          AssignedVetName: cred.AssignedVetName,
+          AssignedVetEmail: cred.AssignedVetEmail,
+          AssignedCompletedName: cred.AssignedCompletedName,
+          AssignedCompletedEmail: cred.AssignedCompletedEmail,
+          capitalized: cred.capitalized,
+          Active: cred.Active,
+          SeekAnswerPriority: cred.SeekAnswerPriority,
+          SeekAggregator: cred.SeekAggregator,
+          SeekSubStartDate: cred.SeekSubStartDate,
+          blacklisted: cred.blacklisted
         } : null,
-        displayName: `${client.firstName} ${client.lastName} - ${client.uniqueId || client.email}`
+        displayName: `${client.firstName} ${client.lastName} - ${client.uniqueId || client.email} (${assignmentTypeDisplay})`
       };
     });
 
-    // Format client names list for dropdown
+    // Format client names list for dropdown with assignment type tags
     const clientNames = clientData.map(c => c.displayName);
 
     return {

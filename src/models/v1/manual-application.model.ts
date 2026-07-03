@@ -1,0 +1,131 @@
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  PrimaryKey,
+  Default,
+  AllowNull,
+  ForeignKey,
+  BelongsTo,
+  CreatedAt,
+  UpdatedAt,
+} from 'sequelize-typescript';
+import { User } from './user.model';
+
+@Table({
+  tableName: 'manual_applications',
+  timestamps: true,
+  indexes: [
+    {
+      name: 'idx_manual_application_client_id',
+      fields: ['client_id'],
+    },
+    {
+      name: 'idx_manual_application_created_at',
+      fields: ['createdAt'],
+    },
+    {
+      name: 'idx_manual_application_status',
+      fields: ['Status'],
+    },
+  ],
+})
+export class ManualApplication extends Model {
+  @PrimaryKey
+  @Default(DataType.UUIDV4)
+  @Column(DataType.STRING)
+  id!: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Client!: string;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  Status?: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Job_Title!: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  JobId!: string;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Internal_Jobsite?: string;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  External_Jobsite?: string;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Job_Type?: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Advertiser!: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Location!: string;
+
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Country!: string;
+
+  @ForeignKey(() => User)
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  client_id?: string;
+
+  @BelongsTo(() => User, 'client_id')
+  user?: User;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(45))
+  ApplicationSubmittedBy?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ApplicationSubmissionDate?: Date;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(45))
+  DiscoveredBy?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  DiscoveryDate?: Date;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(45))
+  VettedBy?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  VettedDate?: Date;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  QualityScore?: string | null;
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isDeleted!: boolean;
+
+  @CreatedAt
+  createdAt!: Date;
+
+  @UpdatedAt
+  updatedAt!: Date;
+}

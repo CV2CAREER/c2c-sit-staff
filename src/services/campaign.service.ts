@@ -1,14 +1,15 @@
-import { getServiceLogger } from "../utils/createLogger";
-import ErrorHandler from "../utils/errorHandler";
-import { User } from "../models/v1/user.model";
-import { Credentials } from "../models/v1/credentials.model";
-import { Aggregator } from "../models/v1/aggregator.model";
-import { Profile } from "../models/v1/profile.model";
-import { Plan } from "../models/v1/plan.model";
-import { Upload } from "../models/v1/upload.model";
-import { Application } from "../models/v1/application.model";
-import { sendMail } from "../config/sendGrid";
-import { SlackService } from "./slack.service";
+import { getServiceLogger } from '../utils/createLogger';
+import ErrorHandler from '../utils/errorHandler';
+import { User } from '../models/v1/user.model';
+import { Credentials } from '../models/v1/credentials.model';
+import { Aggregator } from '../models/v1/aggregator.model';
+import { Profile } from '../models/v1/profile.model';
+import { Plan } from '../models/v1/plan.model';
+import { Upload } from '../models/v1/upload.model';
+import { Application } from '../models/v1/application.model';
+import { ManualApplication } from '../models/v1/manual-application.model';
+import { sendMail } from '../config/sendGrid';
+import { SlackService } from './slack.service';
 import {
   SlackChannel,
   SlackEventType,
@@ -16,19 +17,19 @@ import {
   SlackNode,
   SlackProvider,
   SlackSeverity,
-} from "../utils/enum";
+} from '../utils/enum';
 import {
   getEnvironmentFromHost,
   getSlackIdByEmail,
-} from "../utils/slack-helpers";
-import { getConnectedRedis } from "../config/redis";
-import { Op, Sequelize } from "sequelize";
-import path from "path";
-import { Logger } from "winston";
+  getSlackIdOrName,
+} from '../utils/slack-helpers';
+import { getConnectedRedis } from '../config/redis';
+import { Op, Sequelize } from 'sequelize';
+import path from 'path';
+import { Logger } from 'winston';
 
-const logger = getServiceLogger("campaign-service");
-const mailDirectory = path.resolve(__dirname, "../views/emails");
-
+const logger = getServiceLogger('campaign-service');
+const mailDirectory = path.resolve(__dirname, '../views/emails');
 
 /**
  * Extract active aggregator credentials from credentials object
@@ -38,52 +39,55 @@ export const extractAggregatorCredentials = (obj: {
 }) => {
   const aggregatorKeyMap = [
     {
-      name: "SEEK",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "SEEK_Aggregator",
+      name: 'SEEK',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'SEEK_Aggregator',
     },
     {
-      name: "Adecco",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "Adecco_Aggregator",
+      name: 'Adecco',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'Adecco_Aggregator',
     },
     {
-      name: "Adzuna",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "Adzuna_Aggregator",
+      name: 'Adzuna',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'Adzuna_Aggregator',
     },
     {
-      name: "CareerOne",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "CareerOne_Aggregator",
+      name: 'CareerOne',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'CareerOne_Aggregator',
     },
     {
-      name: "LinkedIn",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "Linkedin_Aggregator",
+      name: 'LinkedIn',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'Linkedin_Aggregator',
     },
     {
-      name: "Jora",
-      email: "Alias_Email",
-      password: "Alias_Password",
-      active: "Jora_Aggregator",
+      name: 'Jora',
+      email: 'Alias_Email',
+      password: 'Alias_Password',
+      active: 'Jora_Aggregator',
     },
   ];
 
-  return aggregatorKeyMap.reduce((acc, curr) => {
-    const email = obj[curr.email];
-    const password = obj[curr.password];
-    const isActive = obj[curr.active];
-    if (email && password && isActive && isActive !== 'false') {
-      acc.push({ email, password, name: curr.name });
-    }
-    return acc;
-  }, [] as ({email: string; password: string; name: string;})[]);
+  return aggregatorKeyMap.reduce(
+    (acc, curr) => {
+      const email = obj[curr.email];
+      const password = obj[curr.password];
+      const isActive = obj[curr.active];
+      if (email && password && isActive && isActive !== 'false') {
+        acc.push({ email, password, name: curr.name });
+      }
+      return acc;
+    },
+    [] as { email: string; password: string; name: string }[]
+  );
 };
 
 /**
@@ -92,13 +96,13 @@ export const extractAggregatorCredentials = (obj: {
 export const sendPreferenceNotifications = async (
   userId: string,
   triggeredBy: string,
-  host: string,
+  host: string
 ) => {
   logger.info(`Processing preference notifications for user ID: ${userId}`);
 
   if (!userId) {
-    logger.warn("User ID is required");
-    throw new Error("User ID is required");
+    logger.warn('User ID is required');
+    throw new Error('User ID is required');
   }
 
   const userAccount = await Credentials.findOne({
@@ -107,40 +111,40 @@ export const sendPreferenceNotifications = async (
   });
 
   if (!userAccount) {
-    logger.warn("User account not found");
-    throw new Error("User account not found");
+    logger.warn('User account not found');
+    throw new Error('User account not found');
   }
 
   const user = await User.findOne({
     where: { id: userAccount.clientId },
     raw: true,
   });
-  const firstname = user?.firstName || "User";
-  const email = user?.email || "unknown email";
+  const firstname = user?.firstName || 'User';
+  const email = user?.email || 'unknown email';
 
   // Send notification email to the user
   await sendMail({
     email: email,
-    subject: "Update on Your Job Preferences",
-    templateName: "DispatchPreference.ejs",
+    subject: 'Update on Your Job Preferences',
+    templateName: 'DispatchPreference.ejs',
     templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
-      link: "dashboard/profile/job-references",
+      link: 'dashboard/profile/job-references',
     },
   });
 
   // Send notification email to delivery team admins
   await sendMail({
-    email: "deliveryteam@cvtocareer.com",
-    subject: "User Notification of Updated Job Preferences",
-    templateName: "AdminNotificationTemplate.ejs",
+    email: 'deliveryteam@cvtocareer.com',
+    subject: 'User Notification of Updated Job Preferences',
+    templateName: 'AdminNotificationTemplate.ejs',
     templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
-      link: "/admin-dashboard/manage-accounts",
+      link: '/admin-dashboard/manage-accounts',
       triggeredBy,
     },
   });
@@ -165,7 +169,7 @@ export const sendPreferenceNotifications = async (
       });
 
       logger.info(
-        `Preference notifications sent successfully for user: ${firstname} (${email})`,
+        `Preference notifications sent successfully for user: ${firstname} (${email})`
       );
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
@@ -185,7 +189,7 @@ export const sendPreferenceNotifications = async (
  */
 export const dispatchClientCredentials = async (
   clientId: string,
-  host: string,
+  host: string
 ) => {
   logger.info(`Processing credentials dispatch for client ID: ${clientId}`);
 
@@ -193,30 +197,33 @@ export const dispatchClientCredentials = async (
   const client = await Credentials.findOne({ where: { id: clientId } });
   if (!client) {
     logger.warn(`Client not found for ID: ${clientId}`);
-    throw new Error("Client not found");
+    throw new Error('Client not found');
   }
 
   // Fetch associated user
   const clientUser = await User.findOne({ where: { id: client.clientId } });
   if (!clientUser) {
     logger.warn(`Customer ID not set for client: ${clientId}`);
-    throw new Error("Client customer ID not set");
+    throw new Error('Client customer ID not set');
   }
 
   const clientJson = client.toJSON() as any;
-  const credentialsSource = { ...clientJson, ...(clientJson.seekExternalCredentials || {}) };
+  const credentialsSource = {
+    ...clientJson,
+    ...(clientJson.seekExternalCredentials || {}),
+  };
   const credentials = extractAggregatorCredentials(credentialsSource);
 
   if (!credentials.length) {
     logger.warn(`No credentials found for client: ${clientId}`);
-    throw new Error("No credential(s) set for client");
+    throw new Error('No credential(s) set for client');
   }
 
   // Send credentials email to user
   await sendMail({
     email: clientUser.email,
-    subject: "Your Jobsites Credentials",
-    templateName: "DispatchCredentials.ejs",
+    subject: 'Your Jobsites Credentials',
+    templateName: 'DispatchCredentials.ejs',
     templateDir: mailDirectory,
     templateData: {
       firstname: clientUser.firstName,
@@ -227,7 +234,6 @@ export const dispatchClientCredentials = async (
   // Send Slack notification
   setImmediate(async () => {
     try {
-
       const location = getEnvironmentFromHost(host);
       await SlackService.notify({
         location,
@@ -245,9 +251,8 @@ export const dispatchClientCredentials = async (
       });
 
       logger.info(
-        `Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`,
+        `Successfully dispatched ${credentials.length} credentials to ${clientUser.email}`
       );
-      
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
     }
@@ -269,15 +274,15 @@ export const dispatchClientCredentials = async (
  */
 export const generateExternalPassword = async (
   userId: string,
-  host: string,
+  host: string
 ) => {
   logger.info(`Generating external password for user ID: ${userId}`);
 
   // Generate secure random password
   const generatePassword = () => {
     const chars =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-    let password = "";
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
     for (let i = 0; i < 16; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -290,7 +295,7 @@ export const generateExternalPassword = async (
   const userCredentials = await Credentials.findOne({ where: { id: userId } });
   if (!userCredentials) {
     logger.warn(`User credentials not found for ID: ${userId}`);
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   const credentialsData = userCredentials.toJSON() as any;
@@ -299,42 +304,44 @@ export const generateExternalPassword = async (
   // ExternalPassword lives inside the seekExternalCredentials JSONB column
   if (existingJsonb.ExternalPassword) {
     logger.warn(`External password already exists for user: ${userId}`);
-    throw new Error("External password already exists");
+    throw new Error('External password already exists');
   }
 
   // Merge the new password into the existing JSONB object and save via instance update
   await userCredentials.update({
     seekExternalCredentials: {
       ...existingJsonb,
-      ExternalPassword: generatedPassword
+      ExternalPassword: generatedPassword,
     },
   } as any);
 
   // Sync password to all aggregator links on the user's primary profile
-  
+
   if (userCredentials.clientId) {
     const primaryProfile = await Profile.findOne({
-      where: { userId: userCredentials.clientId, name: "primary" },
+      where: { userId: userCredentials.clientId, name: 'primary' },
     });
     if (primaryProfile && (primaryProfile.aggregators as any[])?.length) {
-      const updatedLinks = (primaryProfile.aggregators as any[]).map((link) => ({
-        ...link,
-        password: generatedPassword,
-      }));
+      const updatedLinks = (primaryProfile.aggregators as any[]).map(
+        (link) => ({
+          ...link,
+          password: generatedPassword,
+        })
+      );
       await primaryProfile.update({ aggregators: updatedLinks });
     }
   }
 
-  const userFullName = existingJsonb.Full_Name || existingJsonb.fullName || userId;
+  const userFullName =
+    existingJsonb.Full_Name || existingJsonb.fullName || userId;
 
   logger.info(
-    `External password generated successfully for user: ${userFullName} (${userId})`,
+    `External password generated successfully for user: ${userFullName} (${userId})`
   );
 
   // Send Slack notification
   setImmediate(async () => {
     try {
-
       await SlackService.notify({
         location: SlackLocation.LOCALHOST,
         host,
@@ -344,13 +351,12 @@ export const generateExternalPassword = async (
         trigger: `External password generated for user`,
         type: SlackEventType.USER_TRIGGERED,
         channel: SlackChannel.CRY_WOLF,
-        teamMentions: "CSM",
+        teamMentions: 'CSM',
         body: `Jobsite password for user ${userFullName} has been generated successfully.
     *Success*: ExternalPassword field updated in database with auto-generated password.
     *Immediate Impact*: User can now be dispatched with credentials for automated applications.
     *Next Step*: Proceed with credential dispatch if ready.`,
       });
-      
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
     }
@@ -370,22 +376,25 @@ export const generateExternalPassword = async (
 export const getUserAggregators = async (
   clientId: string,
   internalJobSites: any[] = [],
-  externalJobSites: any[] = [],
+  externalJobSites: any[] = []
 ) => {
   logger.info(`Fetching aggregators for client ID: ${clientId}`);
 
   // clientId may be a Credentials UUID — resolve it to the actual User UUID via the FK
   let userId = clientId;
-  const cred = await Credentials.findOne({ where: { id: clientId }, attributes: ['clientId'] });
+  const cred = await Credentials.findOne({
+    where: { id: clientId },
+    attributes: ['clientId'],
+  });
   if (cred?.clientId) {
     userId = cred.clientId;
     logger.info(`Resolved clientId ${clientId} → userId ${userId}`);
   }
 
   const user = await User.findByPk(userId);
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error('User not found');
 
-  const profile = await Profile.findOne({ where: { userId, name: "primary" } });
+  const profile = await Profile.findOne({ where: { userId, name: 'primary' } });
   if (!profile) return { aggregators: [] };
 
   const links: any[] = profile.aggregators || [];
@@ -394,7 +403,7 @@ export const getUserAggregators = async (
   const populated = await Promise.all(
     links.map(async (link: any) => {
       const agg = await Aggregator.findByPk(link.aggregatorId, {
-        attributes: ["id", "name", "picture", "isEnabled", "config"],
+        attributes: ['id', 'name', 'picture', 'isEnabled', 'config'],
       });
       return { ...link, aggregator: agg ? agg.toJSON() : null };
     })
@@ -409,11 +418,17 @@ export const getUserAggregators = async (
 
   // With job site filter — also split into internal/external buckets
   const matchAggregators = (jobSites: any[]) => {
-    const results: { name: string; imageUrl: string; status: boolean; aggregatorId: string }[] = [];
+    const results: {
+      name: string;
+      imageUrl: string;
+      status: boolean;
+      aggregatorId: string;
+    }[] = [];
     for (const jobSite of jobSites) {
       if (!jobSite.value || jobSite.value === 'all') continue;
       const match = populated.find(
-        (p: any) => p.aggregator?.name?.toLowerCase() === jobSite.value.toLowerCase()
+        (p: any) =>
+          p.aggregator?.name?.toLowerCase() === jobSite.value.toLowerCase()
       );
       if (match) {
         results.push({
@@ -439,31 +454,35 @@ export const getUserAggregators = async (
  */
 export const toggleAggregatorStatus = async (
   clientId: string,
-  jobSite: string,
+  jobSite: string
 ) => {
   logger.info(
-    `Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`,
+    `Toggling aggregator status for client: ${clientId}, job site: ${jobSite}`
   );
 
   // clientId may be a Credentials UUID — resolve it to the actual User UUID via the FK
   let userId = clientId;
-  const cred = await Credentials.findOne({ where: { id: clientId }, attributes: ['clientId'] });
+  const cred = await Credentials.findOne({
+    where: { id: clientId },
+    attributes: ['clientId'],
+  });
   if (cred?.clientId) {
     userId = cred.clientId;
   }
 
-  const profile = await Profile.findOne({ where: { userId, name: "primary" } });
-  if (!profile) throw new Error("Profile not found for this client");
+  const profile = await Profile.findOne({ where: { userId, name: 'primary' } });
+  if (!profile) throw new Error('Profile not found for this client');
 
   const links: any[] = profile.aggregators || [];
-  if (links.length === 0) throw new Error("No aggregators found for this client");
+  if (links.length === 0)
+    throw new Error('No aggregators found for this client');
 
   // Mirrors updateUserJobsite: populate each link with findByPk so we can match by name
   // and use the aggregator's own isEnabled as the default when the link hasn't been toggled yet
   const populated = await Promise.all(
     links.map(async (link: any) => {
       const agg = await Aggregator.findByPk(link.aggregatorId, {
-        attributes: ["id", "name", "isEnabled"],
+        attributes: ['id', 'name', 'isEnabled'],
       });
       return { ...link, aggregator: agg ? agg.toJSON() : null };
     })
@@ -472,11 +491,14 @@ export const toggleAggregatorStatus = async (
   const matchedIdx = populated.findIndex(
     (p) => p.aggregator?.name?.toLowerCase() === jobSite.toLowerCase()
   );
-  if (matchedIdx === -1) throw new Error("Aggregator not found for this client");
+  if (matchedIdx === -1)
+    throw new Error('Aggregator not found for this client');
 
   // Use link-level isEnabled first; fall back to the aggregator template's value
   const previousStatus =
-    populated[matchedIdx].isEnabled ?? populated[matchedIdx].aggregator?.isEnabled ?? true;
+    populated[matchedIdx].isEnabled ??
+    populated[matchedIdx].aggregator?.isEnabled ??
+    true;
   const newStatus = !previousStatus;
 
   const updatedLinks = links.map((l: any, i: number) =>
@@ -486,7 +508,9 @@ export const toggleAggregatorStatus = async (
   // Mirrors updateUserJobsite: write the whole updated links array back to the profile
   await profile.update({ aggregators: updatedLinks });
 
-  logger.info(`Aggregator status updated for ${jobSite}: ${previousStatus} -> ${newStatus}`);
+  logger.info(
+    `Aggregator status updated for ${jobSite}: ${previousStatus} -> ${newStatus}`
+  );
 
   return { jobSite, previousStatus, newStatus };
 };
@@ -498,22 +522,22 @@ export const getUserProfileDetails = async (userId: string) => {
   logger.info(`Fetching user profile details for user ID: ${userId}`);
 
   const client = await Credentials.findOne({
-    where: { id: userId }
+    where: { id: userId },
   });
 
   // Fetch user with plan data
   const user = await User.findByPk(client?.clientId, {
     include: [
       {
-        association: "activePlan",
-        attributes: ["id", "userId", "title", "expiresAt"],
+        association: 'activePlan',
+        attributes: ['id', 'userId', 'title', 'expiresAt'],
       },
     ],
   });
 
   if (!user) {
     logger.warn(`User not found for ID: ${userId}`);
-    throw new ErrorHandler("User not found", 404);
+    throw new ErrorHandler('User not found', 404);
   }
 
   // Fetch profile for craft and aggregator information
@@ -523,25 +547,26 @@ export const getUserProfileDetails = async (userId: string) => {
   const profileData = profile ? (profile.toJSON() as any) : {};
 
   // Fetch application statistics directly from the Application model
-  const [totalApplications, successfulApplications, failedApplications] = await Promise.all([
-    Application.count({
-      where: { client_id: userId, isDeleted: false },
-    }),
-    Application.count({
-      where: {
-        client_id: userId,
-        isDeleted: false,
-        status: { [Op.iLike]: "Successful" },
-      },
-    }),
-    Application.count({
-      where: {
-        client_id: userId,
-        isDeleted: false,
-        status: { [Op.iLike]: "Failed" },
-      },
-    }),
-  ]);
+  const [totalApplications, successfulApplications, failedApplications] =
+    await Promise.all([
+      Application.count({
+        where: { client_id: userId, isDeleted: false },
+      }),
+      Application.count({
+        where: {
+          client_id: userId,
+          isDeleted: false,
+          status: { [Op.iLike]: 'Successful' },
+        },
+      }),
+      Application.count({
+        where: {
+          client_id: userId,
+          isDeleted: false,
+          status: { [Op.iLike]: 'Failed' },
+        },
+      }),
+    ]);
 
   // Count aggregators linked on the profile's aggregators JSONB array
   const aggregatorCount = Array.isArray(profileData.aggregators)
@@ -562,7 +587,11 @@ export const getUserProfileDetails = async (userId: string) => {
           raw: userData.activePlan.raw,
         }
       : null,
-    craft: profileData.courseOfStudy || profileData.craft || profileData.profession || null,
+    craft:
+      profileData.courseOfStudy ||
+      profileData.craft ||
+      profileData.profession ||
+      null,
     statistics: {
       totalApplications,
       successfulApplications,
@@ -584,7 +613,7 @@ export const getUserProfileDetails = async (userId: string) => {
  * Client Sample Queue Redis key constants
  */
 const CLIENT_SAMPLE_QUEUE_KEY = (agg: string, environment: string) => {
-  if (environment === "_TEST") {
+  if (environment === '_TEST') {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_QUEUE_TEST`;
   } else {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_QUEUE`;
@@ -593,9 +622,9 @@ const CLIENT_SAMPLE_QUEUE_KEY = (agg: string, environment: string) => {
 
 const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (
   agg: string,
-  environment: string,
+  environment: string
 ) => {
-  if (environment === "_TEST") {
+  if (environment === '_TEST') {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING_TEST`;
   } else {
     return `${agg.toUpperCase()}_CLIENT_SAMPLE_CURRENT_PROCESSING`;
@@ -606,7 +635,7 @@ const CLIENT_SAMPLE_CURRENT_PROCESSING_KEY = (
  * Extract base value from queue element
  */
 const extractValueFromQueueElement = (element: string): string => {
-  return element.split(":;")[0];
+  return element.split(':;')[0];
 };
 
 /**
@@ -614,25 +643,25 @@ const extractValueFromQueueElement = (element: string): string => {
  */
 export const getClientSampleQueueStatus = async (
   agg: string,
-  environment: string,
+  environment: string
 ) => {
   logger.info(
-    `Fetching queue status for aggregator: ${agg}, environment: ${environment}`,
+    `Fetching queue status for aggregator: ${agg}, environment: ${environment}`
   );
 
   const redis = await getConnectedRedis();
   if (!redis) {
-    throw new Error("Redis connection unavailable");
+    throw new Error('Redis connection unavailable');
   }
 
-  const isTestEnvironment = environment === "_TEST";
+  const isTestEnvironment = environment === '_TEST';
   const currentKey = CLIENT_SAMPLE_CURRENT_PROCESSING_KEY(
     agg,
-    isTestEnvironment ? environment : "",
+    isTestEnvironment ? environment : ''
   );
   const queueKey = CLIENT_SAMPLE_QUEUE_KEY(
     agg,
-    isTestEnvironment ? environment : "",
+    isTestEnvironment ? environment : ''
   );
 
   const current = await redis.get(currentKey);
@@ -653,21 +682,21 @@ export const getClientSampleQueueStatus = async (
 export const removeFromClientSampleQueue = async (
   queue: string,
   input: string,
-  environment: string,
+  environment: string
 ) => {
   logger.info(`Removing item from queue: ${queue}, value: ${input}`);
 
   const redis = await getConnectedRedis();
   if (!redis) {
-    throw new Error("Redis connection unavailable");
+    throw new Error('Redis connection unavailable');
   }
 
   let queueKey;
-  if (queue.includes("_stage") && environment === "TEST") {
-    const prosQueueKey = queue?.replace(/_/g, "").replace(/stage/gi, "");
-    queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, "_TEST");
+  if (queue.includes('_stage') && environment === 'TEST') {
+    const prosQueueKey = queue?.replace(/_/g, '').replace(/stage/gi, '');
+    queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, '_TEST');
   } else {
-    queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, "_LIVE");
+    queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, '_LIVE');
   }
 
   const values = await redis.lrange(queueKey as string, 0, -1);
@@ -675,7 +704,7 @@ export const removeFromClientSampleQueue = async (
   if (values.length === 0) {
     return {
       deleted: 0,
-      message: "The queue is empty",
+      message: 'The queue is empty',
     };
   }
 
@@ -703,53 +732,53 @@ export const addToClientSampleQueue = async (
   environment: string,
   aggregator?: string,
   clientId?: string,
-  input?: string,
+  input?: string
 ) => {
   logger.info(`Adding item to queue: ${queue}`);
 
   const redis = await getConnectedRedis();
   if (!redis) {
-    throw new Error("Redis connection unavailable");
+    throw new Error('Redis connection unavailable');
   }
 
   let queueKey;
-  if (queue.includes("_stage") && environment === "TEST") {
-    const prosQueueKey = queue?.replace(/_/g, "").replace(/stage/gi, "");
-    queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, "_TEST");
+  if (queue.includes('_stage') && environment === 'TEST') {
+    const prosQueueKey = queue?.replace(/_/g, '').replace(/stage/gi, '');
+    queueKey = CLIENT_SAMPLE_QUEUE_KEY(prosQueueKey, '_TEST');
   } else {
-    queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, "_LIVE");
+    queueKey = CLIENT_SAMPLE_QUEUE_KEY(queue, '_LIVE');
   }
 
-  let finalInput: string = input || "";
+  let finalInput: string = input || '';
 
   // If no input provided, lookup client alias email from database
   if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ["seekEmail"],
+      attributes: ['seekEmail'],
     });
 
     if (!cred) {
-      throw new Error("Client not found");
+      throw new Error('Client not found');
     }
 
     const credData = cred.toJSON() as any;
     const aliasEmail = credData.seekEmail;
 
     if (!aliasEmail) {
-      throw new Error("Alias email not found for the client");
+      throw new Error('Alias email not found for the client');
     }
 
     const inputObject = {
       email: aliasEmail,
-      process: aggregator.includes("stage") ? "staging" : "production",
+      process: aggregator.includes('stage') ? 'staging' : 'production',
     };
 
     finalInput = JSON.stringify(inputObject);
   }
 
   if (!finalInput) {
-    throw new Error("No valid input provided for queue");
+    throw new Error('No valid input provided for queue');
   }
 
   const values = await redis.lrange(queueKey as string, 0, -1);
@@ -782,7 +811,7 @@ export const addToClientSampleQueue = async (
  */
 export const getCampaignAggregatorData = async (
   clientId: string,
-  active: boolean = true,
+  active: boolean = true
 ) => {
   logger.info(`Fetching campaign aggregator data for client: ${clientId}`);
 
@@ -795,7 +824,7 @@ export const getCampaignAggregatorData = async (
   const records = await Aggregator.findAll({ where: whereClause });
 
   logger.info(
-    `Retrieved ${records.length} aggregator records for client: ${clientId}`,
+    `Retrieved ${records.length} aggregator records for client: ${clientId}`
   );
 
   return {
@@ -809,12 +838,12 @@ export const getCampaignAggregatorData = async (
  */
 export const toggleAggregatorRecordStatus = async (
   recordId: number,
-  action: "soft-delete" | "restore",
+  action: 'soft-delete' | 'restore'
 ) => {
   logger.info(`Toggling aggregator record: ${recordId}, action: ${action}`);
 
   const updateClause = {
-    isDeleted: action === "soft-delete",
+    isDeleted: action === 'soft-delete',
   };
 
   await Aggregator.update(updateClause, {
@@ -836,11 +865,11 @@ export const toggleAggregatorRecordStatus = async (
  */
 export const syncAggregatorRecords = async (
   clientId: string,
-  syncType: "override" | "increment",
-  fromStage: boolean,
+  syncType: 'override' | 'increment',
+  fromStage: boolean
 ) => {
   logger.info(
-    `Syncing aggregator records for client: ${clientId}, type: ${syncType}, fromStage: ${fromStage}`,
+    `Syncing aggregator records for client: ${clientId}, type: ${syncType}, fromStage: ${fromStage}`
   );
 
   // Get source records
@@ -858,12 +887,12 @@ export const syncAggregatorRecords = async (
     return {
       success: true,
       recordsSynced: 0,
-      message: "No records found to sync",
+      message: 'No records found to sync',
     };
   }
 
   // For override mode, delete existing target records first
-  if (syncType === "override") {
+  if (syncType === 'override') {
     await Aggregator.destroy({
       where: {
         userId: clientId,
@@ -884,11 +913,11 @@ export const syncAggregatorRecords = async (
 
   // Bulk create records in target
   await Aggregator.bulkCreate(targetRecords, {
-    ignoreDuplicates: syncType === "increment",
+    ignoreDuplicates: syncType === 'increment',
   });
 
   logger.info(
-    `Successfully synced ${targetRecords.length} records for client: ${clientId}`,
+    `Successfully synced ${targetRecords.length} records for client: ${clientId}`
   );
 
   return {
@@ -910,11 +939,11 @@ export const getAggregatorsByUserId = async (userId: string) => {
       userId: userId,
       isDeleted: false,
     },
-    order: [["createdAt", "DESC"]],
+    order: [['createdAt', 'DESC']],
   });
 
   logger.info(
-    `Found ${aggregators.length} aggregator records for user: ${userId}`,
+    `Found ${aggregators.length} aggregator records for user: ${userId}`
   );
 
   return {
@@ -937,14 +966,14 @@ export const extractJobData = async (
   clientId: string,
   joblink: string,
   pageContent: string,
-  user: any,
+  user: any
 ) => {
   logger.info(`Processing AI job extraction for client: ${clientId}`);
 
   // Validate required fields
-  if (!clientId) throw new Error("Client ID is required");
-  if (!joblink) throw new Error("Job link is required");
-  if (!pageContent) throw new Error("Page content is required");
+  if (!clientId) throw new Error('Client ID is required');
+  if (!joblink) throw new Error('Job link is required');
+  if (!pageContent) throw new Error('Page content is required');
 
   // Look up user by credentials.id
   const credentialsRecord = await Credentials.findOne({
@@ -969,16 +998,16 @@ export const extractJobData = async (
   }
 
   // Get full name
-  let fullName = `${user.firstName} ${user.middleName} ${user.lastName}` ;
+  let fullName = `${user.firstName} ${user.middleName} ${user.lastName}`;
 
-  let environment = process.env.NODE_ENV || "development";
-  if (environment === "preview") {
-    environment = "staging";
+  let environment = process.env.NODE_ENV || 'development';
+  if (environment === 'preview') {
+    environment = 'staging';
   }
 
   const requestData = {
     environment,
-    submitted_by: fullName || "System",
+    submitted_by: fullName || 'System',
     va_email: user?.email || userRecord.email,
     job_url: joblink,
     page_content: pageContent,
@@ -987,20 +1016,22 @@ export const extractJobData = async (
 
   logger.info(`✅ Using credentials.id UUID: ${clientId}`);
   logger.info(`   User: ${userRecord.email}`);
-  logger.info(`Job Site: http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`)
+  logger.info(
+    `Job Site: http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`
+  );
 
   // Call Flask AI Extraction API
-  const axios = require("axios");
+  const axios = require('axios');
   const flaskResponse = await axios.post(
     `http://${process.env.JOB_APPLICATION_API_IP}/api/ai-extract-job`,
     requestData,
-    { timeout: 60000 },
+    { timeout: 60000 }
   );
 
   if (!flaskResponse.data.success) {
     throw new Error(
       flaskResponse.data.message ||
-        "Failed to extract job data from the provided content.",
+        'Failed to extract job data from the provided content.'
     );
   }
 
@@ -1009,7 +1040,7 @@ export const extractJobData = async (
   return {
     success: true,
     message:
-      "AI extraction completed. Please review and edit the data before saving.",
+      'AI extraction completed. Please review and edit the data before saving.',
     job_data: flaskResponse.data.job_data,
     requires_confirmation: true,
   };
@@ -1025,14 +1056,14 @@ export const saveEditedJob = async (
   clientId: string,
   joblink: string,
   jobData: any,
-  user: any,
+  user: any
 ) => {
   logger.info(`Saving edited job application for client: ${clientId}`);
 
   // Validate required fields
-  if (!clientId) throw new Error("Client ID is required");
-  if (!jobData) throw new Error("Job data is required");
-  if (!joblink) throw new Error("Job link is required");
+  if (!clientId) throw new Error('Client ID is required');
+  if (!jobData) throw new Error('Job data is required');
+  if (!joblink) throw new Error('Job link is required');
 
   // Validate that client exists
   const clientExists = await Credentials.findOne({
@@ -1046,21 +1077,23 @@ export const saveEditedJob = async (
     throw new Error(`Client not found with ID: ${clientId}`);
   }
 
-  const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+  const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
-  let environment = process.env.NODE_ENV || "development";
-  if (environment === "preview") {
-    environment = "staging";
+  let environment = process.env.NODE_ENV || 'development';
+  if (environment === 'preview') {
+    environment = 'staging';
   }
 
-  logger.info(`Saving job application with data: ${JSON.stringify(jobData)} for client: ${clientId} by user: ${fullName}`);
+  logger.info(
+    `Saving job application with data: ${JSON.stringify(jobData)} for client: ${clientId} by user: ${fullName}`
+  );
 
   // Prepare data for Flask API
   const requestData = {
     environment,
     client_id: clientId,
     submitted_by: fullName,
-    vaEmail: clientExists?.AssignedPCEmail || "",
+    vaEmail: clientExists?.AssignedPCEmail || '',
     job_data: {
       job_title: jobData.job_title,
       company: jobData.company,
@@ -1069,28 +1102,28 @@ export const saveEditedJob = async (
       job_id: jobData.job_id,
       job_type: jobData.job_type,
       country: jobData.country,
-      internal_jobsite: jobData.internal_jobsite || "C2C",
+      internal_jobsite: jobData.internal_jobsite || 'C2C',
       external_jobsite: jobData.external_jobsite,
     },
   };
 
   // Log payload with user information
   logger.info(
-    `Save Application Payload for user: ${user?.id || "N/A"} (${user?.email || ""})`,
-    requestData,
+    `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
+    requestData
   );
 
   // Call Flask Save Application API
-  const axios = require("axios");
+  const axios = require('axios');
   const flaskResponse = await axios.post(
     `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
     requestData,
-    { timeout: 60000 },
+    { timeout: 60000 }
   );
 
   if (!flaskResponse.data.success) {
     throw new Error(
-      flaskResponse.data.message || "Failed to save application to database.",
+      flaskResponse.data.message || 'Failed to save application to database.'
     );
   }
 
@@ -1098,164 +1131,570 @@ export const saveEditedJob = async (
 
   return {
     success: true,
-    message: "Application saved successfully to database.",
+    message: 'Application saved successfully to database.',
     data: flaskResponse.data,
   };
 };
 
+export const saveManualApplication = async (
+  clientId: string,
+  joblink: string,
+  jobData: any,
+  user: any,
+  host: string,
+  updatedBy?: string
+) => {
+  logger.info(`Saving manual application for client: ${clientId}`);
+
+  // Validate required fields
+  if (!clientId) throw new Error('Client ID is required');
+  if (!jobData) throw new Error('Job data is required');
+  if (!joblink) throw new Error('Job link is required');
+
+  // Validate that client exists
+  const clientExists = await Credentials.findOne({
+    where: {
+      id: clientId,
+      isDeleted: false,
+    },
+  });
+
+  if (!clientExists) {
+    throw new Error(`Client not found with ID: ${clientId}`);
+  }
+
+  const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+
+  logger.info(
+    `Saving manual application with data: ${JSON.stringify(
+      jobData
+    )} for client: ${clientId} by user: ${fullName}`
+  );
+
+  const manualApplication = await ManualApplication.create({
+    client_id: clientExists.clientId,
+
+    Client: clientId || 'N/A',
+
+    Job_Title:
+      joblink && jobData.job_title
+        ? `=HYPERLINK("${joblink}","${jobData.job_title}")`
+        : jobData.job_title || 'N/A',
+
+    JobId: jobData.job_id || 'N/A',
+    Internal_Jobsite: jobData.internal_jobsite || 'N/A',
+
+    External_Jobsite: jobData.external_jobsite || 'N/A',
+
+    Job_Type: jobData.job_type || 'N/A',
+
+    Advertiser: jobData.company || 'N/A',
+
+    Location: jobData.location || 'N/A',
+
+    Country: jobData.country || 'N/A',
+
+    Status: 'UNATTENDED',
+
+    // Discovery details
+    DiscoveredBy: fullName || null,
+    DiscoveryDate: new Date(),
+
+    // Not submitted yet
+    ApplicationSubmittedBy: null,
+    ApplicationSubmissionDate: null,
+
+    // Not vetted yet
+    VettedBy: null,
+    VettedDate: null,
+
+    QualityScore: null,
+
+    isDeleted: false,
+  });
+
+  logger.info(
+    `Manual application saved successfully. ID: ${manualApplication.id}`
+  );
+
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const message = `
+    :mag: *JOB DISCOVERED — Awaiting Vetting*
+
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${joblink}|${jobData.job_title}>
+    • *Company:* ${jobData.company || 'N/A'}
+    • *Location:* ${jobData.location || 'N/A'}
+    • *Source:* ${jobData.job_site_name || 'N/A'}
+    • *Status:* Unattended
+    • *Environment:* ${host}
+
+    ${vpcName} please vet within 4 hours.
+    `;
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
+
+  return {
+    success: true,
+    message: 'Manual application saved successfully.',
+    data: manualApplication,
+  };
+};
+
+export const updateJobApplicationStatus = async (
+  applicationId: string,
+  status: string,
+  user: any,
+  host: string,
+  qualityScore?: string | null,
+  updatedBy?: string
+) => {
+  logger.info(
+    `Updating manual application status for applicationId: ${applicationId}`
+  );
+  console.log(status);
+
+  if (!applicationId) throw new Error('Application ID is required');
+  if (!status) throw new Error('Status is required');
+
+  const application = await ManualApplication.findOne({
+    where: {
+      id: applicationId,
+      isDeleted: false,
+    },
+  });
+
+  if (!application) {
+    throw new Error(`Manual application not found with ID: ${applicationId}`);
+  }
+
+  const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+  const statusUpper = status.toUpperCase();
+  const currentDate = new Date();
+
+  const updateData: any = {
+    Status: statusUpper,
+    updatedAt: currentDate,
+  };
+
+  // Validate that client exists
+  const clientExists = await Credentials.findOne({
+    where: {
+      clientId: application.client_id,
+      isDeleted: false,
+    },
+  });
+
+  if (!clientExists) {
+    throw new Error(`Client not found with ID: ${application?.client_id}`);
+  }
+
+  const userObj = await User.findOne({
+    where: { id: clientExists.clientId },
+  });
+
+  if (!userObj) {
+    logger.warn('User not found');
+  }
+
+  const dpcName = await getSlackIdOrName(
+    clientExists?.AssignedPCEmail,
+    clientExists?.AssignedPCName
+  );
+
+  const vpcName = await getSlackIdOrName(
+    clientExists?.AssignedVetEmail,
+    clientExists?.AssignedVetName
+  );
+
+  const spcName = await getSlackIdOrName(
+    clientExists?.AssignedCompletedEmail,
+    clientExists?.AssignedCompletedName
+  );
+
+  const match = application.Job_Title.match(
+    /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
+  );
+
+  const jobTitleUrl = match
+    ? {
+        url: match[1],
+        title: match[2],
+      }
+    : null;
+
+  const qualityEmoji =
+    qualityScore === 'HQA'
+      ? ':large_green_circle:'
+      : qualityScore === 'MQA'
+        ? ':large_orange_circle:'
+        : ':red_circle:';
+  const terminalEmoji =
+    status.toLowerCase() === 'expired' ? ':hourglass:' : ':arrow_right_hook:';
+  const toTitleCase = (value?: string) =>
+    value
+      ? value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'N/A';
+
+  let message = `${terminalEmoji} *JOB ${status}*
+
+    • *VPC:* ${vpcName}
+    • *DPC:* ${dpcName}
+    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+    • *Company:* ${application.Advertiser}
+    • *Status:* ${toTitleCase(status)}
+    • *Environment:* ${host}
+
+    ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
+
+  if (statusUpper === 'VETTED') {
+    if (qualityScore == null || qualityScore === '') {
+      throw new Error('qualityScore is required when status is VETTED');
+    }
+
+    updateData.QualityScore = qualityScore;
+    updateData.VettedBy = fullName || null;
+    updateData.VettedDate = currentDate;
+
+    message = `
+      :white_check_mark: *JOB VETTED* — ${qualityScore}
+
+      • *VPC:* ${vpcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Quality:* ${qualityScore} ${qualityEmoji}
+      • *Status:* Vetted
+      • *Environment:* ${host}
+
+      ${spcName} please submit.
+    `;
+  } else if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
+    updateData.ApplicationSubmittedBy = fullName || null;
+    updateData.ApplicationSubmissionDate = currentDate;
+  }
+
+  await application.update(updateData);
+
+  if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
+    message = `
+      :inbox_tray: *JOB SUBMITTED* — Lifecycle Complete
+
+      • *SPC:* ${spcName}
+      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
+      • *Company:* ${application.Advertiser}
+      • *Location:* ${application.Location}
+      • *Source:* N/A
+      • *Quality:* ${application.QualityScore}
+      • *Status:* Submitted
+      • *Environment:* ${host}
+    `;
+
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+
+    let environment = process.env.NODE_ENV || 'development';
+    if (environment === 'preview') {
+      environment = 'staging';
+    }
+
+    logger.info(
+      `Saving job application for client: ${clientExists.id} by user: ${fullName}`
+    );
+
+    // Prepare data for Flask API
+    const requestData = {
+      environment,
+      client_id: clientExists.id,
+      submitted_by: fullName,
+      vaEmail: clientExists?.AssignedPCEmail || '',
+      job_data: {
+        job_title: jobTitleUrl?.title || 'N/A',
+        company: application.Advertiser,
+        location: application.Location,
+        job_url: jobTitleUrl?.url || 'N/A',
+        job_id: application.JobId,
+        job_type: application.Job_Type,
+        country: application.Country,
+        internal_jobsite: application.Internal_Jobsite || 'C2C',
+        external_jobsite: application.External_Jobsite,
+      },
+    };
+    console.log(requestData);
+
+    // Log payload with user information
+    logger.info(
+      `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
+      requestData
+    );
+
+    // Call Flask Save Application API
+    const axios = require('axios');
+    const flaskResponse = await axios.post(
+      `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+      requestData,
+      { timeout: 60000 }
+    );
+
+    if (!flaskResponse.data.success) {
+      throw new Error(
+        flaskResponse.data.message || 'Failed to save application to database.'
+      );
+    }
+
+    logger.info(
+      `Job application saved successfully for client: ${clientExists.id}`
+    );
+  }
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
+        node: SlackNode.HUMAN_RESOURCE,
+        provider: SlackProvider.HUBSTAFF,
+        severity: SlackSeverity.INFO,
+        trigger: updatedBy,
+        type: SlackEventType.USER_TRIGGERED,
+        channel: SlackChannel.CRY_WOLF,
+        body: message,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
+
+  logger.info(
+    `Manual application updated successfully for applicationId: ${applicationId}`
+  );
+
+  return {
+    success: true,
+    message: 'Manual application status updated successfully.',
+    data: application,
+  };
+};
+
 /**
- * Assign or Unassign VA to client profile
+ * Assign or Unassign VA (PC / Vet / Completed) to client profile
+ * variant can be: 'PC' (default), 'Vet', 'Completed'
  */
-export const assignVAToClient = async (credId: string, vaEmail: string | null, host: string, updatedBy?: string) => {
-  logger.info(`Processing VA assignment for credId=${credId}, vaEmail=${vaEmail}`);
+export const assignVAToClient = async (
+  credId: string,
+  vaEmail: string | null,
+  host: string,
+  updatedBy?: string,
+  variant: 'DPC' | 'VPC' | 'SPC' = 'DPC'
+) => {
+  logger.info(
+    `Processing ${variant} assignment for credId=${credId}, vaEmail=${vaEmail}`
+  );
 
+  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC') => {
+    if (v === 'VPC') {
+      return {
+        emailField: 'AssignedVetEmail' as const,
+        nameField: 'AssignedVetName' as const,
+        displayLabel: 'VPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'SPC') {
+      return {
+        emailField: 'AssignedCompletedEmail' as const,
+        nameField: 'AssignedCompletedName' as const,
+        displayLabel: 'SPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    return {
+      emailField: 'AssignedPCEmail' as const,
+      nameField: 'AssignedPCName' as const,
+      displayLabel: 'DPC',
+      slackChannel: SlackChannel.VA,
+    };
+  };
 
-  if (
+  const fields = resolveFieldNames(variant);
+
+  const isUnassign =
     !vaEmail ||
-    vaEmail.trim() === "Unassigned" ||
-    vaEmail.trim() === "Unassign" ||
-    vaEmail.trim() === "unassign"
-  ) {
-    logger.info(`Unassigning VA for credId=${credId}`);
+    vaEmail.trim() === 'Unassigned' ||
+    vaEmail.trim() === 'Unassign' ||
+    vaEmail.trim() === 'unassign';
 
-    const targetCred = await Credentials.findOne({ where: { id: credId } });
-    if (!targetCred) {
-      logger.warn(`Client profile not found for credId=${credId}`);
-      throw new Error("Client profile not found");
-    }
+  const targetCred = await Credentials.findOne({ where: { id: credId } });
+  if (!targetCred) {
+    logger.warn(`Client profile not found for credId=${credId}`);
+    throw new Error('Client profile not found');
+  }
 
-    const user = await User.findOne({
-      where : {id : targetCred.clientId}
-    })
+  const user = await User.findOne({
+    where: { id: targetCred.clientId },
+  });
 
-    if (!user) {
-      logger.warn("User not found")
-    }
+  if (!user) {
+    logger.warn('User not found');
+  }
 
-    let targetVa = null;
-    let tagName = "Previously assigned VA";
-    let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`
+  const fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
 
-    // Only lookup VA if there is actually an existing assigned email
-    if (targetCred.AssignedPCEmail) {
-      targetVa = await User.findOne({
-        where: { email: targetCred.AssignedPCEmail },
+  if (isUnassign) {
+    logger.info(`Unassigning ${fields.displayLabel} for credId=${credId}`);
+
+    const currentEmail = (targetCred as any)[fields.emailField];
+    let tagName = `Previously assigned ${fields.displayLabel}`;
+
+    if (currentEmail) {
+      const targetUser = await User.findOne({
+        where: { email: currentEmail },
       });
 
-      if (targetVa) {
-        const slackId = await getSlackIdByEmail(targetCred.AssignedPCEmail);
+      if (targetUser) {
+        const slackId = await getSlackIdByEmail(currentEmail);
         tagName = slackId
           ? `<@${slackId}>`
-          : `${targetVa.firstName} ${targetVa.lastName}`;
+          : `${targetUser.firstName} ${targetUser.lastName}`;
       } else {
-        logger.warn(`TPA not found for email=${targetCred.AssignedPCEmail}`);
-        tagName = targetCred.AssignedPCName || targetCred.AssignedPCEmail;
+        logger.warn(
+          `${fields.displayLabel} not found for email=${currentEmail}`
+        );
+        const currentName = (targetCred as any)[fields.nameField];
+        tagName = currentName || currentEmail;
       }
     }
 
-    const message = `VA Unassignment for ${fullName}.
+    const message = `${fields.displayLabel} Unassignment for ${fullName}.
 *Success*: ${tagName} has been unassigned specifically from this client profile.
 *Immediate Impact*: ${tagName} no longer has responsibility for this client's tasks.
-*Next Step*: TPA to hand over any pending items if applicable.`;
+*Next Step*: Team to hand over any pending items if applicable.`;
 
     setImmediate(async () => {
       try {
-
         await SlackService.notify({
-          location: getEnvironmentFromHost(host || ""),
-          host: host || "",
+          location: getEnvironmentFromHost(host || ''),
+          host: host || '',
           node: SlackNode.HUMAN_RESOURCE,
           provider: SlackProvider.HUBSTAFF,
           severity: SlackSeverity.INFO,
           trigger: updatedBy,
           type: SlackEventType.USER_TRIGGERED,
-          channel: SlackChannel.VA,
+          channel: fields.slackChannel,
           body: message,
         });
-        
       } catch (err) {
         logger.error(`❌ Slack notification failed: ${err}`);
       }
     });
 
-    await targetCred.update({ AssignedPCName: null, AssignedPCEmail: null, updatedBy: updatedBy } as any);
-    
-    logger.info(`VA unassigned successfully for credId=${credId}`);
+    await targetCred.update({
+      [fields.nameField]: null,
+      [fields.emailField]: null,
+      updatedBy: updatedBy,
+    } as any);
+
+    logger.info(
+      `${fields.displayLabel} unassigned successfully for credId=${credId}`
+    );
 
     return {
       success: true,
-      message: "TPA unassigned successfully",
+      message: `${fields.displayLabel} unassigned successfully`,
+      variant,
     };
   }
 
-  const targetCred = await Credentials.findOne({ where: { id: credId } });
-  if (!targetCred) {
-    logger.warn(`Client profile not found for credId=${credId}`);
-    throw new Error("Client profile not found");
-  }
-
-  const user = await User.findOne({
-      where : {id : targetCred.clientId}
-    })
-
-    if (!user) {
-      logger.warn("User not found")
-    }
-
-    let fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`
-
+  // --- Assignment ---
   const targetVa = await User.findOne({ where: { email: vaEmail } });
   if (!targetVa) {
-    logger.warn(`TPA not found for email=${vaEmail}`);
-    throw new Error("TPA not found");
+    logger.warn(`${fields.displayLabel} not found for email=${vaEmail}`);
+    throw new Error(`${fields.displayLabel} not found`);
   }
 
   await targetCred.update({
-    AssignedPCEmail: vaEmail,
-    AssignedPCName: `${targetVa.firstName} ${targetVa.lastName}`,
+    [fields.emailField]: vaEmail,
+    [fields.nameField]: `${targetVa.firstName} ${targetVa.lastName}`,
     updatedBy: updatedBy,
   } as any);
 
   const slackId = vaEmail ? await getSlackIdByEmail(vaEmail) : null;
-  const tagName = slackId ? `<@${slackId}>` : `${targetVa?.firstName} ${targetVa?.lastName}`;
-  
-  const message = `VA Assignment for ${fullName}.
+  const tagName = slackId
+    ? `<@${slackId}>`
+    : `${targetVa?.firstName} ${targetVa?.lastName}`;
+
+  const message = `${fields.displayLabel} Assignment for ${fullName}.
 *Success*: ${tagName} has been assigned to this client profile.
 *Immediate Impact*: ${tagName} now has responsibility for this client's tasks.
 *Next Step*: ${tagName} should review the client's profile and begin support.`;
 
   setImmediate(async () => {
     try {
-
       await SlackService.notify({
-        location: getEnvironmentFromHost(host || ""),
-        host: host || "",
+        location: getEnvironmentFromHost(host || ''),
+        host: host || '',
         node: SlackNode.HUMAN_RESOURCE,
         provider: SlackProvider.HUBSTAFF,
         severity: SlackSeverity.INFO,
         trigger: updatedBy,
         type: SlackEventType.USER_TRIGGERED,
-        channel: SlackChannel.VA,
+        channel: fields.slackChannel,
         body: message,
       });
-      
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
     }
   });
 
-  logger.info(`VA assigned successfully for credId=${credId} to ${vaEmail}`);
+  logger.info(
+    `${fields.displayLabel} assigned successfully for credId=${credId} to ${vaEmail}`
+  );
 
   return {
     success: true,
-    message: "TPA updated successfully",
+    message: `${fields.displayLabel} updated successfully`,
+    variant,
     vaName: `${targetVa?.firstName} ${targetVa?.lastName}`,
     vaEmail: vaEmail,
   };
 };
 
-type FilterType = "date" | "range" | "first" | "custom";
-type Samples = "successful" | "unattended" | "all";
+type FilterType = 'date' | 'range' | 'first' | 'custom';
+type Samples = 'successful' | 'unattended' | 'all';
 
 interface TriggerOptions {
   filterType: FilterType;
@@ -1274,21 +1713,21 @@ interface TriggerOptions {
  */
 export const submitJobMatchRequest = async (
   options: TriggerOptions,
-  requestorId?: string,
+  requestorId?: string
 ) => {
   logger.info(`Submitting job match request for client: ${options.clientId}`);
 
   const redis = await getConnectedRedis();
   if (!redis) {
-    throw new Error("Redis connection unavailable");
+    throw new Error('Redis connection unavailable');
   }
 
   const payload: TriggerOptions = {
     ...options,
-    requestor: requestorId || "",
+    requestor: requestorId || '',
   };
 
-  const redisQueue = "JOB_MATCH";
+  const redisQueue = 'JOB_MATCH';
   const redisValue = JSON.stringify(payload);
 
   await redis.lpush(redisQueue, redisValue);
@@ -1297,7 +1736,7 @@ export const submitJobMatchRequest = async (
 
   return {
     success: true,
-    message: "Job match submitted for processing",
+    message: 'Job match submitted for processing',
     payload,
   };
 };
@@ -1310,7 +1749,7 @@ export const submitJobMatchRequest = async (
  * Get campaign clients list with filters
  */
 export const getCampaignClients = async (
-  active: string = "true",
+  active: string = 'true',
   searchQuery?: string,
 ) => {
   logger.info(
@@ -1319,9 +1758,9 @@ export const getCampaignClients = async (
 
   let whereClause: any = {};
 
-  if (active === "all") {
+  if (active === 'all') {
     whereClause = {};
-  } else if (active === "false") {
+  } else if (active === 'false') {
     whereClause = { isDeleted: true };
   } else {
     whereClause = { isDeleted: false };
@@ -1336,27 +1775,27 @@ export const getCampaignClients = async (
         // Search inside seekExternalCredentials JSON fields
         Sequelize.where(
           Sequelize.fn(
-            "LOWER",
-            Sequelize.literal(`"seekExternalCredentials"->>'First_Name'`),
+            'LOWER',
+            Sequelize.literal(`"seekExternalCredentials"->>'First_Name'`)
           ),
           Op.like,
-          searchTerm.toLowerCase(),
+          searchTerm.toLowerCase()
         ),
         Sequelize.where(
           Sequelize.fn(
-            "LOWER",
-            Sequelize.literal(`"seekExternalCredentials"->>'Last_Name'`),
+            'LOWER',
+            Sequelize.literal(`"seekExternalCredentials"->>'Last_Name'`)
           ),
           Op.like,
-          searchTerm.toLowerCase(),
+          searchTerm.toLowerCase()
         ),
         Sequelize.where(
           Sequelize.fn(
-            "LOWER",
-            Sequelize.literal(`"seekExternalCredentials"->>'Full_Name'`),
+            'LOWER',
+            Sequelize.literal(`"seekExternalCredentials"->>'Full_Name'`)
           ),
           Op.like,
-          searchTerm.toLowerCase(),
+          searchTerm.toLowerCase()
         ),
         // Also search top level fields
         { seekEmail: { [Op.iLike]: searchTerm } },
@@ -1372,14 +1811,14 @@ export const getCampaignClients = async (
 
   // Fetch user profiles and their aggregators for each client
   const campaignsWithAggregators: any[] = [];
-  
+
   for (const client of campaigns) {
     try {
       let aggregators: any[] = [];
       if (client.clientId) {
         aggregators = await Aggregator.findAll({
           where: { userId: client.clientId, isDeleted: false },
-          raw: true
+          raw: true,
         });
       }
       campaignsWithAggregators.push({ ...client, aggregators });
@@ -1392,7 +1831,7 @@ export const getCampaignClients = async (
   const totalCount = await Credentials.count({ where: whereClause });
 
   logger.info(
-    `Found ${campaigns.length} campaign clients (total: ${totalCount})`,
+    `Found ${campaigns.length} campaign clients (total: ${totalCount})`
   );
 
   return {
@@ -1408,13 +1847,13 @@ export const getCampaignClientById = async (clientId: string) => {
   logger.info(`Fetching campaign client: ${clientId}`);
 
   if (!clientId) {
-    throw new Error("Client ID is required");
+    throw new Error('Client ID is required');
   }
 
   const clientData = await Credentials.findByPk(clientId, { raw: true });
 
   if (!clientData) {
-    throw new Error("Client not found");
+    throw new Error('Client not found');
   }
 
   // Fetch associated user and profile for application statistics
@@ -1441,14 +1880,14 @@ export const getCampaignClientById = async (clientId: string) => {
   if (clientData.clientId) {
     aggregators = await Aggregator.findAll({
       where: { userId: clientData.clientId, isDeleted: false },
-      raw: true
+      raw: true,
     });
   }
 
   return {
     ...clientData,
     ...applicationCounts,
-    aggregators
+    aggregators,
   };
 };
 
@@ -1460,24 +1899,24 @@ export const getCampaignClientById = async (clientId: string) => {
  */
 export const getUserPreferencesByUserId = async (
   userId: string,
-  preferenceType?: "primary" | "secondary",
+  preferenceType?: 'primary' | 'secondary'
 ) => {
   logger.info(
-    `Fetching ${preferenceType || "all"} user preferences for user ID: ${userId}`,
+    `Fetching ${preferenceType || 'all'} user preferences for user ID: ${userId}`
   );
 
   if (!userId) {
-    throw new Error("User ID is required");
+    throw new Error('User ID is required');
   }
 
   const user = await User.findOne({ where: { id: userId } });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   if (!user.profileId) {
-    throw new Error("User profile not found");
+    throw new Error('User profile not found');
   }
 
   // Fetch profile and cast to any to bypass TypeScript field checking
@@ -1486,22 +1925,22 @@ export const getUserPreferencesByUserId = async (
   })) as any;
 
   if (!profile) {
-    throw new Error("Profile not found for user");
+    throw new Error('Profile not found for user');
   }
 
   // If specific preference type requested, return only those fields
-  if (preferenceType === "primary") {
+  if (preferenceType === 'primary') {
     return {
       userId,
-      preferenceType: "primary",
+      preferenceType: 'primary',
       profile,
     };
   }
 
-  if (preferenceType === "secondary") {
+  if (preferenceType === 'secondary') {
     return {
       userId,
-      preferenceType: "secondary",
+      preferenceType: 'secondary',
       profile,
     };
   }
@@ -1514,11 +1953,15 @@ export const getUserPreferencesByUserId = async (
  * Toggle campaign flight status (Launch / Land)
  * Toggles between INFLIGHT and HOLD status with all associated fields
  */
-export const landOrLaunchCampaign = async (clientId: string, host: string, triggeredBy?: string) => {
+export const landOrLaunchCampaign = async (
+  clientId: string,
+  host: string,
+  triggeredBy?: string
+) => {
   logger.info(`Toggling campaign flight status for client: ${clientId}`);
 
   if (!clientId) {
-    throw new Error("Client ID is required");
+    throw new Error('Client ID is required');
   }
 
   const cred = await Credentials.findOne({
@@ -1526,12 +1969,14 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
   });
 
   if (!cred) {
-    throw new Error("Credential not found");
+    throw new Error('Credential not found');
   }
 
   const credData = cred.toJSON() as any;
   const jsonb = credData.seekExternalCredentials || {};
-  const clientName = `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() || `Client #${clientId}`;
+  const clientName =
+    `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
+    `Client #${clientId}`;
   const clientEmail = jsonb.Alias_Email || credData.seekEmail || 'unknown';
   const planName = jsonb.Plan || 'Unknown';
 
@@ -1540,15 +1985,15 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
   let slackTrigger: string;
   let slackBody: string;
 
-  if (credData.capitalized !== "INFLIGHT") {
+  if (credData.capitalized !== 'INFLIGHT') {
     await cred.update({
-      capitalized: "INFLIGHT",
+      capitalized: 'INFLIGHT',
       Active: true,
       SeekAnswerPriority: true,
       SeekAggregator: true,
     });
-    message = "Campaign launched successfully!";
-    newStatus = "INFLIGHT";
+    message = 'Campaign launched successfully!';
+    newStatus = 'INFLIGHT';
 
     slackTrigger = `Campaign launched for ${clientName}`;
     slackBody = `*Client:* ${clientName} (${clientEmail})
@@ -1563,13 +2008,13 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
 • Check Answer Priority is enabled for queue processing`;
   } else {
     await cred.update({
-      capitalized: "HOLD",
+      capitalized: 'HOLD',
       Active: false,
       SeekAnswerPriority: false,
       SeekAggregator: false,
     });
-    message = "Campaign landed successfully!";
-    newStatus = "HOLD";
+    message = 'Campaign landed successfully!';
+    newStatus = 'HOLD';
 
     slackTrigger = `Campaign landed for ${clientName}`;
     slackBody = `*Client:* ${clientName} (${clientEmail})
@@ -1586,7 +2031,6 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
 
   setImmediate(async () => {
     try {
-
       const location = getEnvironmentFromHost(host);
       await SlackService.notify({
         location,
@@ -1596,11 +2040,10 @@ export const landOrLaunchCampaign = async (clientId: string, host: string, trigg
         severity: SlackSeverity.INFO,
         trigger: slackTrigger,
         type: SlackEventType.ADMIN_ACTION,
-        channel: SlackChannel.VA,
-        teamMentions: "CSM",
+        channel: SlackChannel.TOWN_CRIER,
+        teamMentions: 'CSM',
         body: slackBody,
       });
-      
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
     }
@@ -1624,7 +2067,7 @@ export const getDocumentReviewData = async (userId: string) => {
   logger.info(`Fetching document review data for user: ${userId}`);
 
   if (!userId) {
-    throw new Error("User ID is required");
+    throw new Error('User ID is required');
   }
 
   // Retrieve user uploaded documents
@@ -1634,7 +2077,7 @@ export const getDocumentReviewData = async (userId: string) => {
 
   // Retrieve user profile preferences
   const userData = await User.findByPk(userId, {
-    attributes: ["profileId", "country"],
+    attributes: ['profileId', 'country'],
   });
 
   let userPreference: any = null;
@@ -1648,7 +2091,7 @@ export const getDocumentReviewData = async (userId: string) => {
   }
 
   logger.info(
-    `Document review data retrieved successfully for user: ${userId}`,
+    `Document review data retrieved successfully for user: ${userId}`
   );
 
   return {
@@ -1709,19 +2152,24 @@ export interface UpdateCampaignClientPayload {
   updatedAt?: string;
 }
 
-export const updateCampaignClient = async (id: string, data: UpdateCampaignClientPayload, requestorName?: string, host?: string) => {
+export const updateCampaignClient = async (
+  id: string,
+  data: UpdateCampaignClientPayload,
+  requestorName?: string,
+  host?: string
+) => {
   logger.info(`Updating campaign client: ${id}`);
 
   if (!data || Object.keys(data).length === 0) {
-    throw new Error("Data is required for update");
+    throw new Error('Data is required for update');
   }
   if (!id) {
-    throw new Error("ID is required");
+    throw new Error('ID is required');
   }
 
   const userInfo = await Credentials.findOne({ where: { id } });
   if (!userInfo) {
-    throw new Error("Client not found");
+    throw new Error('Client not found');
   }
 
   // Handle nested data payload structure (fields may be inside a .data wrapper)
@@ -1733,8 +2181,13 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
   // Detect flight status trigger before processing
   // When Capitalized is HOLD or FLIGHT/INFLIGHT, landOrLaunchCampaign handles the
   // capitalized column + associated side effects (Active, SeekAnswerPriority, SeekAggregator, Slack)
-  const incomingCapitalized = (updateData['Capitalized'] as string | undefined)?.trim().toUpperCase();
-  const isFlightTrigger = incomingCapitalized === "HOLD" || incomingCapitalized === "FLIGHT" || incomingCapitalized === "INFLIGHT";
+  const incomingCapitalized = (updateData['Capitalized'] as string | undefined)
+    ?.trim()
+    .toUpperCase();
+  const isFlightTrigger =
+    incomingCapitalized === 'HOLD' ||
+    incomingCapitalized === 'FLIGHT' ||
+    incomingCapitalized === 'INFLIGHT';
   if (isFlightTrigger) {
     delete updateData['Capitalized'];
   }
@@ -1752,7 +2205,12 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
   }
 
   // Pull out non-column fields before processing
-  const { aggregators: aggregatorUpdates, updatedBy: _updatedBy, updatedAt: _updatedAt, ...fieldsToUpdate } = updateData;
+  const {
+    aggregators: aggregatorUpdates,
+    updatedBy: _updatedBy,
+    updatedAt: _updatedAt,
+    ...fieldsToUpdate
+  } = updateData;
 
   // Fields that exist as direct columns on the Credentials model
   const DIRECT_COLUMN_FIELDS = new Set([
@@ -1771,12 +2229,16 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
     'seekLoginType',
     'AssignedPCName',
     'AssignedPCEmail',
+    'AssignedVetName',
+    'AssignedVetEmail',
+    'AssignedCompletedName',
+    'AssignedCompletedEmail',
   ]);
 
   // Form field names that must be renamed to match the actual Credentials column name
   const COLUMN_NAME_MAP: Record<string, string> = {
-    'Capitalized': 'capitalized',   // form sends PascalCase, column is camelCase
-    'Seek_Aggregator': 'SeekAggregator', // form uses underscore, column does not
+    Capitalized: 'capitalized', // form sends PascalCase, column is camelCase
+    Seek_Aggregator: 'SeekAggregator', // form uses underscore, column does not
   };
 
   const directUpdates: Record<string, any> = {};
@@ -1802,7 +2264,10 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
   if (Object.keys(jsonbUpdates).length > 0) {
     const existingData = userInfo.toJSON() as any;
     const existingJsonb = existingData.seekExternalCredentials || {};
-    directUpdates.seekExternalCredentials = { ...existingJsonb, ...jsonbUpdates };
+    directUpdates.seekExternalCredentials = {
+      ...existingJsonb,
+      ...jsonbUpdates,
+    };
   }
 
   // Record who performed the update
@@ -1822,9 +2287,10 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
   if (fieldsToUpdate.SeekSubStartDate && userInfo.clientId) {
     const rawDate = fieldsToUpdate.SeekSubStartDate as string;
     // Accepts DD-MM-YYYY (datepicker) or ISO YYYY-MM-DD
-    const parts = rawDate.includes('-') && rawDate.split('-')[0].length === 2
-      ? rawDate.split('-')
-      : null;
+    const parts =
+      rawDate.includes('-') && rawDate.split('-')[0].length === 2
+        ? rawDate.split('-')
+        : null;
     const startDate = parts
       ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
       : new Date(rawDate);
@@ -1832,7 +2298,8 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
     if (!isNaN(startDate.getTime())) {
       // Use the plan title stored in seekExternalCredentials (e.g. "Bronze", "Silver")
       // so we always match the client's current plan, not an old/different one
-      const currentJsonb = (userInfo.toJSON() as any).seekExternalCredentials || {};
+      const currentJsonb =
+        (userInfo.toJSON() as any).seekExternalCredentials || {};
       const planTitle = currentJsonb.Plan as string | undefined;
 
       const plan = await Plan.findOne({
@@ -1845,7 +2312,9 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
 
       if (plan?.validityPeriod) {
         // validityPeriod examples: "6 months", "12 months", "30 days", "1 year"
-        const [rawAmount, rawUnit = ''] = plan.validityPeriod.trim().split(/\s+/);
+        const [rawAmount, rawUnit = ''] = plan.validityPeriod
+          .trim()
+          .split(/\s+/);
         const amount = parseInt(rawAmount, 10);
         const unit = rawUnit.toLowerCase();
         const expiry = new Date(startDate);
@@ -1858,7 +2327,9 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
           expiry.setFullYear(expiry.getFullYear() + amount);
         }
 
-        const durationDays = Math.round((expiry.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const durationDays = Math.round(
+          (expiry.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
         // Format expiry as DD-MM-YYYY to match the existing date style
         const dd = String(expiry.getDate()).padStart(2, '0');
@@ -1877,22 +2348,38 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
           },
         } as any);
 
-        logger.info(`Plan expiry set to ${endDateStr} (${durationDays} days) for user ${userInfo.clientId} [${planTitle ?? 'unknown plan'}]`);
+        logger.info(
+          `Plan expiry set to ${endDateStr} (${durationDays} days) for user ${userInfo.clientId} [${planTitle ?? 'unknown plan'}]`
+        );
       } else if (plan) {
-        logger.warn(`Plan found for user ${userInfo.clientId} but has no validityPeriod — expiry not updated`);
+        logger.warn(
+          `Plan found for user ${userInfo.clientId} but has no validityPeriod — expiry not updated`
+        );
       } else {
-        logger.warn(`No plan found for user ${userInfo.clientId} — expiry not updated`);
+        logger.warn(
+          `No plan found for user ${userInfo.clientId} — expiry not updated`
+        );
       }
     }
   }
 
   // Update aggregator records if provided
-  if (aggregatorUpdates && Array.isArray(aggregatorUpdates) && aggregatorUpdates.length > 0 && userInfo.clientId) {
+  if (
+    aggregatorUpdates &&
+    Array.isArray(aggregatorUpdates) &&
+    aggregatorUpdates.length > 0 &&
+    userInfo.clientId
+  ) {
     for (const aggUpdate of aggregatorUpdates) {
-      const { id: aggId, userId: _userId, createdAt: _aggCreatedAt, ...aggFields } = aggUpdate;
+      const {
+        id: aggId,
+        userId: _userId,
+        createdAt: _aggCreatedAt,
+        ...aggFields
+      } = aggUpdate;
       if (aggId) {
         await Aggregator.update(aggFields, {
-          where: { id: aggId, userId: userInfo.clientId }
+          where: { id: aggId, userId: userInfo.clientId },
         });
       }
     }
@@ -1901,11 +2388,13 @@ export const updateCampaignClient = async (id: string, data: UpdateCampaignClien
   // Trigger flight toggle after the main update so landOrLaunchCampaign
   // reads the original capitalized state and applies all side effects
   if (isFlightTrigger) {
-    await landOrLaunchCampaign(id, host || "localhost", requestorName);
+    await landOrLaunchCampaign(id, host || 'localhost', requestorName);
   }
 
   const updatedRecord = await Credentials.findByPk(id);
-  logger.info(`Campaign client ${id} updated by: ${requestorName || 'unknown'}`);
+  logger.info(
+    `Campaign client ${id} updated by: ${requestorName || 'unknown'}`
+  );
   return updatedRecord!.toJSON();
 };
 
@@ -1916,7 +2405,7 @@ export const deleteCampaignClient = async (id: string) => {
   logger.info(`Deleting campaign client: ${id}`);
 
   if (!id) {
-    throw new Error("ID is required");
+    throw new Error('ID is required');
   }
 
   const response = await Credentials.destroy({
@@ -1935,12 +2424,12 @@ export const softDeleteCampaignClient = async (id: string) => {
   logger.info(`Soft deleting campaign client: ${id}`);
 
   if (!id) {
-    throw new Error("ID is required");
+    throw new Error('ID is required');
   }
 
   const response = await Credentials.update(
     { isDeleted: true },
-    { where: { id } },
+    { where: { id } }
   );
 
   logger.info(`Soft deleted campaign client: ${id}`);
@@ -1955,12 +2444,12 @@ export const restoreCampaignClient = async (id: string) => {
   logger.info(`Restoring campaign client: ${id}`);
 
   if (!id) {
-    throw new Error("ID is required");
+    throw new Error('ID is required');
   }
 
   const response = await Credentials.update(
     { isDeleted: false },
-    { where: { id } },
+    { where: { id } }
   );
 
   logger.info(`Restored campaign client: ${id}`);
@@ -1975,7 +2464,7 @@ export const permanentDeleteCampaignClient = async (id: string) => {
   logger.info(`PERMANENTLY deleting campaign client: ${id}`);
 
   if (!id) {
-    throw new Error("ID is required");
+    throw new Error('ID is required');
   }
 
   const response = await Credentials.destroy({
@@ -1995,7 +2484,7 @@ export const deleteCampaignClientsBulk = async (ids: string[]) => {
   logger.info(`Bulk deleting ${ids.length} campaign clients`);
 
   if (!ids || ids.length === 0) {
-    throw new Error("IDs are required for bulk delete");
+    throw new Error('IDs are required for bulk delete');
   }
 
   const response = await Credentials.destroy({
@@ -2012,7 +2501,7 @@ export const deleteCampaignClientsBulk = async (ids: string[]) => {
  */
 export const dispatchSampleResults = async (
   clientId: string,
-  host?: string,
+  host?: string
 ) => {
   logger.info(`Dispatching sample results for client: ${clientId}`);
 
@@ -2022,7 +2511,7 @@ export const dispatchSampleResults = async (
   });
 
   if (!credentials) {
-    throw new Error("Client credentials not found");
+    throw new Error('Client credentials not found');
   }
 
   // Find user
@@ -2032,61 +2521,61 @@ export const dispatchSampleResults = async (
   });
 
   if (!user) {
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   // Find sample test applications
-  const Application = require("../models/v1/application.model").Application;
+  const Application = require('../models/v1/application.model').Application;
 
   const sampleApps = await Application.findAll({
     where: {
       client_id: credentials.id,
-      Sample_Type: "Sample Test",
+      Sample_Type: 'Sample Test',
       isDeleted: false,
     },
     limit: 10,
-    order: [["createdAt", "DESC"]],
+    order: [['createdAt', 'DESC']],
     raw: true,
   });
 
   if (!sampleApps || sampleApps.length === 0) {
-    throw new Error("No samples to dispatch");
+    throw new Error('No samples to dispatch');
   }
 
   // Update sample status from Test to Live
   const updateResult = await Application.update(
-    { Sample_Type: "Sample" },
+    { Sample_Type: 'Sample' },
     {
       where: {
         client_id: credentials.id,
-        Sample_Type: "Sample Test",
+        Sample_Type: 'Sample Test',
       },
-    },
+    }
   );
 
   if (updateResult[0] === 0) {
-    throw new Error("Samples already dispatched");
+    throw new Error('Samples already dispatched');
   }
 
   // Update user profile with sample status
-  const Profile = require("../models/v1/profile.model").Profile;
+  const Profile = require('../models/v1/profile.model').Profile;
   await Profile.update(
     {
       isSampleDispatched: true,
       isSampleAccepted: false,
       isSampleResultsAccepted: false,
-      progress: "Sample Results Dispatched",
+      progress: 'Sample Results Dispatched',
     },
     {
       where: { userId: clientId },
-    },
+    }
   );
 
   // Send client notification email
   await sendMail({
     email: user.email,
-    subject: "Your Sample Results are Ready for Review",
-    templateName: "DispatchPreference.ejs",
+    subject: 'Your Sample Results are Ready for Review',
+    templateName: 'DispatchPreference.ejs',
     templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
@@ -2097,9 +2586,9 @@ export const dispatchSampleResults = async (
 
   // Send admin notification email
   await sendMail({
-    email: "deliveryteam@cvtocareer.com",
+    email: 'deliveryteam@cvtocareer.com',
     subject: `${user.firstName} ${user.lastName} Sample Results are Ready for Review`,
-    templateName: "AdminNotificationTemplate.ejs",
+    templateName: 'AdminNotificationTemplate.ejs',
     templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
@@ -2111,12 +2600,11 @@ export const dispatchSampleResults = async (
   // Send Slack notification
   setImmediate(async () => {
     try {
-
-      const location = getEnvironmentFromHost(host || "");
+      const location = getEnvironmentFromHost(host || '');
 
       await SlackService.notify({
         location,
-        host: host || "",
+        host: host || '',
         node: SlackNode.MESSAGING,
         provider: SlackProvider.SENDGRID,
         severity: SlackSeverity.INFO,
@@ -2130,9 +2618,8 @@ export const dispatchSampleResults = async (
       });
 
       logger.info(
-        `Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`,
+        `Successfully dispatched ${sampleApps.length} samples for client: ${user.email}`
       );
-      
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
     }
@@ -2140,7 +2627,7 @@ export const dispatchSampleResults = async (
 
   return {
     success: true,
-    message: "Samples dispatched successfully",
+    message: 'Samples dispatched successfully',
     samplesCount: sampleApps.length,
     updatedRecords: updateResult[0],
   };
@@ -2152,6 +2639,82 @@ export const dispatchSampleResults = async (
  */
 export const getClientApplicationsByClientId = async (
   clientId: string,
+  filters?: {
+    isDeleted?: boolean;
+    status?: string;
+    source?: string;
+    aggregator?: string;
+  }
+) => {
+  logger.info(`Fetching all applications for client_id: ${clientId}`);
+
+  const where: Record<string, any> = { client_id: clientId };
+
+  where.isDeleted =
+    filters?.isDeleted !== undefined ? filters.isDeleted : false;
+
+  if (filters?.status && filters.status !== 'all') {
+    where.Status = filters.status;
+  }
+  if (filters?.source && filters.source !== 'all') {
+    where.Run_Source = filters.source;
+  }
+  if (filters?.aggregator && filters.aggregator !== 'all') {
+    where.Internal_Jobsite = filters.aggregator;
+  }
+
+  // Fetch the full filtered set (ordered newest-first by Timestamp) so we can
+  // collapse duplicate records. The aggregator can re-insert the same job
+  // application as new UUID rows, which otherwise surface as repeated rows.
+  const allRows = await Application.findAndCountAll({
+    where,
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'email', 'firstName', 'lastName'],
+      },
+    ],
+    order: [['Timestamp', 'DESC']],
+    raw: true,
+    nest: true,
+  });
+
+  // Collapse rows that are identical across every business column, keeping the
+  // most recent copy (rows are ordered Timestamp DESC). We intentionally key on
+  // the full record minus its identity/audit fields so genuinely-distinct rows
+  // that happen to share a placeholder JobId ('N/A') are preserved.
+  const seen = new Set<string>();
+  const dedupedRows = allRows.rows.filter((row: any) => {
+    const { id, createdAt, updatedAt, user, ...identity } = row;
+    const key = JSON.stringify(identity);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const totalCount = dedupedRows.length;
+
+  // Unique job count for this client (distinct JobId, ignoring retries).
+  const uniqueCount = await Application.count({
+    where,
+    distinct: true,
+    col: 'JobId',
+  });
+
+  logger.info(
+    `Found ${allRows.count} raw / ${totalCount} distinct applications for client_id ${clientId}`
+  );
+
+  return {
+    data: dedupedRows,
+    totalCount,
+    uniqueCount,
+  };
+};
+
+export const getClientManualApplicationsByClientId = async (
+  clientId: string,
   page: number = 1,
   pageSize: number = 50,
   filters?: {
@@ -2159,44 +2722,47 @@ export const getClientApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
-  },
+  }
 ) => {
-  logger.info(`Fetching applications for client_id: ${clientId} (page: ${page}, size: ${pageSize})`);
+  logger.info(
+    `Fetching applications for client_id: ${clientId} (page: ${page}, size: ${pageSize})`
+  );
 
-  const where: Record<string, any> = { client_id: clientId };
+  const where: Record<string, any> = { Client: clientId };
 
-  where.isDeleted = filters?.isDeleted !== undefined ? filters.isDeleted : false;
+  where.isDeleted =
+    filters?.isDeleted !== undefined ? filters.isDeleted : false;
 
-  if (filters?.status && filters.status !== "all") {
+  if (filters?.status && filters.status !== 'all') {
     where.Status = filters.status;
   }
-  if (filters?.source && filters.source !== "all") {
+  if (filters?.source && filters.source !== 'all') {
     where.Run_Source = filters.source;
   }
-  if (filters?.aggregator && filters.aggregator !== "all") {
+  if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
   }
 
-  const { count, rows } = await Application.findAndCountAll({
+  const { count, rows } = await ManualApplication.findAndCountAll({
     where,
     include: [
       {
         model: User,
-        as: "user",
-        attributes: ["id", "email", "firstName", "lastName"],
+        as: 'user',
+        attributes: ['id', 'email', 'firstName', 'lastName'],
       },
     ],
-    order: [["createdAt", "DESC"]],
+    order: [['createdAt', 'DESC']],
     limit: pageSize,
     offset: (page - 1) * pageSize,
     raw: true,
     nest: true,
   });
 
-  const uniqueCount = await Application.count({
+  const uniqueCount = await ManualApplication.count({
     where,
     distinct: true,
-    col: "JobId",
+    col: 'JobId',
   });
 
   logger.info(`Found ${count} applications for client_id ${clientId}`);
