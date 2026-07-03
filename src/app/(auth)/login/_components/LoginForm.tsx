@@ -159,7 +159,7 @@ export default function LoginForm() {
               <div className="flex justify-between items-center">
                 <FormLabel>Password</FormLabel>
                 <a
-                  href="https://iat.customer.cvtocareer.com/forgot-password"
+                  href={`${process.env.NEXT_PUBLIC_CUSTOMER_URL}/forgot-password`}
                   className="text-[#008ED3] text-xs hover:underline"
                 >
                   Forgot Password?

@@ -151,7 +151,7 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
         fields: [
             {
                 title: "Preferred Industries",
-                key: "industries",
+                key: "industriesInclude",
                 inputType: "multiSelect",
                 options: [],
                 value: "",
@@ -159,7 +159,7 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
             },
             {
                 title: "Excluded Industries",
-                key: "industriesExcluded",
+                key: "industriesExclude",
                 inputType: "multiSelect",
                 options: [],
                 value: "",

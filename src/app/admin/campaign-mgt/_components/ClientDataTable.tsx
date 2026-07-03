@@ -929,7 +929,8 @@ const ClientDataTable: React.FC<{
     if (dataOption?.value !== 'job_applications') return;
     if (clientApplicationsData) {
       const applications = clientApplicationsData?.data?.data ?? [];
-      const total = clientApplicationsData?.data?.pagination?.totalCount ?? 0;
+      const total =
+        clientApplicationsData?.data?.totalCount ?? applications.length;
       setTableData(applications);
       setTotalTableCount(total);
     } else if (clientApplicationsError) {
@@ -1387,37 +1388,64 @@ const ClientDataTable: React.FC<{
               pinnedColumns={{ left: ['__check__', 'actions'] }}
             />
           )}
-          {tableDisplay === 'data-option' && (
-            <StyledDataGridPro
-              initialState={{
-                pinnedColumns: {
-                  left: [GRID_CHECKBOX_SELECTION_COL_DEF.field],
-                },
-              }}
-              paginationModel={paginationModel}
-              slots={{
-                loadingOverlay: LoadingSpinner,
-              }}
-              showToolbar={true}
-              rows={tableData}
-              rowHeight={38}
-              rowReordering
-              disableRowSelectionOnClick
-              checkboxSelection={isEditable}
-              rowBufferPx={100}
-              rowCount={totalTableCount}
-              columns={columns}
-              onPaginationModelChange={(pgntnModel) => {
-                setPaginationModel(pgntnModel);
-                setMakeQuery(true);
-              }}
-              paginationMode="server"
-              columnBufferPx={5}
-              loading={isDataOptionLoading}
-              pagination
-              pinnedColumns={{ left: ['__check__', 'actions'] }}
-            />
-          )}
+          {tableDisplay === 'data-option' &&
+            (dataOption?.value === 'job_applications' ? (
+              // Job applications come back in full (no server pagination), so
+              // let the grid render every row and paginate them client-side.
+              <StyledDataGridPro
+                initialState={{
+                  pinnedColumns: {
+                    left: [GRID_CHECKBOX_SELECTION_COL_DEF.field],
+                  },
+                }}
+                slots={{
+                  loadingOverlay: LoadingSpinner,
+                }}
+                showToolbar={true}
+                rows={tableData}
+                rowHeight={38}
+                rowReordering
+                disableRowSelectionOnClick
+                checkboxSelection={isEditable}
+                rowBufferPx={100}
+                columns={columns}
+                paginationMode="client"
+                columnBufferPx={5}
+                loading={isDataOptionLoading}
+                pagination
+                pinnedColumns={{ left: ['__check__', 'actions'] }}
+              />
+            ) : (
+              <StyledDataGridPro
+                initialState={{
+                  pinnedColumns: {
+                    left: [GRID_CHECKBOX_SELECTION_COL_DEF.field],
+                  },
+                }}
+                paginationModel={paginationModel}
+                slots={{
+                  loadingOverlay: LoadingSpinner,
+                }}
+                showToolbar={true}
+                rows={tableData}
+                rowHeight={38}
+                rowReordering
+                disableRowSelectionOnClick
+                checkboxSelection={isEditable}
+                rowBufferPx={100}
+                rowCount={totalTableCount}
+                columns={columns}
+                onPaginationModelChange={(pgntnModel) => {
+                  setPaginationModel(pgntnModel);
+                  setMakeQuery(true);
+                }}
+                paginationMode="server"
+                columnBufferPx={5}
+                loading={isDataOptionLoading}
+                pagination
+                pinnedColumns={{ left: ['__check__', 'actions'] }}
+              />
+            ))}
         </div>
       </section>
 
