@@ -67,6 +67,10 @@ export type CampaignMgtQueriedDataType = {
   ExternalPassword: string | null
   VaName: string | null;
   VaEmail: string | null;
+  VetName: string | null;
+  VetEmail: string | null;
+  CompletedName: string | null;
+  CompletedEmail: string | null;
   ProfileId: string | null;
   CustomerId: string | null;
   Plan: string | null;
@@ -329,6 +333,8 @@ export type AdminPreferencesType = {
     dateOfBirth: string;
     questions: string[];
     industries: string[];
+    industriesInclude: string[];
+    industriesExclude: string[];
     industriesIncluded: string[];
     industriesExcluded: string[];
     includedJobTitles: string[];
