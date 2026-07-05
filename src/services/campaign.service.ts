@@ -1280,7 +1280,8 @@ export const updateJobApplicationStatus = async (
   user: any,
   host: string,
   qualityScore?: string | null,
-  updatedBy?: string
+  updatedBy?: string,
+  statusReason?: string
 ) => {
   logger.info(
     `Updating manual application status for applicationId: ${applicationId}`
@@ -1381,6 +1382,12 @@ export const updateJobApplicationStatus = async (
 
     ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
 
+  if (statusUpper === 'SKIPPED') {
+    if (statusReason == null || statusReason === '') {
+      throw new Error('Status Reason is required when status is SKIPPED');
+    }
+    updateData.StatusReason = statusReason;
+  }
   if (statusUpper === 'VETTED') {
     if (qualityScore == null || qualityScore === '') {
       throw new Error('qualityScore is required when status is VETTED');
@@ -1750,10 +1757,10 @@ export const submitJobMatchRequest = async (
  */
 export const getCampaignClients = async (
   active: string = 'true',
-  searchQuery?: string,
+  searchQuery?: string
 ) => {
   logger.info(
-    `Fetching campaign clients, active: ${active}, search: ${searchQuery || "none"}`,
+    `Fetching campaign clients, active: ${active}, search: ${searchQuery || 'none'}`
   );
 
   let whereClause: any = {};
@@ -1805,8 +1812,8 @@ export const getCampaignClients = async (
 
   const campaigns = await Credentials.findAll({
     where: whereClause,
-    order: [["createdAt", "DESC"]],
-    raw: true
+    order: [['createdAt', 'DESC']],
+    raw: true,
   });
 
   // Fetch user profiles and their aggregators for each client

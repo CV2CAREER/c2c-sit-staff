@@ -239,10 +239,10 @@ async function fetchDiscoveryRowsYesterday(
         [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
       },
       [Op.or]: [
-        { DiscoveryDate: { [Op.gte]: start, [Op.lt]: end } },
+        { DiscoveryDate: { [Op.gte]: start, [Op.lte]: end } },
         {
           DiscoveryDate: null,
-          createdAt: { [Op.gte]: start, [Op.lt]: end },
+          createdAt: { [Op.gte]: start, [Op.lte]: end },
         },
       ],
     },
@@ -267,10 +267,10 @@ async function fetchVettingRowsYesterday(
         [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
       },
       [Op.or]: [
-        { VettedDate: { [Op.gte]: start, [Op.lt]: end } },
+        { VettedDate: { [Op.gte]: start, [Op.lte]: end } },
         {
           VettedDate: null,
-          createdAt: { [Op.gte]: start, [Op.lt]: end },
+          createdAt: { [Op.gte]: start, [Op.lte]: end },
         },
       ],
     },
@@ -293,10 +293,10 @@ async function fetchSubmissionRowsYesterday(
         [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }, { [Op.ne]: 'N/A' }],
       },
       [Op.or]: [
-        { ApplicationSubmissionDate: { [Op.gte]: start, [Op.lt]: end } },
+        { ApplicationSubmissionDate: { [Op.gte]: start, [Op.lte]: end } },
         {
           ApplicationSubmissionDate: null,
-          createdAt: { [Op.gte]: start, [Op.lt]: end },
+          createdAt: { [Op.gte]: start, [Op.lte]: end },
         },
       ],
     },
@@ -595,7 +595,7 @@ async function buildSubmissionSection(
     const pc = entries[i];
     const tag = await tagPC(pc.pcName, emailLookup);
     lines.push(
-      `*${i + 1}.* ${tag} — *${pc.total}* jobs vetted• ${pc.unattended} Pending Submission`
+      `*${i + 1}.* ${tag} — *${pc.total}* jobs • ${pc.unattended} Pending Submission`
     );
 
     const sorted = [...pc.clients.values()].sort((a, b) => b.count - a.count);

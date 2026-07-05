@@ -384,11 +384,7 @@ async function buildDiscoverySection(groups: PCGroup[]): string {
   return lines.join('\n');
 }
 
-async function buildBacklogSection(
-  groups: PCGroup[],
-  title: string,
-  jobLabel: string
-): string {
+async function buildBacklogSection(groups: PCGroup[], title: string): string {
   const totalJobs = groups.reduce((sum, g) => sum + g.totalCount, 0);
   const lines: string[] = [
     '─────────────────────────────────────────────────',
@@ -413,7 +409,7 @@ async function buildBacklogSection(
       rank++;
     }
     for (const c of group.clients) {
-      lines.push(`• *${c.clientName}* ${jobLabel}: ${c.count}`);
+      lines.push(`• *${c.clientName}*: ${c.count}`);
     }
   }
 
@@ -491,13 +487,11 @@ export async function runUnsatisfiedClientsJob() {
   const discoverySection = await buildDiscoverySection(discoveryGroups);
   const vettingSection = await buildBacklogSection(
     vettingGroups,
-    'Clients with 0 jobs vetted',
-    'Unattended Discovered Job'
+    'Clients with 0 jobs vetted'
   );
   const submissionSection = await buildBacklogSection(
     submissionGroups,
-    'Clients with 0 jobs submitted',
-    'Unsubmitted Vetted Job'
+    'Clients with 0 jobs submitted'
   );
 
   const body = [
@@ -515,7 +509,7 @@ export async function runUnsatisfiedClientsJob() {
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
-    trigger: 'Unsatisfied Clients Report',
+    trigger: 'Clients Without Application Activity',
     type: SlackEventType.SYSTEM_JOB,
     channel: SlackChannel.JOB_PIPELINE,
     body,
@@ -525,11 +519,11 @@ export async function runUnsatisfiedClientsJob() {
 }
 
 /**
- * Cron job: runs daily at 12:00 AM WAT (Africa/Lagos timezone).
+ * Cron job: runs daily at 12:05 AM WAT (Africa/Lagos timezone).
  */
 export function createUnsatisfiedClientsJob() {
   return cron.schedule(
-    '0 0 * * *',
+    '5 0 * * *',
     async () => {
       try {
         await runUnsatisfiedClientsJob();
