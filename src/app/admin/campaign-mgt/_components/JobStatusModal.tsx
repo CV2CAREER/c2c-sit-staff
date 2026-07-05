@@ -39,6 +39,7 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
 }) => {
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [selectedQualityTag, setSelectedQualityTag] = useState<string>('');
+  const [statusReason, setStatusReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -66,6 +67,7 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
     if (isOpen) {
       setSelectedStatus(initialStatus || 'Unattended');
       setSelectedQualityTag('');
+      setStatusReason('');
       setDropOpen(false);
     }
   }, [isOpen, initialStatus]);
@@ -76,6 +78,12 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   const handleSelectOption = (val: string) => {
     setSelectedStatus(val);
     setSelectedQualityTag('');
+
+    // Clear skipped reason when another status is selected
+    if (val !== 'Skipped') {
+      setStatusReason('');
+    }
+
     // ✅ Only close for options that don't need a quality tag
     if (!qualityStatuses.includes(val as StatusOption)) {
       setDropOpen(false);
@@ -96,12 +104,21 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
       return;
     }
 
+    if (selectedStatus === 'Skipped' && !statusReason.trim()) {
+      toast.error('Please enter a reason for skipping.');
+      return;
+    }
+
     const payload: Record<string, string> = {
       applicationId,
       status: selectedStatus.toUpperCase(),
     };
     if (qualityStatuses.includes(selectedStatus as StatusOption)) {
       payload.qualityScore = selectedQualityTag;
+    }
+
+    if (selectedStatus === 'Skipped') {
+      payload.StatusReason = statusReason.trim();
     }
 
     try {
@@ -134,6 +151,7 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   if (!isOpen) return null;
 
   const needsQuality = qualityStatuses.includes(selectedStatus as StatusOption);
+  const needsStatusReason = selectedStatus === 'Skipped';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -246,6 +264,22 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                     </React.Fragment>
                   );
                 })}
+              </div>
+            )}
+
+            {needsStatusReason && (
+              <div className="mt-4">
+                <label className="mb-2 block text-sm text-gray-500">
+                  Reason for Skipping <span className="text-red-500">*</span>
+                </label>
+
+                <textarea
+                  rows={4}
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder="Enter the reason for skipping this application..."
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-[#0e9bd9] focus:outline-none"
+                />
               </div>
             )}
           </div>
