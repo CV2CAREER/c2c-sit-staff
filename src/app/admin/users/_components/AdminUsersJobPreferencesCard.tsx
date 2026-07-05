@@ -66,6 +66,8 @@ const AdminUsersJobPreferencesCard = ({
     dateOfBirth: preferences?.dateOfBirth || "",
     questions: preferences?.questions || [],
     industries: preferences?.industries || [],
+    industriesInclude: preferences?.industriesInclude || [],
+    industriesExclude: preferences?.industriesExclude || [],
     industriesIncluded: preferences?.industriesIncluded || [],
     industriesExcluded: preferences?.industriesExcluded || [],
     includedJobTitles: preferences?.includedJobTitles || [],

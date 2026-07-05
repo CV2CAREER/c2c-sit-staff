@@ -333,6 +333,8 @@ export type AdminPreferencesType = {
     dateOfBirth: string;
     questions: string[];
     industries: string[];
+    industriesInclude: string[];
+    industriesExclude: string[];
     industriesIncluded: string[];
     industriesExcluded: string[];
     includedJobTitles: string[];

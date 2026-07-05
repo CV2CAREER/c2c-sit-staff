@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   },
   description: "Admin access portal for CVtoCAREER.",
   icons: {
-    icon: "/images/h-logo.svg",
-    shortcut: "/images/h-logo.svg",
-    apple: "/images/h-logo.svg",
+    icon: "/svg/logoMobile.png",
+    shortcut: "/svg/logoMobile.png",
+    apple: "/svg/logoMobile.png",
   },
   authors: [{ name: "CVtoCAREER" }],
   creator: "CVtoCAREER",
