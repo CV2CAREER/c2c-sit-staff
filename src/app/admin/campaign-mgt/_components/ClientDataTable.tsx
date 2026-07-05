@@ -539,6 +539,7 @@ const ClientDataTable: React.FC<{
       Job_Location: item?.Location ?? 'N/A',
       Job_Type: item?.Job_Type ?? 'N/A',
       Application_Status: toTitleCase(item?.Status || 'Unattended'),
+      Status_Reason: item?.StatusReason?.trim() || 'N/A',
       Quality_Score:
         (item?.Status || 'unattended').toLowerCase() === 'Unattended'
           ? 'TBD'
@@ -625,6 +626,12 @@ const ClientDataTable: React.FC<{
             {toTitleCase(params.value)}
           </div>
         ),
+      },
+      {
+        field: 'Status_Reason',
+        headerName: 'Status Reason',
+        width: 260,
+        renderCell: (params: any) => <span>{params.value || 'N/A'}</span>,
       },
       {
         field: 'Quality_Score',
