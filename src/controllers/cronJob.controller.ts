@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { getServiceLogger } from '../utils/createLogger';
 import { runPlacPipelineOpsReportJob } from '../jobs/cron/placementPipelineOpsReport.job';
 import { runPipelineLeaderboardJob } from '../jobs/cron/pipelineLeaderboard.job';
-import { runUnsatisfiedClientsJob } from '../jobs/cron/unsatisfiedClient.job';
+import { runUnsatisfiedClientsJob } from '../jobs/cron/clientWithNoApplicationReport.job';
 
 const logger = getServiceLogger('pipeline-jobs-controller');
 

@@ -846,9 +846,9 @@ export async function runPlacPipelineOpsReportJob() {
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
-    trigger: 'PlacPipeline Ops Report',
+    trigger: 'PlacPipeline Ops Report (System Job)',
     type: SlackEventType.SYSTEM_JOB,
-    channel: SlackChannel.JOB_PIPELINE,
+    channel: SlackChannel.VA,
     body,
   });
 

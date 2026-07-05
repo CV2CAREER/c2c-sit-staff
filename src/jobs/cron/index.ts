@@ -1,5 +1,5 @@
 import { ScheduledTask } from 'node-cron';
-import { USE_REDIS } from '../../config/env';
+import { USE_REDIS, DATABASE_NAME } from '../../config/env';
 import { getServiceLogger } from '../../utils/createLogger';
 import { enqueueAnalyticsCacheRefresh } from '../background/analyticsCacheWorker';
 import { createDailySummaryJob } from './daily-summary.job';
@@ -11,7 +11,7 @@ import { createSupportSessionCleanupJob } from './support-session-cleanup.job';
 import { createSubscriptionExpiryReminderJob } from './subscription-expiry-reminder.job';
 import { createPlacPipelineOpsReportJob } from './placementPipelineOpsReport.job';
 import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
-import { createUnsatisfiedClientsJob } from './unsatisfiedClient.job.ts';
+import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -42,22 +42,33 @@ export function startAllCronJobs() {
       name: 'Subscription Expiry Reminder Job',
       task: createSubscriptionExpiryReminderJob(),
     },
-    // Cron job: runs every Saturday at 12:10 AM WAT (Africa/Lagos timezone).
-    {
-      name: 'PlacPipeline Ops Report Job',
-      task: createPlacPipelineOpsReportJob(),
-    },
-    // Cron job: runs daily at 12:00 AM WAT (Africa/Lagos timezone)
-    {
-      name: 'Pipeline Performance Leaderboard Job',
-      task: createPipelineLeaderboardJob(),
-    },
-    // Cron job: runs daily at 12:05 AM WAT (Africa/Lagos timezone)
-    {
-      name: 'Client Without Application Activity',
-      task: createUnsatisfiedClientsJob(),
-    },
   ];
+
+  // Reporting jobs are production-only: they post pipeline/client reports to
+  // Slack and must not run against non-prod databases (e.g. staging/local).
+  if (DATABASE_NAME === 'c2c_prod') {
+    jobInstances.push(
+      // Cron job: runs every Saturday at 12:10 AM WAT (Africa/Lagos timezone).
+      {
+        name: 'PlacPipeline Ops Report Job',
+        task: createPlacPipelineOpsReportJob(),
+      },
+      // Cron job: runs daily at 12:00 AM WAT (Africa/Lagos timezone)
+      {
+        name: 'Pipeline Performance Leaderboard Job',
+        task: createPipelineLeaderboardJob(),
+      },
+      // Cron job: runs daily at 12:05 AM WAT (Africa/Lagos timezone)
+      {
+        name: 'Client Without Application Activity',
+        task: createUnsatisfiedClientsJob(),
+      }
+    );
+  } else {
+    logger.info(
+      `Skipping prod-only reporting cron jobs (DB_NAME=${DATABASE_NAME ?? 'unset'})`
+    );
+  }
 
   jobInstances.forEach(({ name, task }) => {
     task.start();

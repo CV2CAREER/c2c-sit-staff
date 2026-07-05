@@ -343,6 +343,7 @@ function aggregateDiscovery(
         high: 0,
         med: 0,
         low: 0,
+        unattended: 0,
       });
     }
     entry.clients.get(clientId)!.count++;
@@ -740,9 +741,9 @@ export async function runPipelineLeaderboardJob() {
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
-    trigger: 'Pipeline Performance Leaderboard',
+    trigger: 'Pipeline Performance Leaderboard - (System Job)',
     type: SlackEventType.SYSTEM_JOB,
-    channel: SlackChannel.JOB_PIPELINE,
+    channel: SlackChannel.VA,
     body,
   });
 

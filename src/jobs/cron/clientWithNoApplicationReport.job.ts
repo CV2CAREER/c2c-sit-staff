@@ -192,17 +192,23 @@ async function fetchUnvettedCountsByClient(
       client_id: { [Op.in]: clientIds },
       isDeleted: false,
       Status: 'UNATTENDED',
-      [Op.or]: [
-        { VettedBy: null },
-        { VettedBy: '' },
-        { VettedBy: 'N/A' },
-        { VettedDate: null },
-      ],
-      [Op.or]: [
-        { DiscoveryDate: { [Op.gte]: start, [Op.lte]: end } },
+      [Op.and]: [
         {
-          DiscoveryDate: null,
-          createdAt: { [Op.gte]: start, [Op.lte]: end },
+          [Op.or]: [
+            { VettedBy: null },
+            { VettedBy: '' },
+            { VettedBy: 'N/A' },
+            { VettedDate: null },
+          ],
+        },
+        {
+          [Op.or]: [
+            { DiscoveryDate: { [Op.gte]: start, [Op.lte]: end } },
+            {
+              DiscoveryDate: null,
+              createdAt: { [Op.gte]: start, [Op.lte]: end },
+            },
+          ],
         },
       ],
     },
@@ -349,7 +355,7 @@ async function tagPC(name: string, email: string | null): Promise<string> {
 
 // ─── Section builders ──────────────────────────────────────────────────────────
 
-async function buildDiscoverySection(groups: PCGroup[]): string {
+async function buildDiscoverySection(groups: PCGroup[]): Promise<string> {
   const totalClients = groups.reduce((sum, g) => sum + g.totalClients, 0);
   const lines: string[] = [
     '─────────────────────────────────────────────────',
@@ -384,7 +390,7 @@ async function buildDiscoverySection(groups: PCGroup[]): string {
   return lines.join('\n');
 }
 
-async function buildBacklogSection(groups: PCGroup[], title: string): string {
+async function buildBacklogSection(groups: PCGroup[], title: string): Promise<string> {
   const totalJobs = groups.reduce((sum, g) => sum + g.totalCount, 0);
   const lines: string[] = [
     '─────────────────────────────────────────────────',
@@ -509,9 +515,9 @@ export async function runUnsatisfiedClientsJob() {
     node: SlackNode.BACKGROUND_JOB,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
-    trigger: 'Clients Without Application Activity',
+    trigger: 'Clients Without Application Activity - (System Job)',
     type: SlackEventType.SYSTEM_JOB,
-    channel: SlackChannel.JOB_PIPELINE,
+    channel: SlackChannel.VA,
     body,
   });
 

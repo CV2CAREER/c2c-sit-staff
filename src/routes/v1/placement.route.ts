@@ -10,7 +10,7 @@ import {
 
 const placementRouterV1 = Router();
 
-// placementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
+placementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 
 /**
  * Placement Controller Routes
