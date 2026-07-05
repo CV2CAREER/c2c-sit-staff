@@ -746,8 +746,6 @@ export const triggerSubscriptionExpiryReminder = catchAsyncError(
 export const getClientApplications = catchAsyncError(
   async (req: Request, res: Response) => {
     const { clientId } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 500;
     const isDeleted =
       req.query.isDeleted !== undefined
         ? req.query.isDeleted === 'true'
@@ -756,17 +754,12 @@ export const getClientApplications = catchAsyncError(
     const source = req.query.source as string | undefined;
     const aggregator = req.query.aggregator as string | undefined;
 
-    const result = await getClientApplicationsByClientId(
-      clientId,
-      page,
-      pageSize,
-      {
-        isDeleted,
-        status,
-        source,
-        aggregator,
-      }
-    );
+    const result = await getClientApplicationsByClientId(clientId, {
+      isDeleted,
+      status,
+      source,
+      aggregator,
+    });
 
     res.apiSuccess(result, 'Client applications retrieved successfully');
   }

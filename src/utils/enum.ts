@@ -265,6 +265,7 @@ export enum SlackChannel {
   VA = "C09HJKSS42E",
   FREE_TRIALS = "C08PWPTA8FM",
   PAID_SUB = "C077H6PBBFS", // Replace with actual paid-sub channel ID
+  JOB_PIPELINE = "C0B9KDACX5G", // Testing Channel
 }
 
 export enum Length {
