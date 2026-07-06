@@ -146,7 +146,7 @@ class UserManagementService {
       });
 
       try {
-        const environment = getEnvironmentFromHost(process.env.HOST || 'localhost');
+        const environment = getEnvironmentFromHost(process.env.LOCAL_FRONTEND_URL || 'localhost');
         
         // Get changed fields
         const changedFields = Object.keys(updateData).filter(key => 
@@ -155,7 +155,7 @@ class UserManagementService {
 
         await SlackService.notify({
           location: environment,
-          host: process.env.HOST || 'localhost',
+          host: process.env.LOCAL_FRONTEND_URL || 'localhost',
           node: SlackNode.USER_MANAGEMENT,
           provider: SlackProvider.SYSTEM,
           severity: SlackSeverity.INFO,
