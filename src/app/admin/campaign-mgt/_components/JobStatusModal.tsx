@@ -59,7 +59,7 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
     available = available.filter((s) => s !== 'Unattended');
   }
 
-  if (['submitted', 'skipped', 'expired'].includes(current)) {
+  if (['submitted', 'expired'].includes(current)) {
     available = [currentStatus];
   }
 
