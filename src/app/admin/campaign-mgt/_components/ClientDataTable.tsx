@@ -614,7 +614,7 @@ const ClientDataTable: React.FC<{
 
               const blocked =
                 !isEditable ||
-                ['submitted', 'skipped', 'expired'].includes(status);
+                ['submitted', 'expired'].includes(status);
 
               if (blocked) return;
 
@@ -796,7 +796,7 @@ const ClientDataTable: React.FC<{
 
                   const blocked =
                     !isEditable ||
-                    ['submitted', 'skipped', 'expired'].includes(status);
+                    ['submitted', 'expired'].includes(status);
 
                   if (blocked) return;
 
