@@ -11,7 +11,6 @@ import { StaffRole } from "@/types/user.types";
 
 export const ROLE_ROUTES: Record<string, string> = {
   admin: "/admin/dashboard",
-  partner: "/partner/dashboard",
   sales: "/sales/dashboard",
   coach: "/coach/dashboard",
   customer: "/cse/dashboard",
