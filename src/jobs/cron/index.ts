@@ -9,7 +9,7 @@ import { createTokenCleanUpJob } from "./token-cleanup.job";
 import { createSubscriptionCheckJob } from "./subscription-check.job";
 import { createSupportSessionCleanupJob } from "./support-session-cleanup.job";
 import { createSubscriptionExpiryReminderJob } from "./subscription-expiry-reminder.job";
-import { createPlacPipelineOpsReportJob } from "./placementPipelineOpsReport.job";
+// import { createPlacPipelineOpsReportJob } from "./placementPipelineOpsReport.job";
 // import { createPipelineLeaderboardJob } from "./pipelineLeaderboard.job";
 
 const logger = getServiceLogger("app-cron-jobs");
@@ -33,7 +33,7 @@ export function startAllCronJobs() {
     { name: "Support Session Cleanup Job",        task: createSupportSessionCleanupJob() },
     { name: "Subscription Expiry Reminder Job",   task: createSubscriptionExpiryReminderJob() },
     // Runs at 07:00 UTC (08:00 WAT) — full ops snapshot for the day
-    { name: "PlacPipeline Ops Report Job",        task: createPlacPipelineOpsReportJob() },
+    // { name: "PlacPipeline Ops Report Job",        task: createPlacPipelineOpsReportJob() },
     // Runs at 07:05 UTC (08:05 WAT) — yesterday's leaderboard, 5 min after ops report
     // { name: "Pipeline Performance Leaderboard Job", task: createPipelineLeaderboardJob() },
   ];
