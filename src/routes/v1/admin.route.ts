@@ -100,6 +100,7 @@ import adminDocumentRouterV1 from "./admin-document.route";
 import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
 import communicationTemplateRouterV1 from "./communication-template.route";
+import clientContentRouterV1 from "./client-content.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
 const adminRouterV1 = Router();
 
@@ -159,6 +160,10 @@ adminRouterV1.use(
 adminRouterV1.use(
   "/templates",
   communicationTemplateRouterV1,
+);
+adminRouterV1.use(
+  "/client-content",
+  clientContentRouterV1,
 );
 adminRouterV1.use("/documents", adminDocumentRouterV1);
 adminRouterV1.all(
