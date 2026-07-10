@@ -62,7 +62,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
 
 
   return (
-    <div className="flex flex-col lg:flex-row -mt-6 items-center justify-between border-t bg-white p-8 rounded-b-2xl">
+    <div className="flex flex-col lg:flex-row -mt-6 items-center justify-between border-t bg-white p-4 md:p-8 rounded-b-2xl">
       <div className="flex flex-col mobile:flex-row w-full lg:w-auto justify-between lg:justify-normal lg:my-0 p-1.5 rounded-lg shadow-lg lg:shadow-none items-center">
         <div className="smallLaptop:h-24 smallLaptop:w-24 h-14 w-14  capitalize rounded-full text-xl smallLaptop:text-[57px] p-4 bg-career-blue-300 text-career-blue-500 flex items-center justify-center mr-2 font-medium">
           {userData?.data?.firstName?.charAt(0) || "U"}

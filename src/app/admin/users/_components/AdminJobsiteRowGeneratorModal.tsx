@@ -61,7 +61,7 @@ const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = fals
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div
                         ref={modalRef}
-                        className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-y-auto border border-gray-200" >
+                        className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200" >
                         <div className="flex justify-between items-center p-6 border-b border-gray-100">
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-800">Generate Jobsite Rows</h3>
