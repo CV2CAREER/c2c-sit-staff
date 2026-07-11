@@ -409,12 +409,12 @@ const UserDataCards = ({
           <DateFilter onFilterDataChange={setDateFilterData} />
         </div>
       </div>
-      <section className="flex flex-row flex-wrap justify-between lg:justify-start gap-4 *:w-[45%] lg:*:w-[18%]">
+      <section className="grid grid-cols-3 gap-3 lg:flex lg:flex-row lg:flex-wrap lg:gap-4 lg:justify-start">
         {isLoading ? (
           Array(17).fill(0).map((_, idx) => (
             <div
               key={idx}
-              className="flex items-center h-24 gap-3 bg-white p-4 rounded-md shadow-md animate-pulse"
+              className="flex items-center h-24 gap-2 bg-white p-3 rounded-md shadow-md animate-pulse lg:gap-3 lg:p-4 lg:w-[18%]"
             >
               <div className="bg-gray-300 w-10 h-10 rounded-full" />
               <div className="flex-1 space-y-2">
@@ -429,7 +429,7 @@ const UserDataCards = ({
             return (
               <div
                 key={idx}
-                className="flex items-center gap-3 bg-white p-4 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+                className="flex items-center gap-2 bg-white p-3 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all lg:gap-3 lg:p-4 lg:w-[18%]"
                 onClick={() => {
                   if(userTypes.includes(card.title)){
                     setUserType({

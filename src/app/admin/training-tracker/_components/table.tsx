@@ -3,6 +3,7 @@
 
 import { Suspense, useState, useMemo, useCallback } from "react";
 import Box from "@mui/material/Box";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import {
   GridRowModesModel,
   GridRowModes,
@@ -48,6 +49,8 @@ export default function TrainingTrackerDatagrid({
   sessionNumber: number | null;
   isDeleted: boolean;
 }) {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
   const {
     trainingDataDomain,
     coachesDomain,
@@ -454,14 +457,44 @@ export default function TrainingTrackerDatagrid({
       activeCoach
     );
 
-    return orderTable(tableName, baseColumns);
-  }, [getActions, getUserFullName, getCoachFullName, user, activeCoach]);
+    const orderedColumns = orderTable(tableName, baseColumns);
+
+    if (!isMobile) {
+      return orderedColumns;
+    }
+
+    const mobileWidths: Record<string, number> = {
+      coachId: 150,
+      notes: 180,
+      appearance: 140,
+      partingQuestions: 170,
+      maximumNumberOfQuestions: 180,
+      clientStoryResponses: 170,
+      timeKeeping: 150,
+      fillerPhrases: 160,
+      intermittentClarificationRequest: 190,
+    };
+
+    return orderedColumns.map((col) => {
+      const mobileWidth = mobileWidths[col.field];
+      if (!mobileWidth) return col;
+
+      const currentWidth = typeof col.width === "number" ? col.width : mobileWidth;
+      return {
+        ...col,
+        width: Math.min(currentWidth, mobileWidth),
+      };
+    });
+  }, [getActions, getUserFullName, getCoachFullName, user, activeCoach, isMobile]);
 
   return (
     <Box sx={{ height: 600, width: "100%" }}>
       <TableWithHeaderClass
         rows={rows}
         columns={columns}
+        density={isMobile ? "compact" : "standard"}
+        columnHeaderHeight={isMobile ? 40 : 56}
+        rowHeight={isMobile ? 40 : undefined}
         checkboxSelection={allowEdit}
         getRowId={(row) => row.id}
         editMode="row"
@@ -486,6 +519,22 @@ export default function TrainingTrackerDatagrid({
         }}
         pageSizeOptions={[5, 10, 25]}
         disableRowSelectionOnClick
+        sx={{
+          ...(isMobile
+            ? {
+                "& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell": {
+                  px: 0.75,
+                },
+                "& .MuiDataGrid-columnHeaderTitle": {
+                  fontSize: "0.72rem",
+                  lineHeight: 1.15,
+                },
+                "& .MuiDataGrid-cell": {
+                  fontSize: "0.75rem",
+                },
+              }
+            : {}),
+        }}
       />
 
       <CreateModal

@@ -297,20 +297,22 @@ const AvailableHours = () => {
                 </span>
               )}
             </div>
-            <div className="flex flex-row gap-3">
+            <div className="flex flex-row gap-3 overflow-x-auto pb-2 md:overflow-visible md:pb-0">
               {clientAvailabilitiesDomain.isLoading ? (
                 [1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-20 bg-gray-50 animate-pulse rounded-2xl border border-gray-100"
+                    className="h-20 min-w-[280px] md:min-w-0 bg-gray-50 animate-pulse rounded-2xl border border-gray-100"
                   />
                 ))
               ) : (
                 pendingAvailabilities.map((availability: any) => (
-                  <ClientAvailabilityCard
+                  <div
                     key={availability._id || availability.id}
-                    availability={availability}
-                  />
+                    className="min-w-[280px] md:min-w-0"
+                  >
+                    <ClientAvailabilityCard availability={availability} />
+                  </div>
                 ))
               )}
             </div>
