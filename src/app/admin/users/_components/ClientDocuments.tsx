@@ -8,6 +8,7 @@ import {
 import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
 import { useState, useMemo } from "react";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
@@ -20,6 +21,7 @@ import PulseLoader from "../../_components/DropDown/loader";
 
 
 const ClientDocument = ({ userId }: { userId: string }) => {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const queryClient = useQueryClient();
   const { userDocumentsDomain: documentsData } = useAdminQueries({
     userId,
@@ -33,6 +35,39 @@ const ClientDocument = ({ userId }: { userId: string }) => {
   const documentRows = useMemo(() => {
     return generateClientDocumentRows(rows) as never[];
   }, [rows]);
+
+  const documentColumns = useMemo(() => {
+    const baseColumns = generateClientDocumentsColumns(rows as any[]) as GridColDef[];
+
+    if (!isMobile) {
+      return baseColumns;
+    }
+
+    const mobileWidths: Record<string, number> = {
+      actions: 84,
+      fileName: 170,
+      type: 120,
+      source: 120,
+      dateUpdated: 135,
+      extractionType: 135,
+      dataPoints: 120,
+      suggestedKeywords: 140,
+      suggestedJobTitles: 140,
+      populateKeywords: 170,
+      viewRevampedVersions: 180,
+    };
+
+    return baseColumns.map((col) => {
+      const mobileWidth = mobileWidths[col.field];
+      if (!mobileWidth) return col;
+
+      const currentWidth = typeof col.width === "number" ? col.width : mobileWidth;
+      return {
+        ...col,
+        width: Math.min(currentWidth, mobileWidth),
+      };
+    });
+  }, [rows, isMobile]);
 
 //   console.log("client documents", documentsData);
   return (
@@ -63,10 +98,11 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                getRowId={(row) => {
                  return row.id || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
                }}
-               columns={
-                 generateClientDocumentsColumns(rows as any[]) as GridColDef[]
-               }
+               columns={documentColumns}
               showToolbar={true}
+              density={isMobile ? "compact" : "standard"}
+              columnHeaderHeight={isMobile ? 40 : 56}
+              rowHeight={isMobile ? 36 : undefined}
               paginationMode="server"
               rowCount={0}
               pagination
@@ -79,6 +115,22 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               disableRowSelectionOnClick
               checkboxSelection
               checkboxSelectionVisibleOnly
+              sx={
+                isMobile
+                  ? {
+                      "& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell": {
+                        px: 0.75,
+                      },
+                      "& .MuiDataGrid-columnHeaderTitle": {
+                        fontSize: "0.72rem",
+                        lineHeight: 1.15,
+                      },
+                      "& .MuiDataGrid-cell": {
+                        fontSize: "0.75rem",
+                      },
+                    }
+                  : undefined
+              }
               onCellClick={(params) => {
                 if (params.field === "suggestedKeywords") {
                   setIsKeywordModalOpen(true);
