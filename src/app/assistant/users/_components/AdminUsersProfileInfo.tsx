@@ -79,11 +79,11 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
     return (
         <>
             {loading ? (
-                <div className="mt-6 w-full p-8 rounded-3xl bg-gray-400 animate-pulse">
+                <div className="mt-6 w-full p-4 md:p-8 rounded-3xl bg-gray-400 animate-pulse">
                     <div className="flex items-center justify-between">
-                        <div className="bg-gray-300 animate-pulse w-72 h-12 rounded-md mr-4" />
+                        <div className="bg-gray-300 animate-pulse w-72 max-w-full h-12 rounded-md mr-4" />
                     </div>
-                    <div className="grid grid-cols-4 bigLaptop:grid-cols-5 mt-8">
+                    <div className="grid grid-cols-2 mobile:grid-cols-4 bigLaptop:grid-cols-5 gap-4 mt-8">
                         {data.map((profile) => (
                             <div key={profile.id}>
                                 <div className="bg-gray-300 mb-4 animate-pulse w-28 h-9 rounded-md" />
@@ -93,7 +93,7 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
                     </div>
                 </div>
             ) : (
-                <div className="mt-6 w-full p-8 rounded-3xl bg-white">
+                <div className="mt-6 w-full p-4 md:p-8 rounded-3xl bg-white">
                     <div className="flex items-center justify-between">
                         <h3 className="text-2xl font-poppins !font-medium font-sharp-grotesk text-career-black-200">
                             Profile Information

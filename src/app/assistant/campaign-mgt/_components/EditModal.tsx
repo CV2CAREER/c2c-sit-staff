@@ -242,7 +242,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
               onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-8 text-black"
             >
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="First_Name"
@@ -279,7 +279,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="Last_Name"
@@ -316,7 +316,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="Alias_Email"
@@ -353,7 +353,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="ReturnCount"
@@ -390,12 +390,12 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3 w-full">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <FormField
                   control={form.control}
                   name="Assurance"
                   render={({ field }) => (
-                    <FormItem className="w-[50%]">
+                    <FormItem className="w-full sm:w-[50%]">
                       <FormLabel>Assurance</FormLabel>
                       <FormControl>
                         <Input
@@ -412,7 +412,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   control={form.control}
                   name="SeekSubStartDate"
                   render={({ field }) => (
-                    <FormItem className="w-[50%]">
+                    <FormItem className="w-full sm:w-[50%]">
                       <FormLabel>Subscription Start Date</FormLabel>
                       <FormControl>
                         <DatePicker
@@ -441,7 +441,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="SeekSubDurDays"
@@ -485,7 +485,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3 w-full">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <FormField
                   control={form.control}
                   name="Capitalized"
@@ -522,7 +522,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   control={form.control}
                   name="Country"
                   render={({ field }) => (
-                    <FormItem className="w-[50%]">
+                    <FormItem className="w-full sm:w-[50%]">
                       <FormLabel>Country</FormLabel>
                       <FormControl>
                         <SearchSelect
@@ -667,7 +667,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="Batch"

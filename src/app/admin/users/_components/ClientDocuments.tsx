@@ -37,12 +37,12 @@ const ClientDocument = ({ userId }: { userId: string }) => {
 //   console.log("client documents", documentsData);
   return (
     <>
-      <div className="w-full bg-white p-6 rounded-2xl">
-        <div className="flex items-center justify-between">
-          <h3 className="text-2xl !font-medium font-sharp-grotesk text-career-black-200 capitalize">
+      <div className="w-full bg-white p-4 md:p-6 rounded-2xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <h3 className="text-xl md:text-2xl !font-medium font-sharp-grotesk text-career-black-200 capitalize">
             Client Documents
           </h3>
-          <div className="flex items-center bg-career-gray-300 bigLaptop:w-[31rem] h-12 rounded-[2.5rem] px-4 py-3">
+          <div className="flex items-center bg-career-gray-300 w-full bigLaptop:w-[31rem] h-12 rounded-[2.5rem] px-4 py-3">
             <Icon name="search" />
             <input
               type="text"

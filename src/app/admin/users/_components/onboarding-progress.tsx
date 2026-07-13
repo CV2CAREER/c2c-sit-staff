@@ -40,9 +40,9 @@ export default function OnBoardingProgress({ userId }: { userId: string }) {
 
   return (
     <section className="flex flex-col gap-3 bg-white rounded-md p-4 shadow-lg">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">Onboarding Progress</h2>
+      <div className="flex flex-wrap gap-2 justify-between items-center">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 className="text-lg md:text-xl font-semibold">Onboarding Progress</h2>
           {formattedUpdatedAt && (
             <span className="text-xs text-gray-400">Updated: {formattedUpdatedAt}</span>
           )}

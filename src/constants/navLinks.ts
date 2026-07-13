@@ -27,6 +27,7 @@ import {
   Trophy,
   Contact,
   Headphones,
+  FileText,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
@@ -137,6 +138,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Chatbot Logs", href: "/admin/communication/chatbot-logs", icon: Bot },
       { name: "Human Support", href: "/admin/communication/human-support", icon: User },
       { name: "Emails", href: "/admin/communication-templates", icon: Mail },
+      { name: "Content", href: "/admin/communication/client-content", icon: FileText },
       { name: "JustCall", href: "/admin/justcall", icon: Layers },
       { name: "Slack", href: "/admin/slack", icon: SiSlack },
     ],

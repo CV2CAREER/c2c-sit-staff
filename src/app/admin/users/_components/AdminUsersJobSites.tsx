@@ -180,9 +180,9 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
 
     return (
         <div className="bg-white shadow-sm rounded-sm mb-8">
-            <div className="p-6 pt-2">
-                <div className="flex items-center justify-between gap-4 mb-6">
-                    <h3 className="text-2xl font-semibold">Job Sites</h3>
+            <div className="p-4 md:p-6 pt-2">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <h3 className="text-xl md:text-2xl font-semibold">Job Sites</h3>
                     <AdminJobsiteRowGeneratorModal
                         missingJobsiteRows={!aggregators?.length}
                         user={user}

@@ -270,7 +270,7 @@ export default function CvDataPointsTable({
 
 
   return (
-    <div className="h-[600px] w-full">
+    <div className="h-[450px] md:h-[600px] w-full">
       <StyledDataGridPro
       rows={dataPoints.map((item, index) => ({
         ...item,

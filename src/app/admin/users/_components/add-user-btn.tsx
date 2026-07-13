@@ -268,7 +268,7 @@ const AddUserBtn = () => {
         closeOnOutsideClick={false}
         contentClassName="max-w-lg w-full"
       >
-        <div className="sticky top-0 bg-white z-10 px-8 pt-6 pb-3">
+        <div className="sticky top-0 bg-white z-10 px-5 sm:px-8 pt-6 pb-3">
           <div className="flex items-start justify-between mb-1">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
@@ -306,8 +306,8 @@ const AddUserBtn = () => {
         </div>
 
         {step === 1 && (
-          <div className="px-8 pb-8 flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="px-5 sm:px-8 pb-8 flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {field("firstName", "First Name *", "text", "John")}
               {field("middleName", "Middle Name", "text", "Optional")}
             </div>
@@ -335,19 +335,19 @@ const AddUserBtn = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {field("phoneNumber", "Voice Number", "tel", "+1 234 567 8900")}
               {field("whatsappNumber", "WhatsApp Number", "tel", "+1 234 567 8900")}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {field("country", "Country of Residence", "text", "United States")}
               {field("currentCityOfResidence", "Current City", "text", "New York")}
             </div>
 
             <div>
               <label className={labelClass}>Sign Up As</label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                 {Object.entries(ROLE_CONFIG).map(([value, { label, color }]) => (
                   <button
                     key={value}
@@ -381,7 +381,7 @@ const AddUserBtn = () => {
         )}
 
         {step === 2 && (
-          <div className="px-8 pb-8 flex flex-col items-center gap-6 py-6 text-center">
+          <div className="px-5 sm:px-8 pb-8 flex flex-col items-center gap-6 py-6 text-center">
             <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-2xl">
               ✉️
             </div>
@@ -418,7 +418,7 @@ const AddUserBtn = () => {
         )}
 
         {step === 3 && (
-          <div className="px-8 pb-8 pt-4 flex flex-col gap-5">
+          <div className="px-5 sm:px-8 pb-8 pt-4 flex flex-col gap-5">
             <p className="text-sm text-gray-600">
               An OTP has been sent to <strong>{form.email}</strong>. Enter it below to verify the account.
             </p>

@@ -5,6 +5,7 @@ import { useEffect, ComponentType, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { StaffRole } from "@/types/user.types";
 import { getRoleRoute } from "@/hooks/api/auth.api";
+import { clearSessionHint } from "@/lib/auth-session";
 
 /**
  * withPersonaGuard — HOC to protect pages based on staff roles.
@@ -35,6 +36,9 @@ export function withPersonaGuard<P extends object>(
     useEffect(() => {
       // 1. Unauthenticated -> Redirect to login
       if (!isLoading && !isAuthenticated) {
+        // The backend rejected the session, so drop the middleware's session
+        // hint — otherwise it would bounce us straight back off /login.
+        clearSessionHint();
         router.replace("/login");
         return;
       }
@@ -45,7 +49,10 @@ export function withPersonaGuard<P extends object>(
         if (window.location.pathname !== correctRoute) {
           router.replace(correctRoute);
         } else {
-          router.replace("/login"); // Fallback if their own role route is somehow unauthorized
+          // Their own role route is guarded against them. Sending them to
+          // /login with the hint intact would loop through the middleware.
+          clearSessionHint();
+          router.replace("/login");
         }
       }
     }, [isAuthenticated, isLoading, user, router, isAuthorized]);
