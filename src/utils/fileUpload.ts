@@ -206,11 +206,75 @@ export const generateSignedUrl = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logger.error(`[GenerateSignedUrl] Failed: ${errorMessage}`);
-    
+
     if (error instanceof ErrorHandler) {
       throw error;
     }
-    
+
     throw new ErrorHandler(`Failed to generate signed URL: ${errorMessage}`, 500);
   }
+};
+
+/**
+ * Resolve a stored file (by publicId / cloudFilename, with or without its
+ * storage-folder prefix) and mint a FRESH, short-lived signed download URL.
+ *
+ * This is the correct way to hand a download link to an admin/assistant:
+ * signed URLs are cryptographically bound to the service-account key that was
+ * active when they were created, so any URL persisted in the database dies the
+ * moment that key is rotated (this is the source of `SignatureDoesNotMatch`).
+ * Re-signing on demand with the current key always works.
+ *
+ * @param filePath - The publicId / cloudFilename as stored on the document
+ * @param filename - Optional download filename (Content-Disposition)
+ * @param expiresInMinutes - URL lifetime in minutes (default: 15)
+ * @returns A fresh signed URL for downloading the file
+ */
+export const generateDownloadSignedUrl = async (
+  filePath: string,
+  filename?: string,
+  expiresInMinutes: number = 15
+): Promise<string> => {
+  const cleaned = filePath.replace(/^\/+/, "").trim();
+  const bareName = cleaned.split("/").pop() || cleaned;
+  const storageFolder = process.env.STORAGE_BUCKET || "cvtocareerbucket";
+
+  // Try the path as-is first, then fall back to the known storage folders.
+  // Legacy client uploads store only the bare filename but actually live
+  // under `cvtocareerbucket/<filename>`; newer uploads store the full path.
+  const candidates = Array.from(
+    new Set([
+      cleaned,
+      `${storageFolder}/${cleaned}`,
+      `cvtocareerbucket/${cleaned}`,
+      `${storageFolder}/${bareName}`,
+      `cvtocareerbucket/${bareName}`,
+      bareName,
+    ])
+  );
+
+  logger.info(`[DownloadSignedUrl] Resolving file for: ${cleaned}`);
+
+  for (const candidate of candidates) {
+    const file = bucket.file(candidate);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+      continue;
+    }
+
+    const downloadName = filename || bareName;
+    const [signedUrl] = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + expiresInMinutes * 60 * 1000,
+      responseDisposition: `attachment; filename="${downloadName}"`,
+    });
+
+    logger.info(`[DownloadSignedUrl] Signed fresh URL for: ${candidate}`);
+    return signedUrl;
+  }
+
+  logger.warn(`[DownloadSignedUrl] File not found. Tried: ${candidates.join(", ")}`);
+  throw new ErrorHandler("File not found in storage", 404);
 };

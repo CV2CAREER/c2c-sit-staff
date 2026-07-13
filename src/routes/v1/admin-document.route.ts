@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   deleteAdminDocumentUploadController,
+  getDocumentSignedUrlController,
   uploadAdminDocumentsController,
   validateAndUploadUrlController,
 } from "../../controllers/v1/admin-document-upload.controller";
@@ -17,6 +18,7 @@ adminDocumentRouterV1.use(
   authorizeRoles("admin", "assistant"),
 );
 
+adminDocumentRouterV1.get("/get-signed-url", getDocumentSignedUrlController);
 adminDocumentRouterV1.post("/upload", uploadAdminDocumentsController);
 adminDocumentRouterV1.delete("/upload", deleteAdminDocumentUploadController);
 adminDocumentRouterV1.post(

@@ -1,11 +1,17 @@
 import { Sequelize } from "sequelize-typescript";
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 import {
   DATABASE_HOST,
   DATABASE_NAME,
   DATABASE_PASSWORD,
   DATABASE_PORT,
   DATABASE_USERNAME,
+  DB_POOL_ACQUIRE,
+  DB_POOL_EVICT,
+  DB_POOL_IDLE,
+  DB_POOL_MAX,
+  DB_POOL_MIN,
+  DB_STATEMENT_TIMEOUT,
   NODE_ENV,
 } from "../config/env";
 import { getServiceLogger } from "./createLogger";
@@ -14,11 +20,29 @@ import { modelList } from "./modelsList";
 const logger = getServiceLogger("sequelize");
 
 // load environment variables
-dotenv.config();
+// dotenv.config();
 
 let sequelize: Sequelize | null;
 
+// --- Connection pool sizing (env-overridable, see config/env.ts) ---
+// The managed Postgres cluster has a hard `max_connections` limit, and every
+// environment (RAT/IAT/SIT/UAT/PROD) of this backend shares it. If each process
+// opens too many connections — or holds idle ones — the server runs out of
+// non-superuser slots ("remaining connection slots are reserved for roles with
+// the SUPERUSER attribute"). Keep `max` modest and `min` at 0 so idle
+// environments release their slots.
+const poolConfig = {
+  max: DB_POOL_MAX, // max concurrent connections per process
+  min: DB_POOL_MIN, // don't hold idle connections
+  acquire: DB_POOL_ACQUIRE, // max time to get a connection
+  idle: DB_POOL_IDLE, // release idle connections after 10s
+  evict: DB_POOL_EVICT, // sweep for idle connections every 5s
+};
+
 export const createSequelize = () => {
+  logger.info(
+    `[POOL CONFIG] max=${poolConfig.max}, min=${poolConfig.min}, acquire=${poolConfig.acquire}ms, idle=${poolConfig.idle}ms`,
+  );
 
   return NODE_ENV !== "local"
     ? new Sequelize({
@@ -35,14 +59,9 @@ export const createSequelize = () => {
             require: true, // necessary for managed DBs like DigitalOcean / Heroku
             rejectUnauthorized: false, // allows self-signed certs
           },
-          statement_timeout: 60000, // 60s query timeout
+          statement_timeout: DB_STATEMENT_TIMEOUT, // 30s query timeout
         },
-        pool: {
-          max: 50, // max concurrent connections
-          min: 5, // minimum idle connections
-          acquire: 30000, // max time to get connection
-          idle: 30000, // close idle connections after 30s
-        },
+        pool: poolConfig,
       })
     : new Sequelize({
         database: DATABASE_NAME,
@@ -53,18 +72,12 @@ export const createSequelize = () => {
         dialect: "postgres",
         logging: false,
         models: modelList,
-        pool: {
-          max: 30,
-          min: 0,
-          acquire: 60000,
-          idle: 10000,
-        },
-        retry: {
-          max: 5, // retry queries when connection lost
-        },
+        pool: poolConfig,
+        // retry: {
+        //   max: 5, // retry queries when connection lost
+        // },
       });
 };
-
 export const getSequelize = (): Sequelize => {
   if (!sequelize) {
     logger.warn("Sequelize connection missing or closed, recreating...");
@@ -114,7 +127,7 @@ export const resetSequelize = async () => {
       try {
         // @ts-ignore
         if (sequelize.connectionManager?.pool) {
-           
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           sequelize.connectionManager.pool.destroyAllNow();
           logger.info(" Force-destroyed all pooled connections");

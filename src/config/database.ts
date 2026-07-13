@@ -5,6 +5,7 @@ import { getServiceLogger } from '../utils/createLogger';
 import { ensureAnalyticsIndexes } from '../services/admin/analytics.index-bootstrap.service';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
+import { ClientContentService } from '../services/admin/client-content.service';
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -41,6 +42,10 @@ const isProduction = NODE_ENV !== 'local';
 //   await CommunicationTemplateService.ensureTemplatesTable();
 // };
 
+const ensureClientContentTable = async () => {
+  await ClientContentService.ensureClientContentTable();
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -76,6 +81,7 @@ export const connectDB = async (): Promise<void> => {
         // await ensureCRTrackingHistoryTable();
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
+        await ensureClientContentTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -132,6 +138,7 @@ export const connectDB = async (): Promise<void> => {
         // await ensureCRTrackingHistoryTable();
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
+        await ensureClientContentTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

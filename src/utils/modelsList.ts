@@ -60,6 +60,7 @@ import { AccessLevel } from '../models/v1/access-level.model';
 import { AccessRule } from '../models/v1/access-rule.model';
 import { UserAccessLevel } from '../models/v1/user-access-level.model';
 import { CommunicationTemplate } from '../models/v1/communication-template.model';
+import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
@@ -126,6 +127,7 @@ export const modelList = [
   AccessRule,
   UserAccessLevel,
   CommunicationTemplate,
+  ClientContent,
   AuditLog,
   PassKeyVault,
   SubscriptionAllocation,

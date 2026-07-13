@@ -8,6 +8,7 @@ import { getServiceLogger } from "../../utils/createLogger";
 import bucket from "../../config/firebase";
 import {
   deleteFileFromStorage,
+  generateDownloadSignedUrl,
   generateUniqueFilename,
   uploadBufferToStorage,
 } from "../../utils/fileUpload";
@@ -141,6 +142,35 @@ export const deleteAdminDocumentUploadController = catchAsyncError(
     }
 
     return res.apiSuccess({}, "File deleted successfully", 200);
+  },
+);
+
+export const getDocumentSignedUrlController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const filePath = (req.query.filePath as string | undefined)?.trim();
+    const filename =
+      typeof req.query.filename === "string" ? req.query.filename : undefined;
+
+    if (!filePath) {
+      return res.apiError(new ErrorHandler("filePath is required", 400));
+    }
+
+    try {
+      const url = await generateDownloadSignedUrl(filePath, filename);
+      return res.apiSuccess({ url }, "Signed URL generated successfully", 200);
+    } catch (error: any) {
+      const statusCode =
+        error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(
+        `Failed to generate signed URL for "${filePath}": ${error.message}`,
+      );
+      return res.apiError(
+        new ErrorHandler(
+          error.message || "Failed to generate signed URL",
+          statusCode,
+        ),
+      );
+    }
   },
 );
 

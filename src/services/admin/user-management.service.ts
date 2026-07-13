@@ -146,7 +146,7 @@ class UserManagementService {
       });
 
       try {
-        const environment = getEnvironmentFromHost(process.env.HOST || 'localhost');
+        const environment = getEnvironmentFromHost(process.env.LOCAL_FRONTEND_URL || 'localhost');
         
         // Get changed fields
         const changedFields = Object.keys(updateData).filter(key => 
@@ -155,7 +155,7 @@ class UserManagementService {
 
         await SlackService.notify({
           location: environment,
-          host: process.env.HOST || 'localhost',
+          host: process.env.LOCAL_FRONTEND_URL || 'localhost',
           node: SlackNode.USER_MANAGEMENT,
           provider: SlackProvider.SYSTEM,
           severity: SlackSeverity.INFO,
@@ -1067,6 +1067,8 @@ class UserManagementService {
         classificationsExcluded,
         industriesIncluded,
         industriesExcluded,
+        situationIncluded,
+        situationExcluded,
         advertisers,
         advertisersInclude,
         advertisersExcluded,
@@ -1085,6 +1087,8 @@ class UserManagementService {
       if (advertisersExclude !== undefined) { profile.advertisersExcluded = advertisersExclude; profile.advertisersExclude = advertisersExclude; }
       if (industriesIncluded !== undefined) profile.industriesInclude = industriesIncluded;
       if (industriesExcluded !== undefined) profile.industriesExclude = industriesExcluded;
+      if (situationIncluded !== undefined) profile.situationIncluded = situationIncluded;
+      if (situationExcluded !== undefined) profile.situationExcluded = situationExcluded;
       if (workingRight !== undefined) profile.workingRight = workingRight;
       if (query.step02) updatedSteps.push('02');
       if (query.step03) updatedSteps.push('03');
