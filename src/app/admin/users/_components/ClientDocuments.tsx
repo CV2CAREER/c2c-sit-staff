@@ -13,9 +13,18 @@ import { Button } from "@/components/ui/button";
 import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { FiX } from "react-icons/fi";
-import { FieldArray, Formik } from "formik";
+import { Formik } from "formik";
 import { useQueryClient } from "@tanstack/react-query";
 import PulseLoader from "../../_components/DropDown/loader";
+import DocumentUploadFields, {
+  DOCUMENT_CATEGORIES,
+  SelectedFile,
+} from "./DocumentUploadFields";
+
+const INITIAL_UPLOAD_VALUES = DOCUMENT_CATEGORIES.reduce(
+  (values, category) => ({ ...values, [category.name]: [] as SelectedFile[] }),
+  {} as Record<string, SelectedFile[]>,
+);
 
 
 
@@ -141,23 +150,19 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           </h2>
           <p>Upload the revised documents here.</p>
           <Formik
-            initialValues={{
-              resume: [],
-              coverletter: [],
-            }}
+            initialValues={INITIAL_UPLOAD_VALUES}
               onSubmit={async (values) => {
                 const formData = new FormData();
                 formData.append("userId", userId);
-                values.resume.forEach((file: any) => {
-                  formData.append("resume", file?.file);
-                });
-                values.coverletter.forEach((file: any) => {
-                  formData.append("coverletter", file?.file);
+                DOCUMENT_CATEGORIES.forEach(({ name }) => {
+                  values[name]?.forEach((selected) => {
+                    formData.append(name, selected.file);
+                  });
                 });
 
                 try {
                   await submitDocumentReviewMutation.mutateAsync(formData);
-                  
+
                   toast.success("Document uploaded and reviewed successfully");
                   setIsReviseModalOpen(false);
                   queryClient.invalidateQueries({
@@ -168,158 +173,36 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 }
               }}
           >
-            {({ handleSubmit, values }) => (
-              <form onSubmit={handleSubmit}>
-                <FieldArray name="resume">
-                  {({ push, remove, form }) => (
-                    <div>
-                      <label className="flex flex-col text-center my-2 p-6 border border-career-gray-200 cursor-pointer rounded-lg">
-                        <input
-                          className="sr-only"
-                          type="file"
-                          multiple
-                          accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={(e) => {
-                            // Check if the files is valid
-                            // Push the files to the array
-                            if (e.target.files) {
-                              for (
-                                let i = 0;
-                                i < e?.target?.files?.length;
-                                i++
-                              ) {
-                                if (
-                                  e.target?.files?.[i].type !==
-                                    "application/pdf" &&
-                                  e.target.files?.[i].type !==
-                                    "application/msword" &&
-                                  e.target.files?.[i].type !==
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                ) {
-                                  toast.error("Please select a valid file");
-                                  return;
-                                }
-                                push({
-                                  file: e.target.files[i],
-                                  name: e.target.files[i].name,
-                                });
-                              }
-                            }
-                          }}
-                        />
-                        <span>
-                          Add {!!form.values?.resume?.length && "more"} resume
-                          files
-                        </span>
-                      </label>
-                      <div className="space-y-2">
-                        {form.values?.resume?.map(
-                          (file: any, index: number) => {
-                            return (
-                              <div
-                                key={index}
-                                className={
-                                  "flex items-center justify-between bg-gray-200 p-2 rounded-lg mt-2"
-                                }
-                              >
-                                <span className="block truncate flex-grow">
-                                  {file.name}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    remove(index);
-                                  }}
-                                >
-                                  <FiX />
-                                </button>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </FieldArray>
-                <FieldArray name="coverletter">
-                  {({ push, remove, form }) => (
-                    <div>
-                      <label className="flex flex-col text-center my-2 p-6 border border-career-gray-200 cursor-pointer rounded-lg">
-                        <input
-                          className="sr-only"
-                          type="file"
-                          multiple
-                          accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={(e) => {
-                            // Check if the files is valid
-                            // Push the files to the array
-                            if (e.target.files) {
-                              for (let i = 0; i < e.target.files.length; i++) {
-                                if (
-                                  e.target.files[i].type !==
-                                    "application/pdf" &&
-                                  e.target.files[i].type !==
-                                    "application/msword" &&
-                                  e.target.files[i].type !==
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                ) {
-                                  toast.error("Please select a valid file");
-                                  return;
-                                }
-                                push({
-                                  file: e.target.files[i],
-                                  name: e.target.files[i].name,
-                                });
-                              }
-                            }
-                          }}
-                        />
-                        <span>
-                          Add {!!form.values?.coverletter?.length && "more"}{" "}
-                          cover letters
-                        </span>
-                      </label>
-                      <div className="space-y-2">
-                        {form.values?.coverletter?.map(
-                          (file: any, index: number) => {
-                            return (
-                              <div
-                                key={index}
-                                className={
-                                  "flex items-center justify-between bg-gray-200 p-2 rounded-lg mt-2"
-                                }
-                              >
-                                <span className="block truncate flex-grow">
-                                  {file.name}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    remove(index);
-                                  }}
-                                >
-                                  <FiX />
-                                </button>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </FieldArray>
-                <Button
-                  type="submit"
-                  className="!capitalize my-4"
-                  disabled={
-                    (!values.resume.length && !values.coverletter.length) ||
-                    uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending
-                  }
-                >
-                  {uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending ? "Uploading..." : "Upload"}
-                </Button>
-              </form>
-            )}
+            {({ handleSubmit, values }) => {
+              const totalFiles = DOCUMENT_CATEGORIES.reduce(
+                (count, { name }) => count + (values[name]?.length ?? 0),
+                0,
+              );
+              const isUploading =
+                uploadDocumentsMutation.isPending ||
+                submitDocumentReviewMutation.isPending;
+
+              return (
+                <form onSubmit={handleSubmit} className="mt-4">
+                  <DocumentUploadFields />
+
+                  <div className="mt-6 flex flex-col-reverse items-stretch gap-3 border-t border-career-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-13 text-career-gray-200">
+                      {totalFiles === 0
+                        ? "No files selected yet"
+                        : `${totalFiles} file${totalFiles === 1 ? "" : "s"} ready to upload`}
+                    </span>
+                    <Button
+                      type="submit"
+                      className="!capitalize rounded-full bg-[#007ab3] px-6 hover:bg-[#009de6]"
+                      disabled={totalFiles === 0 || isUploading}
+                    >
+                      {isUploading ? "Uploading..." : "Upload"}
+                    </Button>
+                  </div>
+                </form>
+              );
+            }}
           </Formik>
         </div>
       </CustomModal>
