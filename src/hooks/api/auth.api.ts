@@ -5,28 +5,13 @@ import { LOGIN, LOGOUT } from "@/constants/apiEndpoints/auth.endpoint";
 import { ILoginRequest, ILoginResponse, ILogoutResponse } from "@/types/auth.types";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/user.store";
-import { StaffRole } from "@/types/user.types";
+import { clearSessionHint, setSessionHint } from "@/lib/auth-session";
+import { getRoleRoute } from "@/lib/role-routes";
 
 // --------------- Role-based dashboard routing (functional parity with staff-v2) ---------------
+// Defined in @/lib/role-routes so the Edge middleware can import them too.
 
-export const ROLE_ROUTES: Record<string, string> = {
-  admin: "/admin/dashboard",
-  partner: "/partner/dashboard",
-  sales: "/sales/dashboard",
-  coach: "/coach/dashboard",
-  customer: "/cse/dashboard",
-  assistant: "/assistant/dashboard",
-  tpc: "/assistant/dashboard",
-  client: "/login",              // Fallback for client (no client dashboard yet)
-  guest: "/login",
-  test: "/assistant/dashboard",
-  pc: "/assistant/dashboard",
-};
-
-export function getRoleRoute(role: StaffRole | string): string {
-  const normalizedRole = (role || "").toLowerCase();
-  return ROLE_ROUTES[normalizedRole] ?? "/login";
-}
+export { ROLE_ROUTES, getRoleRoute } from "@/lib/role-routes";
 
 // --------------- Auth Mutations Hook ---------------
 
@@ -50,11 +35,11 @@ export const useAuthMutations = () => {
     onSuccess: async (response) => {
       if (!response.success) return;
 
-      const { user, verificationToken, staffAccessToken } = response.data;
+      const { user, verificationToken, accessToken } = response.data;
 
       // Store user and token in Zustand
       setUser(user);
-      setAccessToken(staffAccessToken);
+      setAccessToken(accessToken);
 
       if (userEmail) setUserEmail(null);
 
@@ -66,6 +51,10 @@ export const useAuthMutations = () => {
 
       // Invalidate any cached user queries so fresh data is fetched
       queryClient.invalidateQueries({ queryKey: ["staff-user"] });
+
+      // Let the middleware know a session exists, so /login redirects away
+      // until the token expires or the user logs out.
+      setSessionHint(user.role, accessToken);
 
       // Role-based redirect (mirrors staff-v2 behaviour)
       const destination = getRoleRoute(user.role);
@@ -93,6 +82,7 @@ export const useAuthMutations = () => {
     setUser(null);
     setAccessToken(null);
     setUserEmail(null);
+    clearSessionHint();
     queryClient.clear();
     router.push("/login");
   };

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Tooltip } from 'antd';
 import { CvDataPoint } from './types';
 import { StyledDataGridPro } from '@/utils/table';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 
 
@@ -33,6 +34,7 @@ export default function CvDataPointsTable({
   onViewDataPoints,
   onViewJobTitles,
 }: CvDataPointsTableProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
 
 
@@ -269,15 +271,55 @@ export default function CvDataPointsTable({
   ];
 
 
+  const responsiveColumns = isMobile
+    ? columns.map((col) => {
+        const mobileWidths: Record<string, number> = {
+          actions: 270,
+          userId: 140,
+          type: 95,
+          status: 95,
+          document: 180,
+          source: 100,
+          cvJobTitles: 120,
+          keywords: 120,
+          isDefault: 90,
+          cvType: 110,
+          contactInformation: 150,
+          professionalSummary: 180,
+          skills: 140,
+          workExperience: 150,
+          education: 120,
+          achievements: 120,
+          certificationsLicenses: 130,
+          relevantProjects: 130,
+          languages: 120,
+          professionalAssociationsVolunteerWork: 140,
+          createdAt: 145,
+        };
+
+        const mobileWidth = mobileWidths[col.field];
+        if (!mobileWidth) return col;
+
+        const currentWidth = typeof col.width === 'number' ? col.width : mobileWidth;
+        return {
+          ...col,
+          width: Math.min(currentWidth, mobileWidth),
+        };
+      })
+    : columns;
+
   return (
-    <div className="h-[600px] w-full">
+    <div className="h-[450px] md:h-[600px] w-full">
       <StyledDataGridPro
       rows={dataPoints.map((item, index) => ({
         ...item,
         id: item.id || `dg-row-${index}-${Date.now()}`
       }))}
-      columns={columns}
+      columns={responsiveColumns}
       loading={loading}
+      density={isMobile ? 'compact' : 'standard'}
+      columnHeaderHeight={isMobile ? 40 : 56}
+      rowHeight={isMobile ? 36 : undefined}
       pagination
       paginationMode="server"
       rowCount={totalCount}
@@ -289,6 +331,22 @@ export default function CvDataPointsTable({
         return row.id  || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
       }}
       disableRowSelectionOnClick
+      sx={
+        isMobile
+          ? {
+              '& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell': {
+                px: 0.75,
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontSize: '0.72rem',
+                lineHeight: 1.15,
+              },
+              '& .MuiDataGrid-cell': {
+                fontSize: '0.75rem',
+              },
+            }
+          : undefined
+      }
     />
     </div>
   );

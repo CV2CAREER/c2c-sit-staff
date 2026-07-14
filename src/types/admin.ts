@@ -337,5 +337,7 @@ export type AdminPreferencesType = {
     industriesExclude: string[];
     industriesIncluded: string[];
     industriesExcluded: string[];
+    situationIncluded: string[];
+    situationExcluded: string[];
     includedJobTitles: string[];
 }

@@ -70,6 +70,8 @@ const AdminUsersJobPreferencesCard = ({
     industriesExclude: preferences?.industriesExclude || [],
     industriesIncluded: preferences?.industriesIncluded || [],
     industriesExcluded: preferences?.industriesExcluded || [],
+    situationIncluded: preferences?.situationIncluded || [],
+    situationExcluded: preferences?.situationExcluded || [],
     includedJobTitles: preferences?.includedJobTitles || [],
   });
 
@@ -81,7 +83,7 @@ const AdminUsersJobPreferencesCard = ({
   const activePreferences = activeProfile === 'primary' ? preferences : secondary;
 
   return (
-    <div className="mt-6 w-full p-8 rounded-3xl bg-white">
+    <div className="mt-6 w-full p-4 md:p-8 rounded-3xl bg-white">
       <h3 className="font-medium text-2xl mb-4">Preferences</h3>
       
       {secondary && (
@@ -109,7 +111,7 @@ const AdminUsersJobPreferencesCard = ({
         </div>
       )}
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(auto,19.8rem))] gap-4 my-4 gap-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(auto,19.8rem))] gap-4 my-4 gap-y-8">
         {jobPreferencesSchema.map((preferenceSection) => (
           <Section
             key={preferenceSection.title}
@@ -135,7 +137,7 @@ const AdminUsersJobPreferencesCard = ({
                               e.target.value,
                             )
                           }
-                          className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                          className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                         />
                       </>
                     )}
@@ -153,7 +155,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                         rows={3}
                       />
                     )}
@@ -171,7 +173,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                       />
                     )}
                     {field.inputType === "checkbox" && (
@@ -192,7 +194,7 @@ const AdminUsersJobPreferencesCard = ({
                       field.inputType === "salarySelect") && (
                       <CreatableSelect
                         options={
-                          field as unknown as OptionsOrGroups<
+                          (field.options ?? []) as unknown as OptionsOrGroups<
                             any,
                             GroupBase<any>
                           >

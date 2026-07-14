@@ -89,15 +89,6 @@ export const roleBasedMenus: RoleBasedMenu = {
             route: '/coach-dashboard/profile?switch=coach',
         },
     ],
-    client: [
-        {
-            id: 3,
-            icon: 'user',
-            activeIcon: 'user',
-            name: 'Client',
-            route: '/dashboard/profile?switch=client',
-        },
-    ],
     sales: [
         {
             id: 6,
@@ -114,15 +105,6 @@ export const roleBasedMenus: RoleBasedMenu = {
             activeIcon: 'user',
             name: 'Customer',
             route: '/cse-dashboard/profile?switch=cse',
-        },
-    ],
-     customer: [
-        {
-            id: 7,
-            icon: 'user',
-            activeIcon: 'user',
-            name: 'Customer',
-            route: '/dashboard/profile?switch=client',
         },
     ],
     PC: [

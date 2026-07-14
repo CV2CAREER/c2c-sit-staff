@@ -20,11 +20,6 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-  icons: {
-    icon: "/images/h-logo.svg",
-    shortcut: "/images/h-logo.svg",
-    apple: "/images/h-logo.svg",
-  },
   authors: [{ name: "CVtoCAREER" }],
   creator: "CVtoCAREER",
   metadataBase: new URL("https://admin.cvtocareer.com"),

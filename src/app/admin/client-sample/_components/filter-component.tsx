@@ -32,7 +32,7 @@ const FilterComponent = ({setSelectedJobsite, jobsiteOptions, setSelectedEnv, en
                 </div>
             </div>
 
-            <div className='flex flex-row gap-2'>
+            <div className='flex flex-col md:flex-row gap-2'>
                 {/* Jobsite Selector */}
                 <div className="flex flex-col">
                     <label htmlFor="jobsite" className="text-xs text-gray-600 mb-1">

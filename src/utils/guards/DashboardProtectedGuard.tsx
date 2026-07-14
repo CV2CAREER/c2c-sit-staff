@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { clearSessionHint } from "@/lib/auth-session";
 
 interface DashboardProtectedGuardProps {
   children: React.ReactNode;
@@ -28,6 +29,9 @@ export function DashboardProtectedGuard({
   useEffect(() => {
     // Only redirect once we are done loading and user is NOT authenticated
     if (!isLoading && !isAuthenticated) {
+      // The backend rejected the session, so drop the middleware's session
+      // hint — otherwise it would bounce us straight back off /login.
+      clearSessionHint();
       router.replace(redirectTo);
     }
   }, [isAuthenticated, isLoading, router, redirectTo]);

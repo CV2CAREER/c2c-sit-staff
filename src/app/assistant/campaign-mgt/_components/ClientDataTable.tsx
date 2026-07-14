@@ -568,7 +568,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                                 }
                             }}
                         >
-                            <SelectTrigger className="w-[180px] bg-white shadow-md">
+                            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                                 <SelectValue
                                     placeholder={
                                         aggregatorDataState === "active"
@@ -614,7 +614,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                                     : setSampleRunEnvironment("TEST")
                             }
                         >
-                            <SelectTrigger className="w-[180px] bg-white shadow-md">
+                            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                                 <SelectValue
                                     placeholder={
                                         sampleRunEnvironment === "LIVE" ? "Live" : "Test"
@@ -637,7 +637,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                                 }
                             }}
                         >
-                            <SelectTrigger className="w-[180px] bg-white shadow-md">
+                            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                                 <SelectValue placeholder="Application Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -764,7 +764,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                     Trigger reggex for this user <Switch />
                 </div>
                 {(
-                    <div className="w-[180px] bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
+                    <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
                         <Checkbox className="bg-white" checked={isEditable} onClick={() => setIsEditable(!isEditable)} /> Allow Editing
                     </div>
                 )}
@@ -772,12 +772,12 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
 
             {/* Client Table Section */}
             <section>
-                <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-2xl font-bold">
+                <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
+                    <h2 className="text-xl md:text-2xl font-bold">
                         {table.charAt(0).toUpperCase() + table.slice(1).replace("_", " ")} table
                     </h2>
                     {isEditable &&
-                        <div className="flex flex-row gap-4">
+                        <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
                             <Button>Import Data</Button>
                             <Button onClick={() => setFillDownIsOpen(!fillDownIsOpen)}>Fill Drop Down</Button>
                             {saveMultiple && <Button onClick={() => saveMultipleData()}>Save Data</Button>}
@@ -785,7 +785,7 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
                     }
                 </div>
 
-                <div className="h-[800px] w-full">
+                <div className="h-[500px] md:h-[800px] w-full">
                     {tableDisplay === "aggregator" &&
                         <StyledDataGridPro
                             initialState={{

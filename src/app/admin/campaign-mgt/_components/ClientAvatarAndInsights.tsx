@@ -168,7 +168,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
 
       <section className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
         {/* Client Avatar Section */}
-        <section className="w-full lg:w-[40%] bg-white flex items-center gap-5 shadow-md p-8 rounded-md">
+        <section className="w-full lg:w-[40%] bg-white flex items-center gap-5 shadow-md p-4 md:p-8 rounded-md">
           {isLoading ? (
             <>
               <div className="h-[70px] w-[70px] rounded-full bg-gray-200 animate-pulse" />

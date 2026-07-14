@@ -15,7 +15,7 @@ export function SubSection({ title, children }: { title: string; children?: Reac
   return (
     <div className="">
       <h5 className="text-[#797979] font-medium mb-1">{title}</h5>
-      <div className='empty:before:content-["N/A"] w-80 flex gap-2 flex-wrap'>
+      <div className='empty:before:content-["N/A"] w-full sm:w-80 flex gap-2 flex-wrap'>
         {Array.isArray(children)
           ? children.map?.((c,i) => (
             <Chip

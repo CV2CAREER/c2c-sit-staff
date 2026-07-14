@@ -349,7 +349,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
       switch (tableName) {
         case "USERS":
           return (
-            <div className="h-[800px] w-full" ref={tableRef}>
+            <div className="h-[500px] md:h-[800px] w-full" ref={tableRef}>
               <StyledDataGridPro
                 initialState={{
                   pinnedColumns: {
@@ -431,7 +431,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
   return (
     <section className="mt-10">
-      <div className="flex items-center space-x-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
         <Combobox
           list={rows
             .map((user: any) => ({
@@ -459,8 +459,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
         </section>
 
-        <section className="flex gap-4">
-       {route === "admin" && ( 
+        <section className="flex flex-wrap gap-4">
+       {route === "admin" && (
         <>
           <Button className="border-[2px] border-blue" variant="ghost" onClick={
               () => setTableName("CVDATAPOINTS")
@@ -478,9 +478,9 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
         </section>
       </section>
 
-      <section className="flex items-center justify-end gap-4 my-5">
+      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 my-5">
 
-        {(  <div className="w-[180px] bg-lightblue shadow-md rounded-md text-black p-2 flex items-center gap-2"> <Checkbox className="bg-white" checked={editMode} onClick={() => setEditMode(prev=>!prev)} /> Allow Editing </div>)}
+        {(  <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-black p-2 flex items-center gap-2"> <Checkbox className="bg-white" checked={editMode} onClick={() => setEditMode(prev=>!prev)} /> Allow Editing </div>)}
 
         <Select
           onValueChange={(value) =>
@@ -501,7 +501,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
             }
           }
         >
-          <SelectTrigger className="w-[180px] bg-white shadow-md">
+          <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
             <SelectValue
               placeholder={
                 usersDataState === "active" ? "Active Users" : "Recycle Bin"
@@ -517,7 +517,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
       <section>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-xl md:text-2xl font-bold">
             {renderTitle()}
           </h2>
         </div>
@@ -558,7 +558,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
           <p>Are you sure you want to select plan?</p>
 
           <div className="w-full flex flex-col">
-            <div className="w-full h-fit flex-row flex items-center space-x-4 py-4">
+            <div className="w-full h-fit flex flex-wrap items-center gap-4 py-4">
               {orderedPlans.map((plan: any) => (
                 <div
                   key={plan.id}

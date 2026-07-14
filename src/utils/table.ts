@@ -60,11 +60,12 @@ const getFieldsFromHeaders = (headers: any[]) => headers.map((h) => h.field);
  * const orderedHeaders = orderTable("userTable", headers);
  * // orderedHeaders is now ordered based on the stored order in localStorage, with any new fields appended.
  */
-export const orderTable = (
+export const orderTable = <T extends ColumnHeader>(
   tableName: string,
-  columnHeaders: ColumnHeader[] | any[]
-): ColumnHeader[] => {
-  const newOrder: ColumnHeader[] = [];
+  columnHeaders: T[]
+): T[] => {
+  const newOrder: T[] = [];
+
 
   const storedOrders: string[] | null = getFromStorage(tableName);
   

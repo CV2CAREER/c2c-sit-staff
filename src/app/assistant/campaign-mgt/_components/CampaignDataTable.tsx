@@ -505,7 +505,7 @@ const queryClient = useQueryClient();
                 }
               }}
             >
-              <SelectTrigger className="w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                 <SelectValue
                   placeholder=
                   "Record Actions"
@@ -540,7 +540,7 @@ const queryClient = useQueryClient();
               setClientDataState(value)
             }
           >
-            <SelectTrigger className="w-[180px] bg-white shadow-md">
+            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
               <SelectValue
                 placeholder={
                   clientDataState === "active" ? "Active Clients" :
@@ -559,11 +559,11 @@ const queryClient = useQueryClient();
 
       {/* Campaign Table Section */}
       <section>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold">All Clients ({tableData.length} records)</h2>
+        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
+          <h2 className="text-xl md:text-2xl font-bold">All Clients ({tableData.length} records)</h2>
           {
-            isEditable && 
-            <div className="flex flex-row gap-4">
+            isEditable &&
+            <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
               <Button onClick={() => setIsImportModalOpen(!isImportModalOpen)}>Import Data</Button>
               <Button onClick={() => setFillDownIsOpen(!fillDownIsOpen)}>Fill Drop Down</Button>
               {
@@ -573,7 +573,7 @@ const queryClient = useQueryClient();
             </div>
           }
         </div>
-        <div className="h-[700px] w-full">
+        <div className="h-[500px] md:h-[700px] w-full">
           <StyledDataGridPro
             slots={
               {
@@ -644,7 +644,7 @@ const queryClient = useQueryClient();
                 masterSheet={true}
               />
 
-              <div className="mt-6 w-full p-8 rounded-xl bg-white shadow-lg">
+              <div className="mt-6 w-full p-4 md:p-8 rounded-xl bg-white shadow-lg">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-semibold text-gray-900">Edit CDEs</h3>
                 </div>

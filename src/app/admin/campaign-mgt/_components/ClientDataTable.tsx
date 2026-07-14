@@ -31,6 +31,7 @@ import {
   GridToolbar,
   GridToolbarContainer,
 } from '@mui/x-data-grid-pro';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -192,6 +193,7 @@ const ClientDataTable: React.FC<{
   clientId: string | number;
   route: string;
 }> = ({ clientId, route }: { clientId: string | number; route: string }) => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [sampleRunEnvironment, setSampleRunEnvironment] = React.useState<
     'LIVE' | 'TEST' | null
   >('TEST');
@@ -202,14 +204,14 @@ const ClientDataTable: React.FC<{
   const [dataOption, setDataOption] = React.useState<{
     label: string;
     value: string;
-  } | null>(null);
+  } | null>({
+    label: 'Job Applications',
+    value: 'job_applications',
+  });
   const [selectedAggregator, setSelectedAggregator] = React.useState<{
     label: string;
     value: string;
-  } | null>({
-    label: 'Seek',
-    value: 'seek',
-  });
+  } | null>(null);
   const [aggregatorDataState, setAggregatorDataState] = React.useState<
     'active' | 'recycle'
   >('active');
@@ -225,7 +227,7 @@ const ClientDataTable: React.FC<{
   const [isJobMatchModalOpen, setIsJobMatchModalOpen] = useState(false);
   const [tableDisplay, setTableDisplay] = useState<
     'data-option' | 'aggregator' | null
-  >('aggregator');
+  >('data-option');
   const [totalTableCount, setTotalTableCount] = useState(0);
   const [isEditable, setIsEditable] = useState(false);
   const [jobApplicationsStatusFilter, setJobApplicationsStatusFilter] =
@@ -539,6 +541,7 @@ const ClientDataTable: React.FC<{
       Job_Location: item?.Location ?? 'N/A',
       Job_Type: item?.Job_Type ?? 'N/A',
       Application_Status: toTitleCase(item?.Status || 'Unattended'),
+      Status_Reason: item?.StatusReason?.trim() || 'N/A',
       Quality_Score:
         (item?.Status || 'unattended').toLowerCase() === 'Unattended'
           ? 'TBD'
@@ -613,7 +616,7 @@ const ClientDataTable: React.FC<{
 
               const blocked =
                 !isEditable ||
-                ['submitted', 'skipped', 'expired'].includes(status);
+                ['submitted', 'expired'].includes(status);
 
               if (blocked) return;
 
@@ -625,6 +628,12 @@ const ClientDataTable: React.FC<{
             {toTitleCase(params.value)}
           </div>
         ),
+      },
+      {
+        field: 'Status_Reason',
+        headerName: 'Status Reason',
+        width: 260,
+        renderCell: (params: any) => <span>{params.value || 'N/A'}</span>,
       },
       {
         field: 'Quality_Score',
@@ -758,6 +767,14 @@ const ClientDataTable: React.FC<{
   //   tableData,
   // ]);
 
+  const table =
+    selectedAggregator?.value?.toLowerCase() ??
+    dataOption?.value?.toLowerCase() ??
+    'seek';
+
+  const isManualDiscoveryView =
+    tableDisplay === 'data-option' && dataOption?.value === 'manual_discovery';
+
   const columns = useMemo(() => {
     let value;
 
@@ -789,7 +806,7 @@ const ClientDataTable: React.FC<{
 
                   const blocked =
                     !isEditable ||
-                    ['submitted', 'skipped', 'expired'].includes(status);
+                    ['submitted', 'expired'].includes(status);
 
                   if (blocked) return;
 
@@ -831,7 +848,7 @@ const ClientDataTable: React.FC<{
       });
     }
 
-    return modifyCampaignActionsColAndRows(
+    const adjustedColumns = modifyCampaignActionsColAndRows(
       rawColumns,
       aggregatorDataState,
       isEditable,
@@ -841,6 +858,44 @@ const ClientDataTable: React.FC<{
       tableData,
       setTableData
     );
+
+    if (!(isMobile && isManualDiscoveryView)) {
+      return adjustedColumns;
+    }
+
+    const mobileWidths: Record<string, number> = {
+      id: 100,
+      Client: 130,
+      Job_Id: 120,
+      Job_Location: 150,
+      Job_Type: 120,
+      Application_Status: 150,
+      Status_Reason: 170,
+      Quality_Score: 120,
+      Discovered_By: 130,
+      Timestamp_Discovered: 160,
+      Vetted_By: 120,
+      Timestamp_Vetted: 150,
+      Submitted_By: 130,
+      Timestamp_Submitted: 160,
+      Date_Advertised: 140,
+      Advertiser: 130,
+      External_Jobsite: 140,
+      Internal_Jobsite: 140,
+      Client_Id: 120,
+      Updated_At: 140,
+    };
+
+    return adjustedColumns.map((col) => {
+      const mobileWidth = mobileWidths[col.field];
+      if (!mobileWidth) return col;
+
+      const currentWidth = typeof col.width === 'number' ? col.width : mobileWidth;
+      return {
+        ...col,
+        width: Math.min(currentWidth, mobileWidth),
+      };
+    });
   }, [
     tableDisplay,
     selectedAggregator,
@@ -849,6 +904,8 @@ const ClientDataTable: React.FC<{
     aggregatorDataState,
     tableData,
     sampleResultColumns,
+    isMobile,
+    isManualDiscoveryView,
   ]);
 
   const fetchSampleResults = useCallback(async () => {
@@ -945,11 +1002,6 @@ const ClientDataTable: React.FC<{
       setMakeQuery(true);
     }
   }, []);
-
-  const table =
-    selectedAggregator?.value.toLowerCase() ??
-    dataOption?.value.toLowerCase() ??
-    'seek';
 
   useEffect(() => {
     setShowFillDown(
@@ -1087,7 +1139,7 @@ const ClientDataTable: React.FC<{
                 }
               }}
             >
-              <SelectTrigger className="w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                 <SelectValue
                   placeholder={
                     aggregatorDataState === 'active'
@@ -1140,7 +1192,7 @@ const ClientDataTable: React.FC<{
                   : setSampleRunEnvironment('TEST')
               }
             >
-              <SelectTrigger className="w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                 <SelectValue
                   placeholder={
                     sampleRunEnvironment === 'LIVE' ? 'Live' : 'Test'
@@ -1164,7 +1216,7 @@ const ClientDataTable: React.FC<{
                   }
                 }}
               >
-                <SelectTrigger className="w-[180px] bg-white shadow-md">
+                <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
                   <SelectValue placeholder="Application Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1326,7 +1378,7 @@ const ClientDataTable: React.FC<{
           Trigger reggex for this user <Switch />
         </div>
         {
-          <div className="w-[180px] bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
+          <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
             <Checkbox
               className="bg-white"
               checked={isEditable}
@@ -1339,13 +1391,13 @@ const ClientDataTable: React.FC<{
 
       {/* Client Table Section */}
       <section>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold">
+        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
+          <h2 className="text-xl md:text-2xl font-bold">
             {table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
             table
           </h2>
           {isEditable && (
-            <div className="flex flex-row gap-4">
+            <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
               <Button>Import Data</Button>
               <Button onClick={() => setFillDownIsOpen(!fillDownIsOpen)}>
                 Fill Drop Down
@@ -1357,7 +1409,7 @@ const ClientDataTable: React.FC<{
           )}
         </div>
 
-        <div className="h-[800px] w-full">
+        <div className="h-[500px] md:h-[800px] w-full">
           {tableDisplay === 'aggregator' && (
             <StyledDataGridPro
               initialState={{
@@ -1429,6 +1481,8 @@ const ClientDataTable: React.FC<{
                 showToolbar={true}
                 rows={tableData}
                 rowHeight={38}
+                density={isMobile && isManualDiscoveryView ? 'compact' : 'standard'}
+                columnHeaderHeight={isMobile && isManualDiscoveryView ? 40 : 56}
                 rowReordering
                 disableRowSelectionOnClick
                 checkboxSelection={isEditable}
@@ -1444,6 +1498,22 @@ const ClientDataTable: React.FC<{
                 loading={isDataOptionLoading}
                 pagination
                 pinnedColumns={{ left: ['__check__', 'actions'] }}
+                sx={
+                  isMobile && isManualDiscoveryView
+                    ? {
+                        '& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell': {
+                          px: 0.75,
+                        },
+                        '& .MuiDataGrid-columnHeaderTitle': {
+                          fontSize: '0.72rem',
+                          lineHeight: 1.15,
+                        },
+                        '& .MuiDataGrid-cell': {
+                          fontSize: '0.75rem',
+                        },
+                      }
+                    : undefined
+                }
               />
             ))}
         </div>
