@@ -404,20 +404,20 @@ const UserDataCards = ({
   return (
     <>
       <div>
-        <h3 className="text-xl font-semibold mb-3">Date Filter</h3>
+        <h3 className="text-lg sm:text-xl font-semibold mb-3">Date Filter</h3>
         <div className="flex flex-col lg:flex-row items-center mt-4 lg:mt-0 w-full lg:w-auto">
           <DateFilter onFilterDataChange={setDateFilterData} />
         </div>
       </div>
-      <section className="grid grid-cols-3 gap-3 lg:flex lg:flex-row lg:flex-wrap lg:gap-4 lg:justify-start">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:flex-row lg:flex-wrap lg:gap-4 lg:justify-start">
         {isLoading ? (
           Array(17).fill(0).map((_, idx) => (
             <div
               key={idx}
-              className="flex items-center h-24 gap-2 bg-white p-3 rounded-md shadow-md animate-pulse lg:gap-3 lg:p-4 lg:w-[18%]"
+              className="flex items-center min-w-0 h-24 gap-2 bg-white p-3 rounded-md shadow-md animate-pulse lg:gap-3 lg:p-4 lg:w-[18%]"
             >
               <div className="bg-gray-300 w-10 h-10 rounded-full" />
-              <div className="flex-1 space-y-2">
+              <div className="flex-1 min-w-0 space-y-2">
                 <div className="h-3 w-24 bg-gray-300 rounded" />
                 <div className="h-5 w-32 bg-gray-400 rounded" />
               </div>
@@ -429,7 +429,7 @@ const UserDataCards = ({
             return (
               <div
                 key={idx}
-                className="flex items-center gap-2 bg-white p-3 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all lg:gap-3 lg:p-4 lg:w-[18%]"
+                className="flex items-center min-w-0 gap-2 bg-white p-3 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all lg:gap-3 lg:p-4 lg:w-[18%]"
                 onClick={() => {
                   if(userTypes.includes(card.title)){
                     setUserType({
@@ -449,9 +449,9 @@ const UserDataCards = ({
                 <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
                   <LIcon className={card.icon.color} />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">{card.title}</p>
-                  <h1 className="text-3xl font-bold text-gray-800">{card.value}</h1>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-600 mb-1 break-words leading-tight">{card.title}</p>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-none">{card.value}</h1>
                 </div>
               </div>
             );
