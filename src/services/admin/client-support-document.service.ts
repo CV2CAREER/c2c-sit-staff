@@ -97,6 +97,7 @@ const notifyUpload = (
         trigger: `Client support documents uploaded for ${client.email}`,
         type: SlackEventType.DOCUMENT_UPLOAD,
         channel: SlackChannel.TOWN_CRIER,
+        teamMentions: "CSM",
         body: `📄 *Documents shared with a client*
 Client: ${fullName} · ${client.id}
 Shared by: ${uploadedByLabel}
