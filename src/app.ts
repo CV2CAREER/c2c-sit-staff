@@ -51,6 +51,7 @@ import uploadRouterV1 from "./routes/v1/upload.route"
 import jobsiteRouterV1 from "./routes/v1/jobsite.route"
 import campaignManagementRouterV1 from "./routes/v1/campaign-management.route";
 import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
+import clientSupportDocumentRouterV1 from "./routes/v1/client-support-document.route";
 import viewAsUserRouterV1 from "./routes/v1/view-as-user.route";
 import communicationTemplateRouterV1 from "./routes/v1/communication-template.route";
 
@@ -216,6 +217,7 @@ app.use("/api/v1/uploads", uploadRouterV1)
 app.use("/api/v1/campaigns", campaignManagementRouterV1);
 app.use("/api/v1/jobsite", jobsiteRouterV1);
 app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
+app.use("/api/v1/admin/client-support-documents", clientSupportDocumentRouterV1);
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
 app.use("/api/v1/communication-template", communicationTemplateRouterV1);
 
