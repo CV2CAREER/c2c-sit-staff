@@ -31,6 +31,7 @@ import {
   GridToolbar,
   GridToolbarContainer,
 } from '@mui/x-data-grid-pro';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
@@ -192,6 +193,7 @@ const ClientDataTable: React.FC<{
   clientId: string | number;
   route: string;
 }> = ({ clientId, route }: { clientId: string | number; route: string }) => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [sampleRunEnvironment, setSampleRunEnvironment] = React.useState<
     'LIVE' | 'TEST' | null
   >('TEST');
@@ -765,6 +767,14 @@ const ClientDataTable: React.FC<{
   //   tableData,
   // ]);
 
+  const table =
+    selectedAggregator?.value?.toLowerCase() ??
+    dataOption?.value?.toLowerCase() ??
+    'seek';
+
+  const isManualDiscoveryView =
+    tableDisplay === 'data-option' && dataOption?.value === 'manual_discovery';
+
   const columns = useMemo(() => {
     let value;
 
@@ -838,7 +848,7 @@ const ClientDataTable: React.FC<{
       });
     }
 
-    return modifyCampaignActionsColAndRows(
+    const adjustedColumns = modifyCampaignActionsColAndRows(
       rawColumns,
       aggregatorDataState,
       isEditable,
@@ -848,6 +858,44 @@ const ClientDataTable: React.FC<{
       tableData,
       setTableData
     );
+
+    if (!(isMobile && isManualDiscoveryView)) {
+      return adjustedColumns;
+    }
+
+    const mobileWidths: Record<string, number> = {
+      id: 100,
+      Client: 130,
+      Job_Id: 120,
+      Job_Location: 150,
+      Job_Type: 120,
+      Application_Status: 150,
+      Status_Reason: 170,
+      Quality_Score: 120,
+      Discovered_By: 130,
+      Timestamp_Discovered: 160,
+      Vetted_By: 120,
+      Timestamp_Vetted: 150,
+      Submitted_By: 130,
+      Timestamp_Submitted: 160,
+      Date_Advertised: 140,
+      Advertiser: 130,
+      External_Jobsite: 140,
+      Internal_Jobsite: 140,
+      Client_Id: 120,
+      Updated_At: 140,
+    };
+
+    return adjustedColumns.map((col) => {
+      const mobileWidth = mobileWidths[col.field];
+      if (!mobileWidth) return col;
+
+      const currentWidth = typeof col.width === 'number' ? col.width : mobileWidth;
+      return {
+        ...col,
+        width: Math.min(currentWidth, mobileWidth),
+      };
+    });
   }, [
     tableDisplay,
     selectedAggregator,
@@ -856,6 +904,8 @@ const ClientDataTable: React.FC<{
     aggregatorDataState,
     tableData,
     sampleResultColumns,
+    isMobile,
+    isManualDiscoveryView,
   ]);
 
   const fetchSampleResults = useCallback(async () => {
@@ -952,11 +1002,6 @@ const ClientDataTable: React.FC<{
       setMakeQuery(true);
     }
   }, []);
-
-  const table =
-    selectedAggregator?.value.toLowerCase() ??
-    dataOption?.value.toLowerCase() ??
-    'seek';
 
   useEffect(() => {
     setShowFillDown(
@@ -1436,6 +1481,8 @@ const ClientDataTable: React.FC<{
                 showToolbar={true}
                 rows={tableData}
                 rowHeight={38}
+                density={isMobile && isManualDiscoveryView ? 'compact' : 'standard'}
+                columnHeaderHeight={isMobile && isManualDiscoveryView ? 40 : 56}
                 rowReordering
                 disableRowSelectionOnClick
                 checkboxSelection={isEditable}
@@ -1451,6 +1498,22 @@ const ClientDataTable: React.FC<{
                 loading={isDataOptionLoading}
                 pagination
                 pinnedColumns={{ left: ['__check__', 'actions'] }}
+                sx={
+                  isMobile && isManualDiscoveryView
+                    ? {
+                        '& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell': {
+                          px: 0.75,
+                        },
+                        '& .MuiDataGrid-columnHeaderTitle': {
+                          fontSize: '0.72rem',
+                          lineHeight: 1.15,
+                        },
+                        '& .MuiDataGrid-cell': {
+                          fontSize: '0.75rem',
+                        },
+                      }
+                    : undefined
+                }
               />
             ))}
         </div>
