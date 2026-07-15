@@ -20,6 +20,11 @@ export interface UploadCategory {
   /** Value for the input's `accept` attribute. */
   accept: string;
   isNew?: boolean;
+  /**
+   * True for the categories handled by the client-support-documents endpoint;
+   * false for resume/cover letter, which go to the document review endpoint.
+   */
+  isSupportDocument?: boolean;
   /** Rendered above the upload zone when the section is expanded. */
   instructions?: React.ReactNode;
   /**
@@ -89,6 +94,7 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
     extensions: ["csv"],
     accept: ".csv,text/csv",
     isNew: true,
+    isSupportDocument: true,
     instructions: <CsvInstructions />,
     validateContents: async (file) =>
       validateRoleTitleCsv(await file.text()).errors,
@@ -101,6 +107,7 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
     extensions: ["png", "jpg", "jpeg", "heic"],
     accept: ".png,.jpg,.jpeg,.heic,image/png,image/jpeg,image/heic",
     isNew: true,
+    isSupportDocument: true,
   },
   {
     name: "supportSpreadsheets",
@@ -110,6 +117,7 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
     accept:
       ".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     isNew: true,
+    isSupportDocument: true,
   },
 ];
 

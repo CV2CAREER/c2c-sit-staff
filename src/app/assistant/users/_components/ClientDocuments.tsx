@@ -1,38 +1,61 @@
 "use client";
 import Icon from "../../../../../public/icons";
-import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useAdminQueries } from "@/hooks/api/admin.api";
 import {
   generateClientDocumentRows,
   generateClientDocumentsColumns,
 } from "./clientDocumentsColumns";
+import { generateSupportDocumentRows } from "@/components/DocumentUpload/supportDocumentRows";
 import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
 import { useState, useMemo } from "react";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
-import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { FiX } from "react-icons/fi";
-import { FieldArray, Formik } from "formik";
-import { useQueryClient } from "@tanstack/react-query";
+import { Formik } from "formik";
 import PulseLoader from "./loader";
-
-
+import DocumentUploadFields from "@/components/DocumentUpload/DocumentUploadFields";
+import {
+  INITIAL_UPLOAD_VALUES,
+  countSelectedFiles,
+  useDocumentUploadSubmit,
+} from "@/components/DocumentUpload/useDocumentUploadSubmit";
 
 const ClientDocument = ({ userId }: { userId: string }) => {
-  const queryClient = useQueryClient();
-  const { userDocumentsDomain: documentsData } = useAdminQueries({
+  const {
+    userDocumentsDomain: documentsData,
+    clientSupportDocumentsDomain: supportDocumentsData,
+  } = useAdminQueries({
     userId,
     fetchUserDocuments: true,
+    fetchClientSupportDocuments: true,
   });
-  const { uploadDocumentsMutation, submitDocumentReviewMutation } = useAdminMutations();
   const isLoading = documentsData.isLoading;
   const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [isReviseModalOpen, setIsReviseModalOpen] = useState(false);
   const rows = documentsData?.data?.documents || [];
+  const supportRows = useMemo(
+    () => supportDocumentsData?.data ?? [],
+    [supportDocumentsData?.data],
+  );
+
+  // Both lists feed the download action, which resolves cloudFilename off the
+  // raw record it finds here.
+  const allDocuments = useMemo(
+    () => [...rows, ...supportRows],
+    [rows, supportRows],
+  );
+
   const documentRows = useMemo(() => {
-    return generateClientDocumentRows(rows) as never[];
-  }, [rows]);
+    return [
+      ...generateClientDocumentRows(rows),
+      ...generateSupportDocumentRows(supportRows),
+    ] as never[];
+  }, [rows, supportRows]);
+
+  const { handleSubmit: handleUploadSubmit, isUploading } =
+    useDocumentUploadSubmit(userId, () => setIsReviseModalOpen(false));
 
 //   console.log("client documents", documentsData);
   return (
@@ -64,7 +87,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                  return row.id || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
                }}
                columns={
-                 generateClientDocumentsColumns(rows as any[]) as GridColDef[]
+                 generateClientDocumentsColumns(allDocuments as any[]) as GridColDef[]
                }
               showToolbar={true}
               paginationMode="server"
@@ -92,7 +115,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           onClick={() => {
             setIsReviseModalOpen(true);
           }}
-          disabled={uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending}
+          disabled={isUploading}
         >
           <span className="flex items-center">
             <svg
@@ -109,9 +132,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
               />
             </svg>
-            {uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending
-              ? "Uploading..."
-              : "Upload Revised Document"}
+            {isUploading ? "Uploading..." : "Upload Revised Document"}
           </span>
         </Button>
       </div>
@@ -141,185 +162,33 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           </h2>
           <p>Upload the revised documents here.</p>
           <Formik
-            initialValues={{
-              resume: [],
-              coverletter: [],
-            }}
-              onSubmit={async (values) => {
-                const formData = new FormData();
-                formData.append("userId", userId);
-                values.resume.forEach((file: any) => {
-                  formData.append("resume", file?.file);
-                });
-                values.coverletter.forEach((file: any) => {
-                  formData.append("coverletter", file?.file);
-                });
-
-                try {
-                  await submitDocumentReviewMutation.mutateAsync(formData);
-                  
-                  toast.success("Document uploaded and reviewed successfully");
-                  setIsReviseModalOpen(false);
-                  queryClient.invalidateQueries({
-                    queryKey: ["admin-documents", userId],
-                  });
-                } catch {
-                   toast.error("An error occurred while processing document");
-                }
-              }}
+            initialValues={INITIAL_UPLOAD_VALUES}
+            onSubmit={handleUploadSubmit}
           >
-            {({ handleSubmit, values }) => (
-              <form onSubmit={handleSubmit}>
-                <FieldArray name="resume">
-                  {({ push, remove, form }) => (
-                    <div>
-                      <label className="flex flex-col text-center my-2 p-6 border border-career-gray-200 cursor-pointer rounded-lg">
-                        <input
-                          className="sr-only"
-                          type="file"
-                          multiple
-                          accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={(e) => {
-                            // Check if the files is valid
-                            // Push the files to the array
-                            if (e.target.files) {
-                              for (
-                                let i = 0;
-                                i < e?.target?.files?.length;
-                                i++
-                              ) {
-                                if (
-                                  e.target?.files?.[i].type !==
-                                    "application/pdf" &&
-                                  e.target.files?.[i].type !==
-                                    "application/msword" &&
-                                  e.target.files?.[i].type !==
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                ) {
-                                  toast.error("Please select a valid file");
-                                  return;
-                                }
-                                push({
-                                  file: e.target.files[i],
-                                  name: e.target.files[i].name,
-                                });
-                              }
-                            }
-                          }}
-                        />
-                        <span>
-                          Add {!!form.values?.resume?.length && "more"} resume
-                          files
-                        </span>
-                      </label>
-                      <div className="space-y-2">
-                        {form.values?.resume?.map(
-                          (file: any, index: number) => {
-                            return (
-                              <div
-                                key={index}
-                                className={
-                                  "flex items-center justify-between bg-gray-200 p-2 rounded-lg mt-2"
-                                }
-                              >
-                                <span className="block truncate flex-grow">
-                                  {file.name}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    remove(index);
-                                  }}
-                                >
-                                  <FiX />
-                                </button>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </FieldArray>
-                <FieldArray name="coverletter">
-                  {({ push, remove, form }) => (
-                    <div>
-                      <label className="flex flex-col text-center my-2 p-6 border border-career-gray-200 cursor-pointer rounded-lg">
-                        <input
-                          className="sr-only"
-                          type="file"
-                          multiple
-                          accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                          onChange={(e) => {
-                            // Check if the files is valid
-                            // Push the files to the array
-                            if (e.target.files) {
-                              for (let i = 0; i < e.target.files.length; i++) {
-                                if (
-                                  e.target.files[i].type !==
-                                    "application/pdf" &&
-                                  e.target.files[i].type !==
-                                    "application/msword" &&
-                                  e.target.files[i].type !==
-                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                ) {
-                                  toast.error("Please select a valid file");
-                                  return;
-                                }
-                                push({
-                                  file: e.target.files[i],
-                                  name: e.target.files[i].name,
-                                });
-                              }
-                            }
-                          }}
-                        />
-                        <span>
-                          Add {!!form.values?.coverletter?.length && "more"}{" "}
-                          cover letters
-                        </span>
-                      </label>
-                      <div className="space-y-2">
-                        {form.values?.coverletter?.map(
-                          (file: any, index: number) => {
-                            return (
-                              <div
-                                key={index}
-                                className={
-                                  "flex items-center justify-between bg-gray-200 p-2 rounded-lg mt-2"
-                                }
-                              >
-                                <span className="block truncate flex-grow">
-                                  {file.name}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    remove(index);
-                                  }}
-                                >
-                                  <FiX />
-                                </button>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </FieldArray>
-                <Button
-                  type="submit"
-                  className="!capitalize my-4"
-                  disabled={
-                    (!values.resume.length && !values.coverletter.length) ||
-                    uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending
-                  }
-                >
-                  {uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending ? "Uploading..." : "Upload"}
-                </Button>
-              </form>
-            )}
+            {({ handleSubmit, values }) => {
+              const totalFiles = countSelectedFiles(values);
+
+              return (
+                <form onSubmit={handleSubmit} className="mt-4">
+                  <DocumentUploadFields />
+
+                  <div className="mt-6 flex flex-col-reverse items-stretch gap-3 border-t border-career-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-13 text-career-gray-200">
+                      {totalFiles === 0
+                        ? "No files selected yet"
+                        : `${totalFiles} file${totalFiles === 1 ? "" : "s"} ready to upload`}
+                    </span>
+                    <Button
+                      type="submit"
+                      className="!capitalize rounded-full bg-[#007ab3] px-6 hover:bg-[#009de6]"
+                      disabled={totalFiles === 0 || isUploading}
+                    >
+                      {isUploading ? "Uploading..." : "Upload"}
+                    </Button>
+                  </div>
+                </form>
+              );
+            }}
           </Formik>
         </div>
       </CustomModal>

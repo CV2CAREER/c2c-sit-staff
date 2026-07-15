@@ -1,47 +1,61 @@
 "use client";
 import Icon from "../../../../../public/icons";
-import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
+import { useAdminQueries } from "@/hooks/api/admin.api";
 import {
   generateClientDocumentRows,
   generateClientDocumentsColumns,
 } from "./clientDocumentsColumns";
+import { generateSupportDocumentRows } from "@/components/DocumentUpload/supportDocumentRows";
 import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
 import { useState, useMemo } from "react";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
-import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { FiX } from "react-icons/fi";
 import { Formik } from "formik";
-import { useQueryClient } from "@tanstack/react-query";
 import PulseLoader from "../../_components/DropDown/loader";
-import DocumentUploadFields, {
-  DOCUMENT_CATEGORIES,
-  SelectedFile,
-} from "./DocumentUploadFields";
-
-const INITIAL_UPLOAD_VALUES = DOCUMENT_CATEGORIES.reduce(
-  (values, category) => ({ ...values, [category.name]: [] as SelectedFile[] }),
-  {} as Record<string, SelectedFile[]>,
-);
-
-
+import DocumentUploadFields from "@/components/DocumentUpload/DocumentUploadFields";
+import {
+  INITIAL_UPLOAD_VALUES,
+  countSelectedFiles,
+  useDocumentUploadSubmit,
+} from "@/components/DocumentUpload/useDocumentUploadSubmit";
 
 const ClientDocument = ({ userId }: { userId: string }) => {
-  const queryClient = useQueryClient();
-  const { userDocumentsDomain: documentsData } = useAdminQueries({
+  const {
+    userDocumentsDomain: documentsData,
+    clientSupportDocumentsDomain: supportDocumentsData,
+  } = useAdminQueries({
     userId,
     fetchUserDocuments: true,
+    fetchClientSupportDocuments: true,
   });
-  const { uploadDocumentsMutation, submitDocumentReviewMutation } = useAdminMutations();
   const isLoading = documentsData.isLoading;
   const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [isReviseModalOpen, setIsReviseModalOpen] = useState(false);
   const rows = documentsData?.data?.documents || [];
+  const supportRows = useMemo(
+    () => supportDocumentsData?.data ?? [],
+    [supportDocumentsData?.data],
+  );
+
+  // Both lists feed the download action, which resolves cloudFilename off the
+  // raw record it finds here.
+  const allDocuments = useMemo(
+    () => [...rows, ...supportRows],
+    [rows, supportRows],
+  );
+
   const documentRows = useMemo(() => {
-    return generateClientDocumentRows(rows) as never[];
-  }, [rows]);
+    return [
+      ...generateClientDocumentRows(rows),
+      ...generateSupportDocumentRows(supportRows),
+    ] as never[];
+  }, [rows, supportRows]);
+
+  const { handleSubmit: handleUploadSubmit, isUploading } =
+    useDocumentUploadSubmit(userId, () => setIsReviseModalOpen(false));
 
 //   console.log("client documents", documentsData);
   return (
@@ -73,7 +87,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                  return row.id || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
                }}
                columns={
-                 generateClientDocumentsColumns(rows as any[]) as GridColDef[]
+                 generateClientDocumentsColumns(allDocuments as any[]) as GridColDef[]
                }
               showToolbar={true}
               paginationMode="server"
@@ -101,7 +115,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           onClick={() => {
             setIsReviseModalOpen(true);
           }}
-          disabled={uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending}
+          disabled={isUploading}
         >
           <span className="flex items-center">
             <svg
@@ -118,9 +132,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
               />
             </svg>
-            {uploadDocumentsMutation.isPending || submitDocumentReviewMutation.isPending
-              ? "Uploading..."
-              : "Upload Revised Document"}
+            {isUploading ? "Uploading..." : "Upload Revised Document"}
           </span>
         </Button>
       </div>
@@ -151,36 +163,10 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           <p>Upload the revised documents here.</p>
           <Formik
             initialValues={INITIAL_UPLOAD_VALUES}
-              onSubmit={async (values) => {
-                const formData = new FormData();
-                formData.append("userId", userId);
-                DOCUMENT_CATEGORIES.forEach(({ name }) => {
-                  values[name]?.forEach((selected) => {
-                    formData.append(name, selected.file);
-                  });
-                });
-
-                try {
-                  await submitDocumentReviewMutation.mutateAsync(formData);
-
-                  toast.success("Document uploaded and reviewed successfully");
-                  setIsReviseModalOpen(false);
-                  queryClient.invalidateQueries({
-                    queryKey: ["admin-documents", userId],
-                  });
-                } catch {
-                   toast.error("An error occurred while processing document");
-                }
-              }}
+            onSubmit={handleUploadSubmit}
           >
             {({ handleSubmit, values }) => {
-              const totalFiles = DOCUMENT_CATEGORIES.reduce(
-                (count, { name }) => count + (values[name]?.length ?? 0),
-                0,
-              );
-              const isUploading =
-                uploadDocumentsMutation.isPending ||
-                submitDocumentReviewMutation.isPending;
+              const totalFiles = countSelectedFiles(values);
 
               return (
                 <form onSubmit={handleSubmit} className="mt-4">
