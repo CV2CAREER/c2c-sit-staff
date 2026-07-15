@@ -83,7 +83,11 @@ export const generateClientDocumentsColumns = (rows: any[]) => {
                 return [
                     ...acc,{
                         ...el,
-                        renderCell: (params:any) => <p className="text-blue hover:underline hover:cursor-pointer">{params.value}</p>
+                        // Support documents (role titles, images, spreadsheets)
+                        // have no keywords/job titles — show a dash, not a link.
+                        renderCell: (params:any) => params.value
+                            ? <p className="text-blue hover:underline hover:cursor-pointer">{params.value}</p>
+                            : <p className="text-career-gray-200">—</p>
                     }
                 ]
         }
@@ -96,6 +100,7 @@ export const generateClientDocumentsColumns = (rows: any[]) => {
                 width: 250,
                 headerClassName: "bg-[#D4FFFF]",
                 renderCell: (params: any) => {
+                    if (!params.value) return <p className="text-career-gray-200">—</p>
                     return <Button className="bg-[#0D9F6E] border-slate-400 rounded-none hover:bg-white hover:text-blue hover:border hover:border-blue shadow-none hover:shadow-none">{params.value}</Button>
                 }
             }

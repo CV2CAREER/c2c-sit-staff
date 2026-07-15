@@ -162,6 +162,7 @@ export interface AdminQueriesOptions {
   fetchUserPreferencesHistory?: boolean;
   fetchUserReferrals?: boolean;
   fetchUserDocuments?: boolean;
+  fetchClientSupportDocuments?: boolean;
   fetchUserProfileSafe?: boolean;
   fetchUserProgress?: boolean;
 }

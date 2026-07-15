@@ -88,6 +88,10 @@ export const ADMIN_DOCUMENTS_GET_SIGNED_URL =
   '/api/v1/admin/documents/get-signed-url';
 export const ADMIN_DOCUMENT_REVIEW =
   '/api/v1/admin/documents/upload-cv-cover-letter'; // /v1/admin/documents/upload-cv-cover-letter
+export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
+  '/api/v1/admin/client-support-documents';
+export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT = (clientId: string) =>
+  `/api/v1/admin/client-support-documents/client/${clientId}`;
 export const ADMIN_USER_PREFERENCES = '/api/v1/admin/users/preferences';
 export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
 export const ADMIN_ACCESS_LEVELS = '/api/v1/admin/access-levels';
