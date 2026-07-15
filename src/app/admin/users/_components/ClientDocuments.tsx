@@ -25,7 +25,6 @@ import {
 
 const ClientDocument = ({ userId }: { userId: string }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const queryClient = useQueryClient();
   const {
     userDocumentsDomain: documentsData,
     clientSupportDocumentsDomain: supportDocumentsData,
