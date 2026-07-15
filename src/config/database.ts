@@ -6,6 +6,7 @@ import { ensureAnalyticsIndexes } from '../services/admin/analytics.index-bootst
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
 import { ClientContentService } from '../services/admin/client-content.service';
+import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -46,6 +47,16 @@ const ensureClientContentTable = async () => {
   await ClientContentService.ensureClientContentTable();
 };
 
+// Creates `client_support_documents` (and its category ENUM) on existing
+// databases, where the full sync below is skipped. `alter` so that columns
+// added after the table was first created (roleTitles, clientConfirmed) land
+// too — remove once every environment is up to date.
+const ensureClientSupportDocumentsTable = async () => {
+  logger.info('Ensuring client_support_documents table exists');
+  await ClientSupportDocument.sync({ alter: true });
+  logger.info('client_support_documents table ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -82,6 +93,7 @@ export const connectDB = async (): Promise<void> => {
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
+        await ensureClientSupportDocumentsTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -139,6 +151,7 @@ export const connectDB = async (): Promise<void> => {
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
+        await ensureClientSupportDocumentsTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

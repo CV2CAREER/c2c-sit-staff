@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document Upload Notification</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        color: #474747;
+        width: 100%;
+        background-color: #fff;
+        line-height: 1.6;
+      }
+
+      .content {
+        font-family: "Poppins", sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 32px;
+        color: #474747;
+        margin-bottom: 20px;
+      }
+
+      .body-content p {
+        margin-bottom: 16px;
+      }
+
+      .body-content b {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .section-heading {
+        font-size: 16px;
+        font-weight: 600;
+        color: #004174;
+        margin: 24px 0 8px 0;
+      }
+
+      .details-box {
+        background-color: #f0f7fc;
+        border-left: 4px solid #004174;
+        padding: 16px;
+        margin: 8px 0 20px 0;
+      }
+
+      .details-box p {
+        margin-bottom: 8px;
+      }
+
+      .details-box p:last-child {
+        margin-bottom: 0;
+      }
+
+      .steps {
+        margin: 8px 0 20px 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .steps li {
+        margin-bottom: 12px;
+      }
+
+      .steps .step-title {
+        font-weight: 600;
+        color: #474747;
+      }
+
+      .btn {
+        display: inline-block;
+        background-color: #007ab3;
+        color: #ffffff !important;
+        text-decoration: none;
+        padding: 12px 24px;
+        border-radius: 24px;
+        font-weight: 600;
+        margin-top: 8px;
+      }
+
+      .signature {
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div style="background-color: #004174; padding: 28px 32px; text-align: center">
+      <img
+        src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+        alt="CVtoCAREER Logo"
+        style="display: block; margin: 0 auto; width: 149px; height: 32px"
+      />
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <h1 class="title">Document Upload Notification</h1>
+
+      <div class="body-content">
+        <b>Dear Team,</b>
+
+        <p>
+          This is an automated notification to inform you that an admin has
+          uploaded revised documents for a user in the CVtoCAREER system.
+        </p>
+
+        <p class="section-heading">📋 Document Upload Details</p>
+        <div class="details-box">
+          <p><strong>User ID:</strong> <%= userId %></p>
+          <p><strong>Document Types:</strong> <%= typeList %></p>
+          <p><strong>Upload Count:</strong> <%= count %></p>
+          <p><strong>Timestamp:</strong> <%= timestamp %></p>
+        </div>
+
+        <p>Admin has uploaded revised documents for user.</p>
+
+        <p class="section-heading">Recommended Next Steps</p>
+        <ul class="steps">
+          <li>
+            <span class="step-title">1. Review Documents:</span>
+            Please review the uploaded documents to ensure they meet quality
+            standards and organizational requirements.
+          </li>
+          <li>
+            <span class="step-title">2. Approval Process:</span>
+            Process the document approval through your standard workflow if the
+            documents are satisfactory.
+          </li>
+          <li>
+            <span class="step-title">3. User Communication:</span>
+            If any revisions are needed, communicate the feedback to the user
+            promptly.
+          </li>
+          <li>
+            <span class="step-title">4. Track Status:</span>
+            Update the tracker so the share is visible to the WFC team.
+          </li>
+        </ul>
+
+        <a href="<%= link %>" class="btn">View User Documents</a>
+
+        <div class="signature">
+          <p>Best regards,<br />The CVtoCAREER System</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div
+      style="
+        padding: 16px 32px;
+        background-color: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        text-align: center;
+      "
+    >
+      <p style="margin: 0; font-size: 12px; color: #9ca3af">
+        © <%= currentYear %> CVtoCAREER. All rights reserved.
+      </p>
+    </div>
+  </body>
+</html>
