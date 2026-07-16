@@ -15,7 +15,7 @@ export const ROLE_TITLE_HEADERS = [
 ] as const;
 
 export const STATUS_VALUES = [
-  "Evidence-Based",
+  "Evidenced",
   "Adjacent",
   "Aspirational",
 ] as const;
