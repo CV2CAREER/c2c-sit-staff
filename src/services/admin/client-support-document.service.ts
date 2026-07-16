@@ -28,6 +28,7 @@ import {
 import { sendMail } from "../../config/sendGrid";
 import { getFullName, getFrontendUrl } from "../../utils/helpers";
 import { TEAM_EMAIL } from "../../config/env";
+import { EmailLog, EmailLogStatus } from "../../models/v1/email-log.model";
 
 const logger = getServiceLogger("client-support-document-service");
 const mailDirectory = path.resolve(__dirname, "../../views/emails");
@@ -125,47 +126,69 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
     });
     const currentYear = new Date().getFullYear();
 
+    const clientEmailSubject = hasRoleTitles
+      ? "New Documents Shared With You — Role Titles Need Your Confirmation"
+      : "New Documents Shared With You";
+    const clientEmailTemplate = "client-support-documents-user.ejs";
+
     try {
-      await Promise.all([
-        sendMail({
-          email: client.email,
-          subject: hasRoleTitles
-            ? "New Documents Shared With You — Role Titles Need Your Confirmation"
-            : "New Documents Shared With You",
-          templateName: "client-support-documents-user.ejs",
-          templateDir: mailDirectory,
-          templateData: {
-            title: "New Documents Shared With You",
-            name: client.firstName,
-            documentNames: fileList,
-            documentTypes: typeList,
-            timestamp,
-            hasRoleTitles,
-            // Client-facing links — must be the client app, not the staff app.
-            frontendUrl: clientUrl,
-            currentYear,
-          },
-        }),
-        sendMail({
-          email: TEAM_EMAIL!,
-          subject: `Document Upload Notification — ${fullName}`,
-          templateName: "client-support-documents-admin.ejs",
-          templateDir: mailDirectory,
-          templateData: {
-            userId: client.id,
-            typeList,
-            count: documents.length,
-            timestamp,
-            link: `${staffUrl}/admin-dashboard/users/${client.id}`,
-            currentYear,
-          },
-        }),
-      ]);
-      logger.info(
-        `✅ Upload emails sent to ${client.email} and ${TEAM_EMAIL}`,
+      await sendMail({
+        email: client.email,
+        subject: clientEmailSubject,
+        templateName: clientEmailTemplate,
+        templateDir: mailDirectory,
+        templateData: {
+          title: "New Documents Shared With You",
+          name: client.firstName,
+          documentNames: fileList,
+          documentTypes: typeList,
+          timestamp,
+          hasRoleTitles,
+          // Client-facing links — must be the client app, not the staff app.
+          frontendUrl: clientUrl,
+          currentYear,
+        },
+      });
+      logger.info(`✅ Upload email sent to ${client.email}`);
+      await EmailLog.create({
+        userId: client.id,
+        email: client.email,
+        subject: clientEmailSubject,
+        templateName: clientEmailTemplate,
+        status: EmailLogStatus.SENT,
+      });
+    } catch (err: any) {
+      logger.error(`❌ Upload email to client failed: ${err}`);
+      await EmailLog.create({
+        userId: client.id,
+        email: client.email,
+        subject: clientEmailSubject,
+        templateName: clientEmailTemplate,
+        status: EmailLogStatus.FAILED,
+        errorMessage: err.message,
+      }).catch((logErr) =>
+        logger.error(`❌ Failed to record email log: ${logErr}`),
       );
+    }
+
+    try {
+      await sendMail({
+        email: TEAM_EMAIL!,
+        subject: `Document Upload Notification — ${fullName}`,
+        templateName: "client-support-documents-admin.ejs",
+        templateDir: mailDirectory,
+        templateData: {
+          userId: client.id,
+          typeList,
+          count: documents.length,
+          timestamp,
+          link: `${staffUrl}/admin-dashboard/users/${client.id}`,
+          currentYear,
+        },
+      });
+      logger.info(`✅ Upload email sent to ${TEAM_EMAIL}`);
     } catch (err) {
-      logger.error(`❌ Upload email failed: ${err}`);
+      logger.error(`❌ Upload email to team failed: ${err}`);
     }
   });
 };

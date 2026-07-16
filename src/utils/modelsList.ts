@@ -66,6 +66,7 @@ import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
+import { EmailLog } from "../models/v1/email-log.model";
 
 export const modelList = [
   User,
@@ -138,4 +139,5 @@ export const modelList = [
   VCS,
   MissingInfoRequest,
   ClientSupportDocument,
+  EmailLog,
 ];
