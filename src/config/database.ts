@@ -7,6 +7,7 @@ import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
 import { ClientContentService } from '../services/admin/client-content.service';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
+import { EmailLog } from "../models/v1/email-log.model";
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -53,7 +54,8 @@ const ensureClientContentTable = async () => {
 // too — remove once every environment is up to date.
 const ensureClientSupportDocumentsTable = async () => {
   logger.info('Ensuring client_support_documents table exists');
-  await ClientSupportDocument.sync({ alter: true });
+  await ClientSupportDocument.sync({ force: false });
+  await EmailLog.sync({ force: false });
   logger.info('client_support_documents table ensured');
 };
 
