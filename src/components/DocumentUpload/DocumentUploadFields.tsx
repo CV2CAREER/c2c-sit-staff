@@ -58,7 +58,7 @@ const CsvInstructions = () => (
       <div className="flex flex-wrap items-baseline gap-x-2">
         <dt className="font-medium">Status</dt>
         <dd className="text-career-black-200/70">
-          Evidence-Based · Adjacent · Aspirational
+          Evidenced · Adjacent · Aspirational
         </dd>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-2">

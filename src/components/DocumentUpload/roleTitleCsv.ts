@@ -8,7 +8,7 @@ export const ROLE_TITLE_HEADERS = [
 ] as const;
 
 export const STATUS_VALUES = [
-  "Evidence-Based",
+  "Evidenced",
   "Adjacent",
   "Aspirational",
 ] as const;
@@ -180,7 +180,7 @@ export function buildRoleTitleTemplate(): string {
     "Design",
     "Product Design",
     "Technology",
-    "Evidence-Based",
+    "Evidenced",
     "High",
   ];
 
