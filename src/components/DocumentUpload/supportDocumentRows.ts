@@ -24,7 +24,7 @@ export const generateSupportDocumentRows = (documents: any[]) =>
       id: doc.id,
       fileName: doc.filename ?? "Unknown File",
       type: CATEGORY_LABELS[doc.category] ?? doc.category,
-      source: "Staff Upload",
+      source: "admin",
       dateUpdated: doc.uploadedAt ?? doc.createdAt,
       extractionType: "N/A",
       dataPoints: roleTitleCount
