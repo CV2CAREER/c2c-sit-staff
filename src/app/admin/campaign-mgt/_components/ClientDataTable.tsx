@@ -177,7 +177,7 @@ const dataOptionsList = [
   { value: 'discovery', label: 'Discovery' },
   { value: 'manual_discovery', label: 'Manual Discovery' },
   { value: 'campaign', label: 'Campaign' },
-  { value: 'job_applications', label: 'Job Applications' },
+  { value: 'job_applications', label: 'Submissions' },
   { value: 'sample_results', label: 'Sample Results' },
 ];
 
@@ -205,7 +205,7 @@ const ClientDataTable: React.FC<{
     label: string;
     value: string;
   } | null>({
-    label: 'Job Applications',
+    label: 'Submissions',
     value: 'job_applications',
   });
   const [selectedAggregator, setSelectedAggregator] = React.useState<{
@@ -1393,8 +1393,10 @@ const ClientDataTable: React.FC<{
       <section>
         <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
           <h2 className="text-xl md:text-2xl font-bold">
-            {table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
-            table
+            {selectedAggregator?.label ??
+              dataOption?.label ??
+              table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
+            Table
           </h2>
           {isEditable && (
             <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
