@@ -562,6 +562,7 @@ const ClientDataTable: React.FC<{
       Internal_Jobsite: item?.Internal_Jobsite ?? 'N/A',
       Client_Id: item?.Client ?? 'N/A',
       Updated_At: item?.updatedAt ?? 'N/A',
+      CoverLetterRequired: item?.CoverLetterRequired,
       user: item?.user,
     };
   };
@@ -655,6 +656,16 @@ const ClientDataTable: React.FC<{
             </span>
           );
         },
+      },
+      {
+        field: 'CoverLetterRequired',
+        headerName: 'Cover Letter',
+        width: 130,
+        renderCell: (params: any) => (
+          <span style={{ color: params.value ? '#22B14C' : '#9CA3AF' }}>
+            {params.value ? 'Yes' : 'No'}
+          </span>
+        ),
       },
       { field: 'Discovered_By', headerName: 'Discovered By', width: 170 },
       {
@@ -815,7 +826,9 @@ const ClientDataTable: React.FC<{
                 }}
                 className="cursor-pointer font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
-                {params.value || 'Unattended'}
+                {params.value
+                  ? params.value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                  : 'Unattended'}
               </div>
             ),
           };
@@ -1683,6 +1696,7 @@ const ClientDataTable: React.FC<{
         }}
         applicationId={selectedRow?.id ?? ''}
         initialStatus={selectedRow?.Application_Status || 'Unattended'}
+        rowData={selectedRow}
         onUpdated={async () => {
           if (dataOption?.value === 'manual_discovery') {
             await fetchSampleResults();
