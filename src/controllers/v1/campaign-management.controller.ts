@@ -380,7 +380,7 @@ export const saveJobManually = catchAsyncError(
 export const updateJobApplicationStatusManually = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info('Processing update job application status');
-    const { applicationId, status, qualityScore, StatusReason } = req.body;
+    const { applicationId, status, qualityScore, StatusReason, action, declined_reasons, correctedJobLink } = req.body;
     const user = (req as any).user;
     const host = req.get('host') || '';
     const authenticatedUser = (req as any).user;
@@ -394,7 +394,10 @@ export const updateJobApplicationStatusManually = catchAsyncError(
       host,
       qualityScore,
       updatedByName,
-      StatusReason
+      StatusReason,
+      action,
+      declined_reasons,
+      correctedJobLink
     );
     res.status(200).json(result);
   }

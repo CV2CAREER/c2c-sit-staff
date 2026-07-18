@@ -127,6 +127,34 @@ export class ManualApplication extends Model {
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;
 
+  @AllowNull(true)
+  @Column(DataType.BOOLEAN)
+  CoverLetterRequired?: boolean | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  DeclinedReasons?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ApprovedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ApprovedDate?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ReturnReason?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ReturnedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ReturnedDate?: Date | null;
+
   @CreatedAt
   createdAt!: Date;
 
