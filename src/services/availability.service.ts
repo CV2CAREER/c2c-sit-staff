@@ -3,11 +3,9 @@ import ErrorHandler from "@/utils/errorHandler";
 import { getServiceLogger } from "@/utils/createLogger";
 import { sendMail } from "@/config/sendGrid";
 import moment from "moment-timezone";
-import path from "path";
 import { SlackService } from "@/services/slack.service";
 
 const logger = getServiceLogger("AvailabilityService");
-const mailDirectory = path.join(__dirname, "../../views/emails");
 
 /**
  * Get availabilities based on user role
@@ -219,7 +217,6 @@ async function notifyCoaches(
             email: coach.email,
             subject: "New Client Availability Proposal",
             templateName: "coach-availability-proposal.ejs",
-            templateDir: mailDirectory,
             templateData: {
               coachName: coach.firstName,
               clientName: `${user.firstName} ${user.lastName}`,
@@ -290,7 +287,6 @@ async function sendDeclineNotification(
       email: user.email,
       subject: "Availability Declined",
       templateName: "availability-declined.ejs",
-      templateDir: mailDirectory,
       templateData: {
         name: user.firstName,
         day: moment.utc(availability.day).format("dddd, Do MMMM YYYY"),

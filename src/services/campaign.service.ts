@@ -25,11 +25,9 @@ import {
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
 import { Op, Sequelize } from 'sequelize';
-import path from 'path';
 import { Logger } from 'winston';
 
 const logger = getServiceLogger('campaign-service');
-const mailDirectory = path.resolve(__dirname, '../views/emails');
 
 /**
  * Extract active aggregator credentials from credentials object
@@ -127,7 +125,6 @@ export const sendPreferenceNotifications = async (
     email: email,
     subject: 'Update on Your Job Preferences',
     templateName: 'DispatchPreference.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
@@ -140,7 +137,6 @@ export const sendPreferenceNotifications = async (
     email: 'deliveryteam@cvtocareer.com',
     subject: 'User Notification of Updated Job Preferences',
     templateName: 'AdminNotificationTemplate.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
@@ -224,7 +220,6 @@ export const dispatchClientCredentials = async (
     email: clientUser.email,
     subject: 'Your Jobsites Credentials',
     templateName: 'DispatchCredentials.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: clientUser.firstName,
       credentials,
@@ -2583,7 +2578,6 @@ export const dispatchSampleResults = async (
     email: user.email,
     subject: 'Your Sample Results are Ready for Review',
     templateName: 'DispatchPreference.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/dashboard/view-preference`,
@@ -2596,7 +2590,6 @@ export const dispatchSampleResults = async (
     email: 'deliveryteam@cvtocareer.com',
     subject: `${user.firstName} ${user.lastName} Sample Results are Ready for Review`,
     templateName: 'AdminNotificationTemplate.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/admin/campaign-mgt/client/${clientId}`,

@@ -2,13 +2,112 @@ import sgMail, { MailDataRequired } from "@sendgrid/mail";
 import path from "path";
 import ejs from "ejs";
 import { getServiceLogger } from "../utils/createLogger";
+import { EmailTemplate } from "../models/v1/email-template.model";
+import { EmailLog, EmailLogStatus } from "../models/v1/email-log.model";
+import { User } from "../models/v1/user.model";
+import { SlackService } from "../services/slack.service";
+import {
+  SlackChannel,
+  SlackEventType,
+  SlackNode,
+  SlackProvider,
+  SlackSeverity,
+} from "../utils/enum";
 import {
   SENDGRID_API_KEY,
   SENDGRID_FROM_EMAIL,
   SENDGRID_FROM_NAME,
+  LOCAL_FRONTEND_URL,
 } from "./env";
+import { getEnvironmentFromHost } from "@/utils/slack-helpers";
 
 const logger = getServiceLogger("sendgrid");
+
+const slackHost = LOCAL_FRONTEND_URL || "localhost";
+const environment = getEnvironmentFromHost(slackHost);
+
+// The original .ejs files are still on disk under views/emails (never
+// deleted when templates moved to the DB) — used as the fallback for the
+// exact same template if the DB lookup/render fails for any reason.
+const mailDirectory = path.resolve(__dirname, "../views/emails");
+
+const notifySendFailure = async (
+  options: Pick<EmailOptions, "email" | "subject" | "templateName">,
+  reason: string,
+) => {
+  await SlackService.notify({
+    location: environment,
+    host: slackHost,
+    node: SlackNode.MESSAGING,
+    provider: SlackProvider.SENDGRID,
+    severity: SlackSeverity.ERROR,
+    type: SlackEventType.ERROR_ALERT,
+    channel: SlackChannel.TOWN_CRIER,
+    trigger: "sendMail",
+    body: [
+      `Email failed to send`,
+      `To: ${options.email}`,
+      `Subject: ${options.subject}`,
+      `Template: ${options.templateName}`,
+      `Reason: ${reason}`,
+    ].join("\n"),
+  });
+};
+
+const notifyFallbackUsed = async (
+  options: Pick<EmailOptions, "email" | "subject" | "templateName">,
+  reason: string,
+) => {
+  await SlackService.notify({
+    location: environment,
+    host: slackHost,
+    node: SlackNode.MESSAGING,
+    provider: SlackProvider.SENDGRID,
+    severity: SlackSeverity.ERROR,
+    type: SlackEventType.SYSTEM_NOTIFICATION,
+    channel: SlackChannel.TOWN_CRIER,
+    trigger: "sendMail",
+    body: [
+      `⚠️ Fallback email template used`,
+      `To: ${options.email}`,
+      `Subject: ${options.subject}`,
+      `Template: ${options.templateName}`,
+      `DB reason: ${reason}`,
+      `The on-disk copy in views/emails was sent instead — please check/restore this template's row in the admin panel.`,
+    ].join("\n"),
+  });
+};
+
+const resolveUserId = async (
+  options: Pick<EmailOptions, "email" | "userId">,
+): Promise<string | undefined> => {
+  if (options.userId) return options.userId;
+  const user = await User.findOne({ where: { email: options.email } });
+  return user?.id;
+};
+
+// Writes one `email_logs` row per send attempt so every sendMail() call site
+// is captured automatically — backs the client-facing "notifications" list.
+// Never throws: a logging failure must not mask the original send outcome.
+const logEmail = async (
+  options: Pick<EmailOptions, "email" | "subject" | "templateName" | "userId">,
+  status: EmailLogStatus,
+  errorMessage?: string,
+): Promise<void> => {
+  try {
+    const userId = await resolveUserId(options);
+    await EmailLog.create({
+      userId,
+      email: options.email,
+      subject: options.subject,
+      templateName: options.templateName,
+      status,
+      errorMessage,
+    });
+  } catch (logErr: any) {
+    logger.error(`Failed to record email log for ${options.email}: ${logErr.message}`);
+  }
+};
 
 let isInitialized = false;
 
@@ -31,7 +130,8 @@ interface EmailOptions {
   subject: string;
   templateName: string;
   templateData: Record<string, any>;
-  templateDir: string;
+  /** Skips the recipient lookup below when the caller already has the user's id. */
+  userId?: string;
   attachments?: {
     filename: string;
     path?: string;
@@ -45,8 +145,41 @@ interface EmailOptions {
 export const sendMail = async (options: EmailOptions): Promise<void> => {
   initializeSendGrid();
 
-  const templatePath = path.join(options.templateDir, options.templateName);
-  const html = await ejs.renderFile(templatePath, options.templateData);
+  let html: string;
+  let usedFallback = false;
+  try {
+    const template = await EmailTemplate.findOne({
+      where: { key: options.templateName },
+    });
+    if (!template) {
+      throw new Error(
+        `Email template "${options.templateName}" not found in database`,
+      );
+    }
+    html = ejs.render(template.body, options.templateData);
+  } catch (error: any) {
+    const reason = error.message || "Unknown template error";
+    logger.error(
+      `Failed to load/render DB template ${options.templateName} for ${options.email}: ${reason} — falling back to on-disk copy`,
+    );
+
+    try {
+      html = await ejs.renderFile(
+        path.join(mailDirectory, options.templateName),
+        options.templateData,
+      );
+      usedFallback = true;
+      await notifyFallbackUsed(options, reason);
+    } catch (fallbackError: any) {
+      const fallbackReason = fallbackError.message || "Unknown fallback error";
+      logger.error(
+        `On-disk fallback also failed for ${options.templateName}: ${fallbackReason}`,
+      );
+      await notifySendFailure(options, `DB error: ${reason}; fallback error: ${fallbackReason}`);
+      await logEmail(options, EmailLogStatus.FAILED, `DB error: ${reason}; fallback error: ${fallbackReason}`);
+      throw new Error(`Email failed: ${fallbackReason}`);
+    }
+  }
 
   const allAttachments = [...(options.attachments || [])];
 
@@ -70,12 +203,15 @@ export const sendMail = async (options: EmailOptions): Promise<void> => {
   try {
     await sgMail.send(msg);
     logger.info(
-      `✅ Email sent to ${options.email} — subject: "${options.subject}"`,
+      `✅ Email sent to ${options.email} — subject: "${options.subject}"${usedFallback ? " (fallback template used)" : ""}`,
     );
+    await logEmail(options, EmailLogStatus.SENT);
   } catch (error: any) {
     const sgError =
       error?.response?.body?.errors?.[0]?.message || error.message;
     logger.error(`Failed to send email to ${options.email}: ${sgError}`);
+    await notifySendFailure(options, sgError);
+    await logEmail(options, EmailLogStatus.FAILED, sgError);
     throw new Error(`Email failed: ${sgError}`);
   }
 };

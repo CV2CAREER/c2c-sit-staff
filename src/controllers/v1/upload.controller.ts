@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
-import { getAllUploads, updateUpload } from "../../services/upload.service";
+import { activateUpload, getAllUploads, updateUpload } from "../../services/upload.service";
 
 const logger = getServiceLogger("upload-controller");
 
@@ -41,6 +41,28 @@ export const updateUploadDocument = catchAsyncError(
         upload: updatedUpload
       },
       "Upload document updated successfully",
+    );
+  },
+);
+
+/**
+ * Activate an admin-generated upload
+ */
+export const activateUploadDocument = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { uploadId } = req.params;
+
+    logger.info(`Processing request to activate upload document ID: ${uploadId}`);
+
+    const upload = await activateUpload(uploadId);
+
+    logger.info(`Upload document ${uploadId} activated successfully`);
+
+    res.apiSuccess(
+      {
+        upload
+      },
+      "Upload document activated successfully",
     );
   },
 );

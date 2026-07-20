@@ -8,6 +8,9 @@ import { NODE_ENV } from './env';
 import { ClientContentService } from '../services/admin/client-content.service';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
+import { EmailTemplate } from "../models/v1/email-template.model";
+import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
+import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -59,6 +62,37 @@ const ensureClientSupportDocumentsTable = async () => {
   logger.info('client_support_documents table ensured');
 };
 
+// Creates `email_templates` on existing databases and seeds it from the .ejs
+// files under views/emails on every boot — seeding is upsert-by-name so it's
+// safe to run repeatedly and never overwrites a template an admin has edited
+// via the DB unless SEED_EMAIL_TEMPLATES_FORCE=true is set. `alter` so columns
+// added after the table first existed (e.g. `variables`) land on deploy too.
+const ensureEmailTemplatesTable = async () => {
+  logger.info('Ensuring email_templates table exists');
+  await EmailTemplate.sync({ alter: true });
+  logger.info('email_templates table ensured');
+};
+
+// Creates `vcs_prompts`/`vcs_configurations` on existing databases and seeds
+// the AI-generation prompts stored there (cover letter, role title
+// recommendations), each under its own `key` so they don't collide with the
+// `upload_role_titles_prompt` config already stored in the same tables.
+// `alter` so the `key` column added to VCS lands on deploy too.
+const ensureVcsPromptsTable = async () => {
+  logger.info('Ensuring vcs_prompts/vcs_configurations tables exist');
+  await VCSPrompt.sync({ alter: true });
+  await VCS.sync({ alter: true });
+  logger.info('vcs_prompts/vcs_configurations tables ensured');
+};
+
+// Creates `interview_pack_processes` on existing databases — remove once
+// every environment is up to date.
+const ensureInterviewPackProcessesTable = async () => {
+  logger.info('Ensuring interview_pack_processes table exists');
+  await InterviewPackProcess.sync({ force: false });
+  logger.info('interview_pack_processes table ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -89,6 +123,7 @@ export const connectDB = async (): Promise<void> => {
         // await ManualApplication.sync({ alter: true }); // new schema
         // await TrainingTracker.sync({ alter: true });
         // await Profile.sync({ alter: true });
+        // await Upload.sync({ alter: true }); // new isActive column
 
         // await ensureTrainingTrackerSessions();
         // await ensureCRTrackingHistoryTable();
@@ -96,6 +131,9 @@ export const connectDB = async (): Promise<void> => {
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
         await ensureClientSupportDocumentsTable();
+        await ensureEmailTemplatesTable();
+        await ensureVcsPromptsTable();
+        await ensureInterviewPackProcessesTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -154,6 +192,9 @@ export const connectDB = async (): Promise<void> => {
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
         await ensureClientSupportDocumentsTable();
+        await ensureEmailTemplatesTable();
+        await ensureVcsPromptsTable();
+        await ensureInterviewPackProcessesTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();
