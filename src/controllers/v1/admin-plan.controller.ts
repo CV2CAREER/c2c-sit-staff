@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
-import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan } from "../../services/admin-plan.service";
+import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan } from "../../services/admin-plan.service";
 import { Progress } from "../../utils/enum";
 
 const logger = getServiceLogger("admin-plan-controller");
@@ -70,6 +70,24 @@ export const activateCoralPlanController = catchAsyncError(
       "Coral plan activated successfully",
       200,
     );
+  },
+);
+
+/**
+ * DELETE /api/v1/admin/users/:userId/activate-coral
+ *
+ * Deactivate an ambassador's active Coral plan.
+ */
+export const deactivateCoralPlanController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    logger.info(`Processing Coral deactivation request for user ${userId}`);
+
+    await deactivateCoralPlan(host, userId);
+
+    return res.apiSuccess({}, "Coral plan deactivated successfully", 200);
   },
 );
 

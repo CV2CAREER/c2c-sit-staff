@@ -24,14 +24,11 @@ export const handleGetUserInfo = async (userId: string) => {
     throw new ErrorHandler("Invalid user ID.", 400);
   }
 
-  let user: User | null = await getCachedUser(userId);
+  const user = await User.findByPk(userId, {
+    include: [{ model: Plan, as: "activePlan" }],
+  });
 
-  if (user) {
-    logger.info("User fetched from REDIS");
-  } else {
-    user = await hopeUserIdExists(userId);  // ✅ reassigns outer `user`
-    setCachedUser(userId, user);
-  }
+  if (!user) throw new ErrorHandler("No record of this account", 404);
 
   return { user };
 };

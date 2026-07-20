@@ -338,8 +338,83 @@ export const activateCoralPlan = async (
     }
   });
 
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.USER_MANAGEMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Ambassador Coral Plan Activated",
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email}) has been granted a *30-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
+      });
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
   logger.info(`[ActivateCoralPlan] Coral plan ${newPlan.id} activated for ambassador ${userId}`);
   return newPlan;
+};
+
+/**
+ * Deactivate an ambassador's active Coral plan.
+ * Marks the plan as expired and resets subscription fields on the user.
+ */
+export const deactivateCoralPlan = async (
+  host: string,
+  userId: string,
+): Promise<void> => {
+  const location = getEnvironmentFromHost(host);
+  logger.info(`[DeactivateCoralPlan] User: ${userId}`);
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new ErrorHandler("User not found", 404);
+  if (!user.isAmbassador) throw new ErrorHandler("User is not an ambassador", 400);
+
+  const activePlan = await Plan.findOne({
+    where: { userId, hasExpired: false, title: "Coral" },
+  });
+  if (!activePlan) throw new ErrorHandler("No active Coral plan found for this user", 400);
+
+  const sequelize = getSequelize();
+
+  await sequelize.transaction(async (transaction: Transaction) => {
+    await activePlan.update({ hasExpired: true }, { transaction });
+    await user.update(
+      {
+        planId: null,
+        selectedPlan: null,
+        plan: null,
+        isUserSubscribed: false,
+        hasActiveSubscription: false,
+      },
+      { transaction },
+    );
+  });
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.USER_MANAGEMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Ambassador Coral Plan Deactivated",
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email})'s Coral plan has been *deactivated* by admin. Plan ID: ${activePlan.id}`,
+      });
+    } catch (err: any) {
+      logger.error(`[DeactivateCoralPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
+  logger.info(`[DeactivateCoralPlan] Coral plan deactivated for ambassador ${userId}`);
 };
 
 /**
