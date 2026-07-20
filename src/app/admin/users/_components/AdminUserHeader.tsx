@@ -25,7 +25,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
    const profileUser = userProfileSafeDomain?.data?.profile;
 
   const features = featureTitlesDomain?.data?.features || [];
-  const userPlanId = userData?.data?.planId;
+  const userPlanId = userData?.data?.user?.planId;
   const userPlan = features.find((f: any) => f.id === userPlanId);
 
   const { setUser } = useAdminUserDetailContext()
@@ -65,15 +65,20 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
     <div className="flex flex-col lg:flex-row -mt-6 items-center justify-between border-t bg-white p-4 md:p-8 rounded-b-2xl">
       <div className="flex flex-col mobile:flex-row w-full lg:w-auto justify-between lg:justify-normal lg:my-0 p-1.5 rounded-lg shadow-lg lg:shadow-none items-center">
         <div className="smallLaptop:h-24 smallLaptop:w-24 h-14 w-14  capitalize rounded-full text-xl smallLaptop:text-[57px] p-4 bg-career-blue-300 text-career-blue-500 flex items-center justify-center mr-2 font-medium">
-          {userData?.data?.firstName?.charAt(0) || "U"}
+          {userData?.data?.user?.firstName?.charAt(0) || "U"}
         </div>
         <div className="flex flex-col items-center mobile:items-start w-full my-5 lg:my-0 lg:w-auto">
           <div className="flex flex-col mobile:flex-row items-center">
             <div>
               <div className="flex  items-center ">
                 <h4 className="!font-medium  font-sharp-grotesk text-lg smallLaptop:text-32 text-career-black-200 capitalize">
-                  {profileUser?.firstName ?? userData?.data?.firstName} {profileUser?.lastName ?? userData?.data?.lastName}
+                  {profileUser?.firstName ?? userData?.data?.user?.firstName} {profileUser?.lastName ?? userData?.data?.user?.lastName}
                 </h4>
+                {userData?.data?.user?.isAmbassador && (
+                  <span className="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                    Ambassador
+                  </span>
+                )}
 
                 {dropdownIsOpened ? (
                   <IoCaretUp
@@ -122,9 +127,9 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
             </div>
 
             <div className="rounded-full w-2 mx-4 h-2 bg-career-blue-800" />
-            <p className="text-14 text-career-gray-200 capitalize">{profileUser?.plan ?? userData?.data?.plan}</p>
+            <p className="text-14 text-career-gray-200 capitalize">{profileUser?.plan ?? userData?.data?.user?.plan}</p>
           </div>
-          <p className="text-career-gray-200 mt-1 capitalize">{profileUser?.role ?? userData?.data?.role}</p>
+          <p className="text-career-gray-200 mt-1 capitalize">{profileUser?.role ?? userData?.data?.user?.role}</p>
         </div>
       </div>
       <UserAccountOptions

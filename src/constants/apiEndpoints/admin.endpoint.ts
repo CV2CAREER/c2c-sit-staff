@@ -76,6 +76,10 @@ export const ADMIN_CLIENT_JOBSITE = '/api/v1/admin/client-jobsite';
 export const ADMIN_UPGRADE_PLAN = '/api/v1/admin/upgrade-plan';
 export const ADMIN_USER_PLAN_UPGRADE = (userId: string) =>
   `/api/v1/admin/users/${userId}/plan`;
+export const ADMIN_ACTIVATE_CORAL = (userId: string) =>
+  `/api/v1/admin/users/${userId}/activate-coral`;
+export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
+  `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';
