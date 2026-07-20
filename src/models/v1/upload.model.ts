@@ -88,6 +88,14 @@ export class Upload extends Model {
   @Column(DataType.BOOLEAN)
   isDefault!: boolean;
 
+  // Admin-generated uploads (source: "admin") are created inactive by
+  // default and only become visible/usable once an admin explicitly
+  // activates them via the /uploads/:uploadId/activate endpoint.
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isActive!: boolean;
+
   // Timestamps
   @CreatedAt
   createdAt!: Date;

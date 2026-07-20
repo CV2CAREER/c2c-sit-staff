@@ -67,6 +67,8 @@ import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
+import { EmailTemplate } from "../models/v1/email-template.model";
+import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 
 export const modelList = [
   User,
@@ -140,4 +142,6 @@ export const modelList = [
   MissingInfoRequest,
   ClientSupportDocument,
   EmailLog,
+  EmailTemplate,
+  InterviewPackProcess,
 ];

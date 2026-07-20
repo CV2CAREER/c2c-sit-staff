@@ -1,5 +1,7 @@
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
+import { randomUUID } from "crypto";
 import {
   ClientSupportDocument,
   ClientSupportDocumentCategory,
@@ -12,6 +14,7 @@ import {
 } from "../../utils/fileUpload";
 import {
   validateRoleTitleCsv,
+  ROLE_TITLE_HEADERS,
   type RoleTitleRow,
 } from "../../utils/roleTitleCsv";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -28,10 +31,8 @@ import {
 import { sendMail } from "../../config/sendGrid";
 import { getFullName, getFrontendUrl } from "../../utils/helpers";
 import { TEAM_EMAIL } from "../../config/env";
-import { EmailLog, EmailLogStatus } from "../../models/v1/email-log.model";
 
 const logger = getServiceLogger("client-support-document-service");
-const mailDirectory = path.resolve(__dirname, "../../views/emails");
 
 /** Human-readable labels for notification copy. */
 const CATEGORY_LABELS: Record<ClientSupportDocumentCategory, string> = {
@@ -136,7 +137,7 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
         email: client.email,
         subject: clientEmailSubject,
         templateName: clientEmailTemplate,
-        templateDir: mailDirectory,
+        userId: client.id,
         templateData: {
           title: "New Documents Shared With You",
           name: client.firstName,
@@ -150,25 +151,8 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
         },
       });
       logger.info(`✅ Upload email sent to ${client.email}`);
-      await EmailLog.create({
-        userId: client.id,
-        email: client.email,
-        subject: clientEmailSubject,
-        templateName: clientEmailTemplate,
-        status: EmailLogStatus.SENT,
-      });
     } catch (err: any) {
       logger.error(`❌ Upload email to client failed: ${err}`);
-      await EmailLog.create({
-        userId: client.id,
-        email: client.email,
-        subject: clientEmailSubject,
-        templateName: clientEmailTemplate,
-        status: EmailLogStatus.FAILED,
-        errorMessage: err.message,
-      }).catch((logErr) =>
-        logger.error(`❌ Failed to record email log: ${logErr}`),
-      );
     }
 
     try {
@@ -176,7 +160,6 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
         email: TEAM_EMAIL!,
         subject: `Document Upload Notification — ${fullName}`,
         templateName: "client-support-documents-admin.ejs",
-        templateDir: mailDirectory,
         templateData: {
           userId: client.id,
           typeList,
@@ -313,6 +296,116 @@ export const uploadClientSupportDocuments = async ({
   return created;
 };
 
+export interface AiRoleTitleRole {
+  role_title: string;
+  classification: string;
+  craft: string;
+  industry: string;
+  status: string;
+  ai_career_resilience_rating: string;
+  [key: string]: unknown;
+}
+
+export interface AiRoleTitleResult {
+  candidate_name?: string;
+  qa_flags?: { type: string; description: string }[];
+  roles: AiRoleTitleRole[];
+}
+
+const csvEscape = (value: unknown): string => {
+  const str = String(value ?? "");
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+};
+
+/**
+ * Renders AI-generated role title recommendations into the same CSV shape as
+ * a manually-uploaded Role Title Recommendations file, then delegates to
+ * uploadClientSupportDocuments above so validation, storage, and
+ * notifications all stay in lockstep with the manual-upload path.
+ */
+export const saveAiRoleTitleRecommendations = async (
+  clientId: string,
+  aiResult: AiRoleTitleResult,
+  uploadedBy?: string,
+): Promise<{ document: ClientSupportDocument; clientName: string; filename: string }> => {
+  if (!Array.isArray(aiResult.roles) || aiResult.roles.length === 0) {
+    throw new ErrorHandler("No role title rows to save", 400);
+  }
+
+  const csvLines = [
+    ROLE_TITLE_HEADERS.join(","),
+    ...aiResult.roles.map((role) =>
+      [
+        role.role_title,
+        role.classification,
+        role.craft,
+        role.industry,
+        role.status,
+        role.ai_career_resilience_rating,
+      ]
+        .map(csvEscape)
+        .join(","),
+    ),
+  ];
+  const csvText = csvLines.join("\n");
+
+  const { errors } = validateRoleTitleCsv(csvText);
+  if (errors.length) {
+    throw new ErrorHandler(
+      `AI-generated role titles failed validation: ${errors.join(" ")}`,
+      422,
+    );
+  }
+
+  const client = await User.findByPk(clientId, {
+    attributes: ["id", "email", "firstName", "lastName"],
+  });
+  if (!client) {
+    throw new ErrorHandler("Client not found", 404);
+  }
+
+  const clientName = getFullName(client).trim() || clientId;
+  const filenameSlug =
+    clientName.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_|_$/g, "") || clientId;
+  const dateStamp = new Date().toISOString().split("T")[0];
+  const filename = `${filenameSlug}_Role_Title_Recommendations_${dateStamp}.csv`;
+
+  const tmpPath = path.join(os.tmpdir(), `role-titles-${randomUUID()}.csv`);
+  await fs.writeFile(tmpPath, csvText, "utf8");
+
+  try {
+    const [record] = await uploadClientSupportDocuments({
+      clientId,
+      uploadedBy,
+      files: [
+        {
+          category: ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS,
+          filepath: tmpPath,
+          originalFilename: filename,
+          mimetype: "text/csv",
+        },
+      ],
+    });
+
+    // Attach the richer AI metadata (candidate name, qa flags, per-role
+    // reasoning) that doesn't fit the flat RoleTitleRow shape stored in
+    // `roleTitles`.
+    await record.update({
+      metadata: {
+        ...(record.metadata || {}),
+        source: "ai-generated",
+        candidateName: aiResult.candidate_name,
+        qaFlags: aiResult.qa_flags ?? [],
+        roleDetails: aiResult.roles,
+      },
+    });
+
+    return { document: record, clientName, filename };
+  } finally {
+    await fs.unlink(tmpPath).catch(() => {});
+  }
+};
+
 export const listClientSupportDocuments = async (
   clientId: string,
   category?: ClientSupportDocumentCategory,
@@ -323,7 +416,9 @@ export const listClientSupportDocuments = async (
       isDeleted: false,
       ...(category ? { category } : {}),
     },
-    order: [["createdAt", "DESC"]],
+    // Oldest-to-newest, matching the resume/cover-letter uploads list
+    // (getUserUploadedDocuments) these rows are displayed alongside.
+    order: [["createdAt", "ASC"]],
   });
 
 export const getClientSupportDocument = async (

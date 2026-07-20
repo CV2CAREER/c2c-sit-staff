@@ -1,9 +1,5 @@
-import path from "path";
 import { sendMail } from "../config/sendGrid";
 import { TEAM_EMAIL } from "../config/env";
-import { name } from "ejs";
-
-const mailDirectory = path.resolve(__dirname, "../views/emails");
 
 interface DeploymentSuccessEmailOptions {
   email: string;
@@ -25,7 +21,6 @@ export const sendDeploymentSuccessEmail = async (
     email: options.email,
     subject: `✅ ${options.appName} deployed to ${options.environment}`,
     templateName: "deployment-success.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       timestamp: options.timestamp ?? new Date().toUTCString(),
@@ -48,7 +43,6 @@ export const sendDeploymentFailureEmail = async (
     email: options.email,
     subject: `❌ ${options.appName} deployment failed on ${options.environment}`,
     templateName: "deployment-failure.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       timestamp: new Date().toUTCString(),
@@ -71,7 +65,6 @@ export const sendActivationEmail = async (
     email: options.email,
     subject: `Activate Your Account`,
     templateName: "activation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -93,7 +86,6 @@ export const sendNewReferralEmail = async (
     email: options.email,
     subject: `New Invitee Alert`,
     templateName: "new-referral-alert.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -114,7 +106,6 @@ export const sendAdminActivationEmail = async (
     email: TEAM_EMAIL,
     subject: `New User Registration: Action Required`,
     templateName: "admin-activation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -135,7 +126,6 @@ export const sendWelcomeEmail = async (
     email: options.email,
     subject: `Welcome Email`,
     templateName: "welcome-email.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -156,7 +146,6 @@ export const sendAdminWelcomeEmail = async (
     email: TEAM_EMAIL,
     subject: `${options.name} ${options.lastName} Welcome to CVtoCAREER`,
     templateName: "admin-welcome-email.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -178,7 +167,6 @@ export const sendNewOTPEmail = async (
     email: options.email,
     subject: `New OTP Token`,
     templateName: "new-otp.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -200,7 +188,6 @@ export const sendAdminNewOTPEmail = async (
     email: TEAM_EMAIL,
     subject: `${options.name} ${options.lastName} New OTP Token`,
     templateName: "admin-new-otp.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -222,7 +209,6 @@ export const sendPasswordResetEmail = async (
     email: options.email,
     subject: `Request for Password Change`,
     templateName: "reset-password.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -250,7 +236,6 @@ export const sendTermsConditionsEmail = async (
     email: options.email,
     subject: `Terms & Conditions - ${options.planName}`,
     templateName: "terms-conditions.ejs",
-    templateDir: mailDirectory,
     templateData: {
       name: options.name,
       planName: options.planName,
@@ -286,7 +271,6 @@ export const sendReferralInvitationEmail = async (
     email: options.email,
     subject: `${options.referrerName} invites you to join CVtoCAREER`,
     templateName: "referral-invitation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -308,7 +292,6 @@ export const sendReferralClaimedEmail = async (
     email: options.email,
     subject: `Your referral has been claimed!`,
     templateName: "referral-claimed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -334,7 +317,6 @@ export const sendApplicationActionUserEmail = async (
     email: options.email,
     subject,
     templateName: "application-action-user.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -360,7 +342,6 @@ export const sendApplicationActionAdminEmail = async (
     email: TEAM_EMAIL,
     subject,
     templateName: "application-action-admin.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
