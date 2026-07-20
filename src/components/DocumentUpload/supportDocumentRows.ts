@@ -34,7 +34,9 @@ export const generateSupportDocumentRows = (documents: any[]) =>
       // to this document type" and the cell renders as a dash.
       suggestedKeywords: "",
       suggestedJobTitles: "",
-      populateKeywords: "",
-      viewRevampedVersions: "",
+      generateRTR: "",
+      generateCvVariant: "",
+      generateInterviewPack: "",
+      generateCoverLetter: "",
     };
   });
