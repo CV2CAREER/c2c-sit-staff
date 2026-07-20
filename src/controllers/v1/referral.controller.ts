@@ -313,6 +313,32 @@ export const claimReferral = catchAsyncError(
  * ⚡ POST /v1/referrals/bulk-upload
  * Bulk upload referrals from spreadsheet data
  */
+/**
+ * ⚡ PUT /v1/referrals?id=:id&action=UPDATE_PAYMENT_STATUS
+ * Update referral payment status (e.g. mark CRP as paid)
+ */
+export const updateReferralPaymentStatus = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const id = req.query.id as string;
+      const { paymentStatus } = req.body;
+
+      if (!id) {
+        return res.apiError(new ErrorHandler("Referral ID is required", 400));
+      }
+      if (!paymentStatus) {
+        return res.apiError(new ErrorHandler("paymentStatus is required", 400));
+      }
+
+      const result = await ReferralService.updatePaymentStatus(req, id, paymentStatus);
+      res.apiSuccess(result, "Payment status updated successfully");
+    } catch (error: any) {
+      logger.error(`Failed to update payment status: ${error.message}`);
+      return res.apiError(new ErrorHandler(error.message, 500));
+    }
+  }
+);
+
 export const bulkUploadReferrals = catchAsyncError(
   async (req: Request, res: Response) => {
     try {

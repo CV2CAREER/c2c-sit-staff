@@ -101,20 +101,35 @@ export class ReferralService {
         nest: true
       });
 
+      // Fetch isAmbassador + referrer names in one batch query
+      const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
+      const referrerUsers = await User.findAll({
+        where: { email: { [Op.in]: referrerEmails } },
+        attributes: ['email', 'isAmbassador', 'firstName', 'lastName'],
+        raw: true,
+      });
+      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
+        u.email,
+        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
+      ]));
+
       const mapped = rows.map((ref: any) => {
         const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
 
         return {
           referralId: ref.id,
+          type: ref.type || null,
           referrerEmail: ref.referrer,
-          referrerName: ref.user?.firstName ? `${ref.user.firstName} ${ref.user.lastName || ''}`.trim() : ref.referrer,
-          referralCode: ref.referrer,
+          referrerName: referrerNameMap.get(ref.referrer) || ref.referrer,
           referredUserId: ref.userId,
           referredEmail: ref.user?.email,
           referredName: ref.user?.firstName ? `${ref.user.firstName} ${ref.user.lastName || ''}`.trim() : ref.user?.email,
           status: ref.status,
+          declinedReason: ref.declinedReason || null,
           role: ref.user?.role || 'N/A',
           isClient,
+          isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
           paymentStatus: ref.referralStatus || 'unpaid',
           businessName: ref.user?.businessName || '',
           amountOwed: ref.status === 'CLAIMED' && isClient ? 50 : 0,
@@ -163,11 +178,31 @@ export class ReferralService {
         ],
         limit: pageSize,
         offset: (page - 1) * pageSize,
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        raw: true,
+        nest: true,
       });
 
+      const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
+      const referrerUsers = await User.findAll({
+        where: { email: { [Op.in]: referrerEmails } },
+        attributes: ['email', 'isAmbassador', 'firstName', 'lastName'],
+        raw: true,
+      });
+      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
+        u.email,
+        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
+      ]));
+
+      const mapped = rows.map((ref: any) => ({
+        ...ref,
+        referrerName: referrerNameMap.get(ref.referrer) || ref.referrer,
+        isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
+      }));
+
       return {
-        users: rows,
+        users: mapped,
         total: count
       };
     } catch (error: any) {
@@ -432,6 +467,70 @@ export class ReferralService {
   }
 
   /**
+   * Update referral payment status (e.g. mark CRP as paid)
+   */
+  static async updatePaymentStatus(req: any, referralId: string, paymentStatus: string) {
+    const host = req.headers.host || req.headers.origin || "localhost";
+    const location = getEnvironmentFromHost(host);
+    try {
+      const referral = await Referrer.findByPk(referralId);
+      if (!referral) {
+        throw new Error("Referral not found");
+      }
+
+      const statusMap: Record<string, string> = {
+        paid: RevenueStatus.PAID,
+        unpaid: RevenueStatus.UNPAID,
+        pending: "Pending",
+      };
+      const resolvedStatus = statusMap[paymentStatus.toLowerCase()] ?? paymentStatus;
+      const adminName = req.user ? `${(req.user as any).firstName || ''} ${(req.user as any).lastName || ''}`.trim() || (req.user as any).email : 'system';
+
+      await referral.update({
+        referralStatus: resolvedStatus,
+        status: resolvedStatus === RevenueStatus.PAID ? ReferrerStatus.APPROVED : referral.status,
+        updatedBy: adminName,
+      });
+
+      logger.info(`✅ Referral ${referralId} payment status updated to ${resolvedStatus} by ${adminName}`);
+
+      setImmediate(async () => {
+        try {
+          const referredUser = await User.findByPk(referral.userId);
+          const message = `
+💰 **CRP Payout Marked as Paid**
+• Referral ID: ${referralId}
+• Referrer: ${referral.referrer}
+• Referred: ${referredUser?.email || 'N/A'}
+• Marked by: ${adminName}
+• Payment status: ${resolvedStatus}
+          `.trim();
+
+          await SlackService.notify({
+            location,
+            host,
+            node: SlackNode.MESSAGING,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            trigger: "CRP Payout Marked Paid",
+            type: SlackEventType.ADMIN_ACTION,
+            channel: SlackChannel.TOWN_CRIER,
+            teamMentions: "CSM",
+            body: message,
+          });
+        } catch (err) {
+          logger.error(`❌ Slack notification failed: ${err}`);
+        }
+      });
+
+      return { success: true, message: "Payment status updated" };
+    } catch (error: any) {
+      logger.error(`❌ Failed to update payment status: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Decline referral claim
    */
   static async declineClaim(req: any, referralId: string, reason?: string) {
@@ -448,6 +547,7 @@ export class ReferralService {
 
       await referral.update({
         status: ReferrerStatus.REJECTED,
+        declinedReason: reason || null,
         updatedBy: adminName
       });
 

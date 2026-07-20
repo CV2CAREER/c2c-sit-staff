@@ -12,6 +12,7 @@ import {
   sendReferralEmail,
   claimReferral,
   bulkUploadReferrals,
+  updateReferralPaymentStatus,
 } from "../../controllers/v1/referral.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
@@ -26,6 +27,7 @@ referralRouterV1.get("/partner/summary", getPartnerSummary);
 referralRouterV1.post("/send-email", sendReferralEmail);
 referralRouterV1.post("/claim", claimReferral);
 referralRouterV1.post("/bulk-upload", bulkUploadReferrals);
+referralRouterV1.put("/", updateReferralPaymentStatus);
 referralRouterV1.post("/approve", approveReferral);
 referralRouterV1.post("/decline", declineReferral);
 referralRouterV1.get("/by-email", getUserReferralsByEmail);
