@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
-import { updateUserPlanByFeature, confirmUserProgress } from "../../services/admin-plan.service";
+import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan } from "../../services/admin-plan.service";
 import { Progress } from "../../utils/enum";
 
 const logger = getServiceLogger("admin-plan-controller");
@@ -45,6 +45,29 @@ export const updateUserPlanByFeatureController = catchAsyncError(
     return res.apiSuccess(
       { plan },
       `User plan updated to "${plan.title}" successfully`,
+      200,
+    );
+  },
+);
+
+/**
+ * POST /api/v1/admin/users/:userId/activate-coral
+ *
+ * Activate a free 30-day Coral plan for an ambassador.
+ * Fires SG-CORAL-ACTIVE email and creates Campaign Mgt row.
+ */
+export const activateCoralPlanController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    logger.info(`Processing Coral activation request for user ${userId}`);
+
+    const plan = await activateCoralPlan(host, userId);
+
+    return res.apiSuccess(
+      { plan },
+      "Coral plan activated successfully",
       200,
     );
   },

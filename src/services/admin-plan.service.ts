@@ -21,6 +21,7 @@ import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import path from "path";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
+import { sendCoralActiveEmail } from "./email.service";
 
 const logger = getServiceLogger("admin-plan-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
@@ -242,6 +243,103 @@ export const updateUserPlanByFeature = async (
 
     return newPlan;
   });
+};
+
+/**
+ * Activate a free 30-day Coral plan for an ambassador.
+ * Does NOT change role or isAmbassador flag — ambassador stays as guest.
+ */
+export const activateCoralPlan = async (
+  host: string,
+  userId: string,
+): Promise<Plan> => {
+  const location = getEnvironmentFromHost(host);
+  logger.info(`[ActivateCoralPlan] User: ${userId}`);
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new ErrorHandler("User not found", 404);
+  if (!user.isAmbassador) throw new ErrorHandler("User is not an ambassador", 400);
+
+  const activePlan = await Plan.findOne({ where: { userId, hasExpired: false } });
+  if (activePlan) throw new ErrorHandler("Ambassador already has an active plan", 400);
+
+  const coralFeature = await Feature.findOne({ where: { tier: SubscriptionTier.CORAL } });
+  if (!coralFeature) throw new ErrorHandler("Coral feature not found", 500);
+
+  const sequelize = getSequelize();
+
+  const newPlan = await sequelize.transaction(async (transaction: Transaction) => {
+    const plan = await Plan.create(
+      {
+        userId,
+        title: coralFeature.title,
+        featureId: coralFeature.id,
+        validityPeriod: "30 days",
+        paymentStatus: "completed",
+        paymentAmount: 0,
+      },
+      { transaction },
+    );
+
+    await plan.reload({ transaction });
+
+    await user.update(
+      {
+        planId: plan.id,
+        selectedPlan: plan.title,
+        plan: plan.title,
+        isUserSubscribed: true,
+        hasActiveSubscription: true,
+      },
+      { transaction },
+    );
+
+    return plan;
+  });
+
+  const frontendUrl = getFrontendUrl();
+  const subEndDate = newPlan.expiresAt
+    ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+    : "30 days from today";
+
+  setImmediate(async () => {
+    try {
+      await sendCoralActiveEmail({
+        email: user.email,
+        name: user.firstName,
+        subEndDate,
+        frontendUrl,
+      });
+      logger.info(`[ActivateCoralPlan] Coral active email sent to ${user.email}`);
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Email failed: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await handleCampaignManagement(
+        host,
+        {
+          firstName: user.firstName,
+          middleName: user.middleName,
+          lastName: user.lastName || "",
+          email: user.email,
+          uniqueId: user.uniqueId || "",
+          country: user.country,
+          id: user.id,
+        },
+        coralFeature.title,
+        userId,
+        frontendUrl,
+      );
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Campaign management failed: ${err.message}`);
+    }
+  });
+
+  logger.info(`[ActivateCoralPlan] Coral plan ${newPlan.id} activated for ambassador ${userId}`);
+  return newPlan;
 };
 
 /**

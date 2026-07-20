@@ -342,6 +342,28 @@ export const sendApplicationActionUserEmail = async (
   });
 };
 
+interface CoralActiveEmailOptions {
+  name: string;
+  email: string;
+  subEndDate: string;
+  frontendUrl: string;
+}
+
+export const sendCoralActiveEmail = async (
+  options: CoralActiveEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your Coral plan is active — CVtoCAREER`,
+    templateName: "coral-active.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
 interface ApplicationActionAdminEmailOptions {
   name: string;
   email: string;
