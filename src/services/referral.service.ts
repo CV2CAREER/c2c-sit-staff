@@ -238,17 +238,41 @@ export class ReferralService {
 
       logger.info(`✅ Referral ${referralId} approved by ${adminName} — revenue marked as PAID`);
 
+      // JIR-049: If this is a GRP referral, extend ambassador's Coral plan by +14 days
+      let planExtended = false;
+      let newExpiresAt: Date | null = null;
+      if ((referral as any).type === "GRP") {
+        try {
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          if (referrerUser?.isAmbassador) {
+            const coralPlan = await Plan.findOne({
+              where: { userId: referrerUser.id, hasExpired: false, title: "Coral" },
+            });
+            if (coralPlan) {
+              const currentExpiry = coralPlan.expiresAt ? new Date(coralPlan.expiresAt) : new Date();
+              newExpiresAt = new Date(currentExpiry);
+              newExpiresAt.setDate(newExpiresAt.getDate() + 14);
+              await coralPlan.update({ expiresAt: newExpiresAt });
+              planExtended = true;
+              logger.info(`✅ Ambassador ${referrerUser.email} Coral plan extended by 14 days — new expiry: ${newExpiresAt.toISOString()}`);
+            }
+          }
+        } catch (extErr: any) {
+          logger.error(`❌ Failed to extend ambassador Coral plan: ${extErr.message}`);
+        }
+      }
+
       // Send Slack notification
       setImmediate(async () => {
         try {
           const user = await User.findByPk(referral.userId);
-          
+
           const message = `
 ✅ **Referral Claim Approved** ✅
 • Referrer: ${referral.referrer}
 • Referred: ${user?.email}
 • Referral ID: ${referralId}
-• Revenue Status: Paid
+• Revenue Status: Paid${planExtended && newExpiresAt ? `\n• Ambassador Coral plan extended — new expiry: ${newExpiresAt.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : ""}
           `;
 
           await SlackService.notify({
