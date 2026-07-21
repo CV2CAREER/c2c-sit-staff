@@ -80,6 +80,8 @@ export const ADMIN_ACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
+export const ADMIN_GENERATE_AMBASSADOR_LINK = (userId: string) =>
+  `/api/v1/admin/ambassador/generate-link/${userId}`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';

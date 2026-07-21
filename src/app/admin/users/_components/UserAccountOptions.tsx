@@ -8,7 +8,8 @@ import toast from "react-hot-toast";
 import FurtherUserAccountActions from "./FurtherUserAccountActions";
 import { useMutateData } from "@/hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
-import { ADMIN_USER_PLAN_UPGRADE, ADMIN_ACTIVATE_CORAL, ADMIN_DEACTIVATE_CORAL } from "@/constants/apiEndpoints/admin.endpoint";
+import { ADMIN_USER_PLAN_UPGRADE, ADMIN_ACTIVATE_CORAL, ADMIN_DEACTIVATE_CORAL, ADMIN_GENERATE_AMBASSADOR_LINK } from "@/constants/apiEndpoints/admin.endpoint";
+import axiosInstance from "@/services/api-client";
 
 const UserAccountOptions = ({ userId }: { userId: string }) => {
     const { featureTitlesDomain: planOptions, userDetailDomain: userData } = useAdminQueries({
@@ -27,6 +28,21 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
     const [showDeactivateModal, setShowDeactivateModal] = useState(false)
     const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined)
     const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined)
+    const [isGeneratingLink, setIsGeneratingLink] = useState(false)
+
+    const handleGenerateAmbassadorLink = async () => {
+        setIsGeneratingLink(true)
+        try {
+            const res = await axiosInstance.get(ADMIN_GENERATE_AMBASSADOR_LINK(userId))
+            const link: string = res.data?.data?.link
+            await navigator.clipboard.writeText(link)
+            toast.success("Ambassador link copied to clipboard")
+        } catch {
+            toast.error("Failed to generate ambassador link")
+        } finally {
+            setIsGeneratingLink(false)
+        }
+    }
 
     return (
         <div
@@ -59,21 +75,30 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                 <UpgradePlanOptions setSelectedPlan={setSelectedPlan} setSelectedFeatureId={setSelectedFeatureId} setShowModal={setShowModal} plans={plans} />
 
                 {isAmbassador && (
-                    hasCoralActive ? (
+                    <>
+                        {hasCoralActive ? (
+                            <button
+                                onClick={() => setShowDeactivateModal(true)}
+                                className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-red-600 border-red-600 text-white capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium hover:bg-red-700 transition-colors"
+                            >
+                                Deactivate Coral
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => setShowCoralModal(true)}
+                                className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-orange-500 border-orange-500 text-white capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium hover:bg-orange-600 transition-colors"
+                            >
+                                Activate Coral
+                            </button>
+                        )}
                         <button
-                            onClick={() => setShowDeactivateModal(true)}
-                            className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-red-600 border-red-600 text-white capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium hover:bg-red-700 transition-colors"
+                            onClick={handleGenerateAmbassadorLink}
+                            disabled={isGeneratingLink}
+                            className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-career-blue-800 border-career-blue-800 text-white capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium hover:bg-career-blue-900 transition-colors disabled:opacity-60"
                         >
-                            Deactivate Coral
+                            {isGeneratingLink ? "Generating..." : "Copy Ambassador Link"}
                         </button>
-                    ) : (
-                        <button
-                            onClick={() => setShowCoralModal(true)}
-                            className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-orange-500 border-orange-500 text-white capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium hover:bg-orange-600 transition-colors"
-                        >
-                            Activate Coral
-                        </button>
-                    )
+                    </>
                 )}
 
                 <button
