@@ -1,5 +1,6 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { Upload } from "../models/v1/upload.model";
+import { UploadSource } from "../utils/enum";
 import ErrorHandler from "../utils/errorHandler";
 
 const logger = getServiceLogger("upload-service");
@@ -90,7 +91,9 @@ export const updateUpload = async (uploadId: string, updateData: any) => {
     throw new ErrorHandler("Upload document not found.", 404);
   }
 
-  // Allowed fields to update
+  // Allowed fields to update. `isActive` is deliberately excluded — it's
+  // only ever flipped true via activateUpload below, so it can't be
+  // silently bundled into an unrelated generic update.
   const allowedFields = [
     'status',
     'isDefault',
@@ -122,6 +125,39 @@ export const updateUpload = async (uploadId: string, updateData: any) => {
     logger.info(`Upload ${uploadId} updated successfully`);
   } else {
     logger.info(`No changes detected for upload ${uploadId}`);
+  }
+
+  return upload;
+};
+
+/**
+ * Activates an admin-generated upload (source: "admin") — these are created
+ * with isActive: false so an admin-generated document doesn't count as live
+ * until an admin has reviewed it and explicitly turns it on.
+ * @param uploadId ID of upload to activate
+ */
+export const activateUpload = async (uploadId: string) => {
+  if (!uploadId) {
+    throw new ErrorHandler("Invalid upload ID.", 400);
+  }
+
+  logger.info(`Activating upload ID: ${uploadId}`);
+
+  const upload = await Upload.findByPk(uploadId);
+  if (!upload) {
+    throw new ErrorHandler("Upload document not found.", 404);
+  }
+
+  if (upload.source !== UploadSource.ADMIN) {
+    throw new ErrorHandler("Only admin-generated uploads can be activated.", 400);
+  }
+
+  if (!upload.isActive) {
+    upload.isActive = true;
+    await upload.save();
+    logger.info(`Upload ${uploadId} activated`);
+  } else {
+    logger.info(`Upload ${uploadId} was already active`);
   }
 
   return upload;
