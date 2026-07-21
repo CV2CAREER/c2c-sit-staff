@@ -11,6 +11,8 @@ import ErrorHandler from "@/utils/errorHandler";
 import { getFrontendUrl, getFullName, updateReferrerStats } from "@/utils/helpers";
 import { EMAIL_QUEUE } from "@/jobs/background/emailWorker";
 import { getQueue } from "@/config/bullMQ";
+import { sendGrpConfirmedEmail, sendGrpDeclinedEmail, sendCrpPaidEmail, sendInternalReferralEmail, sendPrpThankyouEmail } from "./email.service";
+import { AuditLogService } from "./admin/audit-log.service";
 
 const logger = getServiceLogger("referral-service");
 
@@ -238,6 +240,19 @@ export class ReferralService {
 
       logger.info(`✅ Referral ${referralId} approved by ${adminName} — revenue marked as PAID`);
 
+      // JIR-057: Audit entry — GRP approve
+      if ((referral as any).type === "GRP" && req.user) {
+        AuditLogService.log({
+          userId: (req.user as any).id,
+          userFullName: adminName,
+          userRole: (req.user as any).role || "admin",
+          method: "POST",
+          url: `/v1/referrals/${referralId}/approve`,
+          description: `GRP referral ${referralId} approved — referrer: ${referral.referrer}`,
+          dataEntry: { referralId, referrer: referral.referrer, action: "APPROVED" },
+        });
+      }
+
       // JIR-049: If this is a GRP referral, extend ambassador's Coral plan by +14 days
       let planExtended = false;
       let newExpiresAt: Date | null = null;
@@ -262,10 +277,14 @@ export class ReferralService {
         }
       }
 
-      // Send Slack notification
+      // Send Slack + email notifications
       setImmediate(async () => {
         try {
           const user = await User.findByPk(referral.userId);
+          const frontendUrl = getFrontendUrl();
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
 
           const message = `
 ✅ **Referral Claim Approved** ✅
@@ -287,8 +306,34 @@ export class ReferralService {
             teamMentions: "CSM",
             body: message.trim(),
           });
+
+          // JIR-053: SG-GRP-CONFIRMED — email to referee (referrer who made the referral)
+          if (referral.type === "GRP" && referrerUser) {
+            await sendGrpConfirmedEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              referrerName: refereeName,
+              frontendUrl,
+            });
+            logger.info(`✅ GRP confirmed email sent to ${referrerUser.email}`);
+          }
+
+          // JIR-071: SG-INT-GRP-APPROVED — internal email to team
+          if (referral.type === "GRP") {
+            await sendInternalReferralEmail({
+              referrerName,
+              referrerEmail: referral.referrer || "",
+              refereeName,
+              refereeEmail: user?.email || "",
+              referralType: "GRP",
+              action: "Approved",
+              extra: planExtended && newExpiresAt ? `Coral plan extended — new expiry: ${newExpiresAt.toLocaleDateString("en-AU")}` : undefined,
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+            });
+            logger.info(`✅ Internal GRP approved email sent to team`);
+          }
         } catch (err) {
-          logger.error(`❌ Slack notification failed: ${err}`);
+          logger.error(`❌ Notification failed after GRP approve: ${err}`);
         }
       });
 
@@ -521,6 +566,11 @@ export class ReferralService {
       setImmediate(async () => {
         try {
           const referredUser = await User.findByPk(referral.userId);
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const frontendUrl = getFrontendUrl();
+          const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
+
           const message = `
 💰 **CRP Payout Marked as Paid**
 • Referral ID: ${referralId}
@@ -542,8 +592,34 @@ export class ReferralService {
             teamMentions: "CSM",
             body: message,
           });
+
+          // JIR-064: SG-CRP-PAID — email to referrer confirming payout
+          if (resolvedStatus === RevenueStatus.PAID && referrerUser) {
+            await sendCrpPaidEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              payoutAmount: "$50",
+              frontendUrl,
+            });
+            logger.info(`✅ CRP paid email sent to referrer ${referrerUser.email}`);
+          }
+
+          // JIR-073: SG-INT-CRP-PAID — internal email to team
+          if (resolvedStatus === RevenueStatus.PAID) {
+            await sendInternalReferralEmail({
+              referrerName,
+              referrerEmail: referral.referrer || "",
+              refereeName,
+              refereeEmail: referredUser?.email || "",
+              referralType: referral.type || "CRP",
+              action: "Payout Paid",
+              extra: `$50 payout marked as paid by ${adminName}`,
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+            });
+            logger.info(`✅ Internal CRP paid email sent to team`);
+          }
         } catch (err) {
-          logger.error(`❌ Slack notification failed: ${err}`);
+          logger.error(`❌ Slack/email notification failed after markPaid: ${err}`);
         }
       });
 
@@ -577,11 +653,28 @@ export class ReferralService {
 
       logger.info(`✅ Referral ${referralId} declined by ${adminName}`);
 
-      // Send Slack notification
+      // JIR-057: Audit entry — GRP decline
+      if ((referral as any).type === "GRP" && req.user) {
+        AuditLogService.log({
+          userId: (req.user as any).id,
+          userFullName: adminName,
+          userRole: (req.user as any).role || "admin",
+          method: "POST",
+          url: `/v1/referrals/${referralId}/decline`,
+          description: `GRP referral ${referralId} declined — referrer: ${referral.referrer}${reason ? ` | reason: ${reason}` : ""}`,
+          dataEntry: { referralId, referrer: referral.referrer, action: "DECLINED", reason },
+        });
+      }
+
+      // Send Slack + email notifications
       setImmediate(async () => {
         try {
           const user = await User.findByPk(referral.userId);
-          
+          const frontendUrl = getFrontendUrl();
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
+
           const message = `
 ❌ **Referral Claim Declined** ❌
 • Referrer: ${referral.referrer}
@@ -602,8 +695,35 @@ export class ReferralService {
             teamMentions: "CSM",
             body: message.trim(),
           });
+
+          // JIR-054: SG-GRP-DECLINED — email to referee (referrer whose referral was declined)
+          if (referral.type === "GRP" && referrerUser) {
+            await sendGrpDeclinedEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              referrerName: refereeName,
+              declinedReason: reason || "No reason provided",
+              frontendUrl,
+            });
+            logger.info(`✅ GRP declined email sent to ${referrerUser.email}`);
+          }
+
+          // JIR-072: SG-INT-GRP-DECLINED — internal email to team
+          if (referral.type === "GRP") {
+            await sendInternalReferralEmail({
+              referrerName,
+              referrerEmail: referral.referrer || "",
+              refereeName,
+              refereeEmail: user?.email || "",
+              referralType: "GRP",
+              action: "Declined",
+              extra: reason ? `Reason: ${reason}` : undefined,
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+            });
+            logger.info(`✅ Internal GRP declined email sent to team`);
+          }
         } catch (err) {
-          logger.error(`❌ Slack notification failed: ${err}`);
+          logger.error(`❌ Notification failed after GRP decline: ${err}`);
         }
       });
 

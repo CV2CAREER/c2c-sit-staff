@@ -21,7 +21,7 @@ import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import path from "path";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
-import { sendCoralActiveEmail } from "./email.service";
+import { sendCoralActiveEmail, sendInternalReferralEmail } from "./email.service";
 
 const logger = getServiceLogger("admin-plan-service");
 const mailDirectory = path.resolve(__dirname, "../views/emails");
@@ -313,6 +313,25 @@ export const activateCoralPlan = async (
       logger.info(`[ActivateCoralPlan] Coral active email sent to ${user.email}`);
     } catch (err: any) {
       logger.error(`[ActivateCoralPlan] Email failed: ${err.message}`);
+    }
+  });
+
+  // JIR-070: SG-INT-CORAL-ACTIVE — internal email to team
+  setImmediate(async () => {
+    try {
+      await sendInternalReferralEmail({
+        referrerName: `${user.firstName} ${user.lastName || ""}`.trim(),
+        referrerEmail: user.email,
+        refereeName: "",
+        refereeEmail: "",
+        referralType: "Coral",
+        action: "Coral Plan Activated",
+        extra: `Plan expires: ${subEndDate}`,
+        adminUrl: `${frontendUrl}/admin-dashboard/users/${userId}`,
+      });
+      logger.info(`[ActivateCoralPlan] Internal coral active email sent to team`);
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Internal email failed: ${err.message}`);
     }
   });
 

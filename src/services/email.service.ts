@@ -389,3 +389,118 @@ export const sendApplicationActionAdminEmail = async (
     },
   });
 };
+
+interface GrpConfirmedEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  frontendUrl: string;
+}
+
+export const sendGrpConfirmedEmail = async (
+  options: GrpConfirmedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your referral has been approved — CVtoCAREER`,
+    templateName: "grp-confirmed.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface GrpDeclinedEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  declinedReason: string;
+  frontendUrl: string;
+}
+
+export const sendGrpDeclinedEmail = async (
+  options: GrpDeclinedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Update on your referral — CVtoCAREER`,
+    templateName: "grp-declined.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface CrpPaidEmailOptions {
+  name: string;
+  email: string;
+  payoutAmount: string;
+  frontendUrl: string;
+}
+
+export const sendCrpPaidEmail = async (
+  options: CrpPaidEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your referral reward has been paid — CVtoCAREER`,
+    templateName: "crp-paid.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface InternalReferralEmailOptions {
+  referrerName: string;
+  referrerEmail: string;
+  refereeName: string;
+  refereeEmail: string;
+  referralType: string;
+  action: string;
+  extra?: string;
+  adminUrl: string;
+}
+
+export const sendInternalReferralEmail = async (
+  options: InternalReferralEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `[Internal] Referral ${options.action}: ${options.referrerName} → ${options.refereeName}`,
+    templateName: "internal-referral.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface PrpThankyouEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  frontendUrl: string;
+}
+
+export const sendPrpThankyouEmail = async (
+  options: PrpThankyouEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Thank you for your partnership — CVtoCAREER`,
+    templateName: "prp-thankyou.ejs",
+    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
