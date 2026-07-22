@@ -5,6 +5,7 @@ import { GridToolbar } from "@mui/x-data-grid-pro"
 import { useState } from "react"
 import generateJobHistoryColumns from "./jobHistoryColumns"
 import { StyledDataGridPro } from "@/utils/table"
+import { HiOutlineClock } from "react-icons/hi"
 
 const AdminUserJobPreferenceHistory = ({ userId }: { userId: string }) => {
     const [paginationModel, setPaginationModel] = useState({
@@ -23,15 +24,21 @@ const AdminUserJobPreferenceHistory = ({ userId }: { userId: string }) => {
     // console.log(profileHistoryData)
     return (
         <>
-            <div className="mt-6">
+            <div className="relative mt-6 w-full overflow-hidden rounded-3xl border border-career-gray-300/60 bg-white p-4 shadow-sm md:p-8">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
                 {isLoading ? (
                     <PulseLoader />
                 ) : (
                     <>
-                        <h3 className="text-lg md:text-2xl my-12 text-career-black-200 font-medium font-sharp-grotesk">
-                            User Job Preference History
-                        </h3>
-                        <div className="h-fit w-[100%] mt-[2rem]">
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+                                <HiOutlineClock size={20} />
+                            </span>
+                            <h3 className="text-lg md:text-2xl text-career-black-200 font-medium font-sharp-grotesk">
+                                User Job Preference History
+                            </h3>
+                        </div>
+                        <div className="h-fit w-[100%] mt-8">
                             <StyledDataGridPro
                                 rows={rows}
                                 columns={generateJobHistoryColumns()}

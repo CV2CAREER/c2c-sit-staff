@@ -9,10 +9,11 @@ import { generateSupportDocumentRows } from "@/components/DocumentUpload/support
 import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
 import CustomModal from "@/components/CustomModal/CustomModal";
-import { FiX } from "react-icons/fi";
+import { FiX, FiUploadCloud, FiCheckCircle } from "react-icons/fi";
 import { Formik } from "formik";
 import PulseLoader from "./loader";
 import DocumentUploadFields from "@/components/DocumentUpload/DocumentUploadFields";
@@ -87,7 +88,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                  return row.id || `${row.type}-${row.source}-${row.dateUpdated}-${Math.random().toString(36).substr(2, 9)}`;
                }}
                columns={
-                 generateClientDocumentsColumns(allDocuments as any[]) as GridColDef[]
+                 generateClientDocumentsColumns(allDocuments as any[], userId) as GridColDef[]
                }
               showToolbar={true}
               paginationMode="server"
@@ -110,31 +111,31 @@ const ClientDocument = ({ userId }: { userId: string }) => {
             />
           )}
         </div>
-        <Button
-          className="mt-4 bg-[#007ab3] hover:bg-[#009de6] text-white font-semibold py-2 px-4 rounded-full transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#007ab3] focus:ring-opacity-50"
-          onClick={() => {
-            setIsReviseModalOpen(true);
-          }}
-          disabled={isUploading}
+        <motion.div
+          className="mt-4 inline-block"
+          whileHover={{ scale: isUploading ? 1 : 1.03 }}
+          whileTap={{ scale: isUploading ? 1 : 0.97 }}
         >
-          <span className="flex items-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="mr-2 h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            {isUploading ? "Uploading..." : "Upload Revised Document"}
-          </span>
-        </Button>
+          <Button
+            className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#007ab3] to-[#00b4d8] px-5 py-2 font-semibold text-white shadow-md shadow-[#007ab3]/20 transition-shadow duration-300 hover:from-[#007ab3] hover:to-[#00b4d8] hover:shadow-lg hover:shadow-[#00b4d8]/30 focus:outline-none focus:ring-2 focus:ring-[#007ab3] focus:ring-opacity-50 disabled:opacity-60"
+            onClick={() => {
+              setIsReviseModalOpen(true);
+            }}
+            disabled={isUploading}
+          >
+            <span className="pointer-events-none absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white/25 transition-transform duration-700 group-hover:translate-x-[250%]" />
+            <span className="relative flex items-center gap-2">
+              <motion.span
+                animate={isUploading ? { y: [0, -3, 0] } : { y: 0 }}
+                transition={{ repeat: isUploading ? Infinity : 0, duration: 0.8 }}
+                className="flex items-center"
+              >
+                <FiUploadCloud className="text-lg" />
+              </motion.span>
+              {isUploading ? "Uploading..." : "Upload Revised Document"}
+            </span>
+          </Button>
+        </motion.div>
       </div>
       <SuggestedKeywordsModal
         isOpen={isKeywordModalOpen}
@@ -145,22 +146,34 @@ const ClientDocument = ({ userId }: { userId: string }) => {
         visibility={isReviseModalOpen}
         toggleVisibility={setIsReviseModalOpen}
       >
-        <div className="bg-white p-4 sm:p-6 rounded-2xl">
-          <div className="flex items-center justify-end">
+        <div className="relative overflow-hidden rounded-2xl bg-white">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#007ab3] via-[#00b4d8] to-[#007ab3]" />
+
+          <div className="flex items-start justify-between gap-4 p-4 pt-6 sm:p-6 sm:pt-8">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#007ab3]/10 text-[#007ab3]">
+                <FiUploadCloud className="text-xl" />
+              </span>
+              <div>
+                <h2 className="text-24 !font-medium font-sharp-grotesk text-career-black-200">
+                  Upload Revised Document
+                </h2>
+                <p className="mt-1 text-13 text-career-gray-200">
+                  Upload the revised documents here.
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => {
                 setIsReviseModalOpen(false);
               }}
+              aria-label="Close"
+              className="shrink-0 rounded-full p-1.5 text-career-gray-200 transition-colors hover:bg-career-gray-300 hover:text-career-black-200"
             >
-              <FiX className="text-2xl" />
+              <FiX className="text-xl" />
             </button>
           </div>
-          <h2>
-            <span className="text-24 !font-medium font-sharp-grotesk mt-4 text-career-black-200">
-              Upload Revised Document
-            </span>
-          </h2>
-          <p>Upload the revised documents here.</p>
+
           <Formik
             initialValues={INITIAL_UPLOAD_VALUES}
             onSubmit={handleUploadSubmit}
@@ -169,22 +182,41 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               const totalFiles = countSelectedFiles(values);
 
               return (
-                <form onSubmit={handleSubmit} className="mt-4">
+                <form onSubmit={handleSubmit} className="px-4 pb-4 sm:px-6 sm:pb-6">
                   <DocumentUploadFields />
 
                   <div className="mt-6 flex flex-col-reverse items-stretch gap-3 border-t border-career-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-13 text-career-gray-200">
-                      {totalFiles === 0
-                        ? "No files selected yet"
-                        : `${totalFiles} file${totalFiles === 1 ? "" : "s"} ready to upload`}
-                    </span>
-                    <Button
-                      type="submit"
-                      className="!capitalize rounded-full bg-[#007ab3] px-6 hover:bg-[#009de6]"
-                      disabled={totalFiles === 0 || isUploading}
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={totalFiles}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className={`flex items-center gap-1.5 text-13 ${
+                          totalFiles > 0
+                            ? "font-medium text-green-700"
+                            : "text-career-gray-200"
+                        }`}
+                      >
+                        {totalFiles > 0 && <FiCheckCircle className="text-base" />}
+                        {totalFiles === 0
+                          ? "No files selected yet"
+                          : `${totalFiles} file${totalFiles === 1 ? "" : "s"} ready to upload`}
+                      </motion.span>
+                    </AnimatePresence>
+                    <motion.div
+                      whileHover={{ scale: totalFiles === 0 || isUploading ? 1 : 1.03 }}
+                      whileTap={{ scale: totalFiles === 0 || isUploading ? 1 : 0.97 }}
                     >
-                      {isUploading ? "Uploading..." : "Upload"}
-                    </Button>
+                      <Button
+                        type="submit"
+                        className="!capitalize rounded-full bg-gradient-to-r from-[#007ab3] to-[#00b4d8] px-6 hover:from-[#007ab3] hover:to-[#00b4d8] disabled:opacity-60"
+                        disabled={totalFiles === 0 || isUploading}
+                      >
+                        {isUploading ? "Uploading..." : "Upload"}
+                      </Button>
+                    </motion.div>
                   </div>
                 </form>
               );

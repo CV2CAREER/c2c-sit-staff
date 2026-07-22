@@ -393,7 +393,7 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
                 {optsBtn(
                   'Vetted',
                   (selectedQuality && selectedQuality !== 'LQA') || !selectedQuality,
-                  undefined, undefined,
+                  undefined,
                   () => { setSelectedQuality(''); setReasons([]); setCustomReason(''); }
                 )}
                 <div className="flex gap-[6px] px-[14px] pb-3" style={{ background: '#F0F9FF' }}>
