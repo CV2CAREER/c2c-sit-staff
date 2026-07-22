@@ -27,13 +27,16 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const PaymentBadge = ({ status }: { status: string }) => {
+const PaymentBadge = ({ status, tab }: { status: string; tab: string }) => {
   const s = (status || "").toLowerCase();
+  const isGrp = tab === "GRP";
   const cls =
     s === "paid"    ? "bg-green-100 text-green-700" :
     s === "pending" ? "bg-amber-100 text-amber-700" :
     "bg-gray-100 text-gray-500";
-  const label = s === "paid" ? "Paid" : s === "pending" ? "Pending" : "Unpaid";
+  const label = isGrp
+    ? (s === "paid" ? "Rewarded" : "Not Rewarded")
+    : (s === "paid" ? "Paid" : s === "pending" ? "Pending" : "Unpaid");
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cls}`}>
       {label}
@@ -47,17 +50,14 @@ const formatDate = (date: string) => {
   return `${d.getDate()} ${d.toLocaleString("en", { month: "short" })}`;
 };
 
-const formatId = (type: string, referralId: string) =>
-  `${type}-${(referralId || "").slice(-4).toUpperCase() || "????"}`;
-
 // ─── Decline Modal ────────────────────────────────────────────────────────────
 const DeclineModal = ({
-  referralId,
+  referrerName,
   onConfirm,
   onClose,
   loading,
 }: {
-  referralId: string;
+  referrerName: string;
   onConfirm: (reason: string) => void;
   onClose: () => void;
   loading: boolean;
@@ -75,7 +75,7 @@ const DeclineModal = ({
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 text-base">Decline Referral</h3>
-              <p className="text-xs text-gray-400 mt-0.5">ID: {referralId.slice(-8).toUpperCase()}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{referrerName}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -123,12 +123,12 @@ const DeclineModal = ({
 
 // ─── Delete Confirmation Modal ────────────────────────────────────────────────
 const DeleteModal = ({
-  referralId,
+  referrerName,
   onConfirm,
   onClose,
   loading,
 }: {
-  referralId: string;
+  referrerName: string;
   onConfirm: () => void;
   onClose: () => void;
   loading: boolean;
@@ -151,8 +151,8 @@ const DeleteModal = ({
       {/* Body */}
       <div className="px-6 py-5">
         <p className="text-sm text-gray-600">
-          Are you sure you want to delete referral{" "}
-          <span className="font-semibold text-gray-900">{referralId.slice(-8).toUpperCase()}</span>?
+          Are you sure you want to delete the referral from{" "}
+          <span className="font-semibold text-gray-900">{referrerName}</span>?
         </p>
         <p className="text-xs text-gray-400 mt-2">
           This is a soft delete — the record stays in the database but will be marked as deleted.
@@ -187,11 +187,11 @@ const ReferralComponent = () => {
   const [paginationData, setPaginationData] = useState({ page: 0, pageSize: 50 });
 
   // Decline modal state
-  const [declineModalId, setDeclineModalId] = useState<string | null>(null);
+  const [declineModal, setDeclineModal] = useState<{ id: string; name: string } | null>(null);
   const [declining, setDeclining] = useState(false);
 
   // Delete confirmation state
-  const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const { referralsListDomain } = useReferralQueries({
@@ -233,13 +233,13 @@ const ReferralComponent = () => {
   };
 
   const handleSubmitDecline = async (reason: string) => {
-    if (!declineModalId) return;
+    if (!declineModal) return;
     setDeclining(true);
     const t = toast.loading("Declining...");
     try {
-      await declineClaim.mutateAsync({ id: declineModalId, reason });
+      await declineClaim.mutateAsync({ id: declineModal.id, reason });
       toast.success("Referral declined", { id: t });
-      setDeclineModalId(null);
+      setDeclineModal(null);
       referralsListDomain.refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Something went wrong", { id: t });
@@ -260,13 +260,13 @@ const ReferralComponent = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteModalId) return;
+    if (!deleteModal) return;
     setDeleting(true);
     const t = toast.loading("Deleting...");
     try {
-      await deleteReferral.mutateAsync({ id: deleteModalId });
+      await deleteReferral.mutateAsync({ id: deleteModal.id });
       toast.success("Referral deleted", { id: t });
-      setDeleteModalId(null);
+      setDeleteModal(null);
       referralsListDomain.refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || err?.message || "Something went wrong", { id: t });
@@ -280,21 +280,21 @@ const ReferralComponent = () => {
   return (
     <div className="flex flex-col bg-white rounded-sm p-4 sm:p-6 shadow-md">
       {/* Decline Modal */}
-      {declineModalId && (
+      {declineModal && (
         <DeclineModal
-          referralId={declineModalId}
+          referrerName={declineModal.name}
           onConfirm={handleSubmitDecline}
-          onClose={() => setDeclineModalId(null)}
+          onClose={() => setDeclineModal(null)}
           loading={declining}
         />
       )}
 
       {/* Delete Confirmation Modal */}
-      {deleteModalId && (
+      {deleteModal && (
         <DeleteModal
-          referralId={deleteModalId}
+          referrerName={deleteModal.name}
           onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteModalId(null)}
+          onClose={() => setDeleteModal(null)}
           loading={deleting}
         />
       )}
@@ -326,6 +326,37 @@ const ReferralComponent = () => {
           <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
         </button>
       </div>
+
+      {/* CRP Total Payout Summary */}
+      {activeTab === "CRP" && !isLoading && filteredReferrals.length > 0 && (() => {
+        const paid = filteredReferrals.filter(
+          (r) => (r.status || "").toUpperCase() === "APPROVED" || (r.paymentStatus || "").toLowerCase() === "paid"
+        );
+        const awaiting = filteredReferrals.filter(
+          (r) => (r.status || "").toUpperCase() !== "APPROVED" && (r.paymentStatus || "").toLowerCase() !== "paid" && (r.status || "").toUpperCase() !== "REJECTED"
+        );
+        const totalPayout = paid.length * 50;
+        const pendingPayout = awaiting.length * 50;
+        return (
+          <div className="flex flex-wrap gap-4 mb-5 p-4 rounded-xl bg-gradient-to-r from-[#0a1e3d] to-[#1a3a6e] text-white">
+            <div className="flex-1 min-w-[120px]">
+              <p className="text-xs text-white/60 mb-0.5">Total Payout (Paid)</p>
+              <p className="text-2xl font-bold">${totalPayout.toLocaleString()}</p>
+              <p className="text-xs text-white/50 mt-0.5">{paid.length} referral{paid.length !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <p className="text-xs text-white/60 mb-0.5">Pending Payout</p>
+              <p className="text-2xl font-bold text-amber-300">${pendingPayout.toLocaleString()}</p>
+              <p className="text-xs text-white/50 mt-0.5">{awaiting.length} awaiting</p>
+            </div>
+            <div className="flex-1 min-w-[120px]">
+              <p className="text-xs text-white/60 mb-0.5">Total CRP Referrals</p>
+              <p className="text-2xl font-bold">{filteredReferrals.length}</p>
+              <p className="text-xs text-white/50 mt-0.5">$50 per approved</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Table */}
       {isLoading ? (
@@ -363,8 +394,8 @@ const ReferralComponent = () => {
               ) : (
                 filteredReferrals.map((row) => (
                   <tr key={row.referralId} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-4 px-4 font-bold text-sm">
-                      {formatId(activeTab, row.referralId)}
+                    <td className="py-4 px-4 font-bold text-sm font-mono">
+                      {row.sequentialId || `${activeTab}-????`}
                     </td>
                     <td className="py-4 px-4 text-blue-600 font-medium">
                       {row.referrerName || row.referrerEmail || "—"}
@@ -388,7 +419,7 @@ const ReferralComponent = () => {
                       <StatusBadge status={row.status} />
                     </td>
                     <td className="py-4 px-4">
-                      <PaymentBadge status={row.paymentStatus} />
+                      <PaymentBadge status={row.paymentStatus} tab={activeTab} />
                     </td>
                     <td className="py-4 px-4 text-gray-400 text-xs max-w-[160px] truncate" title={row.declinedReason || ""}>
                       {row.declinedReason || "—"}
@@ -415,10 +446,11 @@ const ReferralComponent = () => {
                           const s = (row.status || "").toUpperCase();
                           const isRejected = s === "REJECTED";
                           const isApproved = s === "APPROVED";
+                          const rowName = row.referrerName || row.referrerEmail || row.sequentialId || "Unknown";
                           return (
                             <>
                               <button
-                                onClick={() => !isRejected && !isApproved && setDeclineModalId(row.referralId)}
+                                onClick={() => !isRejected && !isApproved && setDeclineModal({ id: row.referralId, name: rowName })}
                                 disabled={isRejected || isApproved}
                                 className={`px-4 py-1.5 rounded-full border text-xs font-medium transition-colors ${
                                   isRejected || isApproved
@@ -460,7 +492,7 @@ const ReferralComponent = () => {
                           );
                         })()}
                         <button
-                          onClick={() => setDeleteModalId(row.referralId)}
+                          onClick={() => setDeleteModal({ id: row.referralId, name: row.referrerName || row.referrerEmail || row.sequentialId || "Unknown" })}
                           className="p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                           title="Delete referral"
                         >

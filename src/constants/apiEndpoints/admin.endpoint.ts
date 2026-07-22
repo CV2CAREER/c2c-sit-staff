@@ -94,10 +94,30 @@ export const ADMIN_DOCUMENTS_GET_SIGNED_URL =
   '/api/v1/admin/documents/get-signed-url';
 export const ADMIN_DOCUMENT_REVIEW =
   '/api/v1/admin/documents/upload-cv-cover-letter'; // /v1/admin/documents/upload-cv-cover-letter
+export const ADMIN_GENERATE_COVER_LETTER =
+  '/api/v1/admin/documents/generate-cover-letter';
+export const ADMIN_SAVE_COVER_LETTER =
+  '/api/v1/admin/documents/save-cover-letter';
+export const ADMIN_GENERATE_ROLE_TITLES =
+  '/api/v1/admin/documents/generate-role-titles';
+export const ADMIN_GENERATE_CV_VARIANT =
+  '/api/v1/admin/documents/generate-cv-variant';
+export const ADMIN_SAVE_CV_VARIANT =
+  '/api/v1/admin/documents/save-cv-variant';
+export const ADMIN_START_INTERVIEW_PACK =
+  '/api/v1/admin/documents/generate-interview-pack/start';
+export const ADMIN_RUN_INTERVIEW_PACK_STAGE =
+  '/api/v1/admin/documents/generate-interview-pack/run-stage';
+export const ADMIN_GET_INTERVIEW_PACK_PROCESS = (processId: string) =>
+  `/api/v1/admin/documents/generate-interview-pack/${processId}`;
+export const ADMIN_SAVE_INTERVIEW_PACK =
+  '/api/v1/admin/documents/save-interview-pack';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
   '/api/v1/admin/client-support-documents';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT = (clientId: string) =>
   `/api/v1/admin/client-support-documents/client/${clientId}`;
+export const ADMIN_SAVE_ROLE_TITLE_RECOMMENDATIONS =
+  '/api/v1/admin/client-support-documents/role-titles/save';
 export const ADMIN_USER_PREFERENCES = '/api/v1/admin/users/preferences';
 export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
 export const ADMIN_ACCESS_LEVELS = '/api/v1/admin/access-levels';

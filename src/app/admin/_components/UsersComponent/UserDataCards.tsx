@@ -26,6 +26,7 @@ interface UsersCountData {
   businessCount: number;
   technologyCount: number,
   loyalistsPersonnaCount: number;
+  ambassadorCount: number;
   totalActiveUsersCount: number;
   bronzePlanCount: number;
   emeraldPlanCount: number;
@@ -85,9 +86,10 @@ const UserDataCards = ({
         csePersonnaCount: 0,
         testPersonnaCount: 0,
         PCPersonaCount: 0,
-        businessCount: 0, 
+        businessCount: 0,
         technologyCount: 0,
         loyalistsPersonnaCount: 0,
+        ambassadorCount: 0,
         totalActiveUsersCount: 0,
         bronzePlanCount: 0,
         emeraldPlanCount: 0,
@@ -135,6 +137,7 @@ const UserDataCards = ({
       const businessCount = useUserRoles ? apiData.userRoleCounts.business : 0;
       const techCount = useUserRoles ? apiData.userRoleCounts.technology : 0;
       const loyalistCount = 0;
+      const ambassadorCount = apiData.userRoleCounts?.ambassador ?? 0;
 
       return {
         adminPersonnaCount: adminCount,
@@ -149,6 +152,7 @@ const UserDataCards = ({
         businessCount,
         technologyCount: techCount,
         loyalistsPersonnaCount: loyalistCount,
+        ambassadorCount,
         totalActiveUsersCount:
           adminCount + guestCount + clientCount + coachCount +
           partnerCount + salesCount + cseCount + testCount +
@@ -174,9 +178,10 @@ const UserDataCards = ({
       csePersonnaCount: 0,
       testPersonnaCount: 0,
       PCPersonaCount: 0,
-      businessCount: 0, 
+      businessCount: 0,
       technologyCount: 0,
       loyalistsPersonnaCount: 0,
+      ambassadorCount: 0,
       totalActiveUsersCount: 0,
       bronzePlanCount: 0,
       emeraldPlanCount: 0,
@@ -197,7 +202,7 @@ const UserDataCards = ({
   const isError = analytics.isError;
   const error = analytics.error;
 
-  const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
+  const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists", "Ambassadors"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
 
   const cardsData: cardsDataProps[] = [
@@ -319,6 +324,15 @@ const UserDataCards = ({
       },
     },
     {
+      title: "Ambassadors",
+      value: personas?.ambassadorCount || 0,
+      icon: {
+        name: User,
+        bgColor: "bg-teal-100",
+        color: "text-teal-700",
+      },
+    },
+    {
       title: "Bronze",
       value: personas?.bronzePlanCount || 0,
       icon: {
@@ -434,7 +448,10 @@ const UserDataCards = ({
                   if(userTypes.includes(card.title)){
                     setUserType({
                       ...userType,
-                      user: card.title === "Total Users" ? "all" : card.title === "Test Users" ? "test" : card.title.toLowerCase()
+                      user: card.title === "Total Users" ? "all"
+                          : card.title === "Test Users" ? "test"
+                          : card.title === "Ambassadors" ? "ambassador"
+                          : card.title.toLowerCase()
                     })
                   }
                   if(userPlans.includes(card.title)){
