@@ -58,8 +58,16 @@ export class Referrer extends Model {
   type?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
+  payId?: string;
+
+  @AllowNull(true)
   @Column(DataType.TEXT)
   declinedReason?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  sequentialId?: string;
 
   @AllowNull(true)
   @Column(DataType.STRING)

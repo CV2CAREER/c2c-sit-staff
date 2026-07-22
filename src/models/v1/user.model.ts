@@ -241,6 +241,11 @@ export class User extends Model {
   @Column(DataType.BOOLEAN)
   isAmbassador?: boolean;
 
+  @AllowNull(true)
+  @Unique
+  @Column(DataType.STRING)
+  ambassadorToken?: string | null;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)

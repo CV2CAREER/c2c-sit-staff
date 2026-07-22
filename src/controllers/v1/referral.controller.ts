@@ -339,6 +339,32 @@ export const updateReferralPaymentStatus = catchAsyncError(
   }
 );
 
+/**
+ * ⚡ PATCH /v1/referrals/:referralId/payid  — JIR-061
+ */
+export const saveReferralPayId = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { referralId } = req.params;
+    const { payId } = req.body;
+    if (!referralId) return res.apiError(new ErrorHandler("Referral ID is required", 400));
+    if (!payId || !payId.trim()) return res.apiError(new ErrorHandler("PayID is required", 400));
+    const result = await ReferralService.savePayId(req, referralId, payId.trim());
+    res.apiSuccess(result, "PayID saved — payout status set to UNPAID");
+  }
+);
+
+/**
+ * ⚡ POST /v1/referrals/:referralId/mark-paid  — JIR-063
+ */
+export const markReferralPaid = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { referralId } = req.params;
+    if (!referralId) return res.apiError(new ErrorHandler("Referral ID is required", 400));
+    const result = await ReferralService.markPaid(req, referralId);
+    res.apiSuccess(result, "$50 marked as paid");
+  }
+);
+
 export const bulkUploadReferrals = catchAsyncError(
   async (req: Request, res: Response) => {
     try {

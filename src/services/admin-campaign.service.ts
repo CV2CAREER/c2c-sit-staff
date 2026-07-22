@@ -28,6 +28,26 @@ const aggregatorCache = new Map();
 
 
 /**
+ * Get future date from current date by adding days
+ */
+function getFutureDateFromDays(days: number, formatType: number = 1): string {
+  const currentDate = new Date();
+  currentDate.setDate(currentDate.getDate() + days);
+
+  const day = String(currentDate.getDate()).padStart(2, "0");
+  const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const year = currentDate.getFullYear();
+
+  switch (formatType) {
+    case 2: return `${month}-${day}-${year}`;
+    case 3: return `${year}-${month}-${day}`;
+    case 4: return `${month}/${day}/${year}`;
+    case 5: return `${day}/${month}/${year}`;
+    default: return `${day}-${month}-${year}`;
+  }
+}
+
+/**
  * Get future date from current date by adding months
  */
 function getFutureDateFromMonth(
@@ -70,6 +90,8 @@ function getFutureDateFromMonth(
 const isStage = (host: string): boolean => {
   const hostLower = host.toLowerCase();
   return (
+    hostLower.includes("localhost") ||
+    hostLower.includes("127.0.0.1") ||
     hostLower.includes("staging") ||
     hostLower.includes("iat") ||
     hostLower.includes("stg") ||
@@ -385,15 +407,25 @@ export const handleCampaignManagement = async (
   const CustomerId = updatedClient.uniqueId;
   const Craft = userCraft;
   const Country = updatedClient.country;
+  const isCoralPlan = plan?.toLowerCase() === "coral";
   const planExp = !plan ? 0 : plan?.toLowerCase() === "gold" ? 6 : 12;
-  const CampaignEnd = getFutureDateFromMonth(planExp) as string;
-  const SeekSubDurDays = getFutureDateFromMonth(planExp, 1, true) as number;
+  const CampaignEnd = isCoralPlan
+    ? getFutureDateFromDays(30)
+    : getFutureDateFromMonth(planExp) as string;
+  const SeekSubDurDays = isCoralPlan
+    ? 30
+    : getFutureDateFromMonth(planExp, 1, true) as number;
 
-  // Check if the customer already exists in credentials
+  // Check if the customer already exists in credentials (by email OR userId).
+  // paranoid: false ensures soft-deleted rows are included — they still occupy unique constraints.
   const existing = await Credentials.findOne({
     where: {
-      seekEmail: updatedClient.email,
+      [Op.or]: [
+        { seekEmail: updatedClient.email },
+        { clientId: userId },
+      ],
     },
+    paranoid: false,
   });
 
   // Create an alias email
@@ -431,6 +463,11 @@ export const handleCampaignManagement = async (
           currentCity: Country,
           seekExternalCredentials: clientData as unknown as Record<string, unknown>,
           clientId: userId,
+          Active: true,
+          capitalized: "INFLIGHT",
+          SeekAnswerPriority: true,
+          SeekAggregator: true,
+          SeekSubStartDate: getFutureDateFromDays(0),
         });
 
         logger.info(
@@ -528,12 +565,23 @@ export const handleCampaignManagement = async (
       );
     }
   } else {
-    // Update some information if the client already exists
+    // Row exists (may be soft-deleted) — restore it and update campaign fields.
+    await existing.restore();
     await existing.update({
+      seekEmail: updatedClient.email,
+      clientId: userId,
+      Active: true,
+      capitalized: "INFLIGHT",
+      SeekAnswerPriority: true,
+      SeekAggregator: true,
+      SeekSubStartDate: getFutureDateFromDays(0),
       seekExternalCredentials: {
         ...(existing.seekExternalCredentials as object),
         Plan: plan,
-        SeekSubDurDays: 183,
+        Active: true,
+        CampaignEnd: isCoralPlan ? getFutureDateFromDays(30) : undefined,
+        SeekSubEndDate: isCoralPlan ? getFutureDateFromDays(30) : undefined,
+        SeekSubDurDays: isCoralPlan ? 30 : 183,
       },
     });
   }

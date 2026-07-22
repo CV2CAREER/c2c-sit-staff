@@ -12,6 +12,7 @@ import {
   UpdatedAt,
   BeforeCreate,
 } from "sequelize-typescript";
+import { literal } from "sequelize";
 import { User } from "./user.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
 
@@ -29,7 +30,7 @@ export class Credentials extends Model {
   static async generateId(instance: Credentials) {
     if (!instance.id) {
       const lastCredential = await Credentials.findOne({
-        order: [["id", "DESC"]],
+        order: [[literal("CAST(id AS INTEGER)"), "DESC"]],
         attributes: ["id"],
         paranoid: false,
       });

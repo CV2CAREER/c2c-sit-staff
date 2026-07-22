@@ -1,9 +1,13 @@
 import { Request, Response } from "express";
+import { randomBytes } from "crypto";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan } from "../../services/admin-plan.service";
 import { Progress } from "../../utils/enum";
+import { User } from "../../models/v1/user.model";
+import { Plan } from "../../models/v1/plan.model";
+import { getFrontendUrl } from "../../utils/helpers";
 
 const logger = getServiceLogger("admin-plan-controller");
 
@@ -63,7 +67,7 @@ export const activateCoralPlanController = catchAsyncError(
 
     logger.info(`Processing Coral activation request for user ${userId}`);
 
-    const plan = await activateCoralPlan(host, userId);
+    const plan = await activateCoralPlan(host, userId, req.user as any);
 
     return res.apiSuccess(
       { plan },
@@ -139,6 +143,52 @@ export const confirmUserProgressController = catchAsyncError(
     return res.apiSuccess(
       { user },
       `User progress updated to "${progress}" successfully`,
+      200,
+    );
+  },
+);
+
+/**
+ * GET /api/v1/admin/ambassador/generate-link/:userId
+ *
+ * Generate (or return existing) ambassador invite link for the given user.
+ * Creates a unique token on first call; subsequent calls reuse it.
+ */
+export const generateAmbassadorLinkController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const ambassador = await User.findOne({
+      where: { id: userId, isAmbassador: true },
+    });
+
+    if (!ambassador) {
+      return res.apiError(
+        new ErrorHandler("Ambassador user not found", 404),
+      );
+    }
+
+    const activeCoral = await Plan.findOne({
+      where: { userId, title: "Coral", hasExpired: false },
+    });
+
+    if (!activeCoral) {
+      return res.apiError(
+        new ErrorHandler("Ambassador does not have an active Coral plan", 400),
+      );
+    }
+
+    let token = ambassador.ambassadorToken;
+    if (!token || token.length !== 16) {
+      token = randomBytes(8).toString("hex");
+      await ambassador.update({ ambassadorToken: token });
+    }
+
+    const link = `${getFrontendUrl()}/register?ref=${token}`;
+
+    return res.apiSuccess(
+      { link, token },
+      "Ambassador link generated",
       200,
     );
   },

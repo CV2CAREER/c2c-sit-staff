@@ -556,12 +556,16 @@ export const getAllUsers = async (query: {
   
   // User Type / Role filter
   if (userType) {
-    where.role = userType;
+    if (userType === "ambassador") {
+      where.isAmbassador = true;
+    } else {
+      where.role = userType;
+    }
   }
   
-  // Plan filter
+  // Plan filter — selectedPlan stores the plan title (e.g. "Coral", "Gold")
   if (plan) {
-    where.planId = plan;
+    where.selectedPlan = { [Op.iLike]: plan };
   }
 
   // Date range filter
