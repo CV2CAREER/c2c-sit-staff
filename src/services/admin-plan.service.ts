@@ -18,13 +18,11 @@ import {
 import { sendMail } from "../config/sendGrid";
 import { handleCampaignManagement } from "./admin-campaign.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
-import path from "path";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
 import { sendCoralActiveEmail, sendInternalReferralEmail } from "./email.service";
 
 const logger = getServiceLogger("admin-plan-service");
-const mailDirectory = path.resolve(__dirname, "../views/emails");
 
 /**
  * Update a user's plan based on a featureId.
@@ -183,7 +181,6 @@ export const updateUserPlanByFeature = async (
             email: user.email,
             subject: `${feature.title} Service Activated Successfully`,
             templateName: "service-subscription-user.ejs",
-            templateDir: mailDirectory,
             templateData: {
               name: user.firstName,
               plan: feature.title,
@@ -196,7 +193,6 @@ export const updateUserPlanByFeature = async (
             email: TEAM_EMAIL!,
             subject: `Payment Received from ${fullName}`,
             templateName: "service-subscription-admin.ejs",
-            templateDir: mailDirectory,
             templateData: {
               name: fullName,
               email: user.email,

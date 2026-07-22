@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import path from "path";
 import { Request, Response } from "express";
 import formidable, { type File as FormidableFile, type Files } from "formidable";
 import catchAsyncError from "../../utils/catchAsyncError";
@@ -170,7 +169,6 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
               email: TEAM_EMAIL,
               subject: `📄 Revised Document Uploaded - by ${(req as any).user?.firstName} ${(req as any).user?.lastName}`,
               templateName: "admin-revised-documents.ejs",
-              templateDir: path.resolve(__dirname, "../../views/emails"),
               templateData: {
                 title: "Document Upload Notification",
                 message: `Admin has uploaded Revised documents for user.`,
@@ -201,7 +199,6 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
               email: user.email,
               subject: `📄 Your Revised Document is Ready - CVtoCAREER`,
               templateName: "client-revised-documents.ejs",
-              templateDir: path.resolve(__dirname, "../../views/emails"),
               templateData: {
                 title: "Revised Document Available",
                 name: clientName,

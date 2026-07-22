@@ -1,7 +1,6 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { sendMail } from "../config/sendGrid";
 import moment from "moment-timezone";
-import path from "path";
 import {
   ClientAvailabilityStatus,
   DayOfWeek,
@@ -22,7 +21,6 @@ import { SlackService } from "./slack.service";
 import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
 
 const logger = getServiceLogger("ClientAvailabilityService");
-const mailDirectory = path.join(__dirname, "../views/emails");
 
 const DEFAULT_MEETING_LINK = "https://meet.google.com/ipd-yhtc-kkg";
 
@@ -102,7 +100,6 @@ async function sendDeclineNotifications(
     email: client.email,
     subject: "Your Session Request Could Not Be Confirmed — CVtoCAREER",
     templateName: "availability-declined-client.ejs",
-    templateDir: mailDirectory,
     templateData: {
       name: client.firstName,
       date: formattedDate,
@@ -317,7 +314,6 @@ async function sendProposeRescheduleNotifications(
     email: client.email,
     subject: "Your Coach Has Proposed a New Session Time — CVtoCAREER",
     templateName: "availability-reschedule-proposed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       name: client.firstName,
       coachName,
@@ -476,8 +472,7 @@ async function sendRescheduleNotifications(
       email: client.email,
       subject: "Your Session Has Been Rescheduled — CVtoCAREER",
       templateName: "session-rescheduled.ejs",
-      templateDir: mailDirectory,
-      templateData: {
+        templateData: {
         ...sharedData,
         name: client.firstName,
         coachName: coach ? `${coach.firstName} ${coach.lastName}` : "Your Coach",
@@ -494,8 +489,7 @@ async function sendRescheduleNotifications(
       email: coach.email,
       subject: "Session Rescheduled Confirmation — CVtoCAREER",
       templateName: "session-rescheduled.ejs",
-      templateDir: mailDirectory,
-      templateData: {
+        templateData: {
         ...sharedData,
         name: coach.firstName,
         clientName: client ? `${client.firstName} ${client.lastName}` : "Client",
@@ -511,7 +505,6 @@ async function sendRescheduleNotifications(
     email: TEAM_EMAIL,
     subject: "Session Rescheduled — CVtoCAREER",
     templateName: "session-rescheduled.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...sharedData,
       name: "Team",
@@ -568,7 +561,6 @@ async function sendAcceptanceNotifications(
     email: client.email,
     subject: "Your Session Has Been Confirmed — CVtoCAREER",
     templateName: "session-confirmed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...sharedData,
       name: client.firstName,
@@ -583,7 +575,6 @@ async function sendAcceptanceNotifications(
     email: coach.email,
     subject: "Session Booking Confirmed — CVtoCAREER",
     templateName: "coach-session-confirmed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...sharedData,
       name: coach.firstName,
@@ -598,7 +589,6 @@ async function sendAcceptanceNotifications(
     email: TEAM_EMAIL,
     subject: "Session Booked — Coach Accepted Client Availability",
     templateName: "admin-session-booked.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...sharedData,
       name: "Team",

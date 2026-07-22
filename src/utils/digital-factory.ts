@@ -141,19 +141,39 @@ const directApiFallback = async (prompt: string, startTime: number): Promise<str
     // Use the full API endpoint path
     const apiUrl = `${GRADIENT_AGENT_ENDPOINT}/api/v1/chat/completions`;
     logger.info(`[DigitalOcean AI] Direct API to: ${apiUrl}`);
-    
+
+    // The agent behind GRADIENT_AGENT_ENDPOINT is a reasoning model (emits
+    // chain-of-thought before answering) — a flat 120s wasn't enough for the
+    // ~8000-char CV variant prompt (observed timing out twice at exactly
+    // 120s) while being far more than a trivial test message needs. Scale
+    // with prompt size instead: 90s floor, ~20ms/char, 5min ceiling. The
+    // Interview Pack stage prompts (hard rules + schema + CV + job content
+    // + prior-stage context) routinely landed right on the old 180s ceiling
+    // and timed out, so the ceiling was raised — 180s was too tight for
+    // this reasoning model on the heaviest prompts.
+    const timeoutMs = Math.min(300000, Math.max(90000, prompt.length * 20));
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      if (fetchError.name === 'AbortError') {
+        const timeoutError: any = new Error(`Direct API timed out after ${timeoutMs}ms`);
+        timeoutError.isTimeout = true;
+        throw timeoutError;
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Direct API failed: ${response.status} ${errorText}`);
@@ -194,12 +214,22 @@ export const queryDigitalOceanAI = async (prompt: string, retryCount: number = 2
       return result;
     } catch (error: any) {
       logger.warn(`[DigitalOcean AI] Attempt ${attempt} failed:`, error.message);
-      
+
+      // A timeout means the request was fundamentally too slow for the
+      // window it was given — retrying the identical prompt against the
+      // same slow endpoint is very unlikely to finish faster, and doing it
+      // 3x just turns a ~1-3min failure into a 6+min one with no feedback
+      // to the caller in the meantime. Fail immediately instead.
+      if (error.isTimeout) {
+        logger.error(`[DigitalOcean AI] Timed out on attempt ${attempt} — not retrying`);
+        throw new Error(`Digital Ocean AI timed out: ${error.message}`);
+      }
+
       if (attempt === retryCount + 1) {
         logger.error('[DigitalOcean AI] All attempts failed');
         throw new Error(`Failed after ${retryCount + 1} attempts: ${error.message}`);
       }
-      
+
       const delay = Math.pow(2, attempt - 1) * 1000;
       logger.info(`[DigitalOcean AI] Waiting ${delay}ms before retry...`);
       await new Promise(resolve => setTimeout(resolve, delay));

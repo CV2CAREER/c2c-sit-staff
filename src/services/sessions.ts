@@ -12,11 +12,9 @@ import { SlackService } from "./slack.service";
 import { sendMail } from "../config/sendGrid";
 import { createGEvent, deleteGEvent } from "./google/calendar";
 import { TEAM_EMAIL } from "../config/env";
-import path from "path";
 import db from "../database/postgres";
 
 const logger = getServiceLogger("sessions");
-const mailDirectory = path.resolve(__dirname, "../views/emails");
 
 // Types
 export interface SessionPayload {
@@ -129,21 +127,18 @@ export const sendBookingEmails = async (
         email: clientData.email,
         subject: `Live Session With Performance Coach ${coachData.firstName} ${coachData.lastName}`,
         templateName: "session-booked-client.ejs",
-        templateDir: mailDirectory,
         templateData: { ...emailDetails, clientName: clientData.firstName },
       }),
       sendMail({
         email: coachData.email,
         subject: `Live Session With ${clientData.firstName} ${clientData.lastName}`,
         templateName: "session-booked-coach.ejs",
-        templateDir: mailDirectory,
         templateData: { ...emailDetails, coachName: coachData.firstName },
       }),
       sendMail({
         email: TEAM_EMAIL,
         subject: `${clientData.firstName} ${clientData.lastName} Live Session With Performance Coach ${coachData.firstName} ${coachData.lastName}`,
         templateName: "session-booked-admin.ejs",
-        templateDir: mailDirectory,
         templateData: { ...emailDetails, clientEmail: clientData.email },
       }),
     ]);

@@ -16,13 +16,18 @@ import {
   SlackNode,
   SlackProvider,
   SlackSeverity,
+  UploadType,
+  UploadStatus,
+  UploadSource,
 } from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
-import path from "path";
 import { Credentials } from "@/models/v1/credentials.model";
+import { uploadBufferToStorage } from "../utils/fileUpload";
+import { textToPdfBuffer, textToDocxBuffer } from "../utils/textDocumentGenerator";
+import { htmlToPdfBuffer, htmlToDocxBuffer } from "../utils/htmlDocumentGenerator";
+import { progressValues } from "../utils/user-progress-processor";
 
 const logger = getServiceLogger("document-service");
-const mailDirectory = path.resolve(__dirname, "../views/emails");
 
 export interface ExtractCvDataPointsPayload {
   id: string;
@@ -32,6 +37,85 @@ export interface ExtractCvDataPointsPayload {
 export interface CvExtractionResult {
   upload: Upload;
   cvDataPoints: CvDataPoints;
+}
+
+export interface RoleTitleRecommendationRow {
+  role_title: string;
+  classification: string;
+  craft: string;
+  industry: string;
+  status: "Evidenced" | "Adjacent" | "Aspirational";
+  portfolio_evidence: boolean;
+  aspirational_case: "seniority_step" | "credential_only" | null;
+  field_pivot: boolean;
+  atomic_exception: boolean;
+  exception_note: string | null;
+  ai_career_resilience_rating: "High" | "Medium" | "Low";
+  evidence_note: string;
+}
+
+export interface RoleTitleRecommendationResult {
+  candidate_name: string;
+  qa_flags: { type: string; description: string }[];
+  roles: RoleTitleRecommendationRow[];
+}
+
+export interface CvVariantTextRun {
+  text: string;
+  is_new: boolean;
+}
+
+export interface CvVariantHeader {
+  name: string;
+  headline: CvVariantTextRun;
+  contact_line: string;
+  work_rights_line: { text: string | null; is_new: boolean; flag: string | null };
+}
+
+export interface CvVariantExperienceSubSection {
+  label: string;
+  bullets: CvVariantTextRun[];
+}
+
+export interface CvVariantExperience {
+  title: string;
+  company: string;
+  location: string | null;
+  dates: string;
+  flags: string[];
+  bullets: CvVariantTextRun[];
+  sub_sections: CvVariantExperienceSubSection[];
+}
+
+export interface CvVariantEducation {
+  qualification: string;
+  institution: string;
+  dates: string;
+  detail: { text: string | null; is_new: boolean };
+  flags: string[];
+}
+
+export interface CvVariantCertification extends CvVariantTextRun {
+  flag: string | null;
+}
+
+export interface CvVariantAdditionalSection {
+  heading: string;
+  items: CvVariantTextRun[];
+}
+
+export interface CvVariantResult {
+  client_name: string;
+  style_variant: "modern" | "classic" | "contemporary";
+  style_reasoning: string;
+  top_level_flags: string[];
+  header: CvVariantHeader;
+  summary: { runs: CvVariantTextRun[] };
+  skills: CvVariantTextRun[];
+  experience: CvVariantExperience[];
+  education: CvVariantEducation[];
+  certifications: CvVariantCertification[];
+  additional_sections: CvVariantAdditionalSection[];
 }
 
 export class AdminDocumentService {
@@ -77,7 +161,12 @@ export class AdminDocumentService {
         if (!this.promptCache || Date.now() - this.promptCache.timestamp > 5 * 60 * 1000) {
             try {
                 const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
-                const foundVCS = await VCS.findOne({ where: { active: true } });
+                const foundVCS = await VCS.findOne({ 
+                    where: { 
+                        active: true,
+                        key: 'upload_role_titles_prompt'
+                    } 
+                });
                 if (foundVCS) {
                     const foundPrompt = await VCSPrompt.findByPk(foundVCS.activePromptId);
                     if (foundPrompt) {
@@ -121,7 +210,6 @@ export class AdminDocumentService {
             email: user.email,
             subject: `${type === "keywords" ? "Keywords" : "Role Titles"} Generated Successfully`,
             templateName: "content-generated.ejs",
-            templateDir: mailDirectory,
             templateData: { name: user.firstName, type }
             });
             logger.info(`[SendGenerationNotification] Email sent to ${user.email}`);
@@ -456,8 +544,455 @@ export class AdminDocumentService {
         }
 
         logger.info(`[GenerateKeywords] Successfully generated content for user ${uploadId}`);
-        
+
         return result;
+    }
+
+    /**
+     * Extract plain text from a resume document URL — shared by
+     * generateCoverLetter below and InterviewPrepService (kept separate from
+     * parseCvDocument/generateKeywords' inline copies to avoid touching
+     * those paths). Not private so other services can reuse it.
+     */
+    static async extractResumeText(fileUrl: string): Promise<string> {
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+        const buffer = response.data;
+        const fileType = await fileTypeFromBuffer(buffer);
+
+        let resumeText = '';
+        if (fileType?.mime === "application/x-cfb") {
+            resumeText = buffer.toString().replace(/[^\x20-\x7E]/g, "");
+        } else {
+            const extractor = getTextExtractor();
+            resumeText = await extractor.extractText({ input: fileUrl, type: "url" });
+        }
+
+        if (!resumeText) {
+            throw new ErrorHandler("Failed to extract text from the resume.", 500);
+        }
+
+        return resumeText;
+    }
+
+    /**
+     * Builds the cover letter prompt from the `cover_letter_generation_prompt`
+     * VCS entry (seeded separately from `upload_role_titles_prompt`, which is
+     * keywords/role-title config), substituting {{CV_TEXT}} and
+     * {{JOB_CONTEXT}} placeholders.
+     */
+    private static async getCoverLetterPrompt(
+        cvText: string,
+        jobContent: string,
+        jobLink?: string,
+    ): Promise<string> {
+        const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
+        const foundVCS = await VCS.findOne({
+            where: { active: true, key: 'cover_letter_generation_prompt' },
+        });
+        const promptRow = foundVCS
+            ? await VCSPrompt.findByPk(foundVCS.activePromptId)
+            : null;
+
+        if (!promptRow) {
+            throw new ErrorHandler("Cover letter prompt is not configured", 500);
+        }
+
+        // {{JOB_CONTEXT}} = JOB_AD_TEXT + "\n" + JOB_URL
+        const jobContext = jobLink
+            ? `${jobContent}\n${jobLink}`
+            : jobContent;
+
+        return promptRow.prompt
+            .replace(/\{\{CV_TEXT\}\}/g, cvText)
+            .replace(/\{\{JOB_CONTEXT\}\}/g, jobContext);
+    }
+
+    /**
+     * Generate a cover letter for a user's resume against a job link/description.
+     * Returns the raw AI text — persistence (Firebase upload + Upload record)
+     * is a separate follow-up step once the output format is decided.
+     */
+    static async generateCoverLetter(
+        targetUserId: string,
+        resumeUploadId: string,
+        jobContent: string,
+        jobLink?: string,
+    ): Promise<string> {
+        logger.info(`[GenerateCoverLetter] User ${targetUserId}, resume ${resumeUploadId}`);
+
+        const upload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!upload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const docMeta = Array.isArray(upload.document) ? upload.document[0] : upload.document;
+        const fileUrl = docMeta?.url;
+        if (!fileUrl) {
+            throw new ErrorHandler("Could not find the document URL for this resume.", 400);
+        }
+
+        const resumeText = await this.extractResumeText(fileUrl);
+        const prompt = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
+        const coverLetter = await queryDigitalOceanAI(prompt);
+
+        logger.info(`[GenerateCoverLetter] Successfully generated cover letter for user ${targetUserId}`);
+        return coverLetter;
+    }
+
+    /**
+     * Renders the (admin-reviewed) cover letter text into a PDF or DOCX file,
+     * uploads it to Firebase, and records it as a `coverletter` Upload —
+     * the follow-up persistence step to generateCoverLetter above.
+     */
+    static async saveCoverLetter(
+        targetUserId: string,
+        resumeUploadId: string,
+        coverLetterText: string,
+        format: "pdf" | "docx",
+    ): Promise<{ upload: Upload; clientName: string }> {
+        logger.info(`[SaveCoverLetter] User ${targetUserId}, format ${format}`);
+
+        if (!coverLetterText?.trim()) {
+            throw new ErrorHandler("Cover letter text is required", 400);
+        }
+
+        // Confirm the resume belongs to this user before attaching the
+        // generated cover letter to their account.
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await textToPdfBuffer(coverLetterText)
+            : await textToDocxBuffer(coverLetterText);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Cover_Letter_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        const uploadResult = await uploadBufferToStorage(buffer, filename, {
+            folder: `cover-letters/${targetUserId}`,
+            mimeType,
+        });
+
+        const upload = await Upload.create({
+            userId: targetUserId,
+            type: UploadType.COVER_LETTER,
+            document: {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                name: uploadResult.name,
+                size: uploadResult.size,
+                mimeType: uploadResult.mimeType,
+            },
+            status: UploadStatus.REVISED,
+            source: UploadSource.ADMIN,
+        });
+
+        logger.info(`[SaveCoverLetter] Saved cover letter upload ${upload.id} for user ${targetUserId}`);
+        return { upload, clientName };
+    }
+
+    /**
+     * Builds the Role Title Recommendations prompt from the
+     * `role_title_generation_prompt` VCS entry, substituting the {{CV_TEXT}}
+     * placeholder.
+     */
+    private static async getRoleTitlePrompt(cvText: string): Promise<string> {
+        const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
+        const foundVCS = await VCS.findOne({
+            where: { active: true, key: 'role_title_generation_prompt' },
+        });
+        const promptRow = foundVCS
+            ? await VCSPrompt.findByPk(foundVCS.activePromptId)
+            : null;
+
+        if (!promptRow) {
+            throw new ErrorHandler("Role title prompt is not configured", 500);
+        }
+
+        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+    }
+
+    /**
+     * Generate Role Title Recommendations (RTR) for a user's resume.
+     * Returns the parsed AI JSON — persistence into ClientSupportDocument is
+     * a separate, explicit "save" step once the admin has reviewed it.
+     */
+    static async generateRoleTitleRecommendations(
+        targetUserId: string,
+        resumeUploadId: string,
+    ): Promise<RoleTitleRecommendationResult> {
+        logger.info(`[GenerateRoleTitleRecommendations] User ${targetUserId}, resume ${resumeUploadId}`);
+
+        const upload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!upload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const docMeta = Array.isArray(upload.document) ? upload.document[0] : upload.document;
+        const fileUrl = docMeta?.url;
+        if (!fileUrl) {
+            throw new ErrorHandler("Could not find the document URL for this resume.", 400);
+        }
+
+        const resumeText = await this.extractResumeText(fileUrl);
+        const prompt = await this.getRoleTitlePrompt(resumeText);
+        const aiResponse = await queryDigitalOceanAI(prompt);
+
+        const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
+        const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new ErrorHandler("AI response did not contain valid JSON", 500);
+        }
+
+        let result: RoleTitleRecommendationResult;
+        try {
+            result = JSON.parse(jsonMatch[0]);
+        } catch {
+            throw new ErrorHandler("Failed to parse AI-generated role titles", 500);
+        }
+
+        if (!Array.isArray(result.roles)) {
+            throw new ErrorHandler("AI response is missing the 'roles' array", 500);
+        }
+
+        logger.info(`[GenerateRoleTitleRecommendations] Generated ${result.roles.length} role(s) for user ${targetUserId}`);
+        return result;
+    }
+
+    /**
+     * Builds the CV Variant prompt from the `cv_variant_generation_prompt`
+     * VCS entry, substituting the {{CV_TEXT}} placeholder.
+     */
+    private static async getCvVariantPrompt(cvText: string): Promise<string> {
+        const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
+        const foundVCS = await VCS.findOne({
+            where: { active: true, key: 'cv_variant_generation_prompt' },
+        });
+        const promptRow = foundVCS
+            ? await VCSPrompt.findByPk(foundVCS.activePromptId)
+            : null;
+
+        if (!promptRow) {
+            throw new ErrorHandler("CV variant prompt is not configured", 500);
+        }
+
+        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+    }
+
+    /**
+     * Generate a consolidated, enriched CV Variant for a user's resume.
+     * Returns the parsed AI JSON (with per-field is_new flags) — persistence
+     * is a separate, explicit "save" step once the admin has reviewed/edited
+     * the flattened text on the frontend.
+     */
+    static async generateCvVariant(
+        targetUserId: string,
+        resumeUploadId: string,
+    ): Promise<CvVariantResult> {
+        logger.info(`[GenerateCvVariant] User ${targetUserId}, resume ${resumeUploadId}`);
+
+        const upload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!upload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const docMeta = Array.isArray(upload.document) ? upload.document[0] : upload.document;
+        const fileUrl = docMeta?.url;
+        if (!fileUrl) {
+            throw new ErrorHandler("Could not find the document URL for this resume.", 400);
+        }
+
+        const resumeText = await this.extractResumeText(fileUrl);
+        const prompt = await this.getCvVariantPrompt(resumeText);
+        const aiResponse = await queryDigitalOceanAI(prompt);
+
+        const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
+        const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new ErrorHandler("AI response did not contain valid JSON", 500);
+        }
+
+        let result: CvVariantResult;
+        try {
+            result = JSON.parse(jsonMatch[0]);
+        } catch {
+            throw new ErrorHandler("Failed to parse AI-generated CV variant", 500);
+        }
+
+        if (!result.header || !Array.isArray(result.experience)) {
+            throw new ErrorHandler("AI response is missing required CV variant fields", 500);
+        }
+
+        logger.info(`[GenerateCvVariant] Generated a "${result.style_variant}" variant for user ${targetUserId}`);
+        return result;
+    }
+
+    /**
+     * Renders the (admin-reviewed/formatted) CV variant — rich-text HTML
+     * from the TipTap editor, so bold/italic/underline/lists/alignment carry
+     * through — into a PDF or DOCX file, uploads it to Firebase, and records
+     * it as a new `resume` Upload for the client — the follow-up
+     * persistence step to generateCvVariant above.
+     */
+    static async saveCvVariant(
+        targetUserId: string,
+        resumeUploadId: string,
+        cvVariantHtml: string,
+        format: "pdf" | "docx",
+    ): Promise<{ upload: Upload; clientName: string }> {
+        logger.info(`[SaveCvVariant] User ${targetUserId}, format ${format}`);
+
+        if (!cvVariantHtml?.trim()) {
+            throw new ErrorHandler("CV variant content is required", 400);
+        }
+
+        // Confirm the resume belongs to this user before attaching the
+        // generated variant to their account.
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await htmlToPdfBuffer(cvVariantHtml)
+            : await htmlToDocxBuffer(cvVariantHtml);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_CV_Variant_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        const uploadResult = await uploadBufferToStorage(buffer, filename, {
+            folder: `cv-variants/${targetUserId}`,
+            mimeType,
+        });
+
+        // New Resume upload for the client — not marked default, so it sits
+        // alongside their existing resume until an admin promotes it.
+        const upload = await Upload.create({
+            userId: targetUserId,
+            type: UploadType.RESUME,
+            document: {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                name: uploadResult.name,
+                size: uploadResult.size,
+                mimeType: uploadResult.mimeType,
+            },
+            status: UploadStatus.REVISED,
+            source: UploadSource.ADMIN,
+        });
+
+        // Advance the client's onboarding progress bar to the
+        // "CV Variant Dispatch" milestone (the frontend stepper checks for
+        // this exact progress string, not the milestone's display label).
+        if (user) {
+            await user.update({ progress: progressValues.CV_RESUME_UPLIFTED });
+        }
+
+        logger.info(`[SaveCvVariant] Saved CV variant upload ${upload.id} for user ${targetUserId}`);
+        return { upload, clientName };
+    }
+
+    /**
+     * Renders the (admin-reviewed/formatted) Interview Pack — rich-text HTML
+     * combining all 4 stage results, built on the frontend — into a PDF or
+     * DOCX file, uploads it to Firebase, and records it as an `otherDocs`
+     * Upload for the client.
+     */
+    static async saveInterviewPack(
+        targetUserId: string,
+        resumeUploadId: string,
+        interviewPackHtml: string,
+        format: "pdf" | "docx",
+    ): Promise<{ upload: Upload; clientName: string }> {
+        logger.info(`[SaveInterviewPack] User ${targetUserId}, format ${format}`);
+
+        if (!interviewPackHtml?.trim()) {
+            throw new ErrorHandler("Interview pack content is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await htmlToPdfBuffer(interviewPackHtml)
+            : await htmlToDocxBuffer(interviewPackHtml);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Interview_Pack_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        const uploadResult = await uploadBufferToStorage(buffer, filename, {
+            folder: `interview-packs/${targetUserId}`,
+            mimeType,
+        });
+
+        const upload = await Upload.create({
+            userId: targetUserId,
+            type: UploadType.OTHER_DOCS,
+            document: {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                name: uploadResult.name,
+                size: uploadResult.size,
+                mimeType: uploadResult.mimeType,
+            },
+            status: UploadStatus.REVISED,
+            source: UploadSource.ADMIN,
+        });
+
+        logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);
+        return { upload, clientName };
     }
 
 }

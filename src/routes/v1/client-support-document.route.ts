@@ -5,6 +5,7 @@ import {
   deleteClientSupportDocumentController,
   getClientSupportDocumentUrlController,
   getClientSupportDocumentsController,
+  saveAiRoleTitleRecommendationsController,
   uploadClientSupportDocumentsController,
 } from "../../controllers/v1/client-support-document.controller";
 
@@ -15,6 +16,11 @@ clientSupportDocumentRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 // Multipart upload — fields: roleTitleRecommendations, supportImages,
 // supportSpreadsheets (plus clientId).
 clientSupportDocumentRouterV1.post("/", uploadClientSupportDocumentsController);
+
+clientSupportDocumentRouterV1.post(
+  "/role-titles/save",
+  saveAiRoleTitleRecommendationsController,
+);
 
 clientSupportDocumentRouterV1.get(
   "/client/:clientId",
