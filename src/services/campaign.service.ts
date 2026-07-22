@@ -1340,7 +1340,7 @@ export const updateJobApplicationStatus = async (
     : null;
 
   const clientFullName = `${userObj?.firstName || ''} ${userObj?.lastName || ''}`.trim();
-  const jobTitleLink = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : (jobTitleUrl?.title || 'N/A');
+  const jobTitleLink = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : 'N/A';
   const jobDisplay = `${jobTitleLink} · ${application.Advertiser}`;
   const reasonList = statusReason ? (Array.isArray(statusReason) ? statusReason : statusReason.split(/[;]\s*/)) : [];
 
@@ -1382,7 +1382,7 @@ export const updateJobApplicationStatus = async (
 
   let message = '';
   const envDisplay = getEnvironmentFromHost(host || '');
-  const jobLinkStr = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : (jobTitleUrl?.title || 'N/A');
+  const jobLinkStr = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : 'N/A';
   const advertiser = application.Advertiser || 'N/A';
 
   const bullet = (lines: string[]) => lines.join('\n');
@@ -1396,10 +1396,11 @@ export const updateJobApplicationStatus = async (
     if (qualityScore) {
       updateData.QualityScore = qualityScore;
     }
-    const emoji = qualityScore === 'LQA' ? '🚫' : '➡️';
-    const label = qualityScore === 'LQA' ? 'LQA — skipped' : 'JOB SKIPPED';
+    const emoji = '⏭️';
+    const label = 'JOB SKIPPED';
     message = bullet([
       `${emoji} ${label}`,
+      `• *SPC:* ${spcName}`,
       `• *VPC:* ${vpcName}`,
       `• *DPC:* ${dpcName}`,
       `• *Client:* ${clientFullName}`,
@@ -1585,7 +1586,10 @@ export const updateJobApplicationStatus = async (
       updateData.StatusReason = resolvedReason;
     }
     message = bullet([
-      `⬜ JOB EXPIRED — vacancy withdrawn`,
+      `🚫 JOB EXPIRED — vacancy withdrawn`,
+      `• *SPC:* ${spcName}`,
+      `• *VPC:* ${vpcName}`,
+      `• *DPC:* ${dpcName}`,
       `• *Client:* ${clientFullName}`,
       `• *Job:* ${jobLinkStr}`,
       `• *Company:* ${advertiser}`,
@@ -1672,6 +1676,7 @@ export const updateJobApplicationStatus = async (
         trigger: updatedBy,
         type: SlackEventType.USER_TRIGGERED,
         channel: SlackChannel.JOB_PIPELINE,
+        // teamMentions: "CSM",
         body: message,
       });
     } catch (err) {
