@@ -5,6 +5,7 @@ import AdminJobsiteRowGeneratorModal from "./AdminJobsiteRowGeneratorModal"
 import Table from "@/components/newTable/Table"
 import toast from 'react-hot-toast';
 import CustomButton from "@/components/CustomButton/CustomButton"
+import { HiOutlineGlobeAlt } from "react-icons/hi"
 
 
 const AdminUsersJobSites = ({ userId }: { userId: string }) => {
@@ -179,10 +180,16 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
     }
 
     return (
-        <div className="bg-white shadow-sm rounded-sm mb-8">
-            <div className="p-4 md:p-6 pt-2">
+        <div className="relative overflow-hidden rounded-2xl border border-career-gray-300/60 bg-white shadow-sm mb-8">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
+            <div className="p-4 md:p-6 pt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                    <h3 className="text-xl md:text-2xl font-semibold">Job Sites</h3>
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+                            <HiOutlineGlobeAlt size={20} />
+                        </span>
+                        <h3 className="text-xl md:text-2xl font-semibold">Job Sites</h3>
+                    </div>
                     <AdminJobsiteRowGeneratorModal
                         missingJobsiteRows={!aggregators?.length}
                         user={user}
