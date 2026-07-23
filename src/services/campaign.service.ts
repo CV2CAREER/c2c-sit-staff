@@ -1647,17 +1647,52 @@ export const updateJobApplicationStatus = async (
       requestData
     );
 
-    const axios = require('axios');
-    const flaskResponse = await axios.post(
-      `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
-      requestData,
-      { timeout: 60000 }
-    );
-
-    if (!flaskResponse.data.success) {
-      throw new Error(
-        flaskResponse.data.message || 'Failed to save application to database.'
+    try {
+      const axios = require('axios');
+      const flaskResponse = await axios.post(
+        `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+        requestData,
+        { timeout: 60000 }
       );
+
+      if (!flaskResponse.data.success) {
+        throw new Error(
+          flaskResponse.data.message || 'Failed to save application to database.'
+        );
+      }
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.response?.data || err.message || 'Unknown error';
+
+      setImmediate(async () => {
+        try {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.ERROR,
+            trigger: updatedBy || fullName,
+            type: SlackEventType.ERROR_ALERT,
+            channel: SlackChannel.CRY_WOLF,
+            body: [
+              `❌ FAILED to save job application`,
+              `• *Client:* ${clientFullName || 'N/A'} (ID: ${clientExists?.id})`,
+              `• *Job:* ${jobTitleUrl?.title || 'N/A'} · ${application.Advertiser || 'N/A'}`,
+              `• *Staff:* ${fullName}`,
+              `• *Status:* Submitted`,
+              `• *Error:* ${errorMessage}`,
+              `• *Flask response status:* ${err?.response?.status || 'N/A'}`,
+              `• *Flask URL:* http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+              `• *Application ID:* ${applicationId}`,
+              `• *Payload:* ${JSON.stringify(requestData)}`,
+            ].join('\n'),
+          });
+        } catch (slackErr) {
+          logger.error(`Flask failure Slack notification failed: ${slackErr}`);
+        }
+      });
+
+      throw err;
     }
 
     logger.info(
