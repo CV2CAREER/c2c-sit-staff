@@ -40,7 +40,7 @@ const TemplateButton = ({ onClick }: { onClick: () => void }) => (
   <button
     type="button"
     onClick={onClick}
-    className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#007ab3] px-3 py-1.5 text-12 font-semibold text-[#007ab3] transition-colors duration-200 hover:bg-[#007ab3] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007ab3] focus-visible:ring-offset-2"
+    className="mt-3 inline-flex items-center gap-2 rounded-md border border-primary/20 px-3 py-1.5 text-12 font-semibold text-primary transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
   >
     <FiDownload />
     Download accepted template
@@ -213,10 +213,10 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
 
         return (
           <div
-            className={`rounded-2xl border transition-colors duration-200 ${
+            className={`rounded-xl border transition-colors duration-200 ${
               isOpen
-                ? "border-[#007ab3] bg-white"
-                : "border-career-gray-200 bg-white hover:border-career-gray-200/80"
+                ? "border-primary bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]"
+                : "border-primary/15 bg-white hover:border-primary/40"
             }`}
           >
             <button
@@ -224,40 +224,33 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
               onClick={() => setIsOpen((open) => !open)}
               aria-expanded={isOpen}
               aria-controls={`${inputId}-panel`}
-              className="flex w-full items-center justify-between gap-4 rounded-2xl p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007ab3] focus-visible:ring-offset-2"
+              className="flex w-full items-center justify-between gap-4 rounded-xl p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`text-15 font-medium transition-colors duration-200 ${
-                      isOpen ? "text-career-black-200" : "text-career-gray-200"
-                    }`}
-                  >
-                    {category.label}
-                  </span>
-                  {category.isNew && (
-                    <span className="rounded-full bg-[#007ab3]/10 px-2 py-0.5 text-10 font-semibold uppercase tracking-wide text-[#007ab3]">
-                      New
-                    </span>
-                  )}
-                  {files.length > 0 && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-10 font-semibold text-green-700">
-                      {files.length} selected
-                    </span>
-                  )}
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <FiUploadCloud className="text-base" />
                 </span>
-                <span className="mt-1 block text-12 text-career-gray-200">
-                  {category.hint}
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-15 font-medium text-gray-900">
+                      {category.label}
+                    </span>
+                    {files.length > 0 && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-10 font-semibold text-green-700">
+                        {files.length} selected
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1 block text-12 text-gray-500">
+                    {category.hint}
+                  </span>
                 </span>
               </span>
 
               <span
                 aria-hidden
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
-                  isOpen
-                    ? "rotate-45 border-[#007ab3] bg-[#F5FDFE] text-[#007ab3]"
-                    : "border-career-gray-200 text-career-gray-200"
-                }`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/5 text-primary transition-transform duration-300"
+                style={{ transform: isOpen ? "rotate(45deg)" : undefined }}
               >
                 <FiPlus className="text-lg" />
               </span>
@@ -270,7 +263,7 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
               }`}
             >
               <div className="overflow-hidden">
-                <div className="space-y-3 border-t border-career-gray-200 p-4">
+                <div className="space-y-3 border-t border-primary/10 p-4">
                   {category.instructions}
 
                   <label
@@ -287,8 +280,8 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
                     }}
                     className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition-colors duration-200 ${
                       isDragging
-                        ? "border-[#007ab3] bg-[#007ab3]/5"
-                        : "border-career-gray-200 hover:border-[#007ab3] hover:bg-career-gray-300/40"
+                        ? "border-primary bg-primary/5"
+                        : "border-career-gray-200 hover:border-primary hover:bg-career-gray-300/40"
                     }`}
                   >
                     <input
@@ -306,12 +299,12 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
                         void addFiles(picked);
                       }}
                     />
-                    <FiUploadCloud className="text-2xl text-[#007ab3]" />
-                    <span className="text-13 text-career-black-200">
+                    <FiUploadCloud className="text-2xl text-primary" />
+                    <span className="text-13 text-gray-700">
                       {isChecking ? "Checking file…" : "Drag & drop, or"}
                     </span>
                     <span
-                      className={`rounded-full bg-[#007ab3] px-4 py-2 text-13 font-semibold text-white transition duration-300 hover:bg-[#009de6] ${
+                      className={`inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-13 font-medium text-white shadow transition-colors hover:bg-primary/90 ${
                         isChecking ? "pointer-events-none opacity-60" : ""
                       }`}
                     >

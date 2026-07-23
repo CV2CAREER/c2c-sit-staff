@@ -1,9 +1,9 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { TimeRangeSelector } from "@/components/ui/time-range-selector";
+import { Card, CardContent } from "@/components/ui/card";
 import { useConfirmationModal } from "@/hooks/useConfirmationModule";
 import { useAdminMutations, useAdminQueries } from "@/hooks/api/admin.api";
-import { Layers, LucideIcon, User, Bot } from "lucide-react";
+import { Layers, LucideIcon, User, Bot, Send, KeyRound, ShieldCheck } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import AggregatorToggle from "./AggregatorToggle";
@@ -153,47 +153,53 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
   ];
 
   return (
-    <main className="mt-6">
-      <TableDropDownSearch
-        listOfDisplayValues={['All Users', ...clientList?.map((value) => value.Full_Name)]}
-        listOfValues={['', ...clientList?.map((value) => String(value.id))]}
-        defaultValue={clientId as string | undefined}
-        onChange={(e: any) => {
-          window.location.href = `/admin/campaign-mgt/client/${e.id}`;
-        }}
-        values={[{ Full_Name: 'All User', id: '' }, ...clientList]}
-      />
-
-      <TimeRangeSelector styles="bg-white ml-auto mb-3" />
-
-      <section className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
+    <main className="flex flex-col gap-4">
+      <section className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-stretch">
         {/* Client Avatar Section */}
-        <section className="w-full lg:w-[40%] bg-white flex items-center gap-5 shadow-md p-4 md:p-8 rounded-md">
-          {isLoading ? (
-            <>
-              <div className="h-[70px] w-[70px] rounded-full bg-gray-200 animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+        <Card className="w-full lg:w-[38%] rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+          <CardContent className="flex h-full flex-col justify-between gap-3 p-4">
+            {isLoading ? (
+              <div className="flex items-center gap-4">
+                <div className="h-[70px] w-[70px] rounded-full bg-gray-200 animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-center items-center h-[70px] w-[70px] bg-lightblue rounded-full">
-                <User size={50} className="text-blue" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold mt-4">{clientFullName}</h1>
-                <p className="text-sm text-gray-500">Client ID: {clientId}</p>
-                {clientCraft && <p className="text-sm">Craft: {clientCraft}</p>}
-              </div>
-            </>
-          )}
-        </section>
+            ) : (
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="flex justify-center items-center h-[70px] w-[70px] shrink-0 bg-primary/10 rounded-full ring-4 ring-primary/5">
+                    <User size={34} className="text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-900">{clientFullName}</h1>
+                    <p className="text-sm text-gray-500 mt-0.5">Client ID: {clientId}</p>
+                    {clientCraft && <p className="text-sm text-gray-600 mt-0.5">Craft: {clientCraft}</p>}
+                  </div>
+                </div>
+                <div className="w-full">
+                  <TableDropDownSearch
+                    listOfDisplayValues={['All Users', ...clientList?.map((value) => value.Full_Name)]}
+                    listOfValues={['', ...clientList?.map((value) => String(value.id))]}
+                    defaultValue={clientId as string | undefined}
+                    onChange={(e: any) => {
+                      window.location.href = `/admin/campaign-mgt/client/${e.id}`;
+                    }}
+                    values={[{ Full_Name: 'All User', id: '' }, ...clientList]}
+                    extraStyles={{ padding: 0, margin: 0 }}
+                    selectWidthClassName="w-full"
+                    rowClassName="flex items-center text-black"
+                  />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Insights Cards */}
-        <section className="w-full lg:w-[60%] flex flex-col gap-8 lg:gap-4">
+        <section className="w-full lg:w-[62%] flex flex-col gap-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
             {isLoading
               ? Array(3)
@@ -201,7 +207,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
                   .map((_, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-3 bg-white p-4 rounded-md shadow-md animate-pulse"
+                      className="flex items-center gap-3 bg-white p-4 rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] animate-pulse"
                     >
                       <div className="bg-gray-200 p-4 rounded-full w-10 h-10" />
                       <div className="space-y-2">
@@ -215,18 +221,18 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
                   return (
                     <div
                       key={idx}
-                      className="flex items-center gap-3 bg-white p-4 rounded-md shadow-md"
+                      className="flex items-center gap-3 bg-white p-4 rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]"
                     >
                       <div
-                        className={`${card.icon.bgColor} w-fit p-2 rounded-full`}
+                        className={`${card.icon.bgColor} w-fit p-2.5 rounded-full`}
                       >
-                        <LIcon className={card.icon.color} />
+                        <LIcon className={card.icon.color} size={20} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-600 mb-1">
+                        <p className="text-sm font-medium text-gray-500 mb-1">
                           {card.title}
                         </p>
-                        <h1 className="text-3xl font-bold text-gray-800">
+                        <h1 className="text-2xl font-bold text-gray-900">
                           {card.value}
                         </h1>
                       </div>
@@ -236,44 +242,54 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
           </div>
 
           {/* Buttons */}
-          <div className="flex flex-col lg:flex-row gap-2 justify-center items-center">
-            <Button className="w-full md:w-fit" 
-            onClick={() => 
-              openConfirmationModal({
-                title: "Dispatch Preferences",
-                description: "Are you sure you want to dispatch preferences?",
-                onConfirm: () => handleDispatchPreferences(clientId as string),
-              })
-            }
-            >Dispatch Preference</Button>
+          <div className="flex flex-col lg:flex-row gap-3 justify-center items-center rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+            <Button
+              variant="outline"
+              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              onClick={() =>
+                openConfirmationModal({
+                  title: "Dispatch Preferences",
+                  description: "Are you sure you want to dispatch preferences?",
+                  onConfirm: () => handleDispatchPreferences(clientId as string),
+                })
+              }
+            >
+              <Send size={16} /> Dispatch Preference
+            </Button>
 
-            <Button className="w-full md:w-fit" 
-              onClick={() => 
+            <Button
+              variant="outline"
+              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              onClick={() =>
                 openConfirmationModal({
                   title: "Dispatch Preferences",
                   description: "Are you sure you want to dispatch crdentials?",
                   onConfirm: () => handleDispatchCredentials(clientId as string),
                 })
               }
-            >Dispatch Credentials</Button>
+            >
+              <ShieldCheck size={16} /> Dispatch Credentials
+            </Button>
 
-            <Button className="w-full md:w-fit" 
-              onClick={() => 
+            <Button
+              variant="outline"
+              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              onClick={() =>
                 openConfirmationModal({
                   title: "Generate Password",
                   description: "Are you sure you want to generate password for this client?",
                   onConfirm: () => handleGeneratePassword(clientId as string),
                 })
               }
-            >Generate Password</Button>
+            >
+              <KeyRound size={16} /> Generate Password
+            </Button>
 
             <AggregatorToggle clientId={Number(clientId as string)}/>
           </div>
         </section>
       </section>
       <ConfirmationModalComponent />
-
-    
     </main>
   );
 };

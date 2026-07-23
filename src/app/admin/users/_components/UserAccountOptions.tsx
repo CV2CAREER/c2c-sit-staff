@@ -1,5 +1,6 @@
 import Icon from "../../../../../public/icons"
 import { Menu, MenuHandler, MenuItem, MenuList } from "@material-tailwind/react";
+import { Download } from "lucide-react";
 import { useState } from "react";
 // import { useAdminUserDetailContext } from "../context/userDetailContext";
 import { useAdminQueries } from "@/hooks/api/admin.api";
@@ -24,15 +25,16 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
 
     return (
         <div
-            className="relative p-1.5 shadow-lg lg:shadow-none rounded-lg w-full lg:w-auto"
+            className="relative rounded-lg w-full lg:w-auto"
         >
-            <div className="flex flex-col mobile:flex-row items-center cursor-pointer p-2">
+            <div className="flex flex-col mobile:flex-row items-center gap-2 cursor-pointer">
                 <UpgradePlanOptions setSelectedPlan={setSelectedPlan} setSelectedFeatureId={setSelectedFeatureId} setShowModal={setShowModal} plans={plans} />
-                <button
-                    className="mr-2 border my-4 mobile:my-0 w-[90%] mobile:w-auto flex items-center bg-white border-career-blue-800 text-career-blue-800 capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium"
+                <Button
+                    variant="outline"
+                    className="w-[90%] mobile:w-auto gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 >
-                    Export
-                </button>
+                    <Download size={16} /> Export
+                </Button>
                 <FurtherUserAccountActions userId={userId}/>
             </div>
             {showModal && <UpgradeAccountModal isOpen={showModal} toggleOpen={setShowModal} tier={selectedPlan as string} featureId={selectedFeatureId as string} userId={userId} />}
@@ -84,17 +86,17 @@ const UpgradeAccountModal = ({ isOpen, toggleOpen, tier, featureId, userId }: { 
             <p className="text-career-gray-200">
                 Confirm account upgrade to {tier}
             </p>
-            <div className="flex items-center mt-6">
+            <div className="flex items-center gap-3 mt-6">
                 <Button
-                    className={`!h-[2.75rem] mr-4 !w-[113px] !rounded-[0.25rem] bg-white !text-career-blue-800 !border !border-career-blue-800 hover:!bg-career-blue-500 hover:!text-white`}
-                    onClick={upgradePlan}
+                    variant="outline"
+                    className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => toggleOpen(false)}
                 >
+                    Cancel
+                </Button>
+                <Button onClick={upgradePlan}>
                     Continue
                 </Button>
-                <Button
-                    className="!h-[2.75rem] !w-[113px] !rounded-[0.25rem] mr-4"
-                    onClick={() => toggleOpen(false)}
-                >Cancel</Button>
             </div>
         </AppModal>
     )
@@ -107,10 +109,8 @@ const UpgradePlanOptions = (
     return (
         <Menu placement="bottom-start">
             <MenuHandler>
-                <Button className="text-white mr-2 border w-[90%] mobile:w-auto flex justify-between lg:justify-normal items-center border-career-blue-800 bg-career-blue-300 capitalize px-6 py-3 h-[2.75rem] rounded-[0.25rem] text-14 font-medium">
-                    {/* TODO: Add types for the icon name prop */}
+                <Button className="w-[90%] mobile:w-auto gap-2 justify-between lg:justify-normal">
                     <p>Upgrade Account</p>
-
                     <Icon name="caretDown" />
                 </Button>
             </MenuHandler>
@@ -120,10 +120,10 @@ const UpgradePlanOptions = (
                 onPointerLeaveCapture={() => { }}
                 onResize={() => { }}
                 onResizeCapture={() => { }}
-                className="p-0 w-72 rounded-[4px] bg-white h-auto flex flex-col justify-center -ml-16 absolute z-50"
+                className="p-1 w-72 rounded-lg border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] bg-white h-auto flex flex-col justify-center -ml-16 absolute z-50"
             >
                 {
-                    
+
                     plans.map((plan) => (
                         <MenuItem
                             placeholder=""
@@ -136,7 +136,7 @@ const UpgradePlanOptions = (
                                 setSelectedFeatureId(plan.id)
                                 setShowModal(true);
                             }}
-                            className="!p-0 z-50 hover:bg-career-blue-300"
+                            className="!p-0 z-50 rounded-md hover:bg-primary/10"
                             key={plan.id}
                         >
                             <span className={`text-left w-full h-full py-3 px-4 block transition-all ease-in-out duration-200 font-medium`}>

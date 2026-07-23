@@ -85,11 +85,9 @@ const AdminUsersJobPreferencesCard = ({
   const activePreferences = activeProfile === 'primary' ? preferences : secondary;
 
   return (
-    <div className="relative mt-6 w-full overflow-hidden rounded-3xl border border-career-gray-300/60 bg-white p-4 shadow-sm md:p-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
-
+    <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
       <div className="flex items-center gap-3 mb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <HiOutlineAdjustments size={20} />
         </span>
         <h3 className="font-medium text-xl md:text-2xl">Preferences</h3>
@@ -111,7 +109,7 @@ const AdminUsersJobPreferencesCard = ({
                 <motion.span
                   layoutId="preferences-tab-highlight"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                  className="absolute inset-0 -z-10 rounded-full bg-gradient-to-r from-career-blue-800 to-career-blue-500 shadow-md"
+                  className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
                 />
               )}
               {profile} Profile
@@ -347,48 +345,41 @@ const AdminUsersJobPreferencesCard = ({
       </motion.div>
       </AnimatePresence>
       {!isEditable ? (
-        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-block">
-          <Button
-            onClick={() => {
-              setIsEditable(true);
-            }}
-            className="rounded-full bg-gradient-to-r from-career-blue-800 to-career-blue-500 px-5 py-2 text-white shadow-md shadow-career-blue-800/20 transition-shadow duration-300 hover:from-career-blue-800 hover:to-career-blue-500 hover:shadow-lg"
-          >
-            Edit
-          </Button>
-        </motion.div>
+        <Button
+          onClick={() => {
+            setIsEditable(true);
+          }}
+        >
+          Edit
+        </Button>
       ) : (
-        <div className="flex justify-start gap-2">
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+        <div className="flex justify-start gap-3">
+          <Button
+            variant="outline"
             type="button"
             onClick={() => {
               setIsEditable(false);
               // setIsLoading(false);
             }}
-            className="rounded-full border border-red-200 bg-red-50 px-5 py-2 font-medium text-red-600 transition-colors duration-200 hover:bg-red-100"
+            className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
           >
             Cancel
-          </motion.button>
-          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button
-              disabled={updateUserPreferencesByProfileMutation.isPending}
-              onClick={() => {
-                updateUserPreferencesByProfileMutation.mutate({
-                  userId,
-                  profileType: activeProfile,
-                  body: editedFormData,
-                });
-                setIsEditable(false);
-              }}
-              className="rounded-full bg-gradient-to-r from-career-blue-800 to-career-blue-500 px-5 py-2 text-white shadow-md shadow-career-blue-800/20 transition-shadow duration-300 hover:from-career-blue-800 hover:to-career-blue-500 hover:shadow-lg disabled:opacity-60"
-            >
-              {updateUserPreferencesByProfileMutation.isPending
-                ? "Saving..."
-                : "Save Changes"}
-            </Button>
-          </motion.div>
+          </Button>
+          <Button
+            disabled={updateUserPreferencesByProfileMutation.isPending}
+            onClick={() => {
+              updateUserPreferencesByProfileMutation.mutate({
+                userId,
+                profileType: activeProfile,
+                body: editedFormData,
+              });
+              setIsEditable(false);
+            }}
+          >
+            {updateUserPreferencesByProfileMutation.isPending
+              ? "Saving..."
+              : "Save Changes"}
+          </Button>
         </div>
       )}
     </div>
