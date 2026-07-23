@@ -18,7 +18,7 @@ export interface IReferredUser {
 export interface IReferral {
   _id: string;
   type: ReferralType;
-  referrerEmail: string;
+  referrerEmail: string; 
   referrerName: string;
   referralCode: string;
   userId: string | null;
