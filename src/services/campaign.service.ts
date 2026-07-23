@@ -8,6 +8,8 @@ import { Plan } from '../models/v1/plan.model';
 import { Upload } from '../models/v1/upload.model';
 import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
+import { TourCount } from '../models/v1/tour-count.model';
+import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import {
@@ -1171,6 +1173,9 @@ export const saveManualApplication = async (
 
     Client: clientId || 'N/A',
 
+    // Tour active on the client's credentials at the time this was discovered.
+    credentialsTourId: clientExists.tourId ?? null,
+
     Job_Title:
       joblink && jobData.job_title
         ? `=HYPERLINK("${joblink}","${jobData.job_title}")`
@@ -1444,6 +1449,9 @@ export const updateJobApplicationStatus = async (
       client_id: clientExists.id,
       submitted_by: fullName,
       vaEmail: clientExists?.AssignedPCEmail || '',
+      // Prefer the tour this manual application was discovered under; fall
+      // back to the client's current tour if it wasn't stamped.
+      credentialsTourId: application.credentialsTourId ?? clientExists.tourId ?? null,
       job_data: {
         job_title: jobTitleUrl?.title || 'N/A',
         company: application.Advertiser,
@@ -1811,6 +1819,17 @@ export const getCampaignClients = async (
     raw: true,
   });
 
+  // Fetch tour counts for all clients in a single query
+  const tourCounts = campaigns.length
+    ? await TourCount.findAll({
+        where: { credentialsId: campaigns.map((client) => client.id) },
+        raw: true,
+      })
+    : [];
+  const tourCountByCredentialsId = new Map(
+    tourCounts.map((tourCount: any) => [tourCount.credentialsId, tourCount.count])
+  );
+
   // Fetch user profiles and their aggregators for each client
   const campaignsWithAggregators: any[] = [];
 
@@ -1823,10 +1842,18 @@ export const getCampaignClients = async (
           raw: true,
         });
       }
-      campaignsWithAggregators.push({ ...client, aggregators });
+      campaignsWithAggregators.push({
+        ...client,
+        aggregators,
+        TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+      });
     } catch (err) {
       logger.warn(`Could not fetch aggregators for client ${client.id}:`, err);
-      campaignsWithAggregators.push({ ...client, aggregators: [] });
+      campaignsWithAggregators.push({
+        ...client,
+        aggregators: [],
+        TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+      });
     }
   }
 
@@ -2644,6 +2671,7 @@ export const getClientApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(`Fetching all applications for client_id: ${clientId}`);
@@ -2661,6 +2689,9 @@ export const getClientApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   // Fetch the full filtered set (ordered newest-first by Timestamp) so we can
@@ -2722,6 +2753,7 @@ export const getClientManualApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(
@@ -2741,6 +2773,9 @@ export const getClientManualApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   const { count, rows } = await ManualApplication.findAndCountAll({
@@ -2777,4 +2812,32 @@ export const getClientManualApplicationsByClientId = async (
     },
     uniqueCount,
   };
+};
+
+/**
+ * Get the list of campaign tours (paid cycles) for a client, used to
+ * populate the "Tour" filter on the client applications page.
+ *
+ * The `clientId` route param on this page is the Credentials row's id
+ * (the campaign list's grid row id, per getRowId={(row) => row.id} on
+ * `Credentials.findAll()` rows) — the same id the TourCount column on the
+ * campaign list is keyed off (`tourCountByCredentialsId.get(client.id)`).
+ * So it's used directly as credentialsId here, no extra lookup needed.
+ */
+export const getClientToursByClientId = async (clientId: string) => {
+  logger.info(`Fetching campaign tours for credentialsId: ${clientId}`);
+
+  const [tours, tourCount] = await Promise.all([
+    CredentialsTour.findAll({
+      where: { credentialsId: clientId },
+      order: [['tourNumber', 'ASC']],
+      raw: true,
+    }),
+    TourCount.findOne({
+      where: { credentialsId: clientId },
+      raw: true,
+    }),
+  ]);
+
+  return { data: tours, tourCount: tourCount?.count ?? tours.length };
 };

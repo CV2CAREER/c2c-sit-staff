@@ -11,6 +11,7 @@ import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
+import { TourCount } from '../models/v1/tour-count.model';
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -93,6 +94,14 @@ const ensureInterviewPackProcessesTable = async () => {
   logger.info('interview_pack_processes table ensured');
 };
 
+// Creates `tour_counts` on existing databases — remove once every
+// environment is up to date.
+const ensureTourCountsTable = async () => {
+  logger.info('Ensuring tour_counts table exists');
+  await TourCount.sync({ force: false });
+  logger.info('tour_counts table ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -134,6 +143,7 @@ export const connectDB = async (): Promise<void> => {
         await ensureEmailTemplatesTable();
         await ensureVcsPromptsTable();
         await ensureInterviewPackProcessesTable();
+        await ensureTourCountsTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -195,6 +205,7 @@ export const connectDB = async (): Promise<void> => {
         await ensureEmailTemplatesTable();
         await ensureVcsPromptsTable();
         await ensureInterviewPackProcessesTable();
+        await ensureTourCountsTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

@@ -13,12 +13,19 @@ import {
   BeforeCreate,
 } from "sequelize-typescript";
 import { User } from "./user.model";
+import { CredentialsTour } from "./credentials-tour.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
 
 @Table({
   tableName: "credentials",
   timestamps: true,
   paranoid: true,
+  indexes: [
+    {
+      name: "idx_credentials_tour_id",
+      fields: ["tourId"],
+    },
+  ],
 })
 export class Credentials extends Model {
   @PrimaryKey
@@ -159,4 +166,18 @@ export class Credentials extends Model {
   @AllowNull(true)
   @Column(DataType.STRING(255))
   updatedBy?: string;
+  
+  // The client's current/latest tour on this credentials account — tour 1
+  // right after first payment, then repointed to the newest tour every time
+  // a renewal opens another one (see createCredentialsTour).
+  @ForeignKey(() => CredentialsTour)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  tourId?: string;
+
+  @BelongsTo(() => CredentialsTour, {
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  })
+  tour?: CredentialsTour;
 }
