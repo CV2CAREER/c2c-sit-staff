@@ -102,7 +102,7 @@ const logEmail = async (
       subject: options.subject,
       templateName: options.templateName,
       status,
-      errorMessage,
+      errorMessage: errorMessage?.slice(0, 512),
     });
   } catch (logErr: any) {
     logger.error(`Failed to record email log for ${options.email}: ${logErr.message}`);
