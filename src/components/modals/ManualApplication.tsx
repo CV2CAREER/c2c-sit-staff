@@ -30,6 +30,7 @@ interface JobData {
   job_url?: string;
   is_duplicate?: boolean;
   job_title_display?: string;
+  cover_letter?: string;
   [key: string]: any;
 }
 
@@ -57,18 +58,17 @@ const AIEditModal: React.FC<{
   if (!jobData) {
     return (
       <Modal
-        title="Review & Edit Job Data"
+        title={null}
         open={visible}
         onCancel={onClose}
         footer={null}
-        width={800}
+        width={640}
         centered
+        closable={false}
       >
-        <div className="p-4">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading job data...</p>
-          </div>
+        <div className="px-[26px] pt-5 pb-[14px] text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 mx-auto" style={{ borderColor: '#2196D8' }}></div>
+          <p className="mt-4" style={{ color: '#6B7280', fontSize: '13px' }}>Loading job data...</p>
         </div>
       </Modal>
     );
@@ -76,69 +76,80 @@ const AIEditModal: React.FC<{
 
   return (
     <Modal
-      title="Review & Edit Job Data"
+      title={null}
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={800}
+      width={640}
       centered
+      closable={false}
     >
-      <div className="p-4">
-        <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
+      <div>
+        {/* Modal Header — centered title + context */}
+        <div className="px-[26px] pt-5 pb-0 text-center">
+          <h3 className="text-[17px] font-bold m-0 mb-[3px]" style={{ color: '#1F2937' }}>Review & Edit Job Data</h3>
+          <p className="text-[11.5px] m-0 mb-[14px]" style={{ color: '#6B7280' }}>
+            {editedData.job_title || 'Job'} · {editedData.client_name || 'Client'}
+          </p>
+        </div>
 
-          {/* Duplicate warning */}
-          {jobData.is_duplicate && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-300 rounded-md text-red-700 text-sm font-medium">
-              ⚠️ This job appears to be a duplicate. Please review before saving.
-            </div>
-          )}
+        {/* Duplicate warning */}
+        {jobData.is_duplicate && (
+          <div className="mx-[26px] mb-3 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-300 rounded-md text-red-700 text-sm font-medium">
+            ⚠️ This job appears to be a duplicate. Please review before saving.
+          </div>
+        )}
 
-          {/* Editable fields */}
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Editable Fields</p>
+        {/* Modal Body — scrollable */}
+        <div className="px-[26px] py-[18px] overflow-y-auto max-h-[65vh] space-y-[15px]" style={{ flex: 1 }}>
 
           {/* Job Title */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Job Title <span className="text-red-500">*</span></label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Job Title <span style={{ color: '#E5484D' }}>*</span></label>
             <input
               type="text"
               value={editedData.job_title || ''}
               onChange={(e) => handleFieldChange('job_title', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="Job Title"
             />
           </div>
 
           {/* Company */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Company <span className="text-red-500">*</span></label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Company <span style={{ color: '#E5484D' }}>*</span></label>
             <input
               type="text"
               value={editedData.company || ''}
               onChange={(e) => handleFieldChange('company', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="Company Name"
             />
           </div>
 
           {/* Location */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Location <span className="text-red-500">*</span></label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Location <span style={{ color: '#E5484D' }}>*</span></label>
             <input
               type="text"
               value={editedData.location || ''}
               onChange={(e) => handleFieldChange('location', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="City, State, Country"
             />
           </div>
 
           {/* Job Type */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Job Type</label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Job Type</label>
             <select
               value={editedData.job_type || 'N/A'}
               onChange={(e) => handleFieldChange('job_type', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
             >
               <option value="N/A">Select Job Type</option>
               <option value="Full-time">Full-time</option>
@@ -151,109 +162,148 @@ const AIEditModal: React.FC<{
           </div>
 
           {/* Country */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Country</label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Country</label>
             <input
               type="text"
               value={editedData.country || ''}
               onChange={(e) => handleFieldChange('country', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="Country"
             />
           </div>
 
           {/* Salary */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Salary</label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Salary</label>
             <input
               type="text"
               value={editedData.salary || ''}
               onChange={(e) => handleFieldChange('salary', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="Salary or N/A"
             />
           </div>
 
           {/* Date Advertised */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Date Advertised</label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Date Advertised</label>
             <input
               type="date"
               value={editedData.date_advertised || ''}
               onChange={(e) => handleFieldChange('date_advertised', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
             />
           </div>
 
           {/* Job URL */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium text-gray-700">Job URL</label>
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Job URL</label>
             <input
               type="text"
               value={editedData.job_url || ''}
               onChange={(e) => handleFieldChange('job_url', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              className="w-full px-3 py-[11px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
+              style={{ borderColor: '#E2E6EA' }}
               placeholder="https://..."
             />
             {editedData.job_url && (
-              <a href={editedData.job_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+              <a href={editedData.job_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline mt-1 inline-block">
                 Open link ↗
               </a>
             )}
           </div>
 
+          {/* Cover Letter Required */}
+          <div>
+            <label className="block text-[13px] font-semibold mb-[7px]" style={{ color: '#1F2937' }}>Cover letter required? <span style={{ color: '#E5484D' }}>*</span></label>
+            <div className="flex gap-2">
+              {['Yes', 'No'].map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => handleFieldChange('cover_letter', option)}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                    editedData.cover_letter === option
+                      ? 'text-white border-0'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                  style={editedData.cover_letter === option
+                    ? option === 'Yes'
+                      ? { background: '#2196D8', borderColor: '#2196D8' }
+                      : { background: '#E5484D', borderColor: '#E5484D' }
+                    : { borderColor: '#E2E6EA' }}
+                >
+                  <span>{option}</span>
+                  {editedData.cover_letter === option && <span className="ml-2">✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Read-only metadata */}
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Metadata (read-only)</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">Job ID</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.job_id || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">Client Name</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.client_name || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">Internal Jobsite</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.internal_jobsite || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">External Jobsite</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.external_jobsite || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">AI Service</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.ai_service || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md">
-              <p className="text-xs font-semibold text-gray-500">Extraction Source</p>
-              <p className="text-sm text-gray-800 mt-0.5">{jobData.extraction_source || 'N/A'}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-md col-span-2">
-              <p className="text-xs font-semibold text-gray-500">Duplicate</p>
-              <p className={`text-sm font-semibold mt-0.5 ${jobData.is_duplicate ? 'text-red-600' : 'text-green-600'}`}>
-                {jobData.is_duplicate ? 'Yes — possible duplicate' : 'No'}
-              </p>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide mb-[7px]" style={{ color: '#9CA3AF' }}>Metadata (read-only)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>Job ID</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.job_id || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>Client Name</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.client_name || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>Internal Jobsite</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.internal_jobsite || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>External Jobsite</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.external_jobsite || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>AI Service</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.ai_service || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>Extraction Source</p>
+                <p className="text-sm mt-0.5" style={{ color: '#1F2937' }}>{jobData.extraction_source || 'N/A'}</p>
+              </div>
+              <div className="p-3 rounded-md col-span-2" style={{ background: '#F3FAFB' }}>
+                <p className="text-[11px] font-semibold" style={{ color: '#6B7280' }}>Duplicate</p>
+                <p className={`text-sm font-semibold mt-0.5 ${jobData.is_duplicate ? 'text-red-600' : 'text-green-600'}`}>
+                  {jobData.is_duplicate ? 'Yes — possible duplicate' : 'No'}
+                </p>
+              </div>
             </div>
           </div>
 
         </div>
 
-        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200">
+        {/* Modal Footer */}
+        <div className="flex justify-between px-[26px] py-[14px]" style={{ borderTop: '1px solid #E2E6EA', background: '#FAFBFC' }}>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            className="px-6 py-[11px] rounded-lg text-[13.5px] font-semibold border-0 cursor-pointer"
+            style={{ background: '#F1F3F5', color: '#6B7280' }}
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={() => onConfirm(editedData)}
-            disabled={loading}
-            className={`px-6 py-2 rounded-md text-white transition duration-200 focus:outline-none focus:ring-2 focus:ring-opacity-50 ${
-              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+            disabled={loading || !editedData.cover_letter}
+            className={`px-6 py-[11px] rounded-lg text-[13.5px] font-semibold border-0 transition-opacity ${
+              (loading || !editedData.cover_letter) ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
             }`}
+            style={{
+              background: (loading || !editedData.cover_letter) ? '#9CA3AF' : '#22B14C',
+              color: '#fff',
+            }}
           >
             {loading ? 'Saving...' : 'Confirm & Save to Database'}
           </button>
