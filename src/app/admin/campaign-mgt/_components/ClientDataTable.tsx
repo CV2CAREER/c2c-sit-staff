@@ -232,6 +232,10 @@ const ClientDataTable: React.FC<{
   const [isEditable, setIsEditable] = useState(false);
   const [jobApplicationsStatusFilter, setJobApplicationsStatusFilter] =
     useState<'Successful' | 'Failed' | null>(null);
+  const [selectedTour, setSelectedTour] = React.useState<{
+    label: string;
+    value: string;
+  }>({ label: 'All Tour', value: 'all' });
   const [loaders, setLoaders] = useState({
     isPushingToQueue: false,
     isUpdatingKeywords: false,
@@ -260,12 +264,15 @@ const ClientDataTable: React.FC<{
       fetchAggregators: true,
       fetchCampaignSheet: tableDisplay === 'aggregator',
       fetchClientApplications: dataOption?.value === 'job_applications',
+      fetchClientTours: true,
       campaignOptions: {
         active: aggregatorDataState === 'active' ? 'true' : 'false',
         aggregator: selectedAggregator?.value,
         dataOption: dataOption?.value,
         tableDisplay: tableDisplay ?? undefined,
         applicationStatus: jobApplicationsStatusFilter,
+        credentialsTourId:
+          selectedTour.value !== 'all' ? selectedTour.value : undefined,
         limit: paginationModel.pageSize,
         skip: paginationModel.page,
       },
@@ -277,6 +284,7 @@ const ClientDataTable: React.FC<{
       selectedAggregator,
       dataOption,
       jobApplicationsStatusFilter,
+      selectedTour,
       paginationModel.pageSize,
       paginationModel.page,
     ]
@@ -287,6 +295,7 @@ const ClientDataTable: React.FC<{
     campaignSheetDomain,
     aggregatorsDomain,
     clientApplicationsDomain,
+    clientToursDomain,
   } = useAdminQueries(adminQueriesOptions);
 
   const {
@@ -331,6 +340,14 @@ const ClientDataTable: React.FC<{
       setIsPrimary(true);
     }
   }, [hasPremiumAccess]);
+
+  const tourOptionsList = [
+    { label: 'All Tour', value: 'all' },
+    ...(clientToursDomain?.data ?? []).map((tour: any) => ({
+      label: `Tour ${tour.tourNumber}${tour.isActive ? ' (Active)' : ''}`,
+      value: tour.id,
+    })),
+  ];
 
   const jobsiteAggregatorsList = jobsiteAggregators?.flatMap(
     (aggregator: { name: string; picture: string }) => [
@@ -928,7 +945,13 @@ const ClientDataTable: React.FC<{
       setIsSampleResultsLoading(true);
 
       const response = await axiosInstance.get(
-        `/api/v1/campaigns/clients/${resolvedClientId}/applications/manual`
+        `/api/v1/campaigns/clients/${resolvedClientId}/applications/manual`,
+        {
+          params: {
+            credentialsTourId:
+              selectedTour.value !== 'all' ? selectedTour.value : undefined,
+          },
+        }
       );
 
       if (response.data?.success === false) {
@@ -951,7 +974,7 @@ const ClientDataTable: React.FC<{
     } finally {
       setIsSampleResultsLoading(false);
     }
-  }, [dataOption?.value, resolvedClientId, isApplicationmodalOpen]);
+  }, [dataOption?.value, resolvedClientId, isApplicationmodalOpen, selectedTour]);
 
   useEffect(() => {
     fetchSampleResults();
@@ -1235,6 +1258,30 @@ const ClientDataTable: React.FC<{
                 <SelectContent>
                   <SelectItem value="Successful">Successful</SelectItem>
                   <SelectItem value="Failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            {(dataOption?.value === 'job_applications' ||
+              dataOption?.value === 'manual_discovery') && (
+              <Select
+                value={selectedTour.value}
+                onValueChange={(value) => {
+                  const option =
+                    tourOptionsList.find((tour) => tour.value === value) ??
+                    { label: 'All Tour', value: 'all' };
+                  setSelectedTour(option);
+                  setMakeQuery(true);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
+                  <SelectValue placeholder="All Tour" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tourOptionsList.map((tour) => (
+                    <SelectItem key={tour.value} value={tour.value}>
+                      {tour.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
