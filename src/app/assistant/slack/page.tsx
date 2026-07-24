@@ -12,8 +12,9 @@ import {
   Card,
   Tag,
   Row,
-  Col,
+  Col as AntCol,
 } from 'antd';
+const Col = AntCol as any;
 import { PlusOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
