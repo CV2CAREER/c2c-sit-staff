@@ -92,6 +92,7 @@ export interface AdminQueriesOptions {
   fetchSingleClient?: boolean;
   clientId?: string;
   fetchClientApplications?: boolean;
+  fetchClientTours?: boolean;
   fetchUserDocsAndPreferences?: boolean;
   fetchAggregatorLocations?: boolean;
   aggregatorName?: string;
@@ -104,6 +105,7 @@ export interface AdminQueriesOptions {
     dataOption?: string;
     tableDisplay?: string;
     applicationStatus?: string | null;
+    credentialsTourId?: string | null;
     limit?: number;
     skip?: number;
   };

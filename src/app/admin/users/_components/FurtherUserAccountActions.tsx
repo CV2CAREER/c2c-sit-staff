@@ -44,7 +44,7 @@ const furtherAccountOptions = [
     action: "account-mutate" as const,
     actionText: "accept this account",
     modalButtonText: "Accept",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "suspend-account",
@@ -52,7 +52,7 @@ const furtherAccountOptions = [
     action: "account-mutate" as const,
     actionText: "suspend this account",
     modalButtonText: "Suspend",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "restrict-account",
@@ -60,22 +60,22 @@ const furtherAccountOptions = [
     action: "account-mutate" as const,
     actionText: "restrict this account",
     modalButtonText: "Restrict",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "dispatch-sample-results",
     label: "Dispatch Sample Results",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "accept-documents",
     label: "Accept Documents",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "reject-documents",
     label: "Reject Documents",
-    className: "text-red-700 hover:bg-career-blue-200",
+    className: "text-red-700 hover:bg-primary/10",
   },
   {
     key: "delete-account", // ← This is now Soft Delete
@@ -91,17 +91,17 @@ const furtherAccountOptions = [
   {
     key: "assign-referrer",
     label: "Assign Referrer",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "update-referral-numbers",
     label: "Update Referral Numbers",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
   {
     key: "allow-free-before-referral",
     label: "Allow Free Before Referral",
-    className: "text-career-gray-200 hover:bg-career-blue-200",
+    className: "text-career-gray-200 hover:bg-primary/10",
   },
 ] as const;
 
@@ -353,7 +353,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
     <>
       <Menu placement="bottom-end">
         <MenuHandler>
-          <button className="bg-career-blue-200 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-[0.25rem]">
+          <button className="bg-primary/10 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-lg transition-colors hover:bg-primary/20">
             <Icon name="more" />
           </button>
         </MenuHandler>
@@ -364,7 +364,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
           onPointerLeaveCapture={() => {}}
           onResize={() => {}}
           onResizeCapture={() => {}}
-          className="p-0 w-72 rounded-[4px] bg-white h-auto flex flex-col justify-center -ml-12 z-50"
+          className="p-1 w-72 rounded-lg border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] bg-white h-auto flex flex-col justify-center -ml-12 z-50"
         >
           {furtherAccountOptions.map((option) => (
             <MenuItem
@@ -375,7 +375,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
               onResize={() => {}}
               onResizeCapture={() => {}}
               onClick={() => handleActionClick(option)}
-              className="!p-0"
+              className="!p-0 rounded-md"
             >
               <span
                 className={`text-left w-full h-full py-3 px-4 block transition-all ease-in-out duration-200 font-medium ${option.className}`}

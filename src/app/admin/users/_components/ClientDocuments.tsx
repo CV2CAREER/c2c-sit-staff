@@ -142,12 +142,10 @@ const ClientDocument = ({ userId }: { userId: string }) => {
 //   console.log("client documents", documentsData);
   return (
     <>
-      <div className="relative w-full overflow-hidden rounded-2xl border border-career-gray-300/60 bg-white p-4 shadow-sm md:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
-
+      <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               <HiOutlineFolder size={20} />
             </span>
             <h3 className="text-xl md:text-2xl !font-medium font-sharp-grotesk text-career-black-200 capitalize">
@@ -178,10 +176,10 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 key={tab.value}
                 type="button"
                 onClick={() => setActiveTypeTab(tab.value)}
-                className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-13 font-medium transition-all duration-200 ${
+                className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors duration-200 ${
                   isActive
-                    ? "border-emerald-400 bg-emerald-400 text-white shadow-sm shadow-emerald-400/30"
-                    : "border-career-gray-300 bg-white text-career-gray-200 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-career-gray-300 bg-white text-career-gray-200 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                 }`}
               >
                 <TabIcon className="text-base" />
@@ -189,7 +187,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 <span
                   className={`ml-0.5 rounded-full px-1.5 text-11 font-semibold ${
                     isActive
-                      ? "bg-white/20"
+                      ? "bg-primary/20 text-primary"
                       : "bg-career-gray-300 text-career-gray-200"
                   }`}
                 >
@@ -265,31 +263,16 @@ const ClientDocument = ({ userId }: { userId: string }) => {
             />
           )}
         </div>
-        <motion.div
-          className="mt-4 inline-block"
-          whileHover={{ scale: isUploading ? 1 : 1.03 }}
-          whileTap={{ scale: isUploading ? 1 : 0.97 }}
+        <Button
+          className="mt-4 gap-2"
+          onClick={() => {
+            setIsReviseModalOpen(true);
+          }}
+          disabled={isUploading}
         >
-          <Button
-            className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#007ab3] to-[#00b4d8] px-5 py-2 font-semibold text-white shadow-md shadow-[#007ab3]/20 transition-shadow duration-300 hover:from-[#007ab3] hover:to-[#00b4d8] hover:shadow-lg hover:shadow-[#00b4d8]/30 focus:outline-none focus:ring-2 focus:ring-[#007ab3] focus:ring-opacity-50 disabled:opacity-60"
-            onClick={() => {
-              setIsReviseModalOpen(true);
-            }}
-            disabled={isUploading}
-          >
-            <span className="pointer-events-none absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white/25 transition-transform duration-700 group-hover:translate-x-[250%]" />
-            <span className="relative flex items-center gap-2">
-              <motion.span
-                animate={isUploading ? { y: [0, -3, 0] } : { y: 0 }}
-                transition={{ repeat: isUploading ? Infinity : 0, duration: 0.8 }}
-                className="flex items-center"
-              >
-                <FiUploadCloud className="text-lg" />
-              </motion.span>
-              {isUploading ? "Uploading..." : "Upload Revised Document"}
-            </span>
-          </Button>
-        </motion.div>
+          <FiUploadCloud className="text-lg" />
+          {isUploading ? "Uploading..." : "Upload Revised Document"}
+        </Button>
       </div>
       <SuggestedKeywordsModal
         isOpen={isKeywordModalOpen}
@@ -299,20 +282,19 @@ const ClientDocument = ({ userId }: { userId: string }) => {
       <CustomModal
         visibility={isReviseModalOpen}
         toggleVisibility={setIsReviseModalOpen}
+        dialogPanelClassName="rounded-xl"
       >
-        <div className="relative overflow-hidden rounded-2xl bg-white">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#007ab3] via-[#00b4d8] to-[#007ab3]" />
-
-          <div className="flex items-start justify-between gap-4 p-4 pt-6 sm:p-6 sm:pt-8">
+        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+          <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-4 sm:p-6">
             <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#007ab3]/10 text-[#007ab3]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <FiUploadCloud className="text-xl" />
               </span>
               <div>
-                <h2 className="text-24 !font-medium font-sharp-grotesk text-career-black-200">
+                <h2 className="text-lg font-bold text-gray-900">
                   Upload Revised Document
                 </h2>
-                <p className="mt-1 text-13 text-career-gray-200">
+                <p className="mt-0.5 text-sm text-gray-500">
                   Upload the revised documents here.
                 </p>
               </div>
@@ -322,7 +304,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 setIsReviseModalOpen(false);
               }}
               aria-label="Close"
-              className="shrink-0 rounded-full p-1.5 text-career-gray-200 transition-colors hover:bg-career-gray-300 hover:text-career-black-200"
+              className="shrink-0 rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             >
               <FiX className="text-xl" />
             </button>
@@ -336,10 +318,10 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               const totalFiles = countSelectedFiles(values);
 
               return (
-                <form onSubmit={handleSubmit} className="px-4 pb-4 sm:px-6 sm:pb-6">
+                <form onSubmit={handleSubmit} className="px-4 py-4 sm:px-6 sm:py-6">
                   <DocumentUploadFields />
 
-                  <div className="mt-6 flex flex-col-reverse items-stretch gap-3 border-t border-career-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mt-6 flex flex-col-reverse items-stretch gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <AnimatePresence mode="wait">
                       <motion.span
                         key={totalFiles}
@@ -350,7 +332,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                         className={`flex items-center gap-1.5 text-13 ${
                           totalFiles > 0
                             ? "font-medium text-green-700"
-                            : "text-career-gray-200"
+                            : "text-gray-500"
                         }`}
                       >
                         {totalFiles > 0 && <FiCheckCircle className="text-base" />}
@@ -359,18 +341,13 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                           : `${totalFiles} file${totalFiles === 1 ? "" : "s"} ready to upload`}
                       </motion.span>
                     </AnimatePresence>
-                    <motion.div
-                      whileHover={{ scale: totalFiles === 0 || isUploading ? 1 : 1.03 }}
-                      whileTap={{ scale: totalFiles === 0 || isUploading ? 1 : 0.97 }}
+                    <Button
+                      type="submit"
+                      className="!capitalize px-6"
+                      disabled={totalFiles === 0 || isUploading}
                     >
-                      <Button
-                        type="submit"
-                        className="!capitalize rounded-full bg-gradient-to-r from-[#007ab3] to-[#00b4d8] px-6 hover:from-[#007ab3] hover:to-[#00b4d8] disabled:opacity-60"
-                        disabled={totalFiles === 0 || isUploading}
-                      >
-                        {isUploading ? "Uploading..." : "Upload"}
-                      </Button>
-                    </motion.div>
+                      {isUploading ? "Uploading..." : "Upload"}
+                    </Button>
                   </div>
                 </form>
               );

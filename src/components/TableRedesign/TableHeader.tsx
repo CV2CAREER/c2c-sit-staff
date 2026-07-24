@@ -799,6 +799,8 @@ export function TableDropDownSearch({
   setSearchUser,
   extraStyles,
   tableu,
+  selectWidthClassName,
+  rowClassName,
 }: {
   defaultValue?: string;
   onChange: any;
@@ -809,6 +811,8 @@ export function TableDropDownSearch({
   setSearchUser?: any;
   extraStyles?: any;
   tableu?: any;
+  selectWidthClassName?: string;
+  rowClassName?: string;
 }) {
   const [currentDisplay, setCurrentDisplay] = useState(null);
   const router = useRouter();
@@ -899,8 +903,8 @@ export function TableDropDownSearch({
       }}
       className="p-4 text-black w-full flex flex-col sm:flex-row py-1.5 justify-between items-center my-5 rounded-md "
     >
-      <div className="flex items-center my-3 text-black py-3 rounded">
-        <div className="w-[200px] sm:w-[300px]">
+      <div className={rowClassName ?? "flex items-center my-3 text-black py-3 rounded"}>
+        <div className={selectWidthClassName ?? "w-[200px] sm:w-[300px]"}>
           <Select
             className="border-none text-black placeholder-black bg-[#F0FBFF]"
             options={sorted}

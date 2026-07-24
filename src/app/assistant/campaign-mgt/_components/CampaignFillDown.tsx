@@ -118,9 +118,14 @@ export const MasterSheetDropDownModal = ({
   }, [valueColumns]);
 
   return (
-    <div className="bg-white p-4 rounded-lg h-[400px] flex flex-col gap-8">
+    <div className="bg-white p-6 rounded-xl h-[400px] flex flex-col gap-6">
       <div>
-        <label htmlFor="">Select Column</label>
+        <h3 className="text-lg font-bold text-gray-900">Fill Column Values</h3>
+        <p className="text-sm text-gray-500 mt-0.5">Apply a single value across every visible row for the column you pick.</p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="" className="text-xs font-semibold uppercase tracking-wide text-gray-400">Select Column</label>
         <AntSelect
           className="w-full"
           options={valueColumns}
@@ -129,19 +134,19 @@ export const MasterSheetDropDownModal = ({
       </div>
 
       {ColumnValue && (
-        <div>
-          <label htmlFor="">Enter value to fill</label>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="" className="text-xs font-semibold uppercase tracking-wide text-gray-400">Enter value to fill</label>
           <Input
           spellCheck={true}
-            className="w-full mt-4"
+            className="w-full"
             onChange={(e) => setFillDownValues({ value: e.target.value, columnName: ColumnValue })}
           />
         </div>
       )}
 
-      <div className="w-full mt-2 flex justify-end">
+      <div className="w-full mt-auto flex justify-end">
         {!!Object.keys(fillDownValues).length && (
-          <Button 
+          <Button
             onClick={() => {
               handleFillDropDown(fillDownValues);
               setFillDownValues('');

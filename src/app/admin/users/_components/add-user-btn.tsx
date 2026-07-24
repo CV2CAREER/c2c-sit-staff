@@ -62,7 +62,7 @@ const EMPTY_FORM: FormData = {
 };
 
 const inputClass =
-  "w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm";
+  "w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
 const AddUserBtn = () => {
@@ -288,7 +288,7 @@ const AddUserBtn = () => {
                   <div
                     key={s}
                     className={`h-1.5 rounded-full transition-all ${
-                      s === step ? "w-6 bg-blue-600" : s < step ? "w-3 bg-blue-300" : "w-3 bg-gray-200"
+                      s === step ? "w-6 bg-primary" : s < step ? "w-3 bg-primary/40" : "w-3 bg-gray-200"
                     }`}
                   />
                 ))}
@@ -324,8 +324,8 @@ const AddUserBtn = () => {
                     onClick={() => setForm((f) => ({ ...f, gender: f.gender === value ? "" : value }))}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all
                       ${form.gender === value
-                        ? "bg-blue-600 text-green-500 border-blue-600 shadow-sm"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-blue-400 hover:text-blue-600"
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-primary/40 hover:text-primary"
                       }`}
                   >
                     <span className="text-xs">{icon}</span>
@@ -355,7 +355,7 @@ const AddUserBtn = () => {
                     onClick={() => setForm((f) => ({ ...f, role: value }))}
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-left
                       ${form.role === value
-                        ? `${color} ring-2 ring-offset-1 ring-blue-400 shadow-sm`
+                        ? `${color} ring-2 ring-offset-1 ring-primary/40 shadow-sm`
                         : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                   >
@@ -382,7 +382,7 @@ const AddUserBtn = () => {
 
         {step === 2 && (
           <div className="px-5 sm:px-8 pb-8 flex flex-col items-center gap-6 py-6 text-center">
-            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-2xl">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-2xl">
               ✉️
             </div>
             <div>
@@ -439,7 +439,7 @@ const AddUserBtn = () => {
             </div>
             <button
               type="button"
-              className="text-sm text-blue-600 hover:underline self-start disabled:opacity-50"
+              className="text-sm text-primary hover:underline self-start disabled:opacity-50"
               onClick={handleResendOtp}
               disabled={sendOtpMutation.isPending}
             >

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { GridRowSelectionModel, GridToolbar } from "@mui/x-data-grid-pro";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +54,7 @@ const reviewedList = [
 ];
 
 export default function JobApplicationsAndQuestionsDataTable() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const {
     activeDialog,
     setActiveDialog,
@@ -91,6 +93,18 @@ export default function JobApplicationsAndQuestionsDataTable() {
   const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>({ type: "include", ids: new Set() });
   const [selectedRowForAction, setSelectedRowForAction] = useState<string | number | null>(null);
   const selectedRowIds = Array.from(selectedRows.ids) as Array<string | number>;
+
+  const mobileColumnVisibilityModel = {
+    id: true,
+    Client: true,
+    Status: true,
+    Application_Source: true,
+    Job_Title: true,
+    userName: true,
+    questionCount: true,
+    isEmailSent: true,
+    userRole: true,
+  };
 
   useEffect(() => {
     setPaginationModel((prev) => ({ ...prev, page: 0 }));
@@ -291,16 +305,19 @@ export default function JobApplicationsAndQuestionsDataTable() {
         <StyledDataGridPro
           rows={activeTracker.rows}
           getRowId={(row) => row.id}
-          rowHeight={38}
+          density={isMobile ? "compact" : "standard"}
+          rowHeight={isMobile ? 34 : 38}
+          columnHeaderHeight={isMobile ? 40 : 56}
           checkboxSelection={allowEditing}
           rowSelectionModel={selectedRows}
           onRowSelectionModelChange={(newSelection) => setSelectedRows(newSelection)}
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{ toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 500 } } as any }}
+          slots={isMobile ? undefined : { toolbar: GridToolbar }}
+          slotProps={isMobile ? undefined : { toolbar: { showQuickFilter: true, quickFilterProps: { debounceMs: 500 } } as any }}
           className="bg-white shadow-md rounded-lg"
           disableRowSelectionOnClick
           rowBufferPx={100}
           columns={applyHeaderClassName(isQuestions ? questionsColumns : jobApplicationsColumns)}
+          columnVisibilityModel={isMobile ? mobileColumnVisibilityModel : undefined}
           columnBufferPx={5}
           loading={activeTracker.isLoading || activeTracker.isFetching}
           paginationMode="server"
@@ -311,6 +328,26 @@ export default function JobApplicationsAndQuestionsDataTable() {
           filterMode="server"
           sortingMode="server"
           pagination
+          sx={
+            isMobile
+              ? {
+                  "& .MuiDataGrid-columnHeaders": {
+                    minHeight: 40,
+                    maxHeight: 40,
+                  },
+                  "& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell": {
+                    px: 1,
+                  },
+                  "& .MuiDataGrid-columnHeaderTitle": {
+                    fontSize: "0.72rem",
+                    lineHeight: 1.1,
+                  },
+                  "& .MuiDataGrid-cell": {
+                    fontSize: "0.75rem",
+                  },
+                }
+              : undefined
+          }
         />
       </section>
 
