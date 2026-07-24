@@ -8,6 +8,8 @@ import { Plan } from '../models/v1/plan.model';
 import { Upload } from '../models/v1/upload.model';
 import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
+import { TourCount } from '../models/v1/tour-count.model';
+import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import {
@@ -28,6 +30,13 @@ import { Op, Sequelize } from 'sequelize';
 import { Logger } from 'winston';
 
 const logger = getServiceLogger('campaign-service');
+
+const formatClientName = (user?: {
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
+} | null): string =>
+  [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ');
 
 /**
  * Extract active aggregator credentials from credentials object
@@ -1171,6 +1180,9 @@ export const saveManualApplication = async (
 
     Client: clientId || 'N/A',
 
+    // Tour active on the client's credentials at the time this was discovered.
+    credentialsTourId: clientExists.tourId ?? null,
+
     Job_Title:
       joblink && jobData.job_title
         ? `=HYPERLINK("${joblink}","${jobData.job_title}")`
@@ -1233,7 +1245,7 @@ export const saveManualApplication = async (
     :mag: *JOB DISCOVERED — Awaiting Vetting*
 
     • *DPC:* ${dpcName}
-    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Client:* ${formatClientName(userObj)}
     • *Job:* <${joblink}|${jobData.job_title}>
     • *Company:* ${jobData.company || 'N/A'}
     • *Location:* ${jobData.location || 'N/A'}
@@ -1369,13 +1381,13 @@ export const updateJobApplicationStatus = async (
 
     • *VPC:* ${vpcName}
     • *DPC:* ${dpcName}
-    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+    • *Client:* ${formatClientName(userObj)}
     • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
     • *Company:* ${application.Advertiser}
     • *Status:* ${toTitleCase(status)}
     • *Environment:* ${host}
 
-    ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
+    ${dpcName} please find another job for ${formatClientName(userObj)}.`;
 
   if (statusUpper === 'SKIPPED') {
     if (statusReason == null || statusReason === '') {
@@ -1396,7 +1408,7 @@ export const updateJobApplicationStatus = async (
       :white_check_mark: *JOB VETTED* — ${qualityScore}
 
       • *VPC:* ${vpcName}
-      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Client:* ${formatClientName(userObj)}
       • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
       • *Company:* ${application.Advertiser}
       • *Quality:* ${qualityScore} ${qualityEmoji}
@@ -1417,7 +1429,7 @@ export const updateJobApplicationStatus = async (
       :inbox_tray: *JOB SUBMITTED* — Lifecycle Complete
 
       • *SPC:* ${spcName}
-      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
+      • *Client:* ${formatClientName(userObj)}
       • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
       • *Company:* ${application.Advertiser}
       • *Location:* ${application.Location}
@@ -1444,6 +1456,9 @@ export const updateJobApplicationStatus = async (
       client_id: clientExists.id,
       submitted_by: fullName,
       vaEmail: clientExists?.AssignedPCEmail || '',
+      // Prefer the tour this manual application was discovered under; fall
+      // back to the client's current tour if it wasn't stamped.
+      credentialsTourId: application.credentialsTourId ?? clientExists.tourId ?? null,
       job_data: {
         job_title: jobTitleUrl?.title || 'N/A',
         company: application.Advertiser,
@@ -1811,24 +1826,47 @@ export const getCampaignClients = async (
     raw: true,
   });
 
-  // Fetch user profiles and their aggregators for each client
-  const campaignsWithAggregators: any[] = [];
+  // Fetch tour counts for all clients in a single query
+  const tourCounts = campaigns.length
+    ? await TourCount.findAll({
+        where: { credentialsId: campaigns.map((client) => client.id) },
+        raw: true,
+      })
+    : [];
+  const tourCountByCredentialsId = new Map(
+    tourCounts.map((tourCount: any) => [tourCount.credentialsId, tourCount.count])
+  );
 
-  for (const client of campaigns) {
+  // Fetch aggregators for all clients in a single query instead of one
+  // query per client (was causing N+1 round-trips for large client lists).
+  const clientIds = campaigns
+    .map((client) => client.clientId)
+    .filter((id): id is string => !!id);
+
+  const aggregatorsByUserId = new Map<string, any[]>();
+  if (clientIds.length) {
     try {
-      let aggregators: any[] = [];
-      if (client.clientId) {
-        aggregators = await Aggregator.findAll({
-          where: { userId: client.clientId, isDeleted: false },
-          raw: true,
-        });
+      const allAggregators = await Aggregator.findAll({
+        where: { userId: { [Op.in]: clientIds }, isDeleted: false },
+        raw: true,
+      });
+      for (const aggregator of allAggregators as any[]) {
+        const list = aggregatorsByUserId.get(aggregator.userId) ?? [];
+        list.push(aggregator);
+        aggregatorsByUserId.set(aggregator.userId, list);
       }
-      campaignsWithAggregators.push({ ...client, aggregators });
     } catch (err) {
-      logger.warn(`Could not fetch aggregators for client ${client.id}:`, err);
-      campaignsWithAggregators.push({ ...client, aggregators: [] });
+      logger.warn('Could not fetch aggregators for campaign clients:', err);
     }
   }
+
+  const campaignsWithAggregators = campaigns.map((client) => ({
+    ...client,
+    aggregators: client.clientId
+      ? (aggregatorsByUserId.get(client.clientId) ?? [])
+      : [],
+    TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+  }));
 
   const totalCount = await Credentials.count({ where: whereClause });
 
@@ -2644,6 +2682,7 @@ export const getClientApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(`Fetching all applications for client_id: ${clientId}`);
@@ -2661,6 +2700,9 @@ export const getClientApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   // Fetch the full filtered set (ordered newest-first by Timestamp) so we can
@@ -2722,6 +2764,7 @@ export const getClientManualApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(
@@ -2741,6 +2784,9 @@ export const getClientManualApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   const { count, rows } = await ManualApplication.findAndCountAll({
@@ -2777,4 +2823,32 @@ export const getClientManualApplicationsByClientId = async (
     },
     uniqueCount,
   };
+};
+
+/**
+ * Get the list of campaign tours (paid cycles) for a client, used to
+ * populate the "Tour" filter on the client applications page.
+ *
+ * The `clientId` route param on this page is the Credentials row's id
+ * (the campaign list's grid row id, per getRowId={(row) => row.id} on
+ * `Credentials.findAll()` rows) — the same id the TourCount column on the
+ * campaign list is keyed off (`tourCountByCredentialsId.get(client.id)`).
+ * So it's used directly as credentialsId here, no extra lookup needed.
+ */
+export const getClientToursByClientId = async (clientId: string) => {
+  logger.info(`Fetching campaign tours for credentialsId: ${clientId}`);
+
+  const [tours, tourCount] = await Promise.all([
+    CredentialsTour.findAll({
+      where: { credentialsId: clientId },
+      order: [['tourNumber', 'ASC']],
+      raw: true,
+    }),
+    TourCount.findOne({
+      where: { credentialsId: clientId },
+      raw: true,
+    }),
+  ]);
+
+  return { data: tours, tourCount: tourCount?.count ?? tours.length };
 };

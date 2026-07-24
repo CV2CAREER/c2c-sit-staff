@@ -69,6 +69,8 @@ import { ClientSupportDocument } from '../models/v1/client-support-document.mode
 import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
+import { TourCount } from '../models/v1/tour-count.model';
+import { CredentialsTour } from '../models/v1/credentials-tour.model';
 
 export const modelList = [
   User,
@@ -144,4 +146,6 @@ export const modelList = [
   EmailLog,
   EmailTemplate,
   InterviewPackProcess,
+  TourCount,
+  CredentialsTour,
 ];
