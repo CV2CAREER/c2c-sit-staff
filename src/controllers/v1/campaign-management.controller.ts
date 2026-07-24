@@ -36,6 +36,7 @@ import {
   getDocumentReviewData,
   getClientApplicationsByClientId,
   getClientManualApplicationsByClientId,
+  getClientToursByClientId,
   updateJobApplicationStatus,
 } from '../../services/campaign.service';
 
@@ -380,7 +381,7 @@ export const saveJobManually = catchAsyncError(
 export const updateJobApplicationStatusManually = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info('Processing update job application status');
-    const { applicationId, status, qualityScore, StatusReason, action, declined_reasons, correctedJobLink } = req.body;
+    const { applicationId, status, qualityScore, StatusReason } = req.body;
     const user = (req as any).user;
     const host = req.get('host') || '';
     const authenticatedUser = (req as any).user;
@@ -394,10 +395,7 @@ export const updateJobApplicationStatusManually = catchAsyncError(
       host,
       qualityScore,
       updatedByName,
-      StatusReason,
-      action,
-      declined_reasons,
-      correctedJobLink
+      StatusReason
     );
     res.status(200).json(result);
   }
@@ -757,12 +755,14 @@ export const getClientApplications = catchAsyncError(
     const status = req.query.status as string | undefined;
     const source = req.query.source as string | undefined;
     const aggregator = req.query.aggregator as string | undefined;
+    const credentialsTourId = req.query.credentialsTourId as string | undefined;
 
     const result = await getClientApplicationsByClientId(clientId, {
       isDeleted,
       status,
       source,
       aggregator,
+      credentialsTourId,
     });
 
     res.apiSuccess(result, 'Client applications retrieved successfully');
@@ -781,6 +781,7 @@ export const getClientManualApplications = catchAsyncError(
     const status = req.query.status as string | undefined;
     const source = req.query.source as string | undefined;
     const aggregator = req.query.aggregator as string | undefined;
+    const credentialsTourId = req.query.credentialsTourId as string | undefined;
 
     const result = await getClientManualApplicationsByClientId(
       clientId,
@@ -791,9 +792,24 @@ export const getClientManualApplications = catchAsyncError(
         status,
         source,
         aggregator,
+        credentialsTourId,
       }
     );
 
     res.apiSuccess(result, 'Client applications retrieved successfully');
+  }
+);
+
+/**
+ * Get a client's list of campaign tours (paid cycles), for the "Tour" filter
+ * GET /api/v1/campaigns/clients/:clientId/tours
+ */
+export const getClientTours = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { clientId } = req.params;
+
+    const result = await getClientToursByClientId(clientId);
+
+    res.apiSuccess(result, 'Client tours retrieved successfully');
   }
 );
