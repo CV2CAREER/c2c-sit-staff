@@ -74,10 +74,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
 
 
   return (
-    <div className="relative flex flex-col lg:flex-row -mt-6 items-center justify-between overflow-hidden border-t bg-gradient-to-r from-career-blue-100 via-white to-career-blue-100/60 p-4 md:p-8 rounded-b-2xl">
-      {/* Decorative glow accents — purely visual, ignore pointer events */}
-      <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-career-blue-800/10 blur-3xl" />
-      <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-career-blue-300/20 blur-3xl" />
+    <div className="relative flex h-full flex-col lg:flex-row items-center justify-between overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
 
       <div className="relative flex flex-col mobile:flex-row w-full lg:w-auto justify-between lg:justify-normal lg:my-0 p-1.5 rounded-lg shadow-lg lg:shadow-none items-center">
         <motion.div

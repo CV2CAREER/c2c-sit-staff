@@ -42,18 +42,10 @@ export default function OnBoardingProgress({ userId }: { userId: string }) {
     : null;
 
   return (
-    <section className="relative overflow-hidden flex flex-col gap-3 bg-white rounded-2xl p-4 md:p-6 shadow-lg border border-career-gray-300/60">
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        style={{ originX: 0 }}
-        className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800"
-      />
-
+    <section className="relative overflow-hidden flex flex-col gap-3 bg-white rounded-xl p-4 md:p-6 border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
       <div className="flex flex-wrap gap-2 justify-between items-center">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <HiOutlineChartBar size={16} />
           </span>
           <h2 className="text-lg md:text-xl font-semibold">Onboarding Progress</h2>
