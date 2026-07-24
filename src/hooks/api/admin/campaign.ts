@@ -15,6 +15,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     fetchSingleClient = false,
     fetchUserDocsAndPreferences = false,
     fetchClientApplications = false,
+    fetchClientTours = false,
     userId = "",
     clientId = "",
     campaignOptions = {},
@@ -82,9 +83,17 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
   const clientApplications = useFetchData<any>({
     method: "GET",
     url: clientId ? endpoints.ADMIN_CLIENT_APPLICATIONS(clientId) : "",
-    queryKey: ["admin-client-applications", clientId],
+    params: { credentialsTourId: campaignOptions.credentialsTourId },
+    queryKey: ["admin-client-applications", clientId, campaignOptions.credentialsTourId],
     enabled: fetchClientApplications && !!clientId,
     staleEarly: true,
+  });
+
+  const clientTours = useFetchData<any>({
+    method: "GET",
+    url: clientId ? endpoints.ADMIN_CLIENT_TOURS(clientId) : "",
+    queryKey: ["admin-client-tours", clientId],
+    enabled: fetchClientTours && !!clientId,
   });
 
   return useMemo(() => ({
@@ -146,6 +155,13 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
       isError: clientApplications.isError,
       error: clientApplications.error,
     },
+    clientToursDomain: {
+      data: clientTours.data?.data?.data ?? clientTours.data?.data ?? clientTours.data,
+      isLoading: clientTours.isLoading,
+      isSuccess: clientTours.isSuccess,
+      isError: clientTours.isError,
+      error: clientTours.error,
+    },
   }), [
     campaignSheet.data, campaignSheet.isLoading, campaignSheet.isSuccess, campaignSheet.isError, campaignSheet.error,
     campaignClients.data, campaignClients.isLoading, campaignClients.isSuccess, campaignClients.isError, campaignClients.error,
@@ -155,6 +171,7 @@ export const useCampaignQueries = (options: AdminQueriesOptions) => {
     singleClient.data, singleClient.isLoading, singleClient.isSuccess, singleClient.isError, singleClient.error,
     documentReview.data, documentReview.isLoading, documentReview.isSuccess, documentReview.isError, documentReview.error,
     clientApplications.data, clientApplications.isLoading, clientApplications.isSuccess, clientApplications.isError, clientApplications.error,
+    clientTours.data, clientTours.isLoading, clientTours.isSuccess, clientTours.isError, clientTours.error,
   ]);
 };
 

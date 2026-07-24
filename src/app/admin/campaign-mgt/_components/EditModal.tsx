@@ -33,6 +33,13 @@ import { CampaignTableColType } from '@/types/admin';
 import toast from 'react-hot-toast';
 import { validateHeaderName } from 'http';
 import { VACell } from './AssignVA';
+import { PencilLine } from 'lucide-react';
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
+    {children}
+  </h4>
+);
 
 const formSchema = z.object({
   Full_Name: z.string().min(2).max(50).optional().nullable(),
@@ -235,13 +242,17 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   return (
     <DialogContent className="h-[70vh] overflow-auto">
       <DialogHeader>
-        <DialogTitle className="text-blue">Edit Client's Info</DialogTitle>
+        <DialogTitle className="flex items-center gap-2 text-primary">
+          <PencilLine size={18} />
+          Edit Client&apos;s Info
+        </DialogTitle>
         <DialogDescription>
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
               className="space-y-8 text-black"
             >
+              <SectionLabel>Personal Information</SectionLabel>
               <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
@@ -390,6 +401,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <SectionLabel>Plan &amp; Subscription</SectionLabel>
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <FormField
                   control={form.control}
@@ -552,6 +564,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <SectionLabel>Status &amp; Aggregators</SectionLabel>
               <div className="flex flex-wrap gap-3">
                 <FormField
                   control={form.control}
@@ -667,6 +680,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <SectionLabel>Other Details</SectionLabel>
               <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
@@ -704,6 +718,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <SectionLabel>Placement Controllers</SectionLabel>
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Discovery Placement Controller</label>
                 <VACell data={client} variant="DPC" />
@@ -724,6 +739,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       <DialogFooter>
         <Button
           variant="outline"
+          className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
           onClick={() => {
             setDialog(null);
           }}

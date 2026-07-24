@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @theme {
   --font-poppins: "Poppins", sans-serif;
 

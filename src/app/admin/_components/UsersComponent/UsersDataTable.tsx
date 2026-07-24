@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FiLoader, FiX } from 'react-icons/fi';
+import { FiLoader } from 'react-icons/fi';
 import { modifyTableActionsColAndRows, tableColumns } from "../../users/_components/tableColumns";
 
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
@@ -43,6 +43,9 @@ import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import toast from "react-hot-toast";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import { IDateFilter } from "@/types/common";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PencilLine, Users2, Archive, Database, SendHorizontal, X, Settings2 } from "lucide-react";
 
 
 
@@ -388,6 +391,16 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 pagination
                 pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}
+                sx={{
+                  border: "1px solid #f1f5f9",
+                  borderRadius: "12px",
+                  "& .MuiDataGrid-columnHeaders": {
+                    backgroundColor: "rgba(0, 142, 211, 0.08)",
+                  },
+                  "& .MuiDataGrid-row:hover": {
+                    backgroundColor: "rgba(0, 142, 211, 0.06)",
+                  },
+                }}
               />
             </div>
           );
@@ -430,100 +443,121 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
 
   return (
-    <section className="mt-10">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-        <Combobox
-          list={rows
-            .map((user: any) => ({
-            value: user.id,
-            label: [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ").trim() || user.email || "Unnamed User",
-          }))
-            .sort((a, b) => a.label.localeCompare(b.label)) // <- alphabetical magic
-          }
+    <section className="flex flex-col gap-4">
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-4 p-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Client</span>
+              <Combobox
+                list={rows
+                  .map((user: any) => ({
+                  value: user.id,
+                  label: [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ").trim() || user.email || "Unnamed User",
+                }))
+                  .sort((a, b) => a.label.localeCompare(b.label)) // <- alphabetical magic
+                }
+                placeholder="Client Name"
+                selectedItem={selectedUser}
+                setSelectedItem={setSelectedUser}
+                noItemsMessage="No client found"
+                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+                // loadingMore={shouldFetchMoreUsers}
+                // setLoadingMore={setShouldFetchMoreUsers}
+              />
+            </div>
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Search</span>
+              <SearchInput
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                className="h-9 w-full min-w-[200px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
+              />
+            </div>
+          </div>
 
-          placeholder="Client Name"
-          selectedItem={selectedUser}
-                    setSelectedItem={setSelectedUser}
-                    noItemsMessage="No client found"
-                    // loadingMore={shouldFetchMoreUsers}
-                    // setLoadingMore={setShouldFetchMoreUsers}
-                  />
-     <SearchInput
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
-      </div>
-      <section>
-        <section className="flex flex-wrap gap-4 mb-9">
-          <CRUDDropDown columnHeaders={columnHeaders} />
+          {route === "admin" && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Quick Actions</span>
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setTableName("CVDATAPOINTS")}
+              >
+                <Database size={16} /> View CV Data Points
+              </Button>
 
-        </section>
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setIsDispatchModalOpen(true)}
+              >
+                <SendHorizontal size={16} /> Send Client info to PC
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <section className="flex flex-wrap gap-4">
-       {route === "admin" && (
-        <>
-          <Button className="border-[2px] border-blue" variant="ghost" onClick={
-              () => setTableName("CVDATAPOINTS")
-            }>
-              View CV Data Points
-            </Button>
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Settings2 size={16} className="hidden text-gray-400 sm:block" />
+            <CRUDDropDown columnHeaders={columnHeaders} />
 
-          <Button className="border-[2px] border-blue" variant="ghost"
-           onClick={  
-            () => setIsDispatchModalOpen(true)
-          }>
-            Send Client info to PC
-          </Button>
-          </>)}
-        </section>
-      </section>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+              <Checkbox checked={editMode} onClick={() => setEditMode(prev=>!prev)} />
+              <PencilLine size={16} className="text-primary" />
+              Allow Editing
+            </label>
+          </div>
 
-      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4 my-5">
+          <Tabs
+            value={usersDataState}
+            onValueChange={(value) => {
+              const nextState = value === "active" ? "active" : "recycle";
+              setUsersDataState(nextState);
+              setUserType({
+                ...userType,
+                usersDataState: nextState,
+              });
+            }}
+          >
+            <TabsList className="rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
+              <TabsTrigger
+                value="active"
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <Users2 size={14} />
+                Active Users
+              </TabsTrigger>
+              <TabsTrigger
+                value="recycle"
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <Archive size={14} />
+                Recycle Bin
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-        {(  <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-black p-2 flex items-center gap-2"> <Checkbox className="bg-white" checked={editMode} onClick={() => setEditMode(prev=>!prev)} /> Allow Editing </div>)}
-
-        <Select
-          onValueChange={(value) =>
-            {
-              value === "active"
-              ? setUsersDataState("active")
-              : setUsersDataState("recycle")
-
-              value === "active"
-              ? setUserType({
-                  ...userType,
-                  usersDataState: "active"
-                })
-              : setUserType({
-                  ...userType,
-                  usersDataState: "recycle"
-                })
-            }
-          }
-        >
-          <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
-            <SelectValue
-              placeholder={
-                usersDataState === "active" ? "Active Users" : "Recycle Bin"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Active Users</SelectItem>
-            <SelectItem value="recycle">Recycle Bin</SelectItem>
-          </SelectContent>
-        </Select>
-      </section>
-
-      <section>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl md:text-2xl font-bold">
-            {renderTitle()}
-          </h2>
-        </div>
-        {renderTable()}
-       
-      </section>
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 space-y-0 border-b border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-900">{renderTitle()}</CardTitle>
+            {tableName === "USERS" && (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                {tableData.length} records
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          {renderTable()}
+        </CardContent>
+      </Card>
       <DispatchClient
         visibility={isDispatchModalOpen}
         togggleVisibility={setIsDispatchModalOpen}
@@ -535,8 +569,15 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
         toggleVisibility={() => setPaymentConfirmationModalOpen((current) => !current)}
       >
         <div className="bg-white p-4 sm:p-6 rounded-2xl min-h-[200px] relative">
-          <div className="flex items-center justify-end">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Select {userToUpdate?.firstName}&apos;s plan
+              </h2>
+              <p className="text-sm text-gray-500 mt-0.5">Choose a plan to confirm payment for this user.</p>
+            </div>
             <button
+              className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
               onClick={() => {
                 setPaymentConfirmationModalOpen(false);
                 setProgressBeingHandled(null);
@@ -547,18 +588,12 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 setPlanOverrideMetadata({ type: 'payment_confirmed', data: { planId: '', plan: '' } });
               }}
             >
-              <FiX className="text-2xl" />
+              <X size={18} />
             </button>
           </div>
-          <h2>
-            <span className="text-24 !font-medium font-sharp-grotesk mt-4 text-career-black-200">
-              Select {userToUpdate?.firstName} plan
-            </span>
-          </h2>
-          <p>Are you sure you want to select plan?</p>
 
           <div className="w-full flex flex-col">
-            <div className="w-full h-fit flex flex-wrap items-center gap-4 py-4">
+            <div className="w-full h-fit flex flex-wrap items-center gap-3 py-4">
               {orderedPlans.map((plan: any) => (
                 <div
                   key={plan.id}
@@ -567,20 +602,19 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                       return { ...current, data: { planId: plan.id, plan: plan.title } };
                     });
                   }}
-                  className={`rounded border px-2 transition-all cursor-pointer ${
+                  className={`rounded-xl border px-2 transition-colors cursor-pointer ${
                     planOverrideMetadata.data.planId === plan.id
-                      ? 'border-blue-600 border-2'
-                      : 'border-gray-500'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-gray-200 hover:border-primary/40'
                   } h-[80px] w-[100px] grid place-items-center`}
                 >
-                  <p className="text-sm font-semibold text-center capitalize">{plan.title} plan</p>
+                  <p className={`text-sm font-semibold text-center capitalize ${planOverrideMetadata.data.planId === plan.id ? 'text-primary' : 'text-gray-700'}`}>{plan.title} plan</p>
                 </div>
               ))}
             </div>
 
             <Button
               disabled={upgradePlanMutation.isPending || !planOverrideMetadata.data.planId || !userToUpdate?.id}
-              color="light-blue"
               onClick={async () => {
                 if (!userToUpdate?.id) return;
                 // Step 1: Upgrade the user plan with the featureId
@@ -596,7 +630,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 setPlanOverrideMetadata({ type: 'payment_confirmed', data: { planId: '', plan: '' } });
                 setPaymentConfirmationModalOpen(false);
               }}
-              className="capitalize mt-4 flex items-center gap-2 max-w-[120px]"
+              className="capitalize mt-2 flex items-center gap-2 w-fit"
               type="submit"
             >
               {upgradePlanMutation.isPending || userProgressMutation.isPending ? (

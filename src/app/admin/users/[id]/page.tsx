@@ -90,16 +90,18 @@ function UserDetailsContent({ userId }: { userId: string }) {
             animate="show"
             className="flex flex-col gap-6 mt-6 w-full pb-4"
         >
-            <motion.div variants={itemVariants}>
-                <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
+            <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-4 items-stretch">
+                <div className="min-w-0 flex-1">
+                    <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
+                </div>
+                <div className="w-full shrink-0 lg:w-[340px]">
+                    <TriggerApplicationAction/>
+                </div>
             </motion.div>
             <motion.div variants={itemVariants}>
                 <OnBoardingProgress userId={currentUserId}/>
             </motion.div>
             {/* <OnboardingStatus/> */}
-            <motion.div variants={itemVariants}>
-                <TriggerApplicationAction/>
-            </motion.div>
             <motion.div variants={itemVariants}>
                 <ClientDocument userId={currentUserId} />
             </motion.div>

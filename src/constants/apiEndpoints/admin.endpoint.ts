@@ -189,6 +189,8 @@ export const ADMIN_CAMPAIGN_AGGREGATORS_LIST = (userId: string | number) =>
   `/api/v1/campaigns/aggregators/list/${userId}`;
 export const ADMIN_CLIENT_APPLICATIONS = (clientId: string | number) =>
   `/api/v1/campaigns/clients/${clientId}/applications`;
+export const ADMIN_CLIENT_TOURS = (clientId: string | number) =>
+  `/api/v1/campaigns/clients/${clientId}/tours`;
 
 // Blog Endpoints
 export const ADMIN_BLOG = '/api/v1/admin/blog';
