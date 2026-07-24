@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import DateFilter from "@/components/reusable/DateFilter";
 import { IDateFilter } from "@/types/common";
+import { Card, CardContent } from "@/components/ui/card";
+import { CalendarRange } from "lucide-react";
 
 interface UsersCountData {
   adminPersonnaCount: number;
@@ -390,7 +392,7 @@ const UserDataCards = ({
           <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
           <p className="text-red-600">Failed to load user counts. Please try again.</p>
           <p className="text-red-500 text-sm mt-1">{error?.message || "Unknown error"}</p>
-          <button 
+          <button
             onClick={() => analytics.refetch?.()}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
@@ -402,63 +404,71 @@ const UserDataCards = ({
   }
 
   return (
-    <>
-      <div>
-        <h3 className="text-lg sm:text-xl font-semibold mb-3">Date Filter</h3>
-        <div className="flex flex-col lg:flex-row items-center mt-4 lg:mt-0 w-full lg:w-auto">
-          <DateFilter onFilterDataChange={setDateFilterData} />
-        </div>
-      </div>
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:flex-row lg:flex-wrap lg:gap-4 lg:justify-start">
-        {isLoading ? (
-          Array(17).fill(0).map((_, idx) => (
-            <div
-              key={idx}
-              className="flex items-center min-w-0 h-24 gap-2 bg-white p-3 rounded-md shadow-md animate-pulse lg:gap-3 lg:p-4 lg:w-[18%]"
-            >
-              <div className="bg-gray-300 w-10 h-10 rounded-full" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="h-3 w-24 bg-gray-300 rounded" />
-                <div className="h-5 w-32 bg-gray-400 rounded" />
-              </div>
-            </div>
-          ))
-        ) : (
-          cardsData.map((card, idx) => {
-            const LIcon = card.icon.name;
-            return (
+    <div className="flex flex-col gap-4">
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            <CalendarRange size={16} className="text-primary" />
+            Date Filter
+          </span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <DateFilter onFilterDataChange={setDateFilterData} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {isLoading ? (
+            Array(17).fill(0).map((_, idx) => (
               <div
                 key={idx}
-                className="flex items-center min-w-0 gap-2 bg-white p-3 rounded-md shadow-md hover:cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all lg:gap-3 lg:p-4 lg:w-[18%]"
-                onClick={() => {
-                  if(userTypes.includes(card.title)){
-                    setUserType({
-                      ...userType,
-                      user: card.title === "Total Users" ? "all" : card.title === "Test Users" ? "test" : card.title.toLowerCase()
-                    })
-                  }
-                  if(userPlans.includes(card.title)){
-                    setUserType({
-                      ...userType,
-                      plan: card.title.toLowerCase()
-                    })
-                  }
-                  scrollTotable()
-                }}
+                className="flex items-center min-w-0 h-24 gap-2 bg-gray-50 p-3 rounded-xl animate-pulse"
               >
-                <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
-                  <LIcon className={card.icon.color} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-600 mb-1 break-words leading-tight">{card.title}</p>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-none">{card.value}</h1>
+                <div className="bg-gray-300 w-10 h-10 rounded-full" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-3 w-24 bg-gray-300 rounded" />
+                  <div className="h-5 w-32 bg-gray-400 rounded" />
                 </div>
               </div>
-            );
-          })
-        )}
-      </section>
-    </>
+            ))
+          ) : (
+            cardsData.map((card, idx) => {
+              const LIcon = card.icon.name;
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center min-w-0 gap-2 bg-gray-50 p-3 rounded-xl hover:cursor-pointer hover:bg-primary/5 transition-colors"
+                  onClick={() => {
+                    if(userTypes.includes(card.title)){
+                      setUserType({
+                        ...userType,
+                        user: card.title === "Total Users" ? "all" : card.title === "Test Users" ? "test" : card.title.toLowerCase()
+                      })
+                    }
+                    if(userPlans.includes(card.title)){
+                      setUserType({
+                        ...userType,
+                        plan: card.title.toLowerCase()
+                      })
+                    }
+                    scrollTotable()
+                  }}
+                >
+                  <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
+                    <LIcon className={card.icon.color} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-500 mb-1 break-words leading-tight">{card.title}</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-none">{card.value}</h1>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

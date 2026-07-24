@@ -3,21 +3,24 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   renderJSX?: React.ReactNode;
+  className?: string;
 }
 
 const PageHeader = ({
   title,
   description,
   renderJSX,
+  className,
 }: PageHeaderProps) => {
   const router = useRouter();
   return (
-    <section className="bg-white flex justify-between items-center gap-3 w-full p-3 sm:p-5 shadow-md rounded-sm">
+    <section className={cn("bg-white flex justify-between items-center gap-3 w-full p-3 sm:p-5 shadow-md rounded-sm", className)}>
       <div className="flex items-center gap-3">
         <div
           onClick={() => router.back()}

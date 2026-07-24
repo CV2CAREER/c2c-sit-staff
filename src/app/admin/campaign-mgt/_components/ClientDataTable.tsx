@@ -9,6 +9,7 @@ import ManualApplicationsModal from '@/components/modals/ManualApplication';
 import JobMatchTriggerModal from '@/components/modals/MatchJobs';
 import LoadingSpinner from '@/components/reusable/LoadingSpinner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
 import {
@@ -19,6 +20,22 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { TimeRangeSelector } from '@/components/ui/time-range-selector';
+import {
+  SlidersHorizontal,
+  PlayCircle,
+  RefreshCcw,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  FilePlus2,
+  Sparkles as SparklesIcon,
+  SendHorizontal,
+  RadioTower,
+  PencilLine,
+  Upload,
+  ListRestart,
+  Save,
+} from 'lucide-react';
 import { useAdminMutations, useAdminQueries } from '@/hooks/api/admin.api';
 import { useCampaignMutations } from '@/hooks/api/admin/campaign';
 import { useConfirmationModal } from '@/hooks/useConfirmationModule';
@@ -1145,10 +1162,20 @@ const ClientDataTable: React.FC<{
 
   /* ---- Render ---- */
   return (
-    <main className="mt-10">
-      <section>
-        <section className="mb-9">
-          <section className="flex w-full md:w-fit flex-wrap gap-4 mb-9">
+    <main className="flex flex-col gap-4 mb-10">
+      {/* Filters */}
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardHeader className="p-4 pb-3">
+          <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <SlidersHorizontal size={18} className="text-primary" />
+            View &amp; Filters
+          </CardTitle>
+          <CardDescription>
+            Choose an aggregator or data source to inspect for this client.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="flex w-full flex-wrap gap-4">
             <Combobox
               list={jobsiteAggregatorsList ?? []}
               placeholder="Select Aggregator"
@@ -1163,6 +1190,7 @@ const ClientDataTable: React.FC<{
               }}
               loading={isJobsiteAggregatorsLoading}
               noItemsMessage="No Jobsite Aggregator found"
+              btnTriggerStyles="w-full sm:w-[200px] justify-between"
             />
             <Select
               onValueChange={(value) => {
@@ -1175,7 +1203,7 @@ const ClientDataTable: React.FC<{
                 }
               }}
             >
-              <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[180px] bg-white">
                 <SelectValue
                   placeholder={
                     aggregatorDataState === 'active'
@@ -1220,6 +1248,7 @@ const ClientDataTable: React.FC<{
                 }
               }}
               noItemsMessage="No option found"
+              btnTriggerStyles="w-full sm:w-[200px] justify-between"
             />
             <Select
               onValueChange={(value) =>
@@ -1228,7 +1257,7 @@ const ClientDataTable: React.FC<{
                   : setSampleRunEnvironment('TEST')
               }
             >
-              <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[180px] bg-white">
                 <SelectValue
                   placeholder={
                     sampleRunEnvironment === 'LIVE' ? 'Live' : 'Test'
@@ -1252,7 +1281,7 @@ const ClientDataTable: React.FC<{
                   }
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
+                <SelectTrigger className="w-full sm:w-[180px] bg-white">
                   <SelectValue placeholder="Application Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1285,192 +1314,215 @@ const ClientDataTable: React.FC<{
                 </SelectContent>
               </Select>
             )}
-          </section>
-        </section>
+            <TimeRangeSelector styles="bg-white" />
+          </div>
 
-        <section className="flex flex-wrap gap-4 mb-9">
-          {tableDisplay === 'aggregator' && (
-            <Button
-              className="w-full md:w-fit bg-green-700 hover:bg-green-80"
-              disabled={loaders.isPushingToQueue}
-              onClick={() => {
-                openConfirmationModal({
-                  title: 'Run Client Sample',
-                  description:
-                    'Are you sure you want to run the client sample?',
-                  onConfirm: () => {
-                    pushToAggQueue();
-                  },
-                });
-              }}
-            >
-              Run Client Sample
-            </Button>
-          )}
-          {tableDisplay === 'aggregator' && (
-            <Button
-              className="w-full md:w-fit"
-              disabled={loaders.isUpdatingKeywords}
-              onClick={() => {
-                openConfirmationModal({
-                  title: 'Update Role',
-                  description:
-                    'Are you sure you want to update the role title and keywords?',
-                  onConfirm: () => {
-                    handleUpdateKeywords();
-                  },
-                });
-              }}
-            >
-              Update Role title and keywords
-            </Button>
-          )}
+          {(tableDisplay === 'aggregator' || tableDisplay === 'data-option') && (
+            <div className="mt-4 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+              {tableDisplay === 'aggregator' && (
+                <Button
+                  className="w-full gap-2 bg-green-700 hover:bg-green-800 md:w-fit"
+                  disabled={loaders.isPushingToQueue}
+                  onClick={() => {
+                    openConfirmationModal({
+                      title: 'Run Client Sample',
+                      description:
+                        'Are you sure you want to run the client sample?',
+                      onConfirm: () => {
+                        pushToAggQueue();
+                      },
+                    });
+                  }}
+                >
+                  <PlayCircle size={16} /> Run Client Sample
+                </Button>
+              )}
+              {tableDisplay === 'aggregator' && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 md:w-fit border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                  disabled={loaders.isUpdatingKeywords}
+                  onClick={() => {
+                    openConfirmationModal({
+                      title: 'Update Role',
+                      description:
+                        'Are you sure you want to update the role title and keywords?',
+                      onConfirm: () => {
+                        handleUpdateKeywords();
+                      },
+                    });
+                  }}
+                >
+                  <RefreshCcw size={16} /> Update Role title and keywords
+                </Button>
+              )}
 
-          {tableDisplay === 'aggregator' &&
-            selectedAggregator?.value &&
-            (() => {
-              const env = isStage(selectedAggregator?.value) ? 'Live' : 'Stage';
-              return (
+              {tableDisplay === 'aggregator' &&
+                selectedAggregator?.value &&
+                (() => {
+                  const env = isStage(selectedAggregator?.value) ? 'Live' : 'Stage';
+                  return (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 md:w-fit border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                        disabled={loaders.isUpdatingKeywords}
+                        onClick={() => {
+                          openConfirmationModal({
+                            title: 'Override Inputs',
+                            description:
+                              'Are you sure you want to override the inputs?',
+                            onConfirm: () => {
+                              handleOverrideIncrement(env, 'override');
+                            },
+                          });
+                        }}
+                      >
+                        <ArrowUpCircle size={16} /> Override to {env}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2 md:w-fit border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                        disabled={loaders.isUpdatingKeywords}
+                        onClick={() => {
+                          openConfirmationModal({
+                            title: 'Increment Inputs',
+                            description:
+                              'Are you sure you want to increment the inputs?',
+                            onConfirm: () => {
+                              handleOverrideIncrement(env, 'increment');
+                            },
+                          });
+                        }}
+                      >
+                        <ArrowDownCircle size={16} /> Increment to {env}
+                      </Button>
+                    </>
+                  );
+                })()}
+              {tableDisplay === 'data-option' && (
                 <>
                   <Button
-                    className="w-full md:w-fit"
-                    disabled={loaders.isUpdatingKeywords}
+                    variant="outline"
+                    className="w-full gap-2 md:w-fit border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     onClick={() => {
-                      openConfirmationModal({
-                        title: 'Override Inputs',
-                        description:
-                          'Are you sure you want to override the inputs?',
-                        onConfirm: () => {
-                          handleOverrideIncrement(env, 'override');
-                        },
-                      });
+                      setIsApplicationModalOpen(true);
                     }}
                   >
-                    Override to {env}
+                    <FilePlus2 size={16} /> Add Application
                   </Button>
-
                   <Button
-                    className="w-full md:w-fit"
+                    variant="outline"
+                    className="w-full gap-2 md:w-fit border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => {
+                      setIsJobMatchModalOpen(true);
+                    }}
+                  >
+                    <SparklesIcon size={16} /> Match Jobs
+                  </Button>
+                  <Button
+                    className="w-full gap-2 md:w-fit"
                     disabled={loaders.isUpdatingKeywords}
                     onClick={() => {
                       openConfirmationModal({
-                        title: 'Increment Inputs',
-                        description:
-                          'Are you sure you want to increment the inputs?',
+                        title: 'Dispatch Samples',
+                        description: 'Are you sure you want to dispatch samples?',
                         onConfirm: () => {
-                          handleOverrideIncrement(env, 'increment');
+                          dispatchUserSampleAction.mutate(clientId as string);
                         },
                       });
                     }}
                   >
-                    Increment to {env}
+                    {loaders.isDispatchingSample ? (
+                      <FiLoader className="animate-spin text-base" />
+                    ) : (
+                      <>
+                        <SendHorizontal size={16} /> Dispatch Samples
+                      </>
+                    )}
                   </Button>
                 </>
-              );
-            })()}
-          {tableDisplay === 'data-option' && (
-            <>
-              <Button
-                className="w-full md:w-fit"
-                onClick={() => {
-                  setIsApplicationModalOpen(true);
-                }}
-              >
-                Add Application
-              </Button>
-              <Button
-                className="w-full md:w-fit"
-                onClick={() => {
-                  setIsJobMatchModalOpen(true);
-                }}
-              >
-                Match Jobs
-              </Button>
-              <Button
-                className="w-full md:w-fit"
-                disabled={loaders.isUpdatingKeywords}
-                onClick={() => {
-                  openConfirmationModal({
-                    title: 'Dispatch Samples',
-                    description: 'Are you sure you want to dispatch samples?',
-                    onConfirm: () => {
-                      dispatchUserSampleAction.mutate(clientId as string);
-                    },
-                  });
-                }}
-              >
-                {loaders.isDispatchingSample ? (
-                  <FiLoader className="animate-spin text-base" />
-                ) : (
-                  'Dispatch Samples'
-                )}
-              </Button>
-            </>
+              )}
+            </div>
           )}
-        </section>
-      </section>
+        </CardContent>
+      </Card>
 
-      {/* Reggex Triggers & Allow Editing Section */}
-      <section className="flex flex-col sm:flex-row items-end sm:items-center sm:justify-end gap-4 mt-12 mb-5">
-        {isLoadingClient ? (
-          <div className="px-4 py-2 rounded-lg bg-gray-200 text-gray-500">
-            Loading client info...
-          </div>
-        ) : showSecondarySwitch ? (
-          <div className="flex items-center gap-2">
+      {/* Regex Trigger, Allow Editing & Profile Section */}
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-end">
+          {isLoadingClient ? (
+            <div className="px-4 py-2 rounded-lg bg-gray-100 text-gray-500 text-sm">
+              Loading client info...
+            </div>
+          ) : showSecondarySwitch ? (
             <button
               onClick={() => setIsPrimary((prev) => !prev)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-colors ${
                 isPrimary
-                  ? 'bg-blue text-white hover:bg-blue-700'
+                  ? 'bg-primary/10 text-primary hover:bg-primary/20'
                   : 'bg-green-600 text-white hover:bg-green-700'
               }`}
             >
               {isPrimary ? 'Using Primary Profile' : 'Using Secondary Profile'}
             </button>
-          </div>
-        ) : (
-          <div className="px-4 py-2 rounded-lg bg-gray-200 text-gray-500 text-sm">
-            Gold or Platinum plan required for secondary profile
-          </div>
-        )}
-        <div className="w-fit bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
-          Trigger reggex for this user <Switch />
-        </div>
-        {
-          <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-sm text-black p-2 flex items-center gap-2">
+          ) : (
+            <div className="px-4 py-2 rounded-xl bg-gray-50 text-gray-500 text-sm">
+              Gold or Platinum plan required for secondary profile
+            </div>
+          )}
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+            <RadioTower size={16} className="text-primary" />
+            Trigger regex for this user
+            <Switch />
+          </label>
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
             <Checkbox
-              className="bg-white"
               checked={isEditable}
               onClick={() => setIsEditable(!isEditable)}
-            />{' '}
+            />
+            <PencilLine size={16} className="text-primary" />
             Allow Editing
-          </div>
-        }
-      </section>
+          </label>
+        </CardContent>
+      </Card>
 
       {/* Client Table Section */}
-      <section>
-        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
-          <h2 className="text-xl md:text-2xl font-bold">
-            {selectedAggregator?.label ??
-              dataOption?.label ??
-              table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
-            Table
-          </h2>
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 space-y-0 border-b border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-900">
+              {selectedAggregator?.label ??
+                dataOption?.label ??
+                table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
+              Table
+            </CardTitle>
+          </div>
           {isEditable && (
-            <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
-              <Button>Import Data</Button>
-              <Button onClick={() => setFillDownIsOpen(!fillDownIsOpen)}>
-                Fill Drop Down
+            <div className="flex flex-row flex-wrap gap-3 w-full md:w-auto">
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              >
+                <Upload size={16} /> Import Data
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setFillDownIsOpen(!fillDownIsOpen)}
+              >
+                <ListRestart size={16} /> Fill Drop Down
               </Button>
               {saveMultiple && (
-                <Button onClick={() => saveMultipleData()}>Save Data</Button>
+                <Button className="gap-2" onClick={() => saveMultipleData()}>
+                  <Save size={16} /> Save Data
+                </Button>
               )}
             </div>
           )}
-        </div>
-
+        </CardHeader>
+        <CardContent className="p-4">
         <div className="h-[500px] md:h-[800px] w-full">
           {tableDisplay === 'aggregator' && (
             <StyledDataGridPro
@@ -1500,6 +1552,12 @@ const ClientDataTable: React.FC<{
               loading={isApplicationLoading}
               pagination
               pinnedColumns={{ left: ['__check__', 'actions'] }}
+              sx={{
+                border: "1px solid #f1f5f9",
+                borderRadius: "12px",
+                "& .MuiDataGrid-columnHeaders": { backgroundColor: "rgba(0, 142, 211, 0.08)" },
+                "& .MuiDataGrid-row:hover": { backgroundColor: "rgba(0, 142, 211, 0.06)" },
+              }}
             />
           )}
           {tableDisplay === 'data-option' &&
@@ -1528,6 +1586,12 @@ const ClientDataTable: React.FC<{
                 loading={isDataOptionLoading}
                 pagination
                 pinnedColumns={{ left: ['__check__', 'actions'] }}
+                sx={{
+                  border: "1px solid #f1f5f9",
+                  borderRadius: "12px",
+                  "& .MuiDataGrid-columnHeaders": { backgroundColor: "rgba(0, 142, 211, 0.08)" },
+                  "& .MuiDataGrid-row:hover": { backgroundColor: "rgba(0, 142, 211, 0.06)" },
+                }}
               />
             ) : (
               <StyledDataGridPro
@@ -1560,8 +1624,12 @@ const ClientDataTable: React.FC<{
                 loading={isDataOptionLoading}
                 pagination
                 pinnedColumns={{ left: ['__check__', 'actions'] }}
-                sx={
-                  isMobile && isManualDiscoveryView
+                sx={{
+                  border: "1px solid #f1f5f9",
+                  borderRadius: "12px",
+                  "& .MuiDataGrid-columnHeaders": { backgroundColor: "rgba(0, 142, 211, 0.08)" },
+                  "& .MuiDataGrid-row:hover": { backgroundColor: "rgba(0, 142, 211, 0.06)" },
+                  ...(isMobile && isManualDiscoveryView
                     ? {
                         '& .MuiDataGrid-columnHeader, & .MuiDataGrid-cell': {
                           px: 0.75,
@@ -1574,12 +1642,13 @@ const ClientDataTable: React.FC<{
                           fontSize: '0.75rem',
                         },
                       }
-                    : undefined
-                }
+                    : {}),
+                }}
               />
             ))}
         </div>
-      </section>
+        </CardContent>
+      </Card>
 
       <ConfirmationModalComponent />
 

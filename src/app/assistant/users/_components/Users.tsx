@@ -27,7 +27,7 @@ const Users = ({route} : UserProp) => {
     });
 
   return (
-    <section className="flex flex-col gap-8 mt-8">
+    <section className="flex flex-col gap-4">
       <UserDataCards
         setUserType={setUserType}
         userType={userType}

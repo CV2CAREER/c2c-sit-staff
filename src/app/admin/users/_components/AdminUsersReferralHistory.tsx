@@ -24,10 +24,9 @@ const AdminUsersReferralHistory = ({ userId }: { userId: string }) => {
         return params.indexRelativeToCurrentPage % 2 !== 0 ? 'bg-career-gray-400' : 'bg-white';
     };
     return (
-        <div className="relative w-full overflow-hidden rounded-3xl border border-career-gray-300/60 bg-white p-4 shadow-sm md:p-8">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
+        <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
             <div className="flex items-center gap-3 mb-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <HiOutlineGift size={20} />
                 </span>
                 <h2 className="text-xl md:text-2xl font-medium">Referrals</h2>

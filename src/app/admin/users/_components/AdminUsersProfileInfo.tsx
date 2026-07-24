@@ -91,7 +91,7 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
     return (
         <>
             {loading ? (
-                <div className="mt-6 w-full p-4 md:p-8 rounded-3xl bg-slate-100 animate-pulse">
+                <div className="w-full p-4 md:p-8 rounded-xl bg-slate-100 animate-pulse">
                     <div className="flex items-center justify-between">
                         <div className="bg-gray-300 animate-pulse w-full max-w-72 h-12 rounded-md mr-4" />
                     </div>
@@ -105,12 +105,10 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
                     </div>
                 </div>
             ) : (
-                <div className="relative mt-6 w-full overflow-hidden rounded-3xl border border-career-gray-300/60 bg-white p-4 shadow-sm md:p-8">
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
-
+                <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                                 <HiOutlineUserCircle size={20} />
                             </span>
                             <h3 className="text-xl md:text-2xl font-poppins !font-medium font-sharp-grotesk text-career-black-200">
@@ -128,7 +126,7 @@ const AdminProfileInfo = ({ userId }: { userId: string }) => {
                             <motion.div
                                 key={profile.id}
                                 variants={itemVariants}
-                                className="rounded-xl p-3 transition-colors duration-200 hover:bg-career-blue-100/50"
+                                className="rounded-xl p-3 transition-colors duration-200 hover:bg-primary/5"
                             >
                                 <h3 className="text-14 text-career-gray-200 mb-2">
                                     {profile.key}
