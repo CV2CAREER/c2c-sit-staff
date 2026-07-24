@@ -91,7 +91,6 @@ export enum RevenueStatus {
   REFUNDED = "Refunded",
   PAID = "Paid",
   UNPAID = "Unpaid",
-  AWAITING_PAYID = "AWAITING_PAYID",
 }
 
 export enum ReferrerStatus {
@@ -267,7 +266,6 @@ export enum SlackChannel {
   FREE_TRIALS = "C08PWPTA8FM",
   PAID_SUB = "C077H6PBBFS", // Replace with actual paid-sub channel ID
   JOB_PIPELINE = "C0B9KDACX5G", // Testing Channel
-  RETENTION_CTRL = "PENDING_RC_CHANNEL_ID", // Replace with #retention-controller channel ID
 }
 
 export enum Length {

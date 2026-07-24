@@ -48,7 +48,7 @@ import {
   putCampaignSheet,
 } from "../../controllers/v1/campaign-sheets.controller";
 import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
-import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController } from "../../controllers/v1/admin-plan.controller";
+import { updateUserPlanByFeatureController, confirmUserProgressController } from "../../controllers/v1/admin-plan.controller";
 import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
@@ -569,28 +569,6 @@ adminRouterV1.patch(
   isUserAuthenticated,
   authorizeRoles("admin", "assistant"),
   updateUserPlanByFeatureController,
-);
-adminRouterV1.post(
-  "/users/:userId/activate-coral",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  authorizeRoles("admin", "assistant"),
-  activateCoralPlanController,
-);
-adminRouterV1.delete(
-  "/users/:userId/activate-coral",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  authorizeRoles("admin", "assistant"),
-  deactivateCoralPlanController,
-);
-
-adminRouterV1.get(
-  "/ambassador/generate-link/:userId",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  authorizeRoles("admin", "assistant"),
-  generateAmbassadorLinkController,
 );
 
 adminRouterV1.patch(
