@@ -384,3 +384,31 @@ export enum ClientAvailabilityStatus {
   ACCEPTED = "accepted",
   REJECTED = "rejected",
 }
+
+// Jobsite Credential Status Enum (S.ADM.19 / C.CLT.16)
+// pending: client submitted, nothing forwarded yet
+// forwarded: client clicked "I have completed the email forwarding process"
+// accepted: admin clicked Accept (requires forwarded) — client can no longer
+//   edit the email from here on. From this stage, admin can send as many
+//   Test emails as they like (no status change) before making a Decision:
+//   Approve or Reject.
+// active: admin approved the mailbox (requires accepted) — sends the
+//   approval email + Slack notification, the only state that clears the
+//   application gate. Admin can Unapprove to revert to accepted.
+// failed: rejected by admin at any stage, with one of the 5 closed reasons
+export enum JobsiteCredentialStatus {
+  PENDING = "pending",
+  FORWARDED = "forwarded",
+  ACCEPTED = "accepted",
+  ACTIVE = "active",
+  FAILED = "failed",
+}
+
+// Jobsite Credential Rejection Reason Enum — closed list, never free text
+export enum JobsiteCredentialRejectionReason {
+  DELEGATION_NOT_GRANTED = "Delegation not granted",
+  MAILBOX_NOT_REACHABLE = "Mailbox not reachable",
+  TWO_FA_BLOCKING = "2FA blocking delegated access",
+  EMAIL_REJECTED_BY_JOBSITE = "Email rejected by jobsite",
+  EMAIL_ALREADY_IN_USE = "Email already in use",
+}

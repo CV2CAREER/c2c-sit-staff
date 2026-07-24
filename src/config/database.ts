@@ -11,6 +11,8 @@ import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
+import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
+import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -93,6 +95,15 @@ const ensureInterviewPackProcessesTable = async () => {
   logger.info('interview_pack_processes table ensured');
 };
 
+// Creates `jobsite_credentials` and `jobsite_credential_audits` on existing
+// databases — brand new tables, remove once every environment is up to date.
+const ensureJobsiteCredentialsTables = async () => {
+  logger.info('Ensuring jobsite_credentials tables exist');
+  await JobsiteCredential.sync({ force: false });
+  await JobsiteCredentialAudit.sync({ force: false });
+  logger.info('jobsite_credentials tables ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -134,6 +145,7 @@ export const connectDB = async (): Promise<void> => {
         await ensureEmailTemplatesTable();
         await ensureVcsPromptsTable();
         await ensureInterviewPackProcessesTable();
+        await ensureJobsiteCredentialsTables();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
