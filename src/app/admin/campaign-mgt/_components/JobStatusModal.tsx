@@ -138,7 +138,6 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
   const advertiser = entry.Advertiser || '';
   const vettedBy = entry.Vetted_By || '';
   const reasonStr = entry.Status_Reason || '';
-  const appCount = parseInt(entry.app_count || entry.total_applications || '0', 10);
   const ageMins = entry.age_minutes || 0;
 
   const flaggedParams = useMemo(() => {
@@ -518,7 +517,6 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
     }
 
     if (tab === 'app') {
-      const volHigh = appCount > 25;
       return (
         <div className="space-y-[15px]">
           <div>
@@ -553,19 +551,6 @@ const UpdateJobStatusModal: React.FC<UpdateJobStatusModalProps> = ({
             <div className="mt-[9px] p-[10px] text-[12.5px]" style={{ borderLeft: '3px solid #F5A623', background: '#FFF9EE', borderRadius: '0 7px 7px 0' }}>
               <span className="mb-[3px] block text-[10.5px]" style={{ color: '#9CA3AF' }}>Vetting Controller — {vettedBy || 'N/A'}</span>
               {reasonStr}
-            </div>
-            <div
-              className="mt-[9px] p-[9px] text-[11.5px]"
-              style={{
-                background: volHigh ? '#FEF2F2' : '#F6F8FA',
-                color: volHigh ? '#A12222' : '#6B7280',
-                borderRadius: '7px',
-              }}
-            >
-              {volHigh ? '⚠ ' : ''}<b>{appCount}</b> applications already submitted for {clientName} this campaign
-              {volHigh
-                ? ' — a marginal job carries far less weight here than for a client with four.'
-                : ' — few applications submitted. A marginal job carries more weight for this client.'}
             </div>
           </div>
           <div>
