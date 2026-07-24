@@ -1,13 +1,9 @@
 import { Request, Response } from "express";
-import { randomBytes } from "crypto";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
-import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan } from "../../services/admin-plan.service";
+import { updateUserPlanByFeature, confirmUserProgress } from "../../services/admin-plan.service";
 import { Progress } from "../../utils/enum";
-import { User } from "../../models/v1/user.model";
-import { Plan } from "../../models/v1/plan.model";
-import { getFrontendUrl } from "../../utils/helpers";
 
 const logger = getServiceLogger("admin-plan-controller");
 
@@ -51,47 +47,6 @@ export const updateUserPlanByFeatureController = catchAsyncError(
       `User plan updated to "${plan.title}" successfully`,
       200,
     );
-  },
-);
-
-/**
- * POST /api/v1/admin/users/:userId/activate-coral
- *
- * Activate a free 30-day Coral plan for an ambassador.
- * Fires SG-CORAL-ACTIVE email and creates Campaign Mgt row.
- */
-export const activateCoralPlanController = catchAsyncError(
-  async (req: Request, res: Response) => {
-    const { userId } = req.params;
-    const host = req.headers.host || req.headers.origin || "localhost";
-
-    logger.info(`Processing Coral activation request for user ${userId}`);
-
-    const plan = await activateCoralPlan(host, userId, req.user as any);
-
-    return res.apiSuccess(
-      { plan },
-      "Coral plan activated successfully",
-      200,
-    );
-  },
-);
-
-/**
- * DELETE /api/v1/admin/users/:userId/activate-coral
- *
- * Deactivate an ambassador's active Coral plan.
- */
-export const deactivateCoralPlanController = catchAsyncError(
-  async (req: Request, res: Response) => {
-    const { userId } = req.params;
-    const host = req.headers.host || req.headers.origin || "localhost";
-
-    logger.info(`Processing Coral deactivation request for user ${userId}`);
-
-    await deactivateCoralPlan(host, userId);
-
-    return res.apiSuccess({}, "Coral plan deactivated successfully", 200);
   },
 );
 
@@ -143,52 +98,6 @@ export const confirmUserProgressController = catchAsyncError(
     return res.apiSuccess(
       { user },
       `User progress updated to "${progress}" successfully`,
-      200,
-    );
-  },
-);
-
-/**
- * GET /api/v1/admin/ambassador/generate-link/:userId
- *
- * Generate (or return existing) ambassador invite link for the given user.
- * Creates a unique token on first call; subsequent calls reuse it.
- */
-export const generateAmbassadorLinkController = catchAsyncError(
-  async (req: Request, res: Response) => {
-    const { userId } = req.params;
-
-    const ambassador = await User.findOne({
-      where: { id: userId, isAmbassador: true },
-    });
-
-    if (!ambassador) {
-      return res.apiError(
-        new ErrorHandler("Ambassador user not found", 404),
-      );
-    }
-
-    const activeCoral = await Plan.findOne({
-      where: { userId, title: "Coral", hasExpired: false },
-    });
-
-    if (!activeCoral) {
-      return res.apiError(
-        new ErrorHandler("Ambassador does not have an active Coral plan", 400),
-      );
-    }
-
-    let token = ambassador.ambassadorToken;
-    if (!token || token.length !== 16) {
-      token = randomBytes(8).toString("hex");
-      await ambassador.update({ ambassadorToken: token });
-    }
-
-    const link = `${getFrontendUrl()}/register?ref=${token}`;
-
-    return res.apiSuccess(
-      { link, token },
-      "Ambassador link generated",
       200,
     );
   },
