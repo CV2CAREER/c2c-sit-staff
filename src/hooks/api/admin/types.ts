@@ -149,6 +149,8 @@ export interface AdminQueriesOptions {
   fetchEOTCRs?: boolean;
   fetchEOTOwners?: boolean;
   fetchUnsubscribedUsers?: boolean;
+  fetchJobsiteCredentials?: boolean;
+  fetchClientJobsiteCredential?: boolean;
   fetchSystemLogs?: boolean;
   logsPage?: number;
   logsLimit?: number;
