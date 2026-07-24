@@ -24,11 +24,14 @@ export const handleGetUserInfo = async (userId: string) => {
     throw new ErrorHandler("Invalid user ID.", 400);
   }
 
-  const user = await User.findByPk(userId, {
-    include: [{ model: Plan, as: "activePlan" }],
-  });
+  let user: User | null = await getCachedUser(userId);
 
-  if (!user) throw new ErrorHandler("No record of this account", 404);
+  if (user) {
+    logger.info("User fetched from REDIS");
+  } else {
+    user = await hopeUserIdExists(userId);  // ✅ reassigns outer `user`
+    setCachedUser(userId, user);
+  }
 
   return { user };
 };
@@ -556,16 +559,12 @@ export const getAllUsers = async (query: {
   
   // User Type / Role filter
   if (userType) {
-    if (userType === "ambassador") {
-      where.isAmbassador = true;
-    } else {
-      where.role = userType;
-    }
+    where.role = userType;
   }
   
-  // Plan filter — selectedPlan stores the plan title (e.g. "Coral", "Gold")
+  // Plan filter
   if (plan) {
-    where.selectedPlan = { [Op.iLike]: plan };
+    where.planId = plan;
   }
 
   // Date range filter

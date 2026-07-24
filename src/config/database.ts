@@ -3,6 +3,7 @@ import { setDbReady } from '../middlewares/dbReady';
 import { ensureInFlightIndexes } from '../services/admin/in-flight.index-bootstrap.service';
 import { getServiceLogger } from '../utils/createLogger';
 import { ensureAnalyticsIndexes } from '../services/admin/analytics.index-bootstrap.service';
+import { ensureCampaignIndexes } from '../services/admin/campaign.index-bootstrap.service';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
 import { ClientContentService } from '../services/admin/client-content.service';
@@ -11,6 +12,7 @@ import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
+import { TourCount } from '../models/v1/tour-count.model';
 
 // import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
@@ -55,43 +57,51 @@ const ensureClientContentTable = async () => {
 // databases, where the full sync below is skipped. `alter` so that columns
 // added after the table was first created (roleTitles, clientConfirmed) land
 // too — remove once every environment is up to date.
-const ensureClientSupportDocumentsTable = async () => {
-  logger.info('Ensuring client_support_documents table exists');
-  await ClientSupportDocument.sync({ force: false });
-  await EmailLog.sync({ force: false });
-  logger.info('client_support_documents table ensured');
-};
+// const ensureClientSupportDocumentsTable = async () => {
+//   logger.info('Ensuring client_support_documents table exists');
+//   await ClientSupportDocument.sync({ force: false });
+//   await EmailLog.sync({ force: false });
+//   logger.info('client_support_documents table ensured');
+// };
 
 // Creates `email_templates` on existing databases and seeds it from the .ejs
 // files under views/emails on every boot — seeding is upsert-by-name so it's
 // safe to run repeatedly and never overwrites a template an admin has edited
 // via the DB unless SEED_EMAIL_TEMPLATES_FORCE=true is set. `alter` so columns
 // added after the table first existed (e.g. `variables`) land on deploy too.
-const ensureEmailTemplatesTable = async () => {
-  logger.info('Ensuring email_templates table exists');
-  await EmailTemplate.sync({ alter: true });
-  logger.info('email_templates table ensured');
-};
+// const ensureEmailTemplatesTable = async () => {
+//   logger.info('Ensuring email_templates table exists');
+//   await EmailTemplate.sync({ alter: true });
+//   logger.info('email_templates table ensured');
+// };
 
 // Creates `vcs_prompts`/`vcs_configurations` on existing databases and seeds
 // the AI-generation prompts stored there (cover letter, role title
 // recommendations), each under its own `key` so they don't collide with the
 // `upload_role_titles_prompt` config already stored in the same tables.
 // `alter` so the `key` column added to VCS lands on deploy too.
-const ensureVcsPromptsTable = async () => {
-  logger.info('Ensuring vcs_prompts/vcs_configurations tables exist');
-  await VCSPrompt.sync({ alter: true });
-  await VCS.sync({ alter: true });
-  logger.info('vcs_prompts/vcs_configurations tables ensured');
-};
+// const ensureVcsPromptsTable = async () => {
+//   logger.info('Ensuring vcs_prompts/vcs_configurations tables exist');
+//   await VCSPrompt.sync({ alter: true });
+//   await VCS.sync({ alter: true });
+//   logger.info('vcs_prompts/vcs_configurations tables ensured');
+// };
 
 // Creates `interview_pack_processes` on existing databases — remove once
 // every environment is up to date.
-const ensureInterviewPackProcessesTable = async () => {
-  logger.info('Ensuring interview_pack_processes table exists');
-  await InterviewPackProcess.sync({ force: false });
-  logger.info('interview_pack_processes table ensured');
-};
+// const ensureInterviewPackProcessesTable = async () => {
+//   logger.info('Ensuring interview_pack_processes table exists');
+//   await InterviewPackProcess.sync({ force: false });
+//   logger.info('interview_pack_processes table ensured');
+// };
+
+// Creates `tour_counts` on existing databases — remove once every
+// environment is up to date.
+// const ensureTourCountsTable = async () => {
+//   logger.info('Ensuring tour_counts table exists');
+//   await TourCount.sync({ force: false });
+//   logger.info('tour_counts table ensured');
+// };
 
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
@@ -130,10 +140,11 @@ export const connectDB = async (): Promise<void> => {
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
-        await ensureClientSupportDocumentsTable();
-        await ensureEmailTemplatesTable();
-        await ensureVcsPromptsTable();
-        await ensureInterviewPackProcessesTable();
+        // await ensureClientSupportDocumentsTable();
+        // await ensureEmailTemplatesTable();
+        // await ensureVcsPromptsTable();
+        // await ensureInterviewPackProcessesTable();
+        // await ensureTourCountsTable();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
@@ -191,10 +202,11 @@ export const connectDB = async (): Promise<void> => {
         // await ensureAccessLevelTables();
         // await ensureCommunicationTemplatesTable();
         await ensureClientContentTable();
-        await ensureClientSupportDocumentsTable();
-        await ensureEmailTemplatesTable();
-        await ensureVcsPromptsTable();
-        await ensureInterviewPackProcessesTable();
+        // await ensureClientSupportDocumentsTable();
+        // await ensureEmailTemplatesTable();
+        // await ensureVcsPromptsTable();
+        // await ensureInterviewPackProcessesTable();
+        // await ensureTourCountsTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();
@@ -217,6 +229,7 @@ export const connectDB = async (): Promise<void> => {
 
       await ensureAnalyticsIndexes();
       await ensureInFlightIndexes();
+      await ensureCampaignIndexes();
 
       return; // ✅ exit once connected
     } catch (error: any) {

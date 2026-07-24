@@ -28,7 +28,7 @@
     "@slack/web-api": "^7.14.1",
     "@types/swagger-ui-express": "^4.1.8",
     "bcryptjs": "^3.0.2",
-    "bullmq": "^5.80.9",
+    "bullmq": "^5.70.1",
     "cheerio": "^1.2.0",
     "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
