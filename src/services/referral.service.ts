@@ -342,10 +342,10 @@ export class ReferralService {
               referralType: "GRP",
               action: "Approved",
               adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
-              referrerName,
+              referrerName: referrerName ?? "",
               referrerEmail: referral.referrer || "",
               referrerId: referrerUser?.uniqueId ?? undefined,
-              refereeName,
+              refereeName: refereeName ?? "",
               refereeEmail: user?.email || "",
               referralId: (referral as any).sequentialId ?? referralId,
               adminName,
@@ -359,7 +359,7 @@ export class ReferralService {
             if (referrerUser) {
               sendRCFollowUpTag({
                 host,
-                fullName: referrerName,
+                fullName: referrerName ?? "",
                 customerId: referrerUser.uniqueId ?? null,
                 templateId: "SG-GRP-CONFIRMED",
               }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
@@ -643,9 +643,9 @@ export class ReferralService {
               referralType: referral.type || "CRP",
               action: "Payout Paid",
               adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
-              referrerName,
+              referrerName: referrerName ?? "",
               referrerEmail: referral.referrer || "",
-              refereeName,
+              refereeName: refereeName ?? "",
               refereeEmail: referredUser?.email || "",
               referralId: (referral as any).sequentialId ?? referralId,
               adminName,
@@ -658,7 +658,7 @@ export class ReferralService {
             if (referrerUser) {
               sendRCFollowUpTag({
                 host,
-                fullName: referrerName,
+                fullName: referrerName ?? "",
                 customerId: referrerUser.uniqueId ?? null,
                 templateId: "SG-CRP-PAID",
               }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
@@ -773,10 +773,10 @@ export class ReferralService {
               referralType: "GRP",
               action: "Declined",
               adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
-              referrerName,
+              referrerName: referrerName ?? "",
               referrerEmail: referral.referrer || "",
               referrerId: referrerUser?.uniqueId ?? undefined,
-              refereeName,
+              refereeName: refereeName ?? "",
               refereeEmail: user?.email || "",
               referralId: (referral as any).sequentialId ?? referralId,
               adminName,
@@ -788,7 +788,7 @@ export class ReferralService {
             if (referrerUser) {
               sendRCFollowUpTag({
                 host,
-                fullName: referrerName,
+                fullName: referrerName ?? "",
                 customerId: referrerUser.uniqueId ?? null,
                 templateId: "SG-GRP-DECLINED",
               }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
@@ -798,9 +798,9 @@ export class ReferralService {
           // SG-INT-PRP-REFERRAL — internal email for PRP referrals
           if (referral.type === "PRP") {
             await sendPrpInternalEmail({
-              partnerName: referrerName,
+              partnerName: referrerName ?? "",
               partnerEmail: referral.referrer || "",
-              refereeName,
+              refereeName: refereeName ?? "",
               refereeEmail: user?.email || "",
               adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
             });

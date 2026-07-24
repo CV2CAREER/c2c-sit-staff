@@ -341,7 +341,6 @@ export const sendCoralActiveEmail = async (
     email: options.email,
     subject: `Your Coral plan is active — CVtoCAREER`,
     templateName: "coral-active.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -388,7 +387,6 @@ export const sendGrpConfirmedEmail = async (
     email: options.email,
     subject: `Your referral has been approved — CVtoCAREER`,
     templateName: "grp-confirmed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -411,7 +409,6 @@ export const sendGrpDeclinedEmail = async (
     email: options.email,
     subject: `Update on your referral — CVtoCAREER`,
     templateName: "grp-declined.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -433,7 +430,6 @@ export const sendCrpPaidEmail = async (
     email: options.email,
     subject: `Your referral reward has been paid — CVtoCAREER`,
     templateName: "crp-paid.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -464,7 +460,6 @@ export const sendCrpPayoutOwedEmail = async (
     email: TEAM_EMAIL,
     subject,
     templateName: "crp-payout-owed.ejs",
-    templateDir: mailDirectory,
     templateData,
   });
 
@@ -473,8 +468,7 @@ export const sendCrpPayoutOwedEmail = async (
       email: PRODUCT_OWNER_EMAIL,
       subject,
       templateName: "crp-payout-owed.ejs",
-      templateDir: mailDirectory,
-      templateData,
+        templateData,
     });
   }
 };
@@ -535,7 +529,6 @@ export const sendInternalReferralEmail = async (
     email: TEAM_EMAIL,
     subject,
     templateName: "internal-referral.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -558,7 +551,6 @@ export const sendPrpInternalEmail = async (
     email: TEAM_EMAIL,
     subject: `🤝 Channel Partner referral — thank-you sent · ${options.partnerName}`,
     templateName: "prp-internal.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -610,7 +602,6 @@ export const sendPrpThankyouEmail = async (
     email: options.email,
     subject: `Thank you for your partnership — CVtoCAREER`,
     templateName: "prp-thankyou.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
