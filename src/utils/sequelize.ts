@@ -16,7 +16,6 @@ import {
 } from "../config/env";
 import { getServiceLogger } from "./createLogger";
 import { modelList } from "./modelsList";
-import { setDbReady } from "../middlewares/dbReady";
 
 const logger = getServiceLogger("sequelize");
 
@@ -105,7 +104,6 @@ function logPoolStats(sequelize: Sequelize, label: string) {
 
 export const resetSequelize = async () => {
   logger.info("🔄 Resetting Sequelize instance...");
-  setDbReady(false);
 
   if (sequelize) {
     logPoolStats(sequelize, "before reset");
@@ -154,7 +152,6 @@ export const resetSequelize = async () => {
   // Reconnect and verify
   logger.info("📊 Attempting DB REconnection...");
   await sequelize.authenticate();
-  setDbReady(true);
   logger.info("✅ Database RECONNECTED");
 
   if (NODE_ENV !== "production") {
