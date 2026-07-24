@@ -10,8 +10,10 @@ import {
   TestTubeDiagonal,
   Cog
 } from "lucide-react";
+import DateFilter from "@/components/reusable/DateFilter";
 import { IDateFilter } from "@/types/common";
 import { Card, CardContent } from "@/components/ui/card";
+import { CalendarRange } from "lucide-react";
 
 interface UsersCountData {
   adminPersonnaCount: number;
@@ -26,6 +28,7 @@ interface UsersCountData {
   businessCount: number;
   technologyCount: number,
   loyalistsPersonnaCount: number;
+  ambassadorCount: number;
   totalActiveUsersCount: number;
   bronzePlanCount: number;
   emeraldPlanCount: number;
@@ -55,6 +58,7 @@ interface UserDataCardsProps {
   }
   scrollTotable: any
   dateFilterData: IDateFilter;
+  setDateFilterData: React.Dispatch<React.SetStateAction<IDateFilter>>;
 }
 
 const UserDataCards = ({
@@ -62,6 +66,7 @@ const UserDataCards = ({
   userType,
   scrollTotable,
   dateFilterData,
+  setDateFilterData
 }: UserDataCardsProps) => {
   const analytics = useAdminAnalytics({
     enabled: true,
@@ -83,9 +88,10 @@ const UserDataCards = ({
         csePersonnaCount: 0,
         testPersonnaCount: 0,
         PCPersonaCount: 0,
-        businessCount: 0, 
+        businessCount: 0,
         technologyCount: 0,
         loyalistsPersonnaCount: 0,
+        ambassadorCount: 0,
         totalActiveUsersCount: 0,
         bronzePlanCount: 0,
         emeraldPlanCount: 0,
@@ -133,6 +139,7 @@ const UserDataCards = ({
       const businessCount = useUserRoles ? apiData.userRoleCounts.business : 0;
       const techCount = useUserRoles ? apiData.userRoleCounts.technology : 0;
       const loyalistCount = 0;
+      const ambassadorCount = apiData.userRoleCounts?.ambassador ?? 0;
 
       return {
         adminPersonnaCount: adminCount,
@@ -147,6 +154,7 @@ const UserDataCards = ({
         businessCount,
         technologyCount: techCount,
         loyalistsPersonnaCount: loyalistCount,
+        ambassadorCount,
         totalActiveUsersCount:
           adminCount + guestCount + clientCount + coachCount +
           partnerCount + salesCount + cseCount + testCount +
@@ -172,9 +180,10 @@ const UserDataCards = ({
       csePersonnaCount: 0,
       testPersonnaCount: 0,
       PCPersonaCount: 0,
-      businessCount: 0, 
+      businessCount: 0,
       technologyCount: 0,
       loyalistsPersonnaCount: 0,
+      ambassadorCount: 0,
       totalActiveUsersCount: 0,
       bronzePlanCount: 0,
       emeraldPlanCount: 0,
@@ -195,7 +204,7 @@ const UserDataCards = ({
   const isError = analytics.isError;
   const error = analytics.error;
 
-  const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists"]
+  const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists", "Ambassadors"]
   const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
 
   const cardsData: cardsDataProps[] = [
@@ -317,6 +326,15 @@ const UserDataCards = ({
       },
     },
     {
+      title: "Ambassadors",
+      value: personas?.ambassadorCount || 0,
+      icon: {
+        name: User,
+        bgColor: "bg-teal-100",
+        color: "text-teal-700",
+      },
+    },
+    {
       title: "Bronze",
       value: personas?.bronzePlanCount || 0,
       icon: {
@@ -402,6 +420,18 @@ const UserDataCards = ({
   return (
     <div className="flex flex-col gap-4">
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            <CalendarRange size={16} className="text-primary" />
+            Date Filter
+          </span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <DateFilter onFilterDataChange={setDateFilterData} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
         <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {isLoading ? (
             Array(17).fill(0).map((_, idx) => (
@@ -427,7 +457,10 @@ const UserDataCards = ({
                     if(userTypes.includes(card.title)){
                       setUserType({
                         ...userType,
-                        user: card.title === "Total Users" ? "all" : card.title === "Test Users" ? "test" : card.title.toLowerCase()
+                        user: card.title === "Total Users" ? "all"
+                          : card.title === "Test Users" ? "test"
+                          : card.title === "Ambassadors" ? "ambassador"
+                          : card.title.toLowerCase()
                       })
                     }
                     if(userPlans.includes(card.title)){
