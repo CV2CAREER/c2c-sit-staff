@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning>
+      <body>
         <MuiXLicense />
         <Toaster 
           position="top-right" 

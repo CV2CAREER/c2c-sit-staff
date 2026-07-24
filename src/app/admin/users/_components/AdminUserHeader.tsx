@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from "framer-motion";
 import { TableDropDownSearch } from "@/components/TableRedesign/TableHeader"
 import { getAvatarColorClass } from "@/utils/avatarColor"
-import { Briefcase, Crown, Star } from "lucide-react"
 
 const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId: (id: string) => void }) => {
 
@@ -37,7 +36,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
    );
 
   const features = featureTitlesDomain?.data?.features || [];
-  const userPlanId = userData?.data?.user?.planId;
+  const userPlanId = userData?.data?.planId;
   const userPlan = features.find((f: any) => f.id === userPlanId);
 
   const { setUser } = useAdminUserDetailContext()
@@ -91,14 +90,8 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
             <div>
               <div className="flex  items-center ">
                 <h4 className="!font-medium  font-sharp-grotesk text-lg smallLaptop:text-32 text-career-black-200 capitalize">
-                  {profileUser?.firstName ?? userData?.data?.user?.firstName} {profileUser?.lastName ?? userData?.data?.user?.lastName}
+                  {profileUser?.firstName ?? userData?.data?.firstName} {profileUser?.lastName ?? userData?.data?.lastName}
                 </h4>
-                {userData?.data?.user?.isAmbassador && (
-                  <span className="ml-3 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                    <Star className="w-3 h-3 fill-orange-400 text-orange-400" />
-                    Ambassador
-                  </span>
-                )}
 
                 <motion.span
                   animate={{ rotate: dropdownIsOpened ? 180 : 0 }}
@@ -153,20 +146,10 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
               </AnimatePresence>
             </div>
 
-            {(profileUser?.plan ?? userData?.data?.user?.plan) && (
-              <>
-                <div className="rounded-full w-2 mx-4 h-2 bg-career-blue-800" />
-                <p className="inline-flex items-center gap-1 text-14 text-career-gray-200 capitalize px-3 py-1 rounded-full bg-career-blue-800/10">
-                  <Crown className="w-3 h-3 text-career-blue-800" />
-                  {profileUser?.plan ?? userData?.data?.user?.plan}
-                </p>
-              </>
-            )}
+            <div className="rounded-full w-2 mx-4 h-2 bg-career-blue-800" />
+            <p className="text-14 text-career-gray-200 capitalize px-3 py-1 rounded-full bg-career-blue-800/10">{profileUser?.plan ?? userData?.data?.plan}</p>
           </div>
-          <p className="inline-flex items-center gap-1.5 text-career-gray-200 mt-1 capitalize">
-            <Briefcase className="w-3.5 h-3.5 text-career-gray-200" />
-            {profileUser?.role ?? userData?.data?.user?.role}
-          </p>
+          <p className="text-career-gray-200 mt-1 capitalize">{profileUser?.role ?? userData?.data?.role}</p>
         </div>
       </div>
       <div className="relative">
