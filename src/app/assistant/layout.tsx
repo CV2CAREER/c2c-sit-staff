@@ -28,7 +28,7 @@ export default function AssistantDashboardLayout({
       <AdminDashboardClientLayout>
         <main className="relative flex max-w-screen overflow-hidden overflow-x-hidden">
           <Sidebar />
-          <section className="w-full min-h-screen overflow-hidden overflow-x-hidden bg-[#f3f3f3] lg:ms-[250px] lg:max-w-[calc(100vw-250px)]">
+          <section className="dashboard-content w-full min-h-screen overflow-hidden overflow-x-hidden bg-[#f3f3f3]">
             <ViewAsUserBanner />
             <div className="p-3 sm:p-6">
               <TopBar title="Placement Controller" />
