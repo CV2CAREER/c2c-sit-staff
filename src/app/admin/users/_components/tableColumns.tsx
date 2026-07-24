@@ -42,17 +42,6 @@ export const tableColumns: GridColDef[] = [
   { field: "applicationStatus", headerName: "Application Status", width: 200 },
   { field: "prepSessionStatus", headerName: "Prep Session Status", width: 200 },
   { field: "isUserSubscribed", headerName: "Subscribed", width: 100 },
-  {
-    field: "isAmbassador",
-    headerName: "Ambassador",
-    renderCell: (params: any) =>
-      params.row.isAmbassador ? (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-          Ambassador
-        </span>
-      ) : null,
-    width: 130,
-  },
   { field: "isDocumentApproved", headerName: "Document Approved", width: 150 },
   { field: "isDocumentUploaded", headerName: "Document Uploaded", width: 150 },
   { field: "isSampleDispatched", headerName: "Sample Dispatched", width: 150 },
