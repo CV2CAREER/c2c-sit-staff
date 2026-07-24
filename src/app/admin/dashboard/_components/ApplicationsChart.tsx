@@ -4,6 +4,7 @@ import * as React from 'react';
 import { LineChart } from '@mui/x-charts/LineChart';
 import { Tabs, Tab } from '@heroui/tabs';
 import { useAdminQueries } from "@/hooks/api/admin.api";
+import { TrendingUp } from "lucide-react";
 
 const margin = { right: 24 };
 
@@ -24,9 +25,14 @@ const ApplicationPerformanceChart = () =>  {
 
   if (!hasData) {
     return (
-      <div className="w-full bg-white rounded-md p-4 flex gap-4 flex-col justify-between shadow h-[300px]">
-        <div className="w-fit ml-auto">
-          {/* Your Tabs component */}
+      <div className="w-full rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] flex gap-4 flex-col justify-between h-[300px]">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-3">
+          <span className="flex items-center gap-2 text-lg font-bold text-gray-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <TrendingUp size={18} />
+            </span>
+            Application Performance
+          </span>
           <Tabs
             aria-label="Options"
             color="primary"
@@ -60,8 +66,14 @@ const ApplicationPerformanceChart = () =>  {
   const xLabels = (data as any)?.label || [];
 
   return (
-    <div className="w-full bg-white rounded-md p-4 flex flex-col gap-4 justify-between shadow">
-      <div className="w-fit ml-auto">
+    <div className="w-full rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] flex flex-col gap-4 justify-between">
+      <div className="flex items-center justify-between gap-4">
+        <span className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <TrendingUp size={18} />
+          </span>
+          Application Performance
+        </span>
         <Tabs
           aria-label="Options"
           color="primary"

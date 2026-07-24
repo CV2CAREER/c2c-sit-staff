@@ -26,11 +26,11 @@ const TYPE_META: Record<
 > = {
   customer: {
     label: "Customer",
-    badge: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
+    badge: "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
     icon: <Mail size={14} />,
-    accent: "before:bg-gradient-to-b before:from-[#004174] before:to-[#00568f]",
-    avatar: "bg-gradient-to-br from-[#004174] to-[#00568f] text-white",
-    headerTint: "bg-gradient-to-r from-blue-50 to-white hover:from-blue-100",
+    accent: "before:bg-primary",
+    avatar: "bg-primary text-white",
+    headerTint: "bg-gradient-to-r from-primary/5 to-white hover:from-primary/10",
   },
   admin: {
     label: "Admin",
@@ -194,7 +194,11 @@ export default function CommunicationTemplatesPage() {
         title="Email Templates"
         description="The content every automated email is built from"
         renderJSX={
-          <Button variant="outline" className="text-sm" onClick={() => setMissingInfoOpen(true)}>
+          <Button
+            variant="outline"
+            className="gap-2 border-primary/20 text-sm text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+            onClick={() => setMissingInfoOpen(true)}
+          >
             Send Missing Information
           </Button>
         }
@@ -202,7 +206,7 @@ export default function CommunicationTemplatesPage() {
 
       {/* Stat strip */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
           <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gray-50" />
           <div className="relative flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white">
@@ -214,10 +218,10 @@ export default function CommunicationTemplatesPage() {
             </div>
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
           <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-blue-50" />
           <div className="relative flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#004174] to-[#00568f] text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
               <Mail size={16} />
             </div>
             <div>
@@ -226,7 +230,7 @@ export default function CommunicationTemplatesPage() {
             </div>
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
           <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-amber-50" />
           <div className="relative flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-amber-400 text-white">
@@ -240,12 +244,12 @@ export default function CommunicationTemplatesPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-5">
+      <div className="bg-white rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] p-5 flex flex-col gap-5">
         {/* Toolbar */}
         <div className="flex-col md:flex-row flex md:items-center md:justify-between gap-3">
           <div className="flex w-full md:w-fit justify-between items-center gap-4">
             <Button
-              className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[#004174] to-[#00568f] px-5 py-5 text-[14px] font-semibold text-white shadow-md shadow-blue-900/20 transition-all hover:shadow-lg hover:shadow-blue-900/30 hover:brightness-110 active:scale-[0.98] sm:text-[16px]"
+              className="group gap-2"
               onClick={() => {
                 setSelectedTemplate(null);
                 setCreateEditOpen(true);
@@ -253,8 +257,8 @@ export default function CommunicationTemplatesPage() {
             >
               <FaPlus className="transition-transform group-hover:rotate-90" /> Create Template
             </Button>
-            <div className="flex items-center gap-3 w-[14rem] text-[15px] sm:text-[17px] md:w-96 rounded-3xl px-4 py-2 bg-gray-100 border border-transparent focus-within:border-blue-200 focus-within:bg-white transition-colors">
-              <FaSearch className="text-gray-400" />
+            <div className="flex items-center gap-3 w-[14rem] text-[15px] sm:text-[17px] md:w-96 rounded-3xl px-4 py-2 bg-gray-50 border border-gray-200 focus-within:border-primary/40 focus-within:bg-white focus-within:shadow-[0_1px_10px_rgba(0,142,211,0.10)] transition-colors">
+              <FaSearch className="text-primary" />
               <input
                 type="text"
                 placeholder="Search by key, name or content"
@@ -292,7 +296,7 @@ export default function CommunicationTemplatesPage() {
               <button
                 type="button"
                 onClick={() => setRecycleBin(false)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-full transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full transition-colors"
               >
                 <ArrowLeft size={12} /> Back to Active
               </button>
@@ -318,7 +322,7 @@ export default function CommunicationTemplatesPage() {
                   key={type}
                   expanded={expandedTypes.includes(type)}
                   onChange={() => handleAccordionChange(type)}
-                  className="!shadow-none border border-gray-200 rounded-lg overflow-hidden"
+                  className="!shadow-none border border-primary/15 rounded-lg overflow-hidden"
                   disableGutters
                 >
                   <AccordionSummary
@@ -337,7 +341,7 @@ export default function CommunicationTemplatesPage() {
                       {group.map((template) => (
                         <div
                           key={template.id}
-                          className={`relative flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3.5 pl-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-lg ${meta.accent}`}
+                          className={`relative flex items-center gap-3 rounded-lg border border-primary/10 bg-white p-3.5 pl-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:rounded-l-lg ${meta.accent}`}
                         >
                           <div className={`hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${meta.avatar}`}>
                             {meta.icon}
@@ -367,14 +371,14 @@ export default function CommunicationTemplatesPage() {
                             <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 shrink-0">
                               <button
                                 title="Preview"
-                                className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors"
+                                className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
                                 onClick={() => { setSelectedTemplate(template); setPreviewOpen(true); }}
                               >
                                 <FaEye />
                               </button>
                               <button
                                 title="Edit"
-                                className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                                className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 disabled={recycleBin}
                                 onClick={() => { setSelectedTemplate(template); setCreateEditOpen(true); }}
                               >
@@ -382,7 +386,7 @@ export default function CommunicationTemplatesPage() {
                               </button>
                               <button
                                 title="Export as .html"
-                                className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors"
+                                className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
                                 onClick={() => handleExport(template)}
                               >
                                 <FaFileExport />
@@ -390,7 +394,7 @@ export default function CommunicationTemplatesPage() {
                               {recycleBin ? (
                                 <button
                                   title="Restore"
-                                  className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors"
+                                  className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
                                   onClick={() => void handleRestore(template)}
                                 >
                                   <FaUndo />

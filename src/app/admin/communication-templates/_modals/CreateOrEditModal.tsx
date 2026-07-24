@@ -115,7 +115,7 @@ export function CreateOrEditModal({
         {/* No explicit z-index here on purpose — the dialog's own close button (top-right)
             has no z-index either, so DOM order (this renders first) keeps it paintable on
             top; this bar still sits above the normal-flow scrolling content beneath it. */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 pr-12 pt-6 pb-4">
+        <div className="sticky top-0 bg-white border-b border-primary/15 px-6 pr-12 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="text-xl">
               {isEditing ? "Edit Email Template" : "Create Email Template"}

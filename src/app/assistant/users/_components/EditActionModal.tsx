@@ -43,9 +43,17 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   </h4>
 );
 
+// "middleName" / "Adecco_Aggregator" -> "Middle Name" / "Adecco Aggregator"
+const humanizeFieldName = (field: string) =>
+  field
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+
 const formSchema = z.object({
   firstName: z.string().min(2).max(50),
-  middleName: z.string().min(2).max(50).optional(),
+  middleName: z.string().min(2).max(50).or(z.literal('')).optional(),
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
   gender: z.enum(["male", "female", "Male", "Female"]).optional(),
@@ -546,7 +554,20 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
         >
           Cancel
         </Button>
-        <Button onClick={() => form.handleSubmit(onSubmit)()}>Update</Button>
+        <Button
+          onClick={() =>
+            form.handleSubmit(onSubmit, (errors) => {
+              const [firstField, firstError] = Object.entries(errors)[0] ?? [];
+              toast.error(
+                firstField
+                  ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
+                  : 'Please fix the highlighted fields before updating.'
+              );
+            })()
+          }
+        >
+          Update
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

@@ -41,11 +41,19 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   </h4>
 );
 
+// "Adecco_Aggregator" / "firstName" -> "Adecco Aggregator" / "First Name"
+const humanizeFieldName = (field: string) =>
+  field
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+
 const formSchema = z.object({
-  Full_Name: z.string().min(2).max(50).optional().nullable(),
-  First_Name: z.string().min(2).max(50).optional().nullable(),
+  Full_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
+  First_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
   Middle_Name: z.string().optional().nullable(),
-  Last_Name: z.string().min(2).max(50).optional().nullable(),
+  Last_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
   Plan: z.string().optional().nullable(),
   ReturnCount: z.string().optional().nullable(),
   Order: z.string().optional().nullable(),
@@ -68,7 +76,8 @@ const formSchema = z.object({
   Adzuna_Aggregator: z.boolean().optional().nullable(),
   CareerOne_Aggregator: z.boolean().optional().nullable(),
   Reed_Aggregator: z.boolean().optional().nullable(),
-  Adecco_Aggregator: z.number().optional().nullable(), // Changed to number to match the res data 0 or 1
+  // API sends this as either 0/1 or true/false depending on the record, so accept both.
+  Adecco_Aggregator: z.union([z.number(), z.boolean()]).optional().nullable(),
   CVLibrary_Aggregator: z.boolean().optional().nullable(),
   NHSJobs_Aggregator: z.boolean().optional().nullable(),
   Throttle_Listing: z.boolean().optional().nullable(),
@@ -76,7 +85,7 @@ const formSchema = z.object({
   Batch: z.string().nullable(),
   Craft: z.string().nullable(),
   Status: z.string().nullable(),
-  Alias_Email: z.string().email().optional().nullable(),
+  Alias_Email: z.string().email().or(z.literal('')).optional().nullable(),
   Alias_Password: z.string().optional().nullable(),
   VaName: z.string().optional().nullable(),
   Assurance: z.string().optional().nullable(),
@@ -746,7 +755,20 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
         >
           Cancel
         </Button>
-        <Button onClick={() => form.handleSubmit(onSubmit)()}>Update</Button>
+        <Button
+          onClick={() =>
+            form.handleSubmit(onSubmit, (errors) => {
+              const [firstField, firstError] = Object.entries(errors)[0] ?? [];
+              toast.error(
+                firstField
+                  ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
+                  : 'Please fix the highlighted fields before updating.'
+              );
+            })()
+          }
+        >
+          Update
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

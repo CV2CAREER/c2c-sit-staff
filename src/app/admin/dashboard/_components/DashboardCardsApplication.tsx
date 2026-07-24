@@ -2,6 +2,8 @@
 import React from "react";
 import DashboardSkeleton from "@/components/reusable/DashboardLoadingSkeleton";
 import { useAdminQueries } from "@/hooks/api/admin.api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ClipboardList } from "lucide-react";
 
 const DashboardCardsApplication: React.FC = () => {
   const {
@@ -31,8 +33,16 @@ const DashboardCardsApplication: React.FC = () => {
   ];
 
   return (
-    <section>
-      <div className="flex flex-col md:flex-row flex-wrap gap-3 mt-4">
+    <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <CardHeader className="border-b border-gray-100 p-4">
+        <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ClipboardList size={18} />
+          </span>
+          Applications Overview
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
         {
           isLoading
             ? [1, 2, 3].map((index) => (
@@ -41,15 +51,15 @@ const DashboardCardsApplication: React.FC = () => {
             : dashboardData.map(({ title, data }, idx) => (
                 <div
                   key={idx}
-                  className="w-full lg:w-[32%] h-[150px] bg-white rounded-md p-4 flex flex-col justify-between shadow"
+                  className="w-full h-[150px] bg-gray-50 rounded-xl p-4 flex flex-col justify-between"
                 >
-                  <h3>{title}</h3>
-                  <h2 className="text-2xl font-bold">{data}</h2>
+                  <h3 className="text-gray-600">{title}</h3>
+                  <h2 className="text-2xl font-bold text-gray-900">{data}</h2>
                 </div>
               ))
         }
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 };
 

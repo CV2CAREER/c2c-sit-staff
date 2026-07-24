@@ -143,7 +143,13 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       isError: pcsAssistant.isError,
       error: pcsAssistant.error,
     };
-  }, [pcsAssistant]);
+  }, [
+    pcsAssistant.data,
+    pcsAssistant.isLoading,
+    pcsAssistant.isSuccess,
+    pcsAssistant.isError,
+    pcsAssistant.error,
+  ]);
 
   const plans = useFetchData<any>({
     method: 'GET',
