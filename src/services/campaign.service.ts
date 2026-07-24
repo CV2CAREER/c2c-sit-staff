@@ -1439,7 +1439,7 @@ export const updateJobApplicationStatus = async (
       • *Environment:* ${host}
     `;
 
-    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    const clientFullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'N/A';
 
     let environment = process.env.NODE_ENV || 'development';
     if (environment === 'preview') {
