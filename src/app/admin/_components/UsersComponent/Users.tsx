@@ -33,7 +33,6 @@ const Users = ({route} : UserProp) => {
         userType={userType}
         scrollTotable={scrollTotable}
         dateFilterData={dateFilterData}
-        setDateFilterData={setDateFilterData}
       />
       <UsersDataTable
         userType={userType}
@@ -41,6 +40,7 @@ const Users = ({route} : UserProp) => {
         route={route}
         tableRef={tableRef}
         dateFilterData={dateFilterData}
+        setDateFilterData={setDateFilterData}
       />
     </section>
   );

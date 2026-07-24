@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/chart"
 import LoadingSpinner from "@/components/reusable/LoadingSpinner"
 import { useAdminQueries } from "@/hooks/api/admin.api"
+import { Globe } from "lucide-react"
 
 const chartConfig = {
   internal: {
@@ -41,9 +42,14 @@ export default function JobsitesChart() {
   const { data: chartData = [], isLoading } = jobsiteStatsDomain;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-md sm:text-lg md:text-2xl">Jobsites</CardTitle>
+    <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <CardHeader className="border-b border-gray-100">
+        <CardTitle className="flex items-center gap-2 text-md sm:text-lg md:text-2xl">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Globe size={18} />
+          </span>
+          Jobsites
+        </CardTitle>
       </CardHeader>
       <CardContent className="overflow-hidden">
         {isLoading ? (

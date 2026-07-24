@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { LoginSchema } from "@/utils/validationSchemas";
 import { useAuthMutations } from "@/hooks/api/auth.api";
 
@@ -116,83 +116,101 @@ export default function LoginForm() {
   //   }
   // }, [status, session, redirectBasedOnRole, callbackUrl, router]);
 
+  const isBusy = loginUserLoading || form.formState.isSubmitting;
+
   return (
     <Form {...form}>
       <form
-        className={`className="bg-white flex flex-col gap-9 rounded-lg w-full px-4 md:px-12 py-4 md:py-7 shadow-xl font-poppins ${loginUserLoading || form.formState.isSubmitting ? 'opacity-75 pointer-events-none' : ''}`}
+        className={`relative flex w-full max-w-xl flex-col gap-7 rounded-2xl border border-primary/15 bg-white px-6 py-8 shadow-[0_4px_24px_rgba(0,142,211,0.12)] font-poppins sm:px-12 sm:py-10 ${isBusy ? "pointer-events-none opacity-75" : ""}`}
         onSubmit={form.handleSubmit(onSubmit)}
       >
-        <div className="flex flex-col gap-[4px]">
-          <h1 className="font-semibold text-xl md:text-3xl text-[#333333]">
-            Log In
-          </h1>
-          <p className="font-normal text-sm md:text-base text-[#555555]">
-            Please login to access your account 
-          </p>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Lock size={22} />
+          </span>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold text-gray-900 md:text-3xl">
+              Welcome back
+            </h1>
+            <p className="text-sm text-gray-500 md:text-base">
+              Sign in to access your staff dashboard
+            </p>
+          </div>
         </div>
+
         {/* Login Loading Overlay */}
-        {(loginUserLoading || form.formState.isSubmitting) && (
-          <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center z-10 rounded-lg">
-            <FiLoader className="h-10 w-10 animate-spin text-primary mb-3" />
-            <p className="text-sm font-medium text-gray-700">Logging in...</p>
-            <p className="text-xs text-gray-500 mt-1">Please wait while we verify your credentials</p>
+        {isBusy && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl bg-white/70 backdrop-blur-[1px]">
+            <FiLoader className="mb-3 h-9 w-9 animate-spin text-primary" />
+            <p className="text-sm font-medium text-gray-700">Signing in...</p>
+            <p className="mt-1 text-xs text-gray-500">Please wait while we verify your credentials</p>
           </div>
         )}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="Johndoe@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex justify-between items-center">
-                <FormLabel>Password</FormLabel>
-                <a
-                  href={`${process.env.NEXT_PUBLIC_CUSTOMER_URL}/forgot-password`}
-                  className="text-[#008ED3] text-xs hover:underline"
-                >
-                  Forgot Password?
-                </a>
-              </div>
-              <FormControl>
-                <div className="flex gap-3 justify-between items-center border rounded-md">
-                  <Input
-                    className="border-none shadow-none rounded-tr-none rounded-br-none"
-                    placeholder="Password"
-                    type={showPassword ? "text" : "password"}
-                    {...field}
-                  />
-                  <span
-                    className="flex items-center pr-3 cursor-pointer"
-                    onClick={handleShowPassword}
-                  >
-                    {showPassword ? <Eye /> : <EyeOff />}
-                  </span>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
-        <Button
-          type="submit"
-          disabled={loginUserLoading || form.formState.isSubmitting}
-        >
-          {loginUserLoading || form.formState.isSubmitting ? (
+        <div className="flex flex-col gap-5">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-700">Email</FormLabel>
+                <FormControl>
+                  <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 transition-colors focus-within:border-primary/40 focus-within:bg-white focus-within:shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+                    <Mail size={16} className="shrink-0 text-primary" />
+                    <Input
+                      className="h-11 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
+                      placeholder="johndoe@example.com"
+                      {...field}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-gray-700">Password</FormLabel>
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_CUSTOMER_URL}/forgot-password`}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+                <FormControl>
+                  <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 transition-colors focus-within:border-primary/40 focus-within:bg-white focus-within:shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+                    <Lock size={16} className="shrink-0 text-primary" />
+                    <Input
+                      className="h-11 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
+                      placeholder="Enter your password"
+                      type={showPassword ? "text" : "password"}
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      className="flex shrink-0 items-center text-primary/60 transition-colors hover:text-primary"
+                      onClick={handleShowPassword}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button type="submit" size="lg" className="w-full gap-2" disabled={isBusy}>
+          {isBusy ? (
             <>
-              <FiLoader className="mr-2 h-4 w-4 animate-spin" />
+              <FiLoader className="h-4 w-4 animate-spin" />
               Signing in...
             </>
           ) : (
