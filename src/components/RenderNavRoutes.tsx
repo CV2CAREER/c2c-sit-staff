@@ -1,16 +1,26 @@
 "use client";
 import React from "react";
 import { usePathname } from "next/navigation";
-import StaffNavRoutes from "@/components/layout/nav-routes";
+import SidebarNav from "@/components/sidebar/SidebarNav";
 import { NAV_LINKS_BY_ROLE } from "@/constants/navLinks";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminPersonaSwitchStore } from "@/store/switchPersonaStore";
 
 /**
  * @param onClose optional used specifically on the TopBar component.
+ * @param collapsed optional — only relevant to the desktop rail, never passed from the mobile drawer.
+ * @param onExpandRail optional — lets a special group (e.g. Switch Persona) re-expand a collapsed rail.
  * @returns JSX containing the navigation routes based on the current user role or persona
  */
-const RenderNavRoutes = ({ onClose }: { onClose?: () => void }) => {
+const RenderNavRoutes = ({
+  onClose,
+  collapsed,
+  onExpandRail,
+}: {
+  onClose?: () => void;
+  collapsed?: boolean;
+  onExpandRail?: () => void;
+}) => {
   const pathName = usePathname();
   const { user } = useAuth();
   const { activeRole } = useAdminPersonaSwitchStore();
@@ -33,7 +43,9 @@ const RenderNavRoutes = ({ onClose }: { onClose?: () => void }) => {
 
   const links = NAV_LINKS_BY_ROLE[effectiveRole] || NAV_LINKS_BY_ROLE[user.role] || [];
 
-  return <StaffNavRoutes links={links} onPress={onClose} />;
+  return (
+    <SidebarNav links={links} collapsed={collapsed} onPress={onClose} onExpandRail={onExpandRail} />
+  );
 };
 
 export default RenderNavRoutes;
