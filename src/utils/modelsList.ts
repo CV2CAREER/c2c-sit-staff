@@ -22,6 +22,8 @@ import { User } from '../models/v1/user.model';
 import { Credentials } from '../models/v1/credentials.model';
 import { Schedule } from '../models/v1/schedule.model';
 import { ClientAvailability } from '../models/v1/client-availability.model';
+import { JobsiteCredential } from '../models/v1/jobsite-credential.model';
+import { JobsiteCredentialAudit } from '../models/v1/jobsite-credential-audit.model';
 import { InterviewPrepEvidence } from '../models/v1/interview-prep-evidence.model';
 import { Message } from '../models/v1/message.model';
 import { Chat } from '../models/v1/chat.model';
@@ -100,6 +102,8 @@ export const modelList = [
   BlacklistedToken,
   Schedule,
   ClientAvailability,
+  JobsiteCredential,
+  JobsiteCredentialAudit,
   InterviewPrepEvidence,
   Message,
   Chat,
