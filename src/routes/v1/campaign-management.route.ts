@@ -36,7 +36,6 @@ import {
   triggerSubscriptionExpiryReminder,
   getClientApplications,
   getClientManualApplications,
-  getClientTours,
 } from '../../controllers/v1/campaign-management.controller';
 import { checkBlacklistedTokens } from '../../middlewares/checkBlacklistedToken';
 import { isUserAuthenticated } from '../../middlewares/auth';
@@ -140,7 +139,6 @@ campaignManagementRouterV1.get(
   '/clients/:clientId/applications/manual',
   getClientManualApplications
 );
-campaignManagementRouterV1.get('/clients/:clientId/tours', getClientTours);
 campaignManagementRouterV1.post(
   '/clients/applications/update-status',
   updateJobApplicationStatusManually
