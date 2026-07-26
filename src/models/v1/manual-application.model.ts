@@ -123,6 +123,10 @@ export class ManualApplication extends Model {
   @Column(DataType.TEXT)
   QualityScore?: string | null;
 
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  credentialsTourId?: string | null;
+
   @Default(false)
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;
