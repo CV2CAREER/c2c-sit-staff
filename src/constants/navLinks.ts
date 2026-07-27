@@ -28,7 +28,6 @@ import {
   Contact,
   Headphones,
   FileText,
-  KeyRound,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
@@ -82,7 +81,6 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     children: [
       { name: "Revenue Mgt.", href: "/admin/pricing", icon: PiggyBank },
       { name: "Jobsite Mgt.", href: "/admin/jobsite-management", icon: Briefcase },
-      { name: "Jobsite Credentials", href: "/admin/jobsite-credentials", icon: KeyRound },
       { name: "Unsubscribed Users", href: "/admin/unsubscribed-users", icon: Users },
       { name: "Referral Mgt.", href: "/admin/referral-management", icon: UserRoundPlus },
       { name: "Promotional Mgt.", href: "/admin/promotion", icon: Star },
