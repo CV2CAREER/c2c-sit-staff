@@ -111,10 +111,6 @@ interface FetchOptions {
   staleEarly?: boolean;
   forceRefresh?: boolean;
   initialData?: any;
-  // Background polling interval in ms. Undefined/false = no polling
-  // (default). Use sparingly — only where staff need near-live visibility
-  // into another user's actions (e.g. the jobsite-credential pipeline).
-  refetchInterval?: number | false;
 }
 
 // for GET requests
@@ -127,7 +123,6 @@ export function useFetchData<T>({
   staleEarly = false,
   initialData,
   forceRefresh = false,
-  refetchInterval = false,
 }: FetchOptions) {
   return useQuery<ApiSuccess<T>, ApiError>({
     queryKey: [...queryKey],
@@ -178,8 +173,6 @@ export function useFetchData<T>({
     enabled,
     staleTime: forceRefresh ? 0 : staleEarly ? 1000 * 60 * 5 : Infinity,
     gcTime: staleEarly ? 1000 * 60 * 5 : 1000 * 60 * 30,
-    refetchInterval,
-    refetchIntervalInBackground: false,
     retry: false, // Retry once on failure
     initialData:
       initialData != null
