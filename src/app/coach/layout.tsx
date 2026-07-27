@@ -12,7 +12,7 @@ function CoachLayout({ children }: { children: React.ReactNode }) {
     <DashboardDataProvider>
       <main className="relative flex max-w-screen overflow-hidden overflow-x-hidden">
         <Sidebar />
-        <section className="dashboard-content w-full min-h-screen bg-[#f3f3f3] overflow-hidden overflow-x-hidden">
+        <section className="w-full lg:max-w-[calc(100vw-250px)] min-h-screen lg:ms-[250px] bg-[#f3f3f3] overflow-hidden overflow-x-hidden">
           <ViewAsUserBanner />
           <div className="p-3 sm:p-6">
             <TopBar title={"Coach"} />
