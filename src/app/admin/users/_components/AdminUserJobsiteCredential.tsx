@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -131,11 +132,12 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-career-gray-300/60 bg-white shadow-sm">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-career-blue-800 via-career-blue-300 to-career-blue-800" />
-      <div className="p-4 md:p-6 pt-6">
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      className="rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] transition-all duration-300 hover:border-primary/40 hover:shadow-[0_1px_14px_rgba(0,142,211,0.16)] md:p-6"
+    >
         <div className="flex items-center gap-3 mb-6">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-career-blue-800/10 text-career-blue-800">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <KeyRound size={20} />
           </span>
           <h3 className="text-xl md:text-2xl font-semibold">Jobsite Credential</h3>
@@ -300,8 +302,7 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
           />
         )}
       </Dialog>
-      </div>
-    </div>
+    </motion.div>
   );
 };
 
