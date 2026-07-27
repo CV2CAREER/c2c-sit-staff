@@ -54,6 +54,8 @@ import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
 import clientSupportDocumentRouterV1 from "./routes/v1/client-support-document.route";
 import viewAsUserRouterV1 from "./routes/v1/view-as-user.route";
 import communicationTemplateRouterV1 from "./routes/v1/communication-template.route";
+import missingInfoTemplateRouterV1 from "./routes/v1/missing-info-template.route";
+import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -221,6 +223,8 @@ app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
 app.use("/api/v1/admin/client-support-documents", clientSupportDocumentRouterV1);
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
 app.use("/api/v1/communication-template", communicationTemplateRouterV1);
+app.use("/api/v1/missing-info-templates", missingInfoTemplateRouterV1);
+app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);
