@@ -42,8 +42,7 @@ import CustomModal from "@/components/CustomModal/CustomModal";
 import { IDateFilter } from "@/types/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PencilLine, Users2, Archive, Database, SendHorizontal, Settings2, CalendarRange, User, Search } from "lucide-react";
-import DateFilter from "@/components/reusable/DateFilter";
+import { PencilLine, Users2, Archive, Database, SendHorizontal, Settings2, User, Search } from "lucide-react";
 
 
 
@@ -493,15 +492,6 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 setSearchQuery={setSearchQuery}
                 className="h-9 w-full min-w-[200px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
               />
-            </div>
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                <CalendarRange size={14} className="text-primary" />
-                Date Filter
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <DateFilter onFilterDataChange={setDateFilterData} />
-              </div>
             </div>
           </div>
 

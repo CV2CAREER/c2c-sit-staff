@@ -49,8 +49,8 @@ const TopBarActions = () => {
                   priority
                 />
               </DrawerHeader>
-              <DrawerBody>
-                <RenderNavRoutes onClose={onClose} />
+              <DrawerBody className="nav-scope-light">
+                <RenderNavRoutes onClose={onClose} collapsed={false} />
                 <Logout />
               </DrawerBody>
             </>

@@ -4,6 +4,7 @@ import AppProvider from "@/providers/app.provider";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import MuiXLicense from "./muiXLicense";
+import { SIDEBAR_NO_FLASH_SCRIPT } from "@/components/sidebar/useSidebarCollapse";
 
 export const metadata: Metadata = {
   title: {
@@ -47,6 +48,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_NO_FLASH_SCRIPT }} />
+      </head>
       <body suppressHydrationWarning>
         <MuiXLicense />
         <Toaster 
