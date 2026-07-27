@@ -10,10 +10,8 @@ import {
   TestTubeDiagonal,
   Cog
 } from "lucide-react";
-import DateFilter from "@/components/reusable/DateFilter";
 import { IDateFilter } from "@/types/common";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarRange } from "lucide-react";
 
 interface UsersCountData {
   adminPersonnaCount: number;
@@ -419,18 +417,6 @@ const UserDataCards = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-            <CalendarRange size={16} className="text-primary" />
-            Date Filter
-          </span>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <DateFilter onFilterDataChange={setDateFilterData} />
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
         <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {isLoading ? (
