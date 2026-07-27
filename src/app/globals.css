@@ -159,13 +159,19 @@ html.rail-collapsed {
   left: 0;
   z-index: 20;
   width: var(--sidebar-w);
-  display: flex;
+  display: none;
   flex-direction: column;
   overflow: hidden;
   background: linear-gradient(160deg, var(--rail-bg-1), var(--rail-bg-2));
   border-right: 1px solid var(--rail-hairline);
   box-shadow: var(--rail-shadow);
   transition: width 0.32s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (min-width: 1024px) {
+  .rail {
+    display: flex;
+  }
 }
 
 .rail.collapsed {
