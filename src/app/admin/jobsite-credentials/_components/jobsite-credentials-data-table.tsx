@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconButton, Tooltip } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import * as XLSX from "xlsx";
@@ -146,6 +147,13 @@ const JobsiteCredentialsDataTable: React.FC = () => {
   };
 
   const handleReveal = (id: string) => {
+    // Already revealed — just hide it locally, no need to re-hit the API
+    // (and re-log an audit entry) for the same reveal.
+    if (revealedPasswords[id]) {
+      setRevealedPasswords((prev) => ({ ...prev, [id]: null }));
+      return;
+    }
+
     revealJobsiteCredentialPassword(
       { id },
       {
@@ -270,14 +278,22 @@ const JobsiteCredentialsDataTable: React.FC = () => {
                 {revealed ?? "••••••••"}
               </span>
               <Tooltip
-                title="Reveal password — this action is logged"
+                title={
+                  revealed
+                    ? "Hide password"
+                    : "Reveal password — this action is logged"
+                }
                 placement="top"
                 slotProps={{
                   popper: { style: { zIndex: 1500 } },
                 }}
               >
                 <IconButton size="small" onClick={() => handleReveal(id)}>
-                  <VisibilityIcon fontSize="small" />
+                  {revealed ? (
+                    <VisibilityOffIcon fontSize="small" />
+                  ) : (
+                    <VisibilityIcon fontSize="small" />
+                  )}
                 </IconButton>
               </Tooltip>
             </div>

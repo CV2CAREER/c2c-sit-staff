@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { IconButton, Tooltip } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { KeyRound } from "lucide-react";
 import RejectCredentialModal from "../../jobsite-credentials/_components/reject-credential-modal";
 import ConfirmActionModal from "../../jobsite-credentials/_components/confirm-action-modal";
@@ -121,6 +122,14 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
 
   const handleReveal = () => {
     if (!credential) return;
+
+    // Already revealed — just hide it locally, no need to re-hit the API
+    // (and re-log an audit entry) for the same reveal.
+    if (revealedPassword) {
+      setRevealedPassword(null);
+      return;
+    }
+
     revealJobsiteCredentialPassword(
       { id: credential.id },
       {
@@ -171,12 +180,20 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
                   {revealedPassword ?? "••••••••"}
                 </span>
                 <Tooltip
-                  title="Reveal password — this action is logged"
+                  title={
+                    revealedPassword
+                      ? "Hide password"
+                      : "Reveal password — this action is logged"
+                  }
                   placement="top"
                   slotProps={{ popper: { style: { zIndex: 1500 } } }}
                 >
                   <IconButton size="small" onClick={handleReveal}>
-                    <VisibilityIcon fontSize="small" />
+                    {revealedPassword ? (
+                      <VisibilityOffIcon fontSize="small" />
+                    ) : (
+                      <VisibilityIcon fontSize="small" />
+                    )}
                   </IconButton>
                 </Tooltip>
               </div>
