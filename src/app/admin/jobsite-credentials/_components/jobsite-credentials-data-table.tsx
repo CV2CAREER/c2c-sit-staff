@@ -516,12 +516,6 @@ const JobsiteCredentialsDataTable: React.FC = () => {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <SearchInput
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            placeholder="Search by client or email"
-            className="h-9 w-full min-w-[220px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
-          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
@@ -542,6 +536,13 @@ const JobsiteCredentialsDataTable: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <SearchInput
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        placeholder="Search by client or email"
+        className="h-9 w-[220px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm"
+      />
 
       <StyledDataGridPro
         initialState={{
