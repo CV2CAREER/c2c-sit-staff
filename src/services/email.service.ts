@@ -468,7 +468,7 @@ export const sendCrpPayoutOwedEmail = async (
       email: PRODUCT_OWNER_EMAIL,
       subject,
       templateName: "crp-payout-owed.ejs",
-        templateData,
+      templateData,
     });
   }
 };

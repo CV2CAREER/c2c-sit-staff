@@ -122,7 +122,7 @@ export class Plan extends Model {
   /**
    * Valid plan titles that qualify a referred user for referral rewards.
    */
-  static VALID_PLAN_TITLES = ['Bronze', 'Silver', 'Gold', 'Platinum'];
+  static VALID_PLAN_TITLES = ['Coral', 'Bronze', 'Silver', 'Gold', 'Platinum'];
 
   /**
    * Check if a user has a completed, non-expired, valid subscription plan.

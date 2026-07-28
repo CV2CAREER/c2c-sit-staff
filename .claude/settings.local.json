@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"C:\\\\Users\\\\YungFlash\\\\Desktop\\\\C2C\\\\c2c-iat-staff-backend\\\\c2c-iat-staff\\\\src\")",
+      "PowerShell(cd \"C:\\\\Users\\\\YungFlash\\\\Desktop\\\\C2C\\\\c2c-iat-staff-backend\\\\c2c-iat-staff\"; $env:DB_POOL_MAX=1; $env:DB_POOL_MIN=0; npx tsx src/scripts/seed-admin.ts 2>&1)"
+    ]
+  }
+}
