@@ -3055,7 +3055,7 @@ export const getClientManualApplicationsByClientId = async (
 export const getClientToursByClientId = async (clientId: string) => {
   logger.info(`Fetching campaign tours for credentialsId: ${clientId}`);
 
-  const [tours, tourCount] = await Promise.all([
+  const [tours, tourCount, credentials] = await Promise.all([
     CredentialsTour.findAll({
       where: { credentialsId: clientId },
       order: [['tourNumber', 'ASC']],
@@ -3065,7 +3065,19 @@ export const getClientToursByClientId = async (clientId: string) => {
       where: { credentialsId: clientId },
       raw: true,
     }),
+    Credentials.findByPk(clientId, { attributes: ['tourId'], raw: true }),
   ]);
 
-  return { data: tours, tourCount: tourCount?.count ?? tours.length };
+  // `CredentialsTour.isActive` defaults to true on every row and is never
+  // flipped off on renewal, so it can't be trusted to tell tours apart.
+  // `Credentials.tourId` is the actual pointer to the client's current tour
+  // (repointed on every renewal — see credentials.model.ts), so that's the
+  // only thing that should decide which tour shows as active.
+  const activeTourId = credentials?.tourId ?? null;
+  const data = tours.map((tour: any) => ({
+    ...tour,
+    isActive: tour.id === activeTourId,
+  }));
+
+  return { data, tourCount: tourCount?.count ?? tours.length };
 };
