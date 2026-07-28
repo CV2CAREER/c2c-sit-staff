@@ -22,6 +22,8 @@ import { User } from '../models/v1/user.model';
 import { Credentials } from '../models/v1/credentials.model';
 import { Schedule } from '../models/v1/schedule.model';
 import { ClientAvailability } from '../models/v1/client-availability.model';
+import { JobsiteCredential } from '../models/v1/jobsite-credential.model';
+import { JobsiteCredentialAudit } from '../models/v1/jobsite-credential-audit.model';
 import { InterviewPrepEvidence } from '../models/v1/interview-prep-evidence.model';
 import { Message } from '../models/v1/message.model';
 import { Chat } from '../models/v1/chat.model';
@@ -64,6 +66,8 @@ import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
+import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
+import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
@@ -98,6 +102,8 @@ export const modelList = [
   BlacklistedToken,
   Schedule,
   ClientAvailability,
+  JobsiteCredential,
+  JobsiteCredentialAudit,
   InterviewPrepEvidence,
   Message,
   Chat,
@@ -142,6 +148,8 @@ export const modelList = [
   VCSPrompt,
   VCS,
   MissingInfoRequest,
+  MissingInfoTemplate,
+  MissingInfoTemplateField,
   ClientSupportDocument,
   EmailLog,
   EmailTemplate,

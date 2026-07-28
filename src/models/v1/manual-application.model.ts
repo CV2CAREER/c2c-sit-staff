@@ -96,7 +96,7 @@ export class ManualApplication extends Model {
 
   @BelongsTo(() => User, 'client_id')
   user?: User;
-  
+
   // Which of the client's credentials tours this manual application
   // belongs to, so applications can be attributed to a specific paid
   // campaign cycle.
@@ -145,6 +145,34 @@ export class ManualApplication extends Model {
   @Default(false)
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.BOOLEAN)
+  CoverLetterRequired?: boolean | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  DeclinedReasons?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ApprovedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ApprovedDate?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ReturnReason?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ReturnedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ReturnedDate?: Date | null;
 
   @CreatedAt
   createdAt!: Date;
