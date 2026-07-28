@@ -16,7 +16,7 @@ import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.mo
 import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { SlackService } from "./slack.service";
-import { PROD_FRONTEND_URL } from "../config/env";
+import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
 
 const logger = getServiceLogger("JobsiteCredentialService");
 
@@ -107,6 +107,22 @@ async function sendSubmittedNotifications(
   }).catch((err) =>
     logger.error(
       `Failed to send jobsite-credential-pending email to ${client.email}:`,
+      err,
+    ),
+  );
+
+  sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Submitted — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-pending-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(
+      `Failed to send jobsite-credential-pending-admin email to ${TEAM_EMAIL}:`,
       err,
     ),
   );
@@ -224,12 +240,45 @@ export async function acceptJobsiteCredential(
       `Admin ${adminId} accepted jobsite credential ${credentialId} — client can no longer edit; next: Test`,
     );
 
+    setImmediate(() => {
+      sendAcceptedNotification(credential, adminId).catch((err) =>
+        logger.error("Background accepted notification error:", err),
+      );
+    });
+
     return credential;
   } catch (error: any) {
     logger.error("Failed to accept jobsite credential:", error);
     if (error instanceof ErrorHandler) throw error;
     throw new ErrorHandler("Failed to accept jobsite credential", 500);
   }
+}
+
+// Internal-only — no client email on Accept (client already knows they
+// finished forwarding); this just keeps the team in the loop.
+async function sendAcceptedNotification(
+  credential: JobsiteCredential,
+  adminId: string,
+): Promise<void> {
+  const client = (credential as any).client as User;
+  const currentYear = new Date().getFullYear();
+
+  sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Accepted — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-accepted-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      adminId,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(
+      `Failed to send jobsite-credential-accepted-admin email to ${TEAM_EMAIL}:`,
+      err,
+    ),
+  );
 }
 
 // Soft reversal, not a rejection — no reason required, no client
@@ -376,7 +425,7 @@ export async function sendTestEmail(
     );
 
     setImmediate(() => {
-      sendTestEmailMessage(credential).catch((err) =>
+      sendTestEmailMessage(credential, adminId).catch((err) =>
         logger.error("Background test email send error:", err),
       );
     });
@@ -391,6 +440,7 @@ export async function sendTestEmail(
 
 async function sendTestEmailMessage(
   credential: JobsiteCredential,
+  adminId: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const currentYear = new Date().getFullYear();
@@ -406,6 +456,23 @@ async function sendTestEmailMessage(
   }).catch((err) =>
     logger.error(
       `Failed to send jobsite-credential-test email to ${credential.email}:`,
+      err,
+    ),
+  );
+
+  sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Test Email Sent — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-test-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      adminId,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(
+      `Failed to send jobsite-credential-test-admin email to ${TEAM_EMAIL}:`,
       err,
     ),
   );
@@ -478,7 +545,7 @@ export async function approveJobsiteCredential(
     );
 
     setImmediate(() => {
-      sendActiveNotifications(credential).catch((err) =>
+      sendActiveNotifications(credential, adminId).catch((err) =>
         logger.error("Background active notification error:", err),
       );
     });
@@ -494,6 +561,7 @@ export async function approveJobsiteCredential(
 // Client-facing notification once the mailbox is approved and live.
 async function sendActiveNotifications(
   credential: JobsiteCredential,
+  adminId: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -512,6 +580,23 @@ async function sendActiveNotifications(
   }).catch((err) =>
     logger.error(
       `Failed to send jobsite-credential-approved email to ${client.email}:`,
+      err,
+    ),
+  );
+
+  sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Approved — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-approved-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      adminId,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(
+      `Failed to send jobsite-credential-approved-admin email to ${TEAM_EMAIL}:`,
       err,
     ),
   );
@@ -585,7 +670,7 @@ export async function rejectJobsiteCredential(
     );
 
     setImmediate(() => {
-      sendRejectedNotifications(credential, reason, note).catch((err) =>
+      sendRejectedNotifications(credential, adminId, reason, note).catch((err) =>
         logger.error("Background reject notification error:", err),
       );
     });
@@ -600,6 +685,7 @@ export async function rejectJobsiteCredential(
 
 async function sendRejectedNotifications(
   credential: JobsiteCredential,
+  adminId: string,
   reason: JobsiteCredentialRejectionReason,
   note?: string,
 ): Promise<void> {
@@ -623,6 +709,25 @@ async function sendRejectedNotifications(
   }).catch((err) =>
     logger.error(
       `Failed to send jobsite-credential-failed email to ${client.email}:`,
+      err,
+    ),
+  );
+
+  sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Rejected — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-rejected-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      adminId,
+      reason,
+      note: note?.trim() || null,
+      currentYear,
+    },
+  }).catch((err) =>
+    logger.error(
+      `Failed to send jobsite-credential-rejected-admin email to ${TEAM_EMAIL}:`,
       err,
     ),
   );
