@@ -17,6 +17,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/ui/search";
 import * as XLSX from "xlsx";
 import RejectCredentialModal from "./reject-credential-modal";
 import ConfirmActionModal from "./confirm-action-modal";
@@ -74,6 +75,7 @@ const JobsiteCredentialsDataTable: React.FC = () => {
   } = useAdminMutations();
 
   const [tab, setTab] = useState<StatusTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [revealedPasswords, setRevealedPasswords] = useState<
     Record<string, string | null>
@@ -91,11 +93,27 @@ const JobsiteCredentialsDataTable: React.FC = () => {
   >(null);
 
   const rows = useMemo(() => {
-    if (tab === "all") return jobsiteCredentials;
-    return jobsiteCredentials.filter(
-      (c: JobsiteCredential) => c.status === tab,
-    );
-  }, [jobsiteCredentials, tab]);
+    let filtered =
+      tab === "all"
+        ? jobsiteCredentials
+        : jobsiteCredentials.filter(
+            (c: JobsiteCredential) => c.status === tab,
+          );
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((c: JobsiteCredential) => {
+        const clientName = c.client
+          ? `${c.client.firstName} ${c.client.lastName}`.toLowerCase()
+          : "";
+        return (
+          clientName.includes(query) || c.email.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    return filtered;
+  }, [jobsiteCredentials, tab, searchQuery]);
 
   const counts = useMemo(() => {
     const base: Record<string, number> = { all: jobsiteCredentials.length };
@@ -497,7 +515,7 @@ const JobsiteCredentialsDataTable: React.FC = () => {
             </Button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline">
@@ -518,6 +536,13 @@ const JobsiteCredentialsDataTable: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <SearchInput
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        placeholder="Search by client or email"
+        className="h-9 w-[220px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm"
+      />
 
       <StyledDataGridPro
         initialState={{
