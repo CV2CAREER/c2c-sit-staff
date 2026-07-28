@@ -242,10 +242,10 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
           </div>
 
           {/* Buttons */}
-          <div className="flex flex-col lg:flex-row gap-3 justify-center items-center rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
             <Button
               variant="outline"
-              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              className="h-auto w-full whitespace-normal text-center leading-snug py-2.5 gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
               onClick={() =>
                 openConfirmationModal({
                   title: "Dispatch Preferences",
@@ -259,7 +259,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
 
             <Button
               variant="outline"
-              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              className="h-auto w-full whitespace-normal text-center leading-snug py-2.5 gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
               onClick={() =>
                 openConfirmationModal({
                   title: "Dispatch Preferences",
@@ -273,7 +273,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
 
             <Button
               variant="outline"
-              className="w-full md:w-fit gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              className="h-auto w-full whitespace-normal text-center leading-snug py-2.5 gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
               onClick={() =>
                 openConfirmationModal({
                   title: "Generate Password",
