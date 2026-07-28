@@ -25,8 +25,8 @@ export default function DashboardPage() {
   // const failedJobs = data?.data?.failedCount || null;
 
   return (
-    <section className="flex flex-col gap-6 mt-6">
-      <section className="bg-gradient-to-r from-[#0066B2] from-[-11.61%] to-[#00BFF2] to-[103.59%] flex justify-between items-center flex-wrap gap-3 w-full text-white p-3 sm:p-5 shadow-md rounded-sm">
+    <section className="flex flex-col gap-4 mt-4">
+      <section className="bg-gradient-to-r from-[#0066B2] from-[-11.61%] to-[#00BFF2] to-[103.59%] flex justify-between items-center flex-wrap gap-3 w-full text-white p-3 sm:p-5 shadow-[0_1px_10px_rgba(0,142,211,0.10)] rounded-xl">
         <div className="flex flex-col sm:flex-row  w-full justify-between">
           <div className="flex-1">
             <h2 className="text-xl font-bold">Welcome back</h2>

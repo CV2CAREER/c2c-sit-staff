@@ -145,7 +145,7 @@ const dataOptionsList = [
     { value: "questions", label: "Answered Questions" },
     { value: "discovery", label: "Discovery" },
     { value: "campaign", label: "Campaign" },
-    { value: "job_applications", label: "Job Applications" },
+    { value: "job_applications", label: "Submissions" },
     { value: "sample_results", label: "Sample Results" },
 ];
 

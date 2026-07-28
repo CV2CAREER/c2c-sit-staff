@@ -3,6 +3,7 @@ import { useAdminQueries } from "@/hooks/api/admin.api";
 import { useAdminUserDetailContext } from "../context/userDetailContext"
 import { StyledDataGridPro } from "@/utils/table"
 import { GridColDef, GridRowClassNameParams, GridValidRowModel } from "@mui/x-data-grid-pro";
+import { HiOutlineGift } from "react-icons/hi";
 
 const columns:GridColDef[] = [
     { field: 'firstName', headerName: 'First Name', flex: 1, headerClassName:"font-medium"},
@@ -23,9 +24,13 @@ const AdminUsersReferralHistory = ({ userId }: { userId: string }) => {
         return params.indexRelativeToCurrentPage % 2 !== 0 ? 'bg-career-gray-400' : 'bg-white';
     };
     return (
-        <>
-            <div className="h-24" />
-            <h2 className="mb-4 text-2xl">Referrals</h2>
+        <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
+            <div className="flex items-center gap-3 mb-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <HiOutlineGift size={20} />
+                </span>
+                <h2 className="text-xl md:text-2xl font-medium">Referrals</h2>
+            </div>
             <div style={{ height: 400, width: '100%' }}>
                 <StyledDataGridPro
                     columns={columns}
@@ -39,7 +44,7 @@ const AdminUsersReferralHistory = ({ userId }: { userId: string }) => {
                     getRowClassName={getRowClassName}
                 />
             </div>
-        </>
+        </div>
     )
 }
 

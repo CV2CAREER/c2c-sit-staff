@@ -9,7 +9,7 @@ export default async function ClientPage(props: { params: Promise<{ id: string }
   // const userid = params.clientid
 
   return (
-    <main className="flex flex-col gap-6 mt-6 w-full">
+    <main className="flex flex-col gap-4 mt-4 w-full">
       <ClientAvatarAndInsights clientId={clientId}  />
       <ClientDataTable clientId={clientId} route="admin" />
     </main>
