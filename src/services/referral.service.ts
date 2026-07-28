@@ -299,7 +299,7 @@ export class ReferralService {
           const frontendUrl = getFrontendUrl();
           const referrerUser = await User.findOne({ where: { email: referral.referrer } });
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
-          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
           const message = `
 ✅ **Referral Claim Approved** ✅
@@ -602,7 +602,7 @@ export class ReferralService {
           const referrerUser = await User.findOne({ where: { email: referral.referrer } });
           const frontendUrl = getFrontendUrl();
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
-          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
           const message = `
 💰 **CRP Payout Marked as Paid**
@@ -732,7 +732,7 @@ export class ReferralService {
           const frontendUrl = getFrontendUrl();
           const referrerUser = await User.findOne({ where: { email: referral.referrer } });
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
-          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer;
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
           const message = `
 ❌ **Referral Claim Declined** ❌
