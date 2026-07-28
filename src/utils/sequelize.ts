@@ -60,7 +60,7 @@ export const createSequelize = () => {
             require: true, // necessary for managed DBs like DigitalOcean / Heroku
             rejectUnauthorized: false, // allows self-signed certs
           },
-          (DB_STATEMENT_TIMEOUT > 0 ? { statement_timeout: DB_STATEMENT_TIMEOUT } : {}), 
+          ...(DB_STATEMENT_TIMEOUT > 0 ? { statement_timeout: DB_STATEMENT_TIMEOUT } : {}), 
         },
         pool: poolConfig,
       })
