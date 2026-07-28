@@ -353,6 +353,7 @@ const ReferralComponent = () => {
     if (u.type) return u.type === activeTab;
     if (activeTab === "GRP") return u.isAmbassador === true;
     if (activeTab === "CRP") return u.isAmbassador === false || u.isAmbassador === null;
+    if (activeTab === "PRP") return u.isPartner === true;
     return false;
   });
 
