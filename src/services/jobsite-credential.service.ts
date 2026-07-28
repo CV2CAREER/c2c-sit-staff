@@ -16,7 +16,7 @@ import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.mo
 import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { SlackService } from "./slack.service";
-import { PROD_FRONTEND_URL } from "../config/env";
+import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
 
 const logger = getServiceLogger("JobsiteCredentialService");
 
@@ -69,10 +69,12 @@ export async function submitJobsiteCredential(
       `Client ${clientId} submitted jobsite credential ${credential.id} (${email})`,
     );
 
-    setImmediate(() => {
-      sendSubmittedNotifications(credential, client).catch((err) =>
-        logger.error("Background submit notification error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendSubmittedNotifications(credential, client);
+      } catch (err) {
+        logger.error("Background submit notification error:", err);
+      }
     });
 
     return credential;
@@ -94,22 +96,42 @@ async function sendSubmittedNotifications(
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
 
-  sendMail({
-    email: client.email,
-    subject: "One more step ⏳ — CVtoCAREER",
-    templateName: "jobsite-credential-pending.ejs",
-    templateData: {
-      name: client.firstName,
-      email: credential.email,
-      frontendUrl,
-      currentYear,
-    },
-  }).catch((err) =>
+  const [clientResult, teamResult] = await Promise.allSettled([
+    sendMail({
+      email: client.email,
+      subject: "One more step ⏳ — CVtoCAREER",
+      templateName: "jobsite-credential-pending.ejs",
+      templateData: {
+        name: client.firstName,
+        email: credential.email,
+        frontendUrl,
+        currentYear,
+      },
+    }),
+    sendMail({
+      email: TEAM_EMAIL!,
+      subject: `Jobsite Credential Submitted — ${client.firstName} ${client.lastName}`,
+      templateName: "jobsite-credential-pending-admin.ejs",
+      templateData: {
+        clientName: `${client.firstName} ${client.lastName}`,
+        credentialEmail: credential.email,
+        currentYear,
+      },
+    }),
+  ]);
+
+  if (clientResult.status === "rejected") {
     logger.error(
       `Failed to send jobsite-credential-pending email to ${client.email}:`,
-      err,
-    ),
-  );
+      clientResult.reason,
+    );
+  }
+  if (teamResult.status === "rejected") {
+    logger.error(
+      `Failed to send jobsite-credential-pending-admin email to ${TEAM_EMAIL}:`,
+      teamResult.reason,
+    );
+  }
 }
 
 // Manual entry for one client, when they cannot self-serve (C2C-179).
@@ -152,10 +174,12 @@ export async function addJobsiteCredentialManually(
       `Admin ${adminId} manually added jobsite credential ${credential.id} for client ${clientId} (${email})`,
     );
 
-    setImmediate(() => {
-      sendSubmittedNotifications(credential, client).catch((err) =>
-        logger.error("Background submit notification error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendSubmittedNotifications(credential, client);
+      } catch (err) {
+        logger.error("Background submit notification error:", err);
+      }
     });
 
     return credential;
@@ -224,12 +248,42 @@ export async function acceptJobsiteCredential(
       `Admin ${adminId} accepted jobsite credential ${credentialId} — client can no longer edit; next: Test`,
     );
 
+    setImmediate(async () => {
+      try {
+        await sendAcceptedNotification(credential, adminId);
+      } catch (err) {
+        logger.error("Background accepted notification error:", err);
+      }
+    });
+
     return credential;
   } catch (error: any) {
     logger.error("Failed to accept jobsite credential:", error);
     if (error instanceof ErrorHandler) throw error;
     throw new ErrorHandler("Failed to accept jobsite credential", 500);
   }
+}
+
+// Internal-only — no client email on Accept (client already knows they
+// finished forwarding); this just keeps the team in the loop.
+async function sendAcceptedNotification(
+  credential: JobsiteCredential,
+  adminId: string,
+): Promise<void> {
+  const client = (credential as any).client as User;
+  const currentYear = new Date().getFullYear();
+
+  await sendMail({
+    email: TEAM_EMAIL!,
+    subject: `Jobsite Credential Accepted — ${client.firstName} ${client.lastName}`,
+    templateName: "jobsite-credential-accepted-admin.ejs",
+    templateData: {
+      clientName: `${client.firstName} ${client.lastName}`,
+      credentialEmail: credential.email,
+      adminId,
+      currentYear,
+    },
+  });
 }
 
 // Soft reversal, not a rejection — no reason required, no client
@@ -294,10 +348,12 @@ export async function unapproveJobsiteCredential(
       `Admin ${adminId} unapproved jobsite credential ${credentialId} — back to ${statusTo}`,
     );
 
-    setImmediate(() => {
-      sendUnapprovedNotification(credential, statusFrom, statusTo).catch((err) =>
-        logger.error("Background unapproved Slack notification error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendUnapprovedNotification(credential, statusFrom, statusTo);
+      } catch (err) {
+        logger.error("Background unapproved Slack notification error:", err);
+      }
     });
 
     return credential;
@@ -316,7 +372,7 @@ async function sendUnapprovedNotification(
 ): Promise<void> {
   const client = (credential as any).client as User;
 
-  SlackService.notify({
+  await SlackService.notify({
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -324,9 +380,7 @@ async function sendUnapprovedNotification(
     trigger: "jobsite-credential-unapproved",
     channel: SlackChannel.TOWN_CRIER,
     body: `↩️ Credential unapproved — back to ${statusTo.toUpperCase()}\nClient: ${client.firstName} ${client.lastName}\nApplication email: ${credential.email}\nWas: ${statusFrom.toUpperCase()}`,
-  }).catch((err) =>
-    logger.error("Failed to send Slack unapproved notification:", err),
-  );
+  });
 }
 
 // Sends an actual test email to the delegated mailbox so staff can
@@ -375,10 +429,12 @@ export async function sendTestEmail(
       `Admin ${adminId} sent a test email for jobsite credential ${credentialId}`,
     );
 
-    setImmediate(() => {
-      sendTestEmailMessage(credential).catch((err) =>
-        logger.error("Background test email send error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendTestEmailMessage(credential, adminId);
+      } catch (err) {
+        logger.error("Background test email send error:", err);
+      }
     });
 
     return credential;
@@ -391,26 +447,48 @@ export async function sendTestEmail(
 
 async function sendTestEmailMessage(
   credential: JobsiteCredential,
+  adminId: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const currentYear = new Date().getFullYear();
 
-  sendMail({
-    email: credential.email,
-    subject: "Test email — CVtoCAREER",
-    templateName: "jobsite-credential-test.ejs",
-    templateData: {
-      name: client.firstName,
-      currentYear,
-    },
-  }).catch((err) =>
+  const [clientResult, teamResult] = await Promise.allSettled([
+    sendMail({
+      email: credential.email,
+      subject: "Test email — CVtoCAREER",
+      templateName: "jobsite-credential-test.ejs",
+      templateData: {
+        name: client.firstName,
+        currentYear,
+      },
+    }),
+    sendMail({
+      email: TEAM_EMAIL!,
+      subject: `Jobsite Credential Test Email Sent — ${client.firstName} ${client.lastName}`,
+      templateName: "jobsite-credential-test-admin.ejs",
+      templateData: {
+        clientName: `${client.firstName} ${client.lastName}`,
+        credentialEmail: credential.email,
+        adminId,
+        currentYear,
+      },
+    }),
+  ]);
+
+  if (clientResult.status === "rejected") {
     logger.error(
       `Failed to send jobsite-credential-test email to ${credential.email}:`,
-      err,
-    ),
-  );
+      clientResult.reason,
+    );
+  }
+  if (teamResult.status === "rejected") {
+    logger.error(
+      `Failed to send jobsite-credential-test-admin email to ${TEAM_EMAIL}:`,
+      teamResult.reason,
+    );
+  }
 
-  SlackService.notify({
+  await SlackService.notify({
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -418,9 +496,7 @@ async function sendTestEmailMessage(
     trigger: "jobsite-credential-test-email-sent",
     channel: SlackChannel.TOWN_CRIER,
     body: `✉️ Test email sent\nClient: ${client.firstName} ${client.lastName}\nApplication email: ${credential.email}`,
-  }).catch((err) =>
-    logger.error("Failed to send Slack test-email notification:", err),
-  );
+  });
 }
 
 // Requires ACCEPTED, and staff must have clicked Test at least once
@@ -477,10 +553,12 @@ export async function approveJobsiteCredential(
       `Admin ${adminId} approved jobsite credential ${credentialId} — now ACTIVE`,
     );
 
-    setImmediate(() => {
-      sendActiveNotifications(credential).catch((err) =>
-        logger.error("Background active notification error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendActiveNotifications(credential, adminId);
+      } catch (err) {
+        logger.error("Background active notification error:", err);
+      }
     });
 
     return credential;
@@ -494,29 +572,51 @@ export async function approveJobsiteCredential(
 // Client-facing notification once the mailbox is approved and live.
 async function sendActiveNotifications(
   credential: JobsiteCredential,
+  adminId: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
 
-  sendMail({
-    email: client.email,
-    subject: "Email approved ✓ — CVtoCAREER",
-    templateName: "jobsite-credential-approved.ejs",
-    templateData: {
-      name: client.firstName,
-      email: credential.email,
-      frontendUrl,
-      currentYear,
-    },
-  }).catch((err) =>
+  const [clientResult, teamResult] = await Promise.allSettled([
+    sendMail({
+      email: client.email,
+      subject: "Email approved ✓ — CVtoCAREER",
+      templateName: "jobsite-credential-approved.ejs",
+      templateData: {
+        name: client.firstName,
+        email: credential.email,
+        frontendUrl,
+        currentYear,
+      },
+    }),
+    sendMail({
+      email: TEAM_EMAIL!,
+      subject: `Jobsite Credential Approved — ${client.firstName} ${client.lastName}`,
+      templateName: "jobsite-credential-approved-admin.ejs",
+      templateData: {
+        clientName: `${client.firstName} ${client.lastName}`,
+        credentialEmail: credential.email,
+        adminId,
+        currentYear,
+      },
+    }),
+  ]);
+
+  if (clientResult.status === "rejected") {
     logger.error(
       `Failed to send jobsite-credential-approved email to ${client.email}:`,
-      err,
-    ),
-  );
+      clientResult.reason,
+    );
+  }
+  if (teamResult.status === "rejected") {
+    logger.error(
+      `Failed to send jobsite-credential-approved-admin email to ${TEAM_EMAIL}:`,
+      teamResult.reason,
+    );
+  }
 
-  SlackService.notify({
+  await SlackService.notify({
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -524,9 +624,7 @@ async function sendActiveNotifications(
     trigger: "jobsite-credential-approved",
     channel: SlackChannel.TOWN_CRIER,
     body: `✅ Credential approved — now ACTIVE\nClient: ${client.firstName} ${client.lastName}\nApplication email: ${credential.email}\nNext step: SPC to create the accounts`,
-  }).catch((err) =>
-    logger.error("Failed to send Slack approved notification:", err),
-  );
+  });
 }
 
 export async function rejectJobsiteCredential(
@@ -584,10 +682,12 @@ export async function rejectJobsiteCredential(
       `Admin ${adminId} rejected jobsite credential ${credentialId} — ${reason}`,
     );
 
-    setImmediate(() => {
-      sendRejectedNotifications(credential, reason, note).catch((err) =>
-        logger.error("Background reject notification error:", err),
-      );
+    setImmediate(async () => {
+      try {
+        await sendRejectedNotifications(credential, adminId, reason, note);
+      } catch (err) {
+        logger.error("Background reject notification error:", err);
+      }
     });
 
     return credential;
@@ -600,6 +700,7 @@ export async function rejectJobsiteCredential(
 
 async function sendRejectedNotifications(
   credential: JobsiteCredential,
+  adminId: string,
   reason: JobsiteCredentialRejectionReason,
   note?: string,
 ): Promise<void> {
@@ -607,28 +708,52 @@ async function sendRejectedNotifications(
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
 
-  // Email → client: exact reason, never "something went wrong"
-  sendMail({
-    email: client.email,
-    subject: "Email approval failed — CVtoCAREER",
-    templateName: "jobsite-credential-failed.ejs",
-    templateData: {
-      name: client.firstName,
-      email: credential.email,
-      reasonCode: reason,
-      optionalNote: note?.trim() || null,
-      frontendUrl,
-      currentYear,
-    },
-  }).catch((err) =>
+  // Email → client (exact reason, never "something went wrong") + team,
+  // sent concurrently so one failing send never suppresses the other.
+  const [clientResult, teamResult] = await Promise.allSettled([
+    sendMail({
+      email: client.email,
+      subject: "Email approval failed — CVtoCAREER",
+      templateName: "jobsite-credential-failed.ejs",
+      templateData: {
+        name: client.firstName,
+        email: credential.email,
+        reasonCode: reason,
+        optionalNote: note?.trim() || null,
+        frontendUrl,
+        currentYear,
+      },
+    }),
+    sendMail({
+      email: TEAM_EMAIL!,
+      subject: `Jobsite Credential Rejected — ${client.firstName} ${client.lastName}`,
+      templateName: "jobsite-credential-rejected-admin.ejs",
+      templateData: {
+        clientName: `${client.firstName} ${client.lastName}`,
+        credentialEmail: credential.email,
+        adminId,
+        reason,
+        note: note?.trim() || null,
+        currentYear,
+      },
+    }),
+  ]);
+
+  if (clientResult.status === "rejected") {
     logger.error(
       `Failed to send jobsite-credential-failed email to ${client.email}:`,
-      err,
-    ),
-  );
+      clientResult.reason,
+    );
+  }
+  if (teamResult.status === "rejected") {
+    logger.error(
+      `Failed to send jobsite-credential-rejected-admin email to ${TEAM_EMAIL}:`,
+      teamResult.reason,
+    );
+  }
 
   // Slack → TOWN_CRIER
-  SlackService.notify({
+  await SlackService.notify({
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.ERROR,
@@ -636,9 +761,7 @@ async function sendRejectedNotifications(
     trigger: "jobsite-credential-rejected",
     channel: SlackChannel.TOWN_CRIER,
     body: `✕ *Credential REJECTED — ${client.firstName} ${client.lastName}*\n\n*Email:* ${credential.email}\n*Reason:* ${reason}${note ? `\n*Note:* "${note.trim()}"` : ""}\n*Client notified:* yes — with the reason\n*Submissions:* 🛑 STILL BLOCKED`,
-  }).catch((err) =>
-    logger.error("Failed to send Slack reject notification:", err),
-  );
+  });
 }
 
 export interface EditJobsiteCredentialPayload {
