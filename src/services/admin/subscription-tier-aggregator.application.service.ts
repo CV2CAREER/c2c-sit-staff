@@ -97,6 +97,7 @@ class SubscriptionTierAggregatorApplicationService {
           FROM plans p
           WHERE p."deletedAt" IS NULL
             AND p."paymentStatus" = 'completed'
+            AND COALESCE(p."hasExpired", false) = false
         ),
         tier_plan_counts AS (
           SELECT

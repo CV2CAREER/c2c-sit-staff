@@ -11,6 +11,8 @@ import ErrorHandler from "@/utils/errorHandler";
 import { getFrontendUrl, getFullName, updateReferrerStats } from "@/utils/helpers";
 import { EMAIL_QUEUE } from "@/jobs/background/emailWorker";
 import { getQueue } from "@/config/bullMQ";
+import { sendGrpConfirmedEmail, sendGrpDeclinedEmail, sendCrpPaidEmail, sendCrpPayoutOwedEmail, sendInternalReferralEmail, sendPrpThankyouEmail, sendPrpInternalEmail, sendRCFollowUpTag } from "./email.service";
+import { AuditLogService } from "./admin/audit-log.service";
 
 const logger = getServiceLogger("referral-service");
 
@@ -101,23 +103,42 @@ export class ReferralService {
         nest: true
       });
 
+      // Fetch isAmbassador + role + referrer names in one batch query
+      const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
+      const referrerUsers = await User.findAll({
+        where: { email: { [Op.in]: referrerEmails } },
+        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
+        raw: true,
+      });
+      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
+      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
+        u.email,
+        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
+      ]));
+
       const mapped = rows.map((ref: any) => {
         const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
 
         return {
           referralId: ref.id,
+          sequentialId: ref.sequentialId || null,
+          type: ref.type || null,
           referrerEmail: ref.referrer,
-          referrerName: ref.user?.firstName ? `${ref.user.firstName} ${ref.user.lastName || ''}`.trim() : ref.referrer,
-          referralCode: ref.referrer,
+          referrerName: referrerNameMap.get(ref.referrer) || ref.referrer,
           referredUserId: ref.userId,
           referredEmail: ref.user?.email,
           referredName: ref.user?.firstName ? `${ref.user.firstName} ${ref.user.lastName || ''}`.trim() : ref.user?.email,
           status: ref.status,
+          declinedReason: ref.declinedReason || null,
           role: ref.user?.role || 'N/A',
           isClient,
-          paymentStatus: ref.referralStatus || 'unpaid',
+          isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
+          isPartner: partnerMap.get(ref.referrer) ?? false,
+          paymentStatus: ref.referralStatus || RevenueStatus.UNPAID,
+          payId: ref.payId || null,
           businessName: ref.user?.businessName || '',
-          amountOwed: ref.status === 'CLAIMED' && isClient ? 50 : 0,
+          amountOwed: ref.type === 'CRP' && isClient ? 50 : 0,
           updatedBy: ref.updatedBy || null,
           isDeleted: ref.isDeleted || false,
           createdAt: ref.createdAt
@@ -163,11 +184,33 @@ export class ReferralService {
         ],
         limit: pageSize,
         offset: (page - 1) * pageSize,
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        raw: true,
+        nest: true,
       });
 
+      const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
+      const referrerUsers = await User.findAll({
+        where: { email: { [Op.in]: referrerEmails } },
+        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
+        raw: true,
+      });
+      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
+      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
+        u.email,
+        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
+      ]));
+
+      const mapped = rows.map((ref: any) => ({
+        ...ref,
+        referrerName: referrerNameMap.get(ref.referrer) || ref.referrer,
+        isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
+        isPartner: partnerMap.get(ref.referrer) ?? false,
+      }));
+
       return {
-        users: rows,
+        users: mapped,
         total: count
       };
     } catch (error: any) {
@@ -203,17 +246,71 @@ export class ReferralService {
 
       logger.info(`✅ Referral ${referralId} approved by ${adminName} — revenue marked as PAID`);
 
-      // Send Slack notification
+      // JIR-049 + JIR-057: GRP plan extension + audit entry
+      let planExtended = false;
+      let newExpiresAt: Date | null = null;
+      let oldExpiresAt: Date | null = null;
+      if ((referral as any).type === "GRP") {
+        try {
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
+
+          if (req.user) {
+            AuditLogService.log({
+              userId: (req.user as any).id,
+              userFullName: adminName,
+              userRole: (req.user as any).role || "admin",
+              method: "POST",
+              url: `/v1/referrals/${referralId}/approve`,
+              description: `GRP referral ${referralId} approved — referrer: ${referral.referrer}`,
+              dataEntry: {
+                referral_id: (referral as any).sequentialId ?? referralId,
+                program: "GRP",
+                action: "APPROVED",
+                actor: adminName,
+                referrer_id: referrerUser?.uniqueId ?? null,
+                referred_id: referredUser?.uniqueId ?? null,
+                reason_code: null,
+                note: "",
+                reward: "+14 days",
+                applied_via: "S.ADM.03.03.IR07B",
+              },
+            });
+          }
+          if (referrerUser?.isAmbassador) {
+            const coralPlan = await Plan.findOne({
+              where: { userId: referrerUser.id, hasExpired: false, title: "Coral" },
+            });
+            if (coralPlan) {
+              const currentExpiry = coralPlan.expiresAt ? new Date(coralPlan.expiresAt) : new Date();
+              oldExpiresAt = new Date(currentExpiry);
+              newExpiresAt = new Date(currentExpiry);
+              newExpiresAt.setDate(newExpiresAt.getDate() + 14);
+              await coralPlan.update({ expiresAt: newExpiresAt });
+              planExtended = true;
+              logger.info(`✅ Ambassador ${referrerUser.email} Coral plan extended by 14 days — new expiry: ${newExpiresAt.toISOString()}`);
+            }
+          }
+        } catch (extErr: any) {
+          logger.error(`❌ Failed to extend ambassador Coral plan: ${extErr.message}`);
+        }
+      }
+
+      // Send Slack + email notifications
       setImmediate(async () => {
         try {
           const user = await User.findByPk(referral.userId);
-          
+          const frontendUrl = getFrontendUrl();
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
+
           const message = `
 ✅ **Referral Claim Approved** ✅
 • Referrer: ${referral.referrer}
 • Referred: ${user?.email}
 • Referral ID: ${referralId}
-• Revenue Status: Paid
+• Revenue Status: Paid${planExtended && newExpiresAt ? `\n• Ambassador Coral plan extended — new expiry: ${newExpiresAt.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}` : ""}
           `;
 
           await SlackService.notify({
@@ -228,8 +325,52 @@ export class ReferralService {
             teamMentions: "CSM",
             body: message.trim(),
           });
+
+          // JIR-053: SG-GRP-CONFIRMED — email to referee (referrer who made the referral)
+          if (referral.type === "GRP" && referrerUser) {
+            await sendGrpConfirmedEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              referrerName: refereeName,
+              frontendUrl,
+            });
+            logger.info(`✅ GRP confirmed email sent to ${referrerUser.email}`);
+          }
+
+          // JIR-071: SG-INT-GRP-APPROVED — internal email to team
+          if (referral.type === "GRP") {
+            const confirmedCount = await Referrer.count({
+              where: { referrer: referral.referrer, status: ReferrerStatus.APPROVED, type: "GRP" },
+            });
+            await sendInternalReferralEmail({
+              referralType: "GRP",
+              action: "Approved",
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+              referrerName: referrerName ?? "",
+              referrerEmail: referral.referrer || "",
+              referrerId: referrerUser?.uniqueId ?? undefined,
+              refereeName: refereeName ?? "",
+              refereeEmail: user?.email || "",
+              referralId: (referral as any).sequentialId ?? referralId,
+              adminName,
+              oldEndDate: oldExpiresAt ? oldExpiresAt.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : undefined,
+              newEndDate: newExpiresAt ? newExpiresAt.toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }) : undefined,
+              confirmedCount,
+            });
+            logger.info(`✅ Internal GRP approved email sent to team`);
+
+            // RC follow-up alongside SG-GRP-CONFIRMED
+            if (referrerUser) {
+              sendRCFollowUpTag({
+                host,
+                fullName: referrerName ?? "",
+                customerId: referrerUser.uniqueId ?? null,
+                templateId: "SG-GRP-CONFIRMED",
+              }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
+            }
+          }
         } catch (err) {
-          logger.error(`❌ Slack notification failed: ${err}`);
+          logger.error(`❌ Notification failed after GRP approve: ${err}`);
         }
       });
 
@@ -432,6 +573,114 @@ export class ReferralService {
   }
 
   /**
+   * Update referral payment status (e.g. mark CRP as paid)
+   */
+  static async updatePaymentStatus(req: any, referralId: string, paymentStatus: string) {
+    const host = req.headers.host || req.headers.origin || "localhost";
+    const location = getEnvironmentFromHost(host);
+    try {
+      const referral = await Referrer.findByPk(referralId);
+      if (!referral) {
+        throw new Error("Referral not found");
+      }
+
+      const statusMap: Record<string, string> = {
+        paid: RevenueStatus.PAID,
+        unpaid: RevenueStatus.UNPAID,
+        pending: "Pending",
+      };
+      const resolvedStatus = statusMap[paymentStatus.toLowerCase()] ?? paymentStatus;
+      const adminName = req.user ? `${(req.user as any).firstName || ''} ${(req.user as any).lastName || ''}`.trim() || (req.user as any).email : 'system';
+
+      await referral.update({
+        referralStatus: resolvedStatus,
+        status: resolvedStatus === RevenueStatus.PAID ? ReferrerStatus.APPROVED : referral.status,
+        updatedBy: adminName,
+      });
+
+      logger.info(`✅ Referral ${referralId} payment status updated to ${resolvedStatus} by ${adminName}`);
+
+      setImmediate(async () => {
+        try {
+          const referredUser = await User.findByPk(referral.userId);
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const frontendUrl = getFrontendUrl();
+          const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
+
+          const message = `
+💰 **CRP Payout Marked as Paid**
+• Referral ID: ${referralId}
+• Referrer: ${referral.referrer}
+• Referred: ${referredUser?.email || 'N/A'}
+• Marked by: ${adminName}
+• Payment status: ${resolvedStatus}
+          `.trim();
+
+          await SlackService.notify({
+            location,
+            host,
+            node: SlackNode.MESSAGING,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            trigger: "CRP Payout Marked Paid",
+            type: SlackEventType.ADMIN_ACTION,
+            channel: SlackChannel.TOWN_CRIER,
+            teamMentions: "CSM",
+            body: message,
+          });
+
+          // JIR-064: SG-CRP-PAID — email to referrer confirming payout
+          if (resolvedStatus === RevenueStatus.PAID && referrerUser) {
+            await sendCrpPaidEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              payoutAmount: "$50",
+              frontendUrl,
+            });
+            logger.info(`✅ CRP paid email sent to referrer ${referrerUser.email}`);
+          }
+
+          // JIR-073: SG-INT-CRP-PAID — internal email to team
+          if (resolvedStatus === RevenueStatus.PAID) {
+            await sendInternalReferralEmail({
+              referralType: referral.type || "CRP",
+              action: "Payout Paid",
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+              referrerName: referrerName ?? "",
+              referrerEmail: referral.referrer || "",
+              refereeName: refereeName ?? "",
+              refereeEmail: referredUser?.email || "",
+              referralId: (referral as any).sequentialId ?? referralId,
+              adminName,
+              payId: referral.payId ?? undefined,
+              paidDate: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }),
+            });
+            logger.info(`✅ Internal CRP paid email sent to team`);
+
+            // RC follow-up alongside SG-CRP-PAID
+            if (referrerUser) {
+              sendRCFollowUpTag({
+                host,
+                fullName: referrerName ?? "",
+                customerId: referrerUser.uniqueId ?? null,
+                templateId: "SG-CRP-PAID",
+              }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
+            }
+          }
+        } catch (err) {
+          logger.error(`❌ Slack/email notification failed after markPaid: ${err}`);
+        }
+      });
+
+      return { success: true, message: "Payment status updated" };
+    } catch (error: any) {
+      logger.error(`❌ Failed to update payment status: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Decline referral claim
    */
   static async declineClaim(req: any, referralId: string, reason?: string) {
@@ -448,16 +697,47 @@ export class ReferralService {
 
       await referral.update({
         status: ReferrerStatus.REJECTED,
+        declinedReason: reason || null,
         updatedBy: adminName
       });
 
       logger.info(`✅ Referral ${referralId} declined by ${adminName}`);
 
-      // Send Slack notification
+      // JIR-057: Audit entry — GRP decline
+      if ((referral as any).type === "GRP" && req.user) {
+        const referrerUser = await User.findOne({ where: { email: referral.referrer }, attributes: ["id", "uniqueId"] });
+        const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
+        AuditLogService.log({
+          userId: (req.user as any).id,
+          userFullName: adminName,
+          userRole: (req.user as any).role || "admin",
+          method: "POST",
+          url: `/v1/referrals/${referralId}/decline`,
+          description: `GRP referral ${referralId} declined — referrer: ${referral.referrer}${reason ? ` | reason: ${reason}` : ""}`,
+          dataEntry: {
+            referral_id: (referral as any).sequentialId ?? referralId,
+            program: "GRP",
+            action: "DECLINED",
+            actor: adminName,
+            referrer_id: referrerUser?.uniqueId ?? null,
+            referred_id: referredUser?.uniqueId ?? null,
+            reason_code: reason || null,
+            note: "",
+            reward: null,
+            applied_via: null,
+          },
+        });
+      }
+
+      // Send Slack + email notifications
       setImmediate(async () => {
         try {
           const user = await User.findByPk(referral.userId);
-          
+          const frontendUrl = getFrontendUrl();
+          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
+
           const message = `
 ❌ **Referral Claim Declined** ❌
 • Referrer: ${referral.referrer}
@@ -478,8 +758,60 @@ export class ReferralService {
             teamMentions: "CSM",
             body: message.trim(),
           });
+
+          // JIR-054: SG-GRP-DECLINED — email to referee (referrer whose referral was declined)
+          if (referral.type === "GRP" && referrerUser) {
+            await sendGrpDeclinedEmail({
+              name: referrerUser.firstName,
+              email: referrerUser.email,
+              referrerName: refereeName,
+              declinedReason: reason || "No reason provided",
+              frontendUrl,
+            });
+            logger.info(`✅ GRP declined email sent to ${referrerUser.email}`);
+          }
+
+          // JIR-072: SG-INT-GRP-DECLINED — internal email to team
+          if (referral.type === "GRP") {
+            await sendInternalReferralEmail({
+              referralType: "GRP",
+              action: "Declined",
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+              referrerName: referrerName ?? "",
+              referrerEmail: referral.referrer || "",
+              referrerId: referrerUser?.uniqueId ?? undefined,
+              refereeName: refereeName ?? "",
+              refereeEmail: user?.email || "",
+              referralId: (referral as any).sequentialId ?? referralId,
+              adminName,
+              reasonCode: reason || undefined,
+            });
+            logger.info(`✅ Internal GRP declined email sent to team`);
+
+            // RC follow-up alongside SG-GRP-DECLINED
+            if (referrerUser) {
+              sendRCFollowUpTag({
+                host,
+                fullName: referrerName ?? "",
+                customerId: referrerUser.uniqueId ?? null,
+                templateId: "SG-GRP-DECLINED",
+              }).catch((e) => logger.error(`RC follow-up failed: ${e}`));
+            }
+          }
+
+          // SG-INT-PRP-REFERRAL — internal email for PRP referrals
+          if (referral.type === "PRP") {
+            await sendPrpInternalEmail({
+              partnerName: referrerName ?? "",
+              partnerEmail: referral.referrer || "",
+              refereeName: refereeName ?? "",
+              refereeEmail: user?.email || "",
+              adminUrl: `${frontendUrl}/admin-dashboard/referrals`,
+            });
+            logger.info(`✅ Internal PRP email sent to team`);
+          }
         } catch (err) {
-          logger.error(`❌ Slack notification failed: ${err}`);
+          logger.error(`❌ Notification failed after GRP decline: ${err}`);
         }
       });
 
@@ -1126,5 +1458,184 @@ Skipped: ${failedEmails.length}`,
       failed: failedEmails.length,
       failedEmails,
     };
+  }
+
+  /**
+   * ⚡ JIR-061 — RC saves PayID → flips AWAITING_PAYID → UNPAID, fires payout-owed email
+   */
+  static async savePayId(req: any, referralId: string, payId: string) {
+    const referral = await Referrer.findByPk(referralId);
+    if (!referral) throw new ErrorHandler("Referral not found", 404);
+    if (referral.type !== "CRP") throw new ErrorHandler("PayID only applies to CRP referrals", 400);
+
+    const host = req.headers?.host || req.headers?.origin || "localhost";
+    const location = getEnvironmentFromHost(host);
+    const actor = req.user?.email || "system";
+
+    await referral.update({
+      payId,
+      referralStatus: RevenueStatus.UNPAID,
+      updatedBy: actor,
+    });
+
+    setImmediate(async () => {
+      try {
+        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email", "uniqueId"] });
+        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+        const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
+        const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
+
+        await SlackService.notify({
+          location,
+          host,
+          node: SlackNode.FINANCE,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: "CRP PayID Saved",
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          body: `💳 *CRP PayID Saved — Payout Now Unpaid*\n• Referrer: ${referrerName} (${referral.referrer})\n• Referred: ${refereeName}\n• PayID: ${payId}\n• Amount Owed: $50\n• Actioned by: ${actor}`,
+        });
+
+        await sendCrpPayoutOwedEmail({
+          referrerName,
+          referrerEmail: referral.referrer ?? "",
+          referrerId: (referrerUser as any)?.uniqueId ?? undefined,
+          refereeName,
+          refereeEmail: referredUser?.email ?? "",
+          payoutAmount: "$50",
+          adminUrl: getFrontendUrl(),
+          referralId: (referral as any).sequentialId ?? referralId,
+          payId,
+        });
+      } catch (err: any) {
+        logger.error(`❌ savePayId side-effects failed: ${err.message}`);
+      }
+    });
+
+    if (req.user) {
+      AuditLogService.log({
+        userId: (req.user as any).id,
+        userFullName: actor,
+        userRole: (req.user as any).role || "admin",
+        method: "PATCH",
+        url: `/v1/referrals/${referralId}/payid`,
+        description: `CRP referral ${referralId} — PayID saved, payout set to UNPAID`,
+        dataEntry: {
+          referral_id: referralId,
+          program: "CRP",
+          action: "PAYID_SAVED",
+          actor,
+          trigger: "admin_payid_save",
+          payid: payId,
+          payout_status: "UNPAID",
+          paid_by: null,
+          attribution: "FINAL",
+        },
+      });
+    }
+
+    return { referralId, payId, paymentStatus: RevenueStatus.UNPAID };
+  }
+
+  /**
+   * ⚡ JIR-063 — Mark CRP payout as PAID, fires SG-CRP-PAID + internal email
+   */
+  static async markPaid(req: any, referralId: string) {
+    const referral = await Referrer.findByPk(referralId);
+    if (!referral) throw new ErrorHandler("Referral not found", 404);
+    if (referral.type !== "CRP") throw new ErrorHandler("Mark-paid only applies to CRP referrals", 400);
+    if (!referral.payId) throw new ErrorHandler("Cannot mark paid — PayID has not been entered yet", 400);
+
+    const host = req.headers?.host || req.headers?.origin || "localhost";
+    const location = getEnvironmentFromHost(host);
+    const actor = req.user?.email || "system";
+
+    await referral.update({
+      referralStatus: RevenueStatus.PAID,
+      updatedBy: actor,
+    });
+
+    setImmediate(async () => {
+      try {
+        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email"] });
+        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+        const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
+        const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
+
+        await SlackService.notify({
+          location,
+          host,
+          node: SlackNode.FINANCE,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: "CRP Payout Marked Paid",
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.PAID_SUB,
+          teamMentions: "CSM",
+          body: `💸 *CRP Payout Paid — $50 Dispatched*\n• Referrer: ${referrerName} (${referral.referrer})\n• Referred: ${refereeName}\n• PayID: ${referral.payId}\n• Amount Paid: $50\n• Actioned by: ${actor}`,
+        });
+
+        if (referrerUser) {
+          await sendCrpPaidEmail({
+            name: `${referrerUser.firstName} ${referrerUser.lastName}`.trim(),
+            email: referrerUser.email,
+            payoutAmount: "$50",
+            frontendUrl: getFrontendUrl(),
+          });
+        }
+        await sendInternalReferralEmail({
+          referralType: "CRP",
+          action: "Payout Paid",
+          adminUrl: getFrontendUrl(),
+          referrerName,
+          referrerEmail: referral.referrer ?? "",
+          referrerId: referrerUser?.uniqueId ?? undefined,
+          refereeName,
+          refereeEmail: referredUser?.email ?? "",
+          referralId: (referral as any).sequentialId ?? referralId,
+          adminName: actor,
+          payId: referral.payId ?? undefined,
+          paidDate: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }),
+        });
+
+        if (referrerUser) {
+          sendRCFollowUpTag({
+            host,
+            fullName: referrerName,
+            customerId: referrerUser.uniqueId ?? null,
+            templateId: "SG-CRP-PAID",
+          }).catch(() => {});
+        }
+      } catch (err: any) {
+        logger.error(`❌ markPaid side-effects failed: ${err.message}`);
+      }
+    });
+
+    if (req.user) {
+      AuditLogService.log({
+        userId: (req.user as any).id,
+        userFullName: actor,
+        userRole: (req.user as any).role || "admin",
+        method: "POST",
+        url: `/v1/referrals/${referralId}/mark-paid`,
+        description: `CRP referral ${referralId} — $50 payout marked as PAID`,
+        dataEntry: {
+          referral_id: referralId,
+          program: "CRP",
+          action: "PAID",
+          actor,
+          trigger: "admin_mark_paid",
+          amount: 50,
+          payid: referral.payId,
+          payout_status: "PAID",
+          paid_by: actor,
+          attribution: "FINAL",
+        },
+      });
+    }
+
+    return { referralId, paymentStatus: RevenueStatus.PAID };
   }
 }

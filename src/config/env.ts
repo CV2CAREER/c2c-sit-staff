@@ -1,7 +1,7 @@
-// import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 
-// // LOAD ENVIRONMENT VARIABLES
-// dotenv.config();
+// LOAD ENVIRONMENT VARIABLES
+dotenv.config();
 
 export const NODE_ENV = process.env.NODE_ENV;
 export const PORT = process.env.PORT;
@@ -113,6 +113,7 @@ export const JWT_VERIFICATION_SECRET_KEY_EXPIRY = parseInt(
 
 // EMAIL
 export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
+export const PRODUCT_OWNER_EMAIL = process.env.PRODUCT_OWNER_EMAIL || process.env.TEAM_EMAIL!;
 
 // ACCESS TOKEN SECRET
 export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;

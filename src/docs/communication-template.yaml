@@ -6,21 +6,42 @@ paths:
     get:
       tags:
         - Communication Template
-      summary: List all communication templates
-      description: Retrieves all communication templates. Optionally filter by deleted status.
+      summary: List, or view a single, email template
+      description: >
+        Retrieves all email templates, or a single one when `id`/`key` is passed.
+        Templates are the DB-backed replacement for the .ejs files under views/emails —
+        `key` matches the exact templateName string application code passes to sendMail().
       security:
         - bearerAuth: []
       parameters:
         - in: query
-          name: type
+          name: id
           schema:
             type: string
-            enum: [all, deleted]
-          description: Filter by template status. Pass "deleted" to list soft-deleted templates only.
-          example: "all"
+          description: Fetch a single template by id (alternative to key)
+        - in: query
+          name: key
+          schema:
+            type: string
+          description: Fetch a single template by key (alternative to id)
+          example: "welcome-email.ejs"
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [admin, customer]
+          description: Filter the list by template type
+          example: "customer"
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, deleted]
+          description: Pass "deleted" to list soft-deleted templates only. Defaults to active templates.
+          example: "active"
       responses:
         '200':
-          description: Templates fetched successfully
+          description: Template(s) fetched successfully
           content:
             application/json:
               schema:
@@ -33,64 +54,61 @@ paths:
                     type: string
                     example: "Templates fetched successfully"
                   data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CommunicationTemplate'
+                    oneOf:
+                      - type: array
+                        items:
+                          $ref: '#/components/schemas/CommunicationTemplate'
+                      - $ref: '#/components/schemas/CommunicationTemplate'
         '401':
           description: Unauthorized - invalid or missing token
+        '404':
+          description: Template not found (when fetching a single template by id/key)
 
     post:
       tags:
         - Communication Template
-      summary: Create or duplicate a communication template
-      description: Creates a new template from the request body, or duplicates an existing template when query param `request=duplicate` is provided.
+      summary: Create a new email template
+      description: Creates a new template row. `key` must be unique and is permanent — it's the string application code looks up when sending an email.
       security:
         - bearerAuth: []
-      parameters:
-        - in: query
-          name: request
-          schema:
-            type: string
-            enum: [duplicate]
-          description: Set to "duplicate" to duplicate an existing template by templateName
-          example: "duplicate"
-        - in: query
-          name: templateName
-          schema:
-            type: string
-          description: Required when duplicating - the name of the existing template to duplicate
-          example: "Welcome Email"
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
               required:
-                - templateName
-                - persona
-                - subject
+                - key
+                - name
                 - body
               properties:
-                templateName:
+                key:
                   type: string
-                  description: Name of the template
+                  description: Unique, permanent lookup key — matches the templateName sendMail() is called with
+                  example: "welcome-email.ejs"
+                name:
+                  type: string
+                  description: Human-readable display name
                   example: "Welcome Email"
-                persona:
+                type:
                   type: string
-                  description: Persona this template is for (e.g. client, coach)
-                  example: "client"
-                subject:
-                  type: string
-                  description: Email/notification subject line
-                  example: "Welcome to CV2Career!"
+                  enum: [admin, customer]
+                  default: customer
+                  description: Who the email is addressed to
+                  example: "customer"
                 body:
                   type: string
-                  description: Template body content
-                  example: "Dear {{name}}, welcome to our platform..."
+                  description: EJS template markup rendered with the caller's templateData
+                  example: "<p>Dear <%= name %>, welcome to CVtoCAREER!</p>"
+                variables:
+                  type: array
+                  items:
+                    type: string
+                  description: Placeholder names available to this template — drives the admin UI's click-to-insert picker
+                  example: ["name", "frontendUrl", "currentYear"]
       responses:
         '201':
-          description: Template created/duplicated successfully
+          description: Template created successfully
           content:
             application/json:
               schema:
@@ -105,15 +123,17 @@ paths:
                   data:
                     $ref: '#/components/schemas/CommunicationTemplate'
         '400':
-          description: Bad request - missing required fields
+          description: Bad request - missing required fields or invalid type
         '401':
           description: Unauthorized - invalid or missing token
+        '409':
+          description: A template with this key already exists (or exists in the recycle bin — restore it instead)
 
     patch:
       tags:
         - Communication Template
       summary: Update, soft-delete, or restore a template
-      description: Updates template fields, or performs a soft-delete/restore action via the `action` query parameter.
+      description: Updates name/type/body, or performs a soft-delete/restore action via the `action` query parameter. `key` cannot be changed once created.
       security:
         - bearerAuth: []
       parameters:
@@ -128,17 +148,12 @@ paths:
           name: id
           schema:
             type: string
-          description: Template string to act on (alternative to body id)
+          description: Template id to act on (alternative to body id)
         - in: query
-          name: templateName
+          name: key
           schema:
             type: string
-          description: Template name to act on (alternative to id)
-        - in: query
-          name: template
-          schema:
-            type: string
-          description: Template name (alternative to templateName)
+          description: Template key to act on (alternative to id) — required for soft-delete/restore
       requestBody:
         required: false
         content:
@@ -148,24 +163,27 @@ paths:
               properties:
                 id:
                   type: string
-                  description: Template ID (required for update)
+                  description: Template id (required for update)
                   example: "a1b2c3d4-1234-5678-9abc-def012345678"
-                templateName:
+                name:
                   type: string
-                  description: Updated template name
+                  description: Updated display name
                   example: "Welcome Email v2"
-                persona:
+                type:
                   type: string
-                  description: Updated persona
-                  example: "client"
-                subject:
-                  type: string
-                  description: Updated subject line
-                  example: "Welcome to CV2Career - Get Started!"
+                  enum: [admin, customer]
+                  description: Updated template type
+                  example: "customer"
                 body:
                   type: string
-                  description: Updated body content
-                  example: "Hi {{name}}, let's get you started..."
+                  description: Updated EJS body content
+                  example: "<p>Hi <%= name %>, let's get you started...</p>"
+                variables:
+                  type: array
+                  items:
+                    type: string
+                  description: Replaces the full placeholder-name list for this template
+                  example: ["name", "frontendUrl", "currentYear"]
       responses:
         '200':
           description: Template updated, soft-deleted, or restored successfully
@@ -183,7 +201,7 @@ paths:
                   data:
                     $ref: '#/components/schemas/CommunicationTemplate'
         '400':
-          description: Bad request - missing id or required fields
+          description: Bad request - missing id, missing fields, invalid type, or attempted key change
         '401':
           description: Unauthorized - invalid or missing token
         '404':
@@ -193,7 +211,7 @@ paths:
       tags:
         - Communication Template
       summary: Permanently delete a template (hard delete)
-      description: Irreversibly removes a template from the database. Use with caution.
+      description: Irreversibly removes a template from the database, bypassing the recycle bin. Use with caution — sendMail() will fail loudly (and alert Slack) for any code path still referencing this key.
       security:
         - bearerAuth: []
       parameters:
@@ -201,17 +219,12 @@ paths:
           name: id
           schema:
             type: string
-          description: Template string to permanently delete
+          description: Template id to permanently delete
         - in: query
-          name: templateName
+          name: key
           schema:
             type: string
-          description: Template name to permanently delete
-        - in: query
-          name: template
-          schema:
-            type: string
-          description: Template name (alternative to templateName)
+          description: Template key to permanently delete (alternative to id)
       responses:
         '200':
           description: Template permanently deleted
@@ -460,34 +473,37 @@ components:
     CommunicationTemplate:
       type: object
       properties:
-        _id:
-          type: string
-          description: Template string (deprecated, use id)
-          example: "a1b2c3d4-1234-5678-9abc-def012345678"
         id:
           type: string
-          description: Template string
+          description: Template id
           example: "a1b2c3d4-1234-5678-9abc-def012345678"
-        templateName:
+        key:
           type: string
-          description: Name of the template
+          description: Unique, permanent lookup key — matches the templateName sendMail() is called with
+          example: "welcome-email.ejs"
+        name:
+          type: string
+          description: Human-readable display name
           example: "Welcome Email"
-        persona:
+        type:
           type: string
-          description: Target persona for this template
-          example: "client"
-        subject:
-          type: string
-          description: Email/notification subject line
-          example: "Welcome to CV2Career!"
+          enum: [admin, customer]
+          description: Who the email is addressed to
+          example: "customer"
         body:
           type: string
-          description: Template body content
-          example: "Dear {{name}}, welcome to our platform..."
-        isDeleted:
-          type: boolean
-          description: Soft-delete flag
-          example: false
+          description: EJS template markup
+          example: "<p>Dear <%= name %>, welcome to our platform...</p>"
+        variables:
+          type: array
+          items:
+            type: string
+          description: Placeholder names available to this template
+          example: ["name", "frontendUrl", "currentYear"]
+        updatedBy:
+          type: string
+          description: Who last created/updated this template
+          example: "admin@cvtocareer.com"
         createdAt:
           type: string
           format: date-time

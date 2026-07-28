@@ -8,6 +8,8 @@ import { Plan } from '../models/v1/plan.model';
 import { Upload } from '../models/v1/upload.model';
 import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
+import { TourCount } from '../models/v1/tour-count.model';
+import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import {
@@ -25,11 +27,16 @@ import {
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
 import { Op, Sequelize } from 'sequelize';
-import path from 'path';
 import { Logger } from 'winston';
 
 const logger = getServiceLogger('campaign-service');
-const mailDirectory = path.resolve(__dirname, '../views/emails');
+
+const formatClientName = (user?: {
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
+} | null): string =>
+  [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ');
 
 /**
  * Extract active aggregator credentials from credentials object
@@ -127,7 +134,6 @@ export const sendPreferenceNotifications = async (
     email: email,
     subject: 'Update on Your Job Preferences',
     templateName: 'DispatchPreference.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
@@ -140,7 +146,6 @@ export const sendPreferenceNotifications = async (
     email: 'deliveryteam@cvtocareer.com',
     subject: 'User Notification of Updated Job Preferences',
     templateName: 'AdminNotificationTemplate.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname,
       email,
@@ -224,7 +229,6 @@ export const dispatchClientCredentials = async (
     email: clientUser.email,
     subject: 'Your Jobsites Credentials',
     templateName: 'DispatchCredentials.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: clientUser.firstName,
       credentials,
@@ -1094,20 +1098,21 @@ export const saveEditedJob = async (
     client_id: clientId,
     submitted_by: fullName,
     vaEmail: clientExists?.AssignedPCEmail || '',
-    job_data: {
-      job_title: jobData.job_title,
-      company: jobData.company,
-      location: jobData.location,
-      job_url: joblink,
-      job_id: jobData.job_id,
-      job_type: jobData.job_type,
-      country: jobData.country,
-      internal_jobsite: jobData.internal_jobsite || 'C2C',
-      external_jobsite: jobData.external_jobsite,
-    },
-  };
+        job_data: {
+          job_title: jobData.job_title,
+          company: jobData.company,
+          location: jobData.location,
+          job_url: joblink,
+          job_id: jobData.job_id,
+          job_type: jobData.job_type,
+          country: jobData.country,
+          internal_jobsite: jobData.internal_jobsite || 'C2C',
+          external_jobsite: jobData.external_jobsite,
+          cover_letter: jobData.cover_letter,
+        },
+      };
 
-  // Log payload with user information
+      // Log payload with user information
   logger.info(
     `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
     requestData
@@ -1176,6 +1181,9 @@ export const saveManualApplication = async (
 
     Client: clientId || 'N/A',
 
+    // Tour active on the client's credentials at the time this was discovered.
+    credentialsTourId: clientExists.tourId ?? null,
+
     Job_Title:
       joblink && jobData.job_title
         ? `=HYPERLINK("${joblink}","${jobData.job_title}")`
@@ -1210,6 +1218,8 @@ export const saveManualApplication = async (
 
     QualityScore: null,
 
+    CoverLetterRequired: jobData.cover_letter === 'Yes' ? true : jobData.cover_letter === 'No' ? false : null,
+
     isDeleted: false,
   });
 
@@ -1234,20 +1244,12 @@ export const saveManualApplication = async (
     clientExists?.AssignedVetName
   );
 
-  const message = `
-    :mag: *JOB DISCOVERED — Awaiting Vetting*
+  const jobLink = joblink ? `<${joblink}|${jobData.job_title || 'N/A'}>` : (jobData.job_title || 'N/A');
+  const envDisplay = getEnvironmentFromHost(host || '');
+  const sourceDisplay = jobData.job_site_name || jobData.internal_jobsite || jobData.external_jobsite || 'N/A';
+  const clientDisplay = `${userObj?.firstName || ''} ${userObj?.lastName || ''}`.trim() || 'N/A';
 
-    • *DPC:* ${dpcName}
-    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
-    • *Job:* <${joblink}|${jobData.job_title}>
-    • *Company:* ${jobData.company || 'N/A'}
-    • *Location:* ${jobData.location || 'N/A'}
-    • *Source:* ${jobData.job_site_name || 'N/A'}
-    • *Status:* Unattended
-    • *Environment:* ${host}
-
-    ${vpcName} please vet within 4 hours.
-    `;
+  const message = `🔍 JOB DISCOVERED — Awaiting Vetting\n• *DPC:* ${dpcName}\n• *Client:* ${clientDisplay}\n• *Job:* ${jobLink}\n• *Company:* ${jobData.company || 'N/A'}\n• *Location:* ${jobData.location || 'N/A'}\n• *Source:* ${sourceDisplay}\n• *Status:* Unattended\n${vpcName} please vet within 4 hours.`;
 
   setImmediate(async () => {
     try {
@@ -1281,12 +1283,14 @@ export const updateJobApplicationStatus = async (
   host: string,
   qualityScore?: string | null,
   updatedBy?: string,
-  statusReason?: string
+  statusReason?: string,
+  action?: string,
+  declinedReasons?: string[],
+  correctedJobLink?: string
 ) => {
   logger.info(
     `Updating manual application status for applicationId: ${applicationId}`
   );
-  console.log(status);
 
   if (!applicationId) throw new Error('Application ID is required');
   if (!status) throw new Error('Status is required');
@@ -1311,7 +1315,6 @@ export const updateJobApplicationStatus = async (
     updatedAt: currentDate,
   };
 
-  // Validate that client exists
   const clientExists = await Credentials.findOne({
     where: {
       clientId: application.client_id,
@@ -1331,20 +1334,11 @@ export const updateJobApplicationStatus = async (
     logger.warn('User not found');
   }
 
-  const dpcName = await getSlackIdOrName(
-    clientExists?.AssignedPCEmail,
-    clientExists?.AssignedPCName
-  );
-
-  const vpcName = await getSlackIdOrName(
-    clientExists?.AssignedVetEmail,
-    clientExists?.AssignedVetName
-  );
-
-  const spcName = await getSlackIdOrName(
-    clientExists?.AssignedCompletedEmail,
-    clientExists?.AssignedCompletedName
-  );
+  const [dpcName, vpcName, spcName] = await Promise.all([
+    getSlackIdOrName(clientExists?.AssignedPCEmail, clientExists?.AssignedPCName),
+    getSlackIdOrName(clientExists?.AssignedVetEmail, clientExists?.AssignedVetName),
+    getSlackIdOrName(clientExists?.AssignedCompletedEmail, clientExists?.AssignedCompletedName),
+  ]);
 
   const match = application.Job_Title.match(
     /=HYPERLINK\("([^"]+)","([^"]+)"\)/i
@@ -1357,82 +1351,281 @@ export const updateJobApplicationStatus = async (
       }
     : null;
 
-  const qualityEmoji =
-    qualityScore === 'HQA'
-      ? ':large_green_circle:'
-      : qualityScore === 'MQA'
-        ? ':large_orange_circle:'
-        : ':red_circle:';
-  const terminalEmoji =
-    status.toLowerCase() === 'expired' ? ':hourglass:' : ':arrow_right_hook:';
-  const toTitleCase = (value?: string) =>
-    value
-      ? value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-      : 'N/A';
+  const clientFullName = `${userObj?.firstName || ''} ${userObj?.lastName || ''}`.trim();
+  const jobTitleLink = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : 'N/A';
+  const jobDisplay = `${jobTitleLink} · ${application.Advertiser}`;
+  const reasonList = statusReason ? (Array.isArray(statusReason) ? statusReason : statusReason.split(/[;]\s*/)) : [];
 
-  let message = `${terminalEmoji} *JOB ${status}*
+  const paramToShort: Record<string, string> = {
+    'Salary range requires verification': 'Salary',
+    'Salary below minimum': 'Salary',
+    'Salary below client\'s stated minimum': 'Salary',
+    'Location requires confirmation': 'Location',
+    'Location outside stated preference': 'Location',
+    'Location outside client\'s stated preference': 'Location',
+    'Role scope requires clarification': 'Role',
+    'Role misaligned with client profile': 'Role',
+    'Industry alignment requires review': 'Industry',
+    'Industry outside target sector': 'Industry',
+    'Industry outside client\'s target sector': 'Industry',
+    'Work rights eligibility unconfirmed': 'Work rights',
+    'Client ineligible — work rights / sponsorship required': 'Work rights',
+    'Posting incomplete — material fields absent': 'Incomplete',
+    'Job posting materially incomplete': 'Incomplete',
+  };
 
-    • *VPC:* ${vpcName}
-    • *DPC:* ${dpcName}
-    • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
-    • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
-    • *Company:* ${application.Advertiser}
-    • *Status:* ${toTitleCase(status)}
-    • *Environment:* ${host}
+  const failedParams = reasonList.map((r: string) => {
+    const trimmed = r.trim();
+    for (const [key, short] of Object.entries(paramToShort)) {
+      if (trimmed === key || trimmed.startsWith(key)) return short;
+    }
+    return null;
+  }).filter(Boolean).join(' ');
 
-    ${dpcName} please find another job for ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}.`;
+  const heldDays = application.DiscoveryDate
+    ? Math.floor((currentDate.getTime() - new Date(application.DiscoveryDate).getTime()) / 86400000)
+    : 0;
+
+  const resolveReason = (reason: string | string[] | undefined | null): string | undefined => {
+    if (!reason) return undefined;
+    if (Array.isArray(reason)) return reason.join('; ');
+    return reason;
+  };
+
+  let message = '';
+  const envDisplay = getEnvironmentFromHost(host || '');
+  const jobLinkStr = jobTitleUrl ? `<${jobTitleUrl.url}|${jobTitleUrl.title}>` : 'N/A';
+  const advertiser = application.Advertiser || 'N/A';
+
+  const bullet = (lines: string[]) => lines.join('\n');
 
   if (statusUpper === 'SKIPPED') {
-    if (statusReason == null || statusReason === '') {
+    const resolvedReason = resolveReason(statusReason);
+    if (!resolvedReason) {
       throw new Error('Status Reason is required when status is SKIPPED');
     }
-    updateData.StatusReason = statusReason;
-  }
-  if (statusUpper === 'VETTED') {
+    updateData.StatusReason = resolvedReason;
+    if (qualityScore) {
+      updateData.QualityScore = qualityScore;
+    }
+    const emoji = '⏭️';
+    const label = 'JOB SKIPPED';
+    message = bullet([
+      `${emoji} ${label}`,
+      `• *SPC:* ${spcName}`,
+      `• *VPC:* ${vpcName}`,
+      `• *DPC:* ${dpcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${resolvedReason}`,
+      `• *Status:* Skipped`,
+      `${dpcName} please find another job for ${clientFullName}.`,
+    ]);
+  } else if (statusUpper === 'BLOCKED') {
+    const resolvedReason = resolveReason(statusReason);
+    if (!resolvedReason) {
+      throw new Error('Status Reason is required when status is BLOCKED');
+    }
+    updateData.StatusReason = resolvedReason;
+    message = bullet([
+      `🛑 BLOCKED`,
+      `• *SPC:* ${spcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${resolvedReason}`,
+      `• *Status:* Blocked`,
+      `${dpcName} — job stays open, not a skip`,
+    ]);
+  } else if (statusUpper === 'PENDING') {
+    const resolvedReason = resolveReason(statusReason);
+    if (!resolvedReason) {
+      throw new Error('Status Reason is required when status is PENDING');
+    }
+    updateData.StatusReason = resolvedReason;
+    message = bullet([
+      `⏸ PENDING — client data needed`,
+      `• *SPC:* ${spcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${resolvedReason}`,
+      `• *Status:* Pending`,
+      `${spcName} send Missing Info`,
+    ]);
+  } else if (statusUpper === 'DECLINED') {
+    if (!declinedReasons || declinedReasons.length === 0) {
+      throw new Error('Declined reasons are required when status is DECLINED');
+    }
+    updateData.DeclinedReasons = declinedReasons.join('; ');
+    updateData.StatusReason = declinedReasons.join('; ');
+    message = bullet([
+      `🔒 MQA DECLINED — locked`,
+      `• *VPC:* ${vpcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${declinedReasons.join('; ')}`,
+      `• *Status:* Declined`,
+      `${vpcName} score stays MQA · by ${fullName}`,
+    ]);
+  } else if (statusUpper === 'RETURNED_TO_DISCOVERY') {
+    const resolvedReason = resolveReason(statusReason);
+    if (!resolvedReason) {
+      throw new Error('Status Reason is required when status is RETURNED_TO_DISCOVERY');
+    }
+    updateData.StatusReason = resolvedReason;
+    updateData.VettedBy = null;
+    updateData.VettedDate = null;
+    message = bullet([
+      `↩️ RETURNED TO DISCOVERY — fix within 24h`,
+      `• *DPC:* ${dpcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${resolvedReason}`,
+      `• *Status:* Returned to Discovery`,
+      `${dpcName} — entry stays open, not a skip`,
+    ]);
+  } else if (statusUpper === 'UNATTENDED' && correctedJobLink) {
+    if (!correctedJobLink.trim()) {
+      throw new Error('Corrected job link is required');
+    }
+    updateData.Status = 'UNATTENDED';
+    updateData.ReturnedBy = fullName || null;
+    updateData.ReturnedDate = currentDate;
+    if (statusReason) {
+      updateData.ReturnReason = statusReason;
+    }
+    const correctedLinkStr = `<${correctedJobLink.trim()}|Corrected Link>`;
+    const returnReasonLine = statusReason ? `• *Return Reason:* ${statusReason}` : '';
+    message = bullet([
+      `✅ RETURN FIXED — back to Unattended`,
+      `• *DPC:* ${dpcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Corrected Link:* ${correctedLinkStr}`,
+      returnReasonLine,
+      `• *Status:* Unattended`,
+      `${vpcName} please vet within 4 hours.`,
+    ].filter(Boolean));
+  } else if (statusUpper === 'VETTED') {
     if (qualityScore == null || qualityScore === '') {
       throw new Error('qualityScore is required when status is VETTED');
     }
 
-    updateData.QualityScore = qualityScore;
-    updateData.VettedBy = fullName || null;
-    updateData.VettedDate = currentDate;
-
-    message = `
-      :white_check_mark: *JOB VETTED* — ${qualityScore}
-
-      • *VPC:* ${vpcName}
-      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
-      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
-      • *Company:* ${application.Advertiser}
-      • *Quality:* ${qualityScore} ${qualityEmoji}
-      • *Status:* Vetted
-      • *Environment:* ${host}
-
-      ${spcName} please submit.
-    `;
+    if (statusReason) {
+      updateData.StatusReason = resolveReason(statusReason);
+    }
+    const vetReason = statusReason ? resolveReason(statusReason) : '';
+    if (action === 'approve') {
+      updateData.QualityScore = 'HQA';
+      updateData.ApprovedBy = fullName || null;
+      updateData.ApprovedDate = currentDate;
+      message = bullet([
+        `✅ MQA APPROVED — submit`,
+        `• *VPC:* ${vpcName}`,
+        `• *Client:* ${clientFullName}`,
+        `• *Job:* ${jobLinkStr}`,
+        `• *Company:* ${advertiser}`,
+        `• *Reason:* ${vetReason}`,
+        `• *Quality:* HQA`,
+        `• *Status:* Vetted`,
+          `${spcName} please submit.`,
+      ]);
+    } else if (qualityScore === 'HQA') {
+      updateData.QualityScore = 'HQA';
+      updateData.VettedBy = fullName || null;
+      updateData.VettedDate = currentDate;
+      const coverNote = application.CoverLetterRequired ? 'YES' : 'NO';
+      message = bullet([
+        `✅ JOB VETTED — HQA`,
+        `• *VPC:* ${vpcName}`,
+        `• *Client:* ${clientFullName}`,
+        `• *Job:* ${jobLinkStr}`,
+        `• *Company:* ${advertiser}`,
+        `• *Reason:* ${vetReason}`,
+        `• *Quality:* HQA`,
+        `• *Cover Letter:* ${coverNote}`,
+        `• *Status:* Vetted`,
+          `${spcName} please submit.`,
+      ]);
+    } else if (qualityScore === 'MQA') {
+      updateData.QualityScore = 'MQA';
+      updateData.VettedBy = fullName || null;
+      updateData.VettedDate = currentDate;
+      const failedDisplay = failedParams ? `✕ ${failedParams}` : '';
+      const paramLine = failedDisplay ? `• *Failed Parameters:* ${failedDisplay}` : '';
+      message = bullet([
+        `⚠️ JOB VETTED — MQA`,
+        `• *VPC:* ${vpcName}`,
+        `• *Client:* ${clientFullName}`,
+        `• *Job:* ${jobLinkStr}`,
+        `• *Company:* ${advertiser}`,
+        `• *Reason:* ${vetReason}`,
+        `• *Quality:* MQA`,
+        `• *Status:* Vetted`,
+        paramLine,
+          `${spcName} please approve within 30 min.`,
+      ].filter(Boolean));
+    } else {
+      updateData.QualityScore = qualityScore;
+      updateData.VettedBy = fullName || null;
+      updateData.VettedDate = currentDate;
+      message = bullet([
+        `✅ JOB VETTED — ${qualityScore}`,
+        `• *VPC:* ${vpcName}`,
+        `• *Client:* ${clientFullName}`,
+        `• *Job:* ${jobLinkStr}`,
+        `• *Company:* ${advertiser}`,
+        `• *Reason:* ${vetReason}`,
+        `• *Quality:* ${qualityScore}`,
+        `• *Status:* Vetted`,
+          `${spcName} please submit.`,
+      ]);
+    }
   } else if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
     updateData.ApplicationSubmittedBy = fullName || null;
     updateData.ApplicationSubmissionDate = currentDate;
+    if (statusReason) {
+      updateData.StatusReason = resolveReason(statusReason);
+    }
+  } else if (statusUpper === 'EXPIRED') {
+    const resolvedReason = resolveReason(statusReason);
+    if (resolvedReason) {
+      updateData.StatusReason = resolvedReason;
+    }
+    message = bullet([
+      `🚫 JOB EXPIRED — vacancy withdrawn`,
+      `• *SPC:* ${spcName}`,
+      `• *VPC:* ${vpcName}`,
+      `• *DPC:* ${dpcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${resolvedReason || 'Vacancy withdrawn'}`,
+      `• *Status:* Expired`,
+      `Held for ${heldDays}d.`,
+    ]);
   }
 
   await application.update(updateData);
 
   if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
-    message = `
-      :inbox_tray: *JOB SUBMITTED* — Lifecycle Complete
-
-      • *SPC:* ${spcName}
-      • *Client:* ${userObj?.firstName} ${userObj?.middleName} ${userObj?.lastName}
-      • *Job:* <${jobTitleUrl?.url || 'N/A'}|${jobTitleUrl?.title || 'N/A'}>
-      • *Company:* ${application.Advertiser}
-      • *Location:* ${application.Location}
-      • *Source:* N/A
-      • *Quality:* ${application.QualityScore}
-      • *Status:* Submitted
-      • *Environment:* ${host}
-    `;
-
-    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    const submitReason = statusReason ? resolveReason(statusReason) : '';
+    message = bullet([
+      `✅ JOB SUBMITTED`,
+      `• *SPC:* ${spcName}`,
+      `• *Client:* ${clientFullName}`,
+      `• *Job:* ${jobLinkStr}`,
+      `• *Company:* ${advertiser}`,
+      `• *Reason:* ${submitReason}`,
+      `• *Quality:* ${application.QualityScore || 'N/A'}`,
+      `• *Status:* Submitted`,
+      `Submitted by ${fullName}.`,
+    ]);
 
     let environment = process.env.NODE_ENV || 'development';
     if (environment === 'preview') {
@@ -1443,12 +1636,14 @@ export const updateJobApplicationStatus = async (
       `Saving job application for client: ${clientExists.id} by user: ${fullName}`
     );
 
-    // Prepare data for Flask API
     const requestData = {
       environment,
       client_id: clientExists.id,
       submitted_by: fullName,
       vaEmail: clientExists?.AssignedPCEmail || '',
+      // Prefer the tour this manual application was discovered under; fall
+      // back to the client's current tour if it wasn't stamped.
+      credentialsTourId: application.credentialsTourId ?? clientExists.tourId ?? null,
       job_data: {
         job_title: jobTitleUrl?.title || 'N/A',
         company: application.Advertiser,
@@ -1461,26 +1656,58 @@ export const updateJobApplicationStatus = async (
         external_jobsite: application.External_Jobsite,
       },
     };
-    console.log(requestData);
 
-    // Log payload with user information
     logger.info(
       `Save Application Payload for user: ${user?.id || 'N/A'} (${user?.email || ''})`,
       requestData
     );
 
-    // Call Flask Save Application API
-    const axios = require('axios');
-    const flaskResponse = await axios.post(
-      `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
-      requestData,
-      { timeout: 60000 }
-    );
-
-    if (!flaskResponse.data.success) {
-      throw new Error(
-        flaskResponse.data.message || 'Failed to save application to database.'
+    try {
+      const axios = require('axios');
+      const flaskResponse = await axios.post(
+        `http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+        requestData,
+        { timeout: 60000 }
       );
+
+      if (!flaskResponse.data.success) {
+        throw new Error(
+          flaskResponse.data.message || 'Failed to save application to database.'
+        );
+      }
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.response?.data || err.message || 'Unknown error';
+
+      setImmediate(async () => {
+        try {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.ERROR,
+            trigger: updatedBy || fullName,
+            type: SlackEventType.ERROR_ALERT,
+            channel: SlackChannel.CRY_WOLF,
+            body: [
+              `❌ FAILED to save job application`,
+              `• *Client:* ${clientFullName || 'N/A'} (ID: ${clientExists?.id})`,
+              `• *Job:* ${jobTitleUrl?.title || 'N/A'} · ${application.Advertiser || 'N/A'}`,
+              `• *Staff:* ${fullName}`,
+              `• *Status:* Submitted`,
+              `• *Error:* ${errorMessage}`,
+              `• *Flask response status:* ${err?.response?.status || 'N/A'}`,
+              `• *Flask URL:* http://${process.env.JOB_APPLICATION_API_IP}/api/save-application`,
+              `• *Application ID:* ${applicationId}`,
+              `• *Payload:* ${JSON.stringify(requestData)}`,
+            ].join('\n'),
+          });
+        } catch (slackErr) {
+          logger.error(`Flask failure Slack notification failed: ${slackErr}`);
+        }
+      });
+
+      throw err;
     }
 
     logger.info(
@@ -1816,24 +2043,47 @@ export const getCampaignClients = async (
     raw: true,
   });
 
-  // Fetch user profiles and their aggregators for each client
-  const campaignsWithAggregators: any[] = [];
+  // Fetch tour counts for all clients in a single query
+  const tourCounts = campaigns.length
+    ? await TourCount.findAll({
+        where: { credentialsId: campaigns.map((client) => client.id) },
+        raw: true,
+      })
+    : [];
+  const tourCountByCredentialsId = new Map(
+    tourCounts.map((tourCount: any) => [tourCount.credentialsId, tourCount.count])
+  );
 
-  for (const client of campaigns) {
+  // Fetch aggregators for all clients in a single query instead of one
+  // query per client (was causing N+1 round-trips for large client lists).
+  const clientIds = campaigns
+    .map((client) => client.clientId)
+    .filter((id): id is string => !!id);
+
+  const aggregatorsByUserId = new Map<string, any[]>();
+  if (clientIds.length) {
     try {
-      let aggregators: any[] = [];
-      if (client.clientId) {
-        aggregators = await Aggregator.findAll({
-          where: { userId: client.clientId, isDeleted: false },
-          raw: true,
-        });
+      const allAggregators = await Aggregator.findAll({
+        where: { userId: { [Op.in]: clientIds }, isDeleted: false },
+        raw: true,
+      });
+      for (const aggregator of allAggregators as any[]) {
+        const list = aggregatorsByUserId.get(aggregator.userId) ?? [];
+        list.push(aggregator);
+        aggregatorsByUserId.set(aggregator.userId, list);
       }
-      campaignsWithAggregators.push({ ...client, aggregators });
     } catch (err) {
-      logger.warn(`Could not fetch aggregators for client ${client.id}:`, err);
-      campaignsWithAggregators.push({ ...client, aggregators: [] });
+      logger.warn('Could not fetch aggregators for campaign clients:', err);
     }
   }
+
+  const campaignsWithAggregators = campaigns.map((client) => ({
+    ...client,
+    aggregators: client.clientId
+      ? (aggregatorsByUserId.get(client.clientId) ?? [])
+      : [],
+    TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+  }));
 
   const totalCount = await Credentials.count({ where: whereClause });
 
@@ -2583,7 +2833,6 @@ export const dispatchSampleResults = async (
     email: user.email,
     subject: 'Your Sample Results are Ready for Review',
     templateName: 'DispatchPreference.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/dashboard/view-preference`,
@@ -2596,7 +2845,6 @@ export const dispatchSampleResults = async (
     email: 'deliveryteam@cvtocareer.com',
     subject: `${user.firstName} ${user.lastName} Sample Results are Ready for Review`,
     templateName: 'AdminNotificationTemplate.ejs',
-    templateDir: mailDirectory,
     templateData: {
       firstname: user.firstName,
       link: `${process.env.FRONTEND_URL}/admin/campaign-mgt/client/${clientId}`,
@@ -2651,6 +2899,7 @@ export const getClientApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(`Fetching all applications for client_id: ${clientId}`);
@@ -2668,6 +2917,9 @@ export const getClientApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   // Fetch the full filtered set (ordered newest-first by Timestamp) so we can
@@ -2729,6 +2981,7 @@ export const getClientManualApplicationsByClientId = async (
     status?: string;
     source?: string;
     aggregator?: string;
+    credentialsTourId?: string;
   }
 ) => {
   logger.info(
@@ -2748,6 +3001,9 @@ export const getClientManualApplicationsByClientId = async (
   }
   if (filters?.aggregator && filters.aggregator !== 'all') {
     where.Internal_Jobsite = filters.aggregator;
+  }
+  if (filters?.credentialsTourId && filters.credentialsTourId !== 'all') {
+    where.credentialsTourId = filters.credentialsTourId;
   }
 
   const { count, rows } = await ManualApplication.findAndCountAll({
@@ -2784,4 +3040,44 @@ export const getClientManualApplicationsByClientId = async (
     },
     uniqueCount,
   };
+};
+
+/**
+ * Get the list of campaign tours (paid cycles) for a client, used to
+ * populate the "Tour" filter on the client applications page.
+ *
+ * The `clientId` route param on this page is the Credentials row's id
+ * (the campaign list's grid row id, per getRowId={(row) => row.id} on
+ * `Credentials.findAll()` rows) — the same id the TourCount column on the
+ * campaign list is keyed off (`tourCountByCredentialsId.get(client.id)`).
+ * So it's used directly as credentialsId here, no extra lookup needed.
+ */
+export const getClientToursByClientId = async (clientId: string) => {
+  logger.info(`Fetching campaign tours for credentialsId: ${clientId}`);
+
+  const [tours, tourCount, credentials] = await Promise.all([
+    CredentialsTour.findAll({
+      where: { credentialsId: clientId },
+      order: [['tourNumber', 'ASC']],
+      raw: true,
+    }),
+    TourCount.findOne({
+      where: { credentialsId: clientId },
+      raw: true,
+    }),
+    Credentials.findByPk(clientId, { attributes: ['tourId'], raw: true }),
+  ]);
+
+  // `CredentialsTour.isActive` defaults to true on every row and is never
+  // flipped off on renewal, so it can't be trusted to tell tours apart.
+  // `Credentials.tourId` is the actual pointer to the client's current tour
+  // (repointed on every renewal — see credentials.model.ts), so that's the
+  // only thing that should decide which tour shows as active.
+  const activeTourId = credentials?.tourId ?? null;
+  const data = tours.map((tour: any) => ({
+    ...tour,
+    isActive: tour.id === activeTourId,
+  }));
+
+  return { data, tourCount: tourCount?.count ?? tours.length };
 };

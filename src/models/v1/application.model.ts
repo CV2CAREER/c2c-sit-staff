@@ -17,6 +17,7 @@ import {
   SelectionType,
 } from '../../utils/enum';
 import { User } from './user.model';
+import { CredentialsTour } from "./credentials-tour.model";
 
 @Table({
   tableName: 'applications',
@@ -133,6 +134,19 @@ export class Application extends Model {
 
   @BelongsTo(() => User, 'client_id')
   user?: User;
+
+  // Which of the client's credentials tours this application belongs to,
+  // so applications can be attributed to a specific paid campaign cycle.
+  @ForeignKey(() => CredentialsTour)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  credentialsTourId?: string;
+
+  @BelongsTo(() => CredentialsTour, {
+    onDelete: "SET NULL",
+    onUpdate: "CASCADE",
+  })
+  credentialsTour?: CredentialsTour;
 
   @AllowNull(true)
   @Default('')

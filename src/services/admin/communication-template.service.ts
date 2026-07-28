@@ -1,7 +1,11 @@
 import crypto from "crypto";
-import path from "path";
 import ErrorHandler from "@/utils/errorHandler";
 import { CommunicationTemplate } from "@/models/v1/communication-template.model";
+import {
+  EmailTemplate,
+  EmailTemplateType,
+  EMAIL_TEMPLATE_TYPES,
+} from "@/models/v1/email-template.model";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
 import { User } from "@/models/v1/user.model";
 import { getServiceLogger } from "@/utils/createLogger";
@@ -18,29 +22,39 @@ import {
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
 
-const mailDirectory = path.resolve(__dirname, "../../views/emails");
-
 const logger = getServiceLogger("communication-template-service");
 
 type TemplatePayload = {
   id?: string;
-  templateName: string;
-  persona: string;
-  subject: string;
+  key: string;
+  name: string;
+  type?: string;
   body: string;
+  variables?: unknown;
+  updatedBy?: string;
 };
 
 const normalize = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
-const serialize = (template: CommunicationTemplate) => ({
-  _id: template.id,
+const normalizeVariables = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    const name = normalize(entry);
+    if (name) seen.add(name);
+  }
+  return Array.from(seen);
+};
+
+const serialize = (template: EmailTemplate) => ({
   id: template.id,
-  templateName: template.templateName,
-  persona: template.persona,
-  subject: template.subject,
+  key: template.key,
+  name: template.name,
+  type: template.type,
   body: template.body,
-  isDeleted: template.isDeleted,
+  variables: template.variables ?? [],
+  updatedBy: template.updatedBy,
   createdAt: template.createdAt,
   updatedAt: template.updatedAt,
 });
@@ -50,64 +64,99 @@ const isValidUUID = (str: string) => {
   return uuidRegex.test(str);
 };
 
-const resolveTemplate = async (idOrName: string) => {
-  if (!idOrName) {
-    throw new ErrorHandler("template identifier is required", 400);
+const resolveTemplate = async (idOrKey: string, options: { paranoid?: boolean } = {}) => {
+  if (!idOrKey) {
+    throw new ErrorHandler("Template identifier is required", 400);
   }
 
   // Only try findByPk if the identifier looks like a UUID
-  if (isValidUUID(idOrName)) {
-    const byId = await CommunicationTemplate.findByPk(idOrName);
+  if (isValidUUID(idOrKey)) {
+    const byId = await EmailTemplate.findByPk(idOrKey, { paranoid: options.paranoid });
     if (byId) return byId;
   }
 
-  // Otherwise, search by template name
-  const byName = await CommunicationTemplate.findOne({
-    where: { templateName: idOrName },
-    order: [["updatedAt", "DESC"]],
+  // Otherwise, search by template key
+  const byKey = await EmailTemplate.findOne({
+    where: { key: idOrKey },
+    paranoid: options.paranoid,
   });
 
-  if (!byName) {
+  if (!byKey) {
     throw new ErrorHandler("Template not found", 404);
   }
 
-  return byName;
+  return byKey;
+};
+
+const validateType = (type: string) => {
+  if (!EMAIL_TEMPLATE_TYPES.includes(type as EmailTemplateType)) {
+    throw new ErrorHandler(`type must be one of: ${EMAIL_TEMPLATE_TYPES.join(", ")}`, 400);
+  }
 };
 
 export class CommunicationTemplateService {
-  static async listTemplates(type?: string) {
-    const onlyDeleted = type?.toLowerCase() === "deleted";
-    logger.info(`Listing templates (type: ${type || "all"})`);
-    const templates = await CommunicationTemplate.findAll({
-      where: { isDeleted: onlyDeleted },
+  static async listTemplates(filters: { category?: string; status?: string } = {}) {
+    const showDeleted = filters.status?.toLowerCase() === "deleted";
+    const where: Record<string, unknown> = {};
+
+    if (filters.category) {
+      const category = filters.category.trim().toLowerCase();
+      validateType(category);
+      where.type = category;
+    }
+
+    logger.info(
+      `Listing email templates (category: ${filters.category || "all"}, status: ${filters.status || "active"})`,
+    );
+
+    const templates = await EmailTemplate.findAll({
+      where,
+      paranoid: !showDeleted,
       order: [["updatedAt", "DESC"]],
     });
 
-    logger.info(`Found ${templates.length} templates`);
-    return templates.map(serialize);
+    const results = showDeleted ? templates.filter((t) => t.deletedAt) : templates;
+    logger.info(`Found ${results.length} templates`);
+    return results.map(serialize);
+  }
+
+  static async getTemplate(idOrKey: string) {
+    logger.info(`Fetching template: ${idOrKey}`);
+    const template = await resolveTemplate(idOrKey, { paranoid: false });
+    return serialize(template);
   }
 
   static async createTemplate(payload: TemplatePayload) {
-    const templateName = normalize(payload.templateName);
-    const persona = normalize(payload.persona);
-    const subject = normalize(payload.subject);
+    const key = normalize(payload.key);
+    const name = normalize(payload.name);
     const body = normalize(payload.body);
+    const type = normalize(payload.type).toLowerCase() || EmailTemplateType.CUSTOMER;
 
-    if (!templateName || !persona || !subject || !body) {
+    if (!key || !name || !body) {
+      throw new ErrorHandler("key, name and body are required", 400);
+    }
+    validateType(type);
+
+    const existing = await EmailTemplate.findOne({ where: { key }, paranoid: false });
+    if (existing) {
       throw new ErrorHandler(
-        "templateName, persona, subject and body are required",
-        400,
+        existing.deletedAt
+          ? `A deleted template with key "${key}" already exists — restore it instead of creating a new one`
+          : `A template with key "${key}" already exists`,
+        409,
       );
     }
 
-    const template = await CommunicationTemplate.create({
-      templateName,
-      persona,
-      subject,
+    const template = await EmailTemplate.create({
+      key,
+      name,
+      type: type as EmailTemplateType,
       body,
+      variables: normalizeVariables(payload.variables),
+      updatedBy: normalize(payload.updatedBy) || "System",
     });
 
-    logger.info(`Template created: ${template.id} (${templateName})`);
+    logger.info(`Template created: ${template.id} (${key})`);
     return serialize(template);
   }
 
@@ -117,72 +166,71 @@ export class CommunicationTemplateService {
       throw new ErrorHandler("id is required", 400);
     }
 
-    const template = await CommunicationTemplate.findByPk(id);
+    const template = await EmailTemplate.findByPk(id);
     if (!template) {
       throw new ErrorHandler("Template not found", 404);
     }
 
-    const templateName = normalize(payload.templateName);
-    const persona = normalize(payload.persona);
-    const subject = normalize(payload.subject);
-    const body = normalize(payload.body);
-
-    if (!templateName || !persona || !subject || !body) {
+    if (payload.key !== undefined && normalize(payload.key) !== template.key) {
       throw new ErrorHandler(
-        "templateName, persona, subject and body are required",
+        "key cannot be changed — application code sends emails by looking up this exact key",
         400,
       );
     }
 
+    const updates: { name?: string; body?: string; type?: EmailTemplateType; variables?: string[] } = {};
+
+    if (payload.name !== undefined) {
+      const name = normalize(payload.name);
+      if (!name) throw new ErrorHandler("name cannot be empty", 400);
+      updates.name = name;
+    }
+    if (payload.body !== undefined) {
+      const body = normalize(payload.body);
+      if (!body) throw new ErrorHandler("body cannot be empty", 400);
+      updates.body = body;
+    }
+    if (payload.type !== undefined) {
+      const type = normalize(payload.type).toLowerCase();
+      validateType(type);
+      updates.type = type as EmailTemplateType;
+    }
+    if (payload.variables !== undefined) {
+      updates.variables = normalizeVariables(payload.variables);
+    }
+
     await template.update({
-      templateName,
-      persona,
-      subject,
-      body,
+      ...updates,
+      updatedBy: normalize(payload.updatedBy) || template.updatedBy,
     });
 
-    logger.info(`Template updated: ${id} (${templateName})`);
+    logger.info(`Template updated: ${id} (${template.key})`);
     return serialize(template);
   }
 
-  static async softDelete(idOrName: string) {
-    logger.info(`Soft-deleting template: ${idOrName}`);
-    const template = await resolveTemplate(idOrName);
-    await template.update({ isDeleted: true });
+  static async softDelete(idOrKey: string, deletedBy?: string) {
+    logger.info(`Soft-deleting template: ${idOrKey}`);
+    const template = await resolveTemplate(idOrKey);
+    await template.update({ deletedBy: deletedBy || "System" });
+    await template.destroy();
     logger.info(`Template soft-deleted: ${template.id}`);
     return serialize(template);
   }
 
-  static async restore(idOrName: string) {
-    logger.info(`Restoring template: ${idOrName}`);
-    const template = await resolveTemplate(idOrName);
-    await template.update({ isDeleted: false });
+  static async restore(idOrKey: string, updatedBy?: string) {
+    logger.info(`Restoring template: ${idOrKey}`);
+    const template = await resolveTemplate(idOrKey, { paranoid: false });
+    await template.restore();
+    await template.update({ updatedBy: updatedBy || template.updatedBy });
     logger.info(`Template restored: ${template.id}`);
     return serialize(template);
   }
 
-  static async duplicate(idOrName: string) {
-    logger.info(`Duplicating template: ${idOrName}`);
-    const template = await resolveTemplate(idOrName);
-    const duplicateName = `${template.templateName} Copy ${Date.now()}`;
-
-    const duplicate = await CommunicationTemplate.create({
-      templateName: duplicateName,
-      persona: template.persona,
-      subject: template.subject,
-      body: template.body,
-      isDeleted: false,
-    });
-
-    logger.info(`Template duplicated: ${duplicate.id} (${duplicateName})`);
-    return serialize(duplicate);
-  }
-
-  static async hardDelete(idOrName: string) {
-    logger.info(`Hard-deleting template: ${idOrName}`);
-    const template = await resolveTemplate(idOrName);
-    await template.destroy();
-    logger.info(`Template permanently deleted: ${idOrName}`);
+  static async hardDelete(idOrKey: string) {
+    logger.info(`Hard-deleting template: ${idOrKey}`);
+    const template = await resolveTemplate(idOrKey, { paranoid: false });
+    await template.destroy({ force: true });
+    logger.info(`Template permanently deleted: ${idOrKey}`);
     return { success: true };
   }
 
@@ -261,7 +309,6 @@ export class CommunicationTemplateService {
                   email: user.email,
                   subject: "Action Required: Missing Profile Information",
                   templateName: "client-missing-info.ejs",
-                  templateDir: mailDirectory,
                   templateData: {
                     name: clientName,
                     missingField: missingFieldLabel,
@@ -274,7 +321,6 @@ export class CommunicationTemplateService {
                   email: TEAM_EMAIL,
                   subject: "New Missing Info Request Created",
                   templateName: "admin-missing-info.ejs",
-                  templateDir: mailDirectory,
                   templateData: {
                     clientName,
                     clientEmail: user.email,

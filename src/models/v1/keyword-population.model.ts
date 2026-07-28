@@ -54,6 +54,10 @@ export class VCS extends Model {
   @Default(false)
   @Column(DataType.BOOLEAN)
   active!: boolean;
+  
+  @AllowNull(false)
+  @Column(DataType.STRING)
+  key!: string;
 
   @ForeignKey(() => VCSPrompt)
   @Column(DataType.STRING)

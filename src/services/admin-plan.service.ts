@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { getServiceLogger } from "../utils/createLogger";
 import ErrorHandler from "../utils/errorHandler";
 import { User } from "../models/v1/user.model";
@@ -5,7 +6,7 @@ import { Plan } from "../models/v1/plan.model";
 import { Feature } from "../models/v1/feature.model";
 import { SubscriptionTier } from "../models/v1/feature.model";
 import { getSequelize } from "../utils/sequelize";
-import { Transaction } from "sequelize";
+import { Transaction, Op } from "sequelize";
 import { PaymentStatus, RevenueStatus, Progress, Role } from "../utils/enum";
 import { SlackService } from "../services/slack.service";
 import {
@@ -17,13 +18,14 @@ import {
 } from "../utils/enum";
 import { sendMail } from "../config/sendGrid";
 import { handleCampaignManagement } from "./admin-campaign.service";
+import { Credentials } from "../models/v1/credentials.model";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
-import path from "path";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
+import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag } from "./email.service";
+import { AuditLogService } from "./admin/audit-log.service";
 
 const logger = getServiceLogger("admin-plan-service");
-const mailDirectory = path.resolve(__dirname, "../views/emails");
 
 /**
  * Update a user's plan based on a featureId.
@@ -182,7 +184,6 @@ export const updateUserPlanByFeature = async (
             email: user.email,
             subject: `${feature.title} Service Activated Successfully`,
             templateName: "service-subscription-user.ejs",
-            templateDir: mailDirectory,
             templateData: {
               name: user.firstName,
               plan: feature.title,
@@ -195,7 +196,6 @@ export const updateUserPlanByFeature = async (
             email: TEAM_EMAIL!,
             subject: `Payment Received from ${fullName}`,
             templateName: "service-subscription-admin.ejs",
-            templateDir: mailDirectory,
             templateData: {
               name: fullName,
               email: user.email,
@@ -242,6 +242,266 @@ export const updateUserPlanByFeature = async (
 
     return newPlan;
   });
+};
+
+/**
+ * Activate a free 30-day Coral plan for an ambassador.
+ * Does NOT change role or isAmbassador flag — ambassador stays as guest.
+ */
+export const activateCoralPlan = async (
+  host: string,
+  userId: string,
+  adminUser?: { id: string; firstName?: string; lastName?: string; role?: string },
+): Promise<Plan> => {
+  const location = getEnvironmentFromHost(host);
+  logger.info(`[ActivateCoralPlan] User: ${userId}`);
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new ErrorHandler("User not found", 404);
+  if (!user.isAmbassador) throw new ErrorHandler("User is not an ambassador", 400);
+
+  const activePlan = await Plan.findOne({ where: { userId, hasExpired: false } });
+  if (activePlan) throw new ErrorHandler("Ambassador already has an active plan", 400);
+
+  const coralFeature = await Feature.findOne({ where: { tier: SubscriptionTier.CORAL } });
+  if (!coralFeature) throw new ErrorHandler("Coral feature not found", 500);
+
+  const sequelize = getSequelize();
+
+  const newPlan = await sequelize.transaction(async (transaction: Transaction) => {
+    const plan = await Plan.create(
+      {
+        userId,
+        title: coralFeature.title,
+        featureId: coralFeature.id,
+        validityPeriod: "30 days",
+        paymentStatus: "completed",
+        paymentAmount: 0,
+      },
+      { transaction },
+    );
+
+    await plan.reload({ transaction });
+
+    const token = user.ambassadorToken && user.ambassadorToken.length === 16
+      ? user.ambassadorToken
+      : randomBytes(8).toString("hex");
+
+    await user.update(
+      {
+        planId: plan.id,
+        selectedPlan: plan.title,
+        plan: plan.title,
+        isUserSubscribed: true,
+        hasActiveSubscription: true,
+        ambassadorToken: token,
+      },
+      { transaction },
+    );
+
+    return plan;
+  });
+
+  const frontendUrl = getFrontendUrl();
+  const subEndDate = newPlan.expiresAt
+    ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+    : "30 days from today";
+
+  setImmediate(async () => {
+    try {
+      await sendCoralActiveEmail({
+        email: user.email,
+        name: user.firstName,
+        subEndDate,
+        frontendUrl,
+      });
+      logger.info(`[ActivateCoralPlan] Coral active email sent to ${user.email}`);
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Email failed: ${err.message}`);
+    }
+  });
+
+  // JIR-070: SG-INT-CORAL-ACTIVE — internal email to team + RC follow-up
+  setImmediate(async () => {
+    try {
+      await sendInternalReferralEmail({
+        referrerName: `${user.firstName} ${user.lastName || ""}`.trim(),
+        referrerEmail: user.email,
+        referrerId: (user as any).uniqueId ?? undefined,
+        refereeName: "",
+        refereeEmail: "",
+        referralType: "Coral",
+        action: "Coral Plan Activated",
+        registeredDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) : undefined,
+        activatedDate: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }),
+        subStart: newPlan.createdAt ? new Date(newPlan.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) : undefined,
+        subEnd: subEndDate,
+        adminUrl: `${frontendUrl}/admin-dashboard/users/${userId}`,
+      });
+      await sendRCFollowUpTag({
+        host,
+        fullName: `${user.firstName} ${user.lastName || ""}`.trim(),
+        customerId: (user as any).uniqueId ?? null,
+        templateId: "SG-CORAL-ACTIVE",
+      });
+      logger.info(`[ActivateCoralPlan] Internal coral active email + RC follow-up sent`);
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Internal email failed: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await handleCampaignManagement(
+        host,
+        {
+          firstName: user.firstName,
+          middleName: user.middleName,
+          lastName: user.lastName || "",
+          email: user.email,
+          uniqueId: user.uniqueId || "",
+          country: user.country,
+          id: user.id,
+        },
+        coralFeature.title,
+        userId,
+        frontendUrl,
+      );
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Campaign management failed: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.USER_MANAGEMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Ambassador Coral Plan Activated",
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email}) has been granted a *30-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
+      });
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
+  if (adminUser) {
+    AuditLogService.log({
+      userId: adminUser.id,
+      userFullName: `${adminUser.firstName || ""} ${adminUser.lastName || ""}`.trim() || "Admin",
+      userRole: adminUser.role || "admin",
+      method: "POST",
+      url: `/v1/admin/users/${userId}/activate-coral`,
+      description: `Coral plan activated for ambassador ${user.email}`,
+      dataEntry: {
+        action: "CORAL_ACTIVATED",
+        actor: `${adminUser.firstName || ""} ${adminUser.lastName || ""}`.trim() || "Admin",
+        signup_as: "Ambassador",
+        ambassador_id: (user as any).uniqueId ?? userId,
+        ambassador_email: user.email,
+        registered: user.createdAt,
+        activated: new Date().toISOString(),
+        sub_start: newPlan.createdAt ?? new Date().toISOString(),
+        sub_end: newPlan.expiresAt ?? null,
+        duration_days: 30,
+        campaign_mgt_row: "created",
+      },
+    });
+  }
+
+  logger.info(`[ActivateCoralPlan] Coral plan ${newPlan.id} activated for ambassador ${userId}`);
+  return newPlan;
+};
+
+/**
+ * Deactivate an ambassador's active Coral plan.
+ * Marks the plan as expired and resets subscription fields on the user.
+ */
+export const deactivateCoralPlan = async (
+  host: string,
+  userId: string,
+): Promise<void> => {
+  const location = getEnvironmentFromHost(host);
+  logger.info(`[DeactivateCoralPlan] User: ${userId}`);
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new ErrorHandler("User not found", 404);
+  if (!user.isAmbassador) throw new ErrorHandler("User is not an ambassador", 400);
+
+  const activePlan = await Plan.findOne({
+    where: { userId, hasExpired: false, title: "Coral" },
+  });
+  if (!activePlan) throw new ErrorHandler("No active Coral plan found for this user", 400);
+
+  const sequelize = getSequelize();
+
+  await sequelize.transaction(async (transaction: Transaction) => {
+    await activePlan.update({ hasExpired: true }, { transaction });
+    await user.update(
+      {
+        planId: null,
+        selectedPlan: null,
+        plan: null,
+        isUserSubscribed: false,
+        hasActiveSubscription: false,
+        ambassadorToken: null,
+      },
+      { transaction },
+    );
+  });
+
+  setImmediate(async () => {
+    try {
+      const campaignRow = await Credentials.findOne({
+        where: { [Op.or]: [{ seekEmail: user.email }, { clientId: userId }] },
+        paranoid: false,
+      });
+      if (campaignRow) {
+        await campaignRow.update({
+          Active: false,
+          capitalized: "HOLD",
+          SeekAnswerPriority: false,
+          SeekAggregator: false,
+          seekExternalCredentials: {
+            ...(campaignRow.seekExternalCredentials as object),
+            Active: false,
+            Plan: null,
+            CampaignEnd: null,
+            SeekSubEndDate: null,
+            SeekSubDurDays: 0,
+          },
+        });
+        logger.info(`[DeactivateCoralPlan] Campaign Mgt row marked inactive for ${user.email}`);
+      }
+    } catch (err: any) {
+      logger.error(`[DeactivateCoralPlan] Campaign Mgt update failed: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.USER_MANAGEMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Ambassador Coral Plan Deactivated",
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email})'s Coral plan has been *deactivated* by admin. Plan ID: ${activePlan.id}`,
+      });
+    } catch (err: any) {
+      logger.error(`[DeactivateCoralPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
+  logger.info(`[DeactivateCoralPlan] Coral plan deactivated for ambassador ${userId}`);
 };
 
 /**
