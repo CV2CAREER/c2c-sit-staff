@@ -103,14 +103,15 @@ export class ReferralService {
         nest: true
       });
 
-      // Fetch isAmbassador + referrer names in one batch query
+      // Fetch isAmbassador + role + referrer names in one batch query
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
       const referrerUsers = await User.findAll({
         where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'firstName', 'lastName'],
+        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
         raw: true,
       });
       const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
       const referrerNameMap = new Map(referrerUsers.map((u: any) => [
         u.email,
         u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
@@ -133,6 +134,7 @@ export class ReferralService {
           role: ref.user?.role || 'N/A',
           isClient,
           isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
+          isPartner: partnerMap.get(ref.referrer) ?? false,
           paymentStatus: ref.referralStatus || RevenueStatus.UNPAID,
           payId: ref.payId || null,
           businessName: ref.user?.businessName || '',
@@ -190,10 +192,11 @@ export class ReferralService {
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
       const referrerUsers = await User.findAll({
         where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'firstName', 'lastName'],
+        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
         raw: true,
       });
       const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
+      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
       const referrerNameMap = new Map(referrerUsers.map((u: any) => [
         u.email,
         u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
@@ -203,6 +206,7 @@ export class ReferralService {
         ...ref,
         referrerName: referrerNameMap.get(ref.referrer) || ref.referrer,
         isAmbassador: ambassadorMap.get(ref.referrer) ?? false,
+        isPartner: partnerMap.get(ref.referrer) ?? false,
       }));
 
       return {
