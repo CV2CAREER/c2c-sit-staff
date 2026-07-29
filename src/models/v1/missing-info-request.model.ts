@@ -92,7 +92,6 @@ export class MissingInfoRequest extends Model {
   channel!: MissingInfoRequestChannel;
 
   @AllowNull(true)
-  @Column(DataType.TEXT)
   personalMessage!: string;
 
   @AllowNull(true)
@@ -133,26 +132,20 @@ export class MissingInfoRequest extends Model {
 
   @AfterCreate
   static async encryptPersonalMessageOnCreate(instance: MissingInfoRequest, options: any) {
-    if (instance.personalMessage) {
-      await fieldEncryption.encryptMissingRequestPersonalMessage(
-        instance.id,
-        instance.personalMessage,
-        options.transaction,
-      );
-    }
+    await fieldEncryption.encryptMissingRequestPersonalMessage(
+      instance.id,
+      instance.personalMessage ?? null,
+      options.transaction,
+    );
   }
 
   @BeforeUpdate
   static async encryptPersonalMessageOnUpdate(instance: MissingInfoRequest, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
-    if (changed.includes('personalMessage')) {
-      await fieldEncryption.encryptMissingRequestPersonalMessage(
-        instance.id,
-        instance.personalMessage ?? null,
-        options.transaction,
-      );
-    }
+    await fieldEncryption.encryptMissingRequestPersonalMessage(
+      instance.id,
+      instance.personalMessage ?? null,
+      options.transaction,
+    );
   }
 
   @AfterFind

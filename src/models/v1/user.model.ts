@@ -81,7 +81,6 @@ export class User extends Model {
 
   @AllowNull(false)
   @Unique
-  @Column(DataType.STRING)
   email!: string;
 
   @AllowNull(false)
@@ -115,11 +114,9 @@ export class User extends Model {
   customerClass!: CustomerClass;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   phoneNumber?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   whatsappNumber?: string;
 
   // Stored as JSONB for flexibility (previously Mixed)
@@ -314,19 +311,15 @@ export class User extends Model {
   accessToken?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   bankName?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   bsbCode?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   bankAccountNo?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   bankAccountName?: string;
 
   @AllowNull(false)
@@ -488,29 +481,21 @@ export class User extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: User, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
-    const p1Fields = ['email', 'phoneNumber', 'whatsappNumber'];
-    if (p1Fields.some(f => changed.includes(f))) {
-      await fieldEncryption.encryptUserFields(
-        instance.id,
-        instance.email,
-        instance.phoneNumber ?? null,
-        instance.whatsappNumber ?? null,
-        options.transaction,
-      );
-    }
-    const bankFields = ['bankName', 'bsbCode', 'bankAccountNo', 'bankAccountName'];
-    if (bankFields.some(f => changed.includes(f))) {
-      await fieldEncryption.encryptUserBankFields(
-        instance.id,
-        instance.bankName ?? null,
-        instance.bsbCode ?? null,
-        instance.bankAccountNo ?? null,
-        instance.bankAccountName ?? null,
-        options.transaction,
-      );
-    }
+    await fieldEncryption.encryptUserFields(
+      instance.id,
+      instance.email,
+      instance.phoneNumber ?? null,
+      instance.whatsappNumber ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptUserBankFields(
+      instance.id,
+      instance.bankName ?? null,
+      instance.bsbCode ?? null,
+      instance.bankAccountNo ?? null,
+      instance.bankAccountName ?? null,
+      options.transaction,
+    );
   }
 
   @AfterFind

@@ -275,7 +275,6 @@ export class Profile extends Model {
   isApproved?: boolean;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   socialSecurityNumber?: string;
 
   @AllowNull(true)
@@ -283,7 +282,6 @@ export class Profile extends Model {
   veteran?: boolean;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   taxIdentificationNumber?: string;
 
   @AllowNull(true)
@@ -295,7 +293,6 @@ export class Profile extends Model {
   disabilityStatus?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING)
   dateOfBirth?: string;
 
   // Questions stored as JSONB array
@@ -323,10 +320,6 @@ export class Profile extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Profile, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
-    const sensitive = ['socialSecurityNumber', 'taxIdentificationNumber', 'dateOfBirth'];
-    if (!sensitive.some(f => changed.includes(f))) return;
     await fieldEncryption.encryptProfileFields(
       instance.id,
       instance.socialSecurityNumber ?? null,

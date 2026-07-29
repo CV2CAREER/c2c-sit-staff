@@ -43,13 +43,9 @@ export class JobsiteCredential extends Model {
   // The client-supplied application email. Never the client's real
   // mailbox password — that is never requested or stored.
   @AllowNull(false)
-  @Column(DataType.STRING)
   email!: string;
 
-  // System-generated password for the jobsite accounts the SPC opens
-  // manually. Not the client's own credential.
   @AllowNull(true)
-  @Column(DataType.STRING)
   generatedPassword?: string;
 
   @AllowNull(false)
@@ -132,10 +128,6 @@ export class JobsiteCredential extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: JobsiteCredential, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
-    const sensitive = ['email', 'generatedPassword'];
-    if (!sensitive.some(f => changed.includes(f))) return;
     await fieldEncryption.encryptJobsiteCredentialFields(
       instance.id,
       instance.email ?? null,

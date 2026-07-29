@@ -52,11 +52,9 @@ export class Credentials extends Model {
   }
 
   @AllowNull(true)
-  @Column(DataType.STRING(64))
   seekEmail?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(64))
   seekPassword?: string;
 
   @AllowNull(true)
@@ -121,27 +119,21 @@ export class Credentials extends Model {
   deletedAt?: Date;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedPCName?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedPCEmail?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedVetName?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedVetEmail?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedCompletedName?: string;
 
   @AllowNull(true)
-  @Column(DataType.STRING(128))
   AssignedCompletedEmail?: string;
 
   @AllowNull(true)
@@ -208,32 +200,22 @@ export class Credentials extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
-    const p1Fields = ['seekPassword'];
-    if (p1Fields.some(f => changed.includes(f))) {
-      await fieldEncryption.encryptCredentialFields(
-        instance.id,
-        instance.seekPassword ?? null,
-        options.transaction,
-      );
-    }
-    const p2aFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail',
-      'AssignedVetName', 'AssignedVetEmail',
-      'AssignedCompletedName', 'AssignedCompletedEmail'];
-    if (p2aFields.some(f => changed.includes(f))) {
-      await fieldEncryption.encryptCredentialExtendedFields(
-        instance.id,
-        instance.seekEmail ?? null,
-        instance.AssignedPCName ?? null,
-        instance.AssignedPCEmail ?? null,
-        instance.AssignedVetName ?? null,
-        instance.AssignedVetEmail ?? null,
-        instance.AssignedCompletedName ?? null,
-        instance.AssignedCompletedEmail ?? null,
-        options.transaction,
-      );
-    }
+    await fieldEncryption.encryptCredentialFields(
+      instance.id,
+      instance.seekPassword ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptCredentialExtendedFields(
+      instance.id,
+      instance.seekEmail ?? null,
+      instance.AssignedPCName ?? null,
+      instance.AssignedPCEmail ?? null,
+      instance.AssignedVetName ?? null,
+      instance.AssignedVetEmail ?? null,
+      instance.AssignedCompletedName ?? null,
+      instance.AssignedCompletedEmail ?? null,
+      options.transaction,
+    );
   }
 
   @AfterFind

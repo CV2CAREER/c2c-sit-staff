@@ -253,7 +253,7 @@ export class ReferralService {
       let oldExpiresAt: Date | null = null;
       if ((referral as any).type === "GRP") {
         try {
-          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
           const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
 
@@ -303,7 +303,7 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
           const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
@@ -606,7 +606,7 @@ export class ReferralService {
       setImmediate(async () => {
         try {
           const referredUser = await User.findByPk(referral.userId);
-          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
           const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const frontendUrl = getFrontendUrl();
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
@@ -709,7 +709,7 @@ export class ReferralService {
 
       // JIR-057: Audit entry — GRP decline
       if ((referral as any).type === "GRP" && req.user) {
-        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
         const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["id", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
         AuditLogService.log({
@@ -739,7 +739,7 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
           const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
@@ -1486,7 +1486,7 @@ Skipped: ${failedEmails.length}`,
 
     setImmediate(async () => {
       try {
-        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
         const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
         const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
@@ -1566,7 +1566,7 @@ Skipped: ${failedEmails.length}`,
 
       setImmediate(async () => {
         try {
-          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
           const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email"] }) : null;
           const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
