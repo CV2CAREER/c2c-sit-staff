@@ -11,11 +11,15 @@ import {
   CreatedAt,
   UpdatedAt,
   BeforeCreate,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { literal } from "sequelize";
 import { User } from "./user.model";
 import { CredentialsTour } from "./credentials-tour.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 @Table({
   tableName: "credentials",
@@ -181,4 +185,80 @@ export class Credentials extends Model {
     onUpdate: "CASCADE",
   })
   tour?: CredentialsTour;
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: Credentials, options: any) {
+    await fieldEncryption.encryptCredentialFields(
+      instance.id,
+      instance.seekPassword ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptCredentialExtendedFields(
+      instance.id,
+      instance.seekEmail ?? null,
+      instance.AssignedPCName ?? null,
+      instance.AssignedPCEmail ?? null,
+      instance.AssignedVetName ?? null,
+      instance.AssignedVetEmail ?? null,
+      instance.AssignedCompletedName ?? null,
+      instance.AssignedCompletedEmail ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const p1Fields = ['seekPassword'];
+    if (p1Fields.some(f => changed.includes(f))) {
+      await fieldEncryption.encryptCredentialFields(
+        instance.id,
+        instance.seekPassword ?? null,
+        options.transaction,
+      );
+    }
+    const p2aFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail',
+      'AssignedVetName', 'AssignedVetEmail',
+      'AssignedCompletedName', 'AssignedCompletedEmail'];
+    if (p2aFields.some(f => changed.includes(f))) {
+      await fieldEncryption.encryptCredentialExtendedFields(
+        instance.id,
+        instance.seekEmail ?? null,
+        instance.AssignedPCName ?? null,
+        instance.AssignedPCEmail ?? null,
+        instance.AssignedVetName ?? null,
+        instance.AssignedVetEmail ?? null,
+        instance.AssignedCompletedName ?? null,
+        instance.AssignedCompletedEmail ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: Credentials[] | Credentials | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      const encPw = instance.getDataValue('seekPasswordEncrypted');
+      if (encPw) {
+        const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
+        if (pw !== null) instance.set('seekPassword', pw);
+      }
+      const encSeekEmail = instance.getDataValue('seekEmailEncrypted');
+      if (encSeekEmail) {
+        const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
+        if (ext) {
+          instance.set('seekEmail', ext.seekEmail);
+          instance.set('AssignedPCName', ext.AssignedPCName);
+          instance.set('AssignedPCEmail', ext.AssignedPCEmail);
+          instance.set('AssignedVetName', ext.AssignedVetName);
+          instance.set('AssignedVetEmail', ext.AssignedVetEmail);
+          instance.set('AssignedCompletedName', ext.AssignedCompletedName);
+          instance.set('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+        }
+      }
+    }));
+  }
 }

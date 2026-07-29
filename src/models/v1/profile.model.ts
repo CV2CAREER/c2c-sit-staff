@@ -13,11 +13,15 @@ import {
   CreatedAt,
   UpdatedAt,
   Unique,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import { Plan } from "./plan.model";
 import { Classification, Question } from "../../types/profile.types";
 import { AggregatorLink } from "../../types/aggregator.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 @Table({
   tableName: "profiles",
@@ -305,4 +309,45 @@ export class Profile extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: Profile, options: any) {
+    await fieldEncryption.encryptProfileFields(
+      instance.id,
+      instance.socialSecurityNumber ?? null,
+      instance.taxIdentificationNumber ?? null,
+      instance.dateOfBirth ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: Profile, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const sensitive = ['socialSecurityNumber', 'taxIdentificationNumber', 'dateOfBirth'];
+    if (!sensitive.some(f => changed.includes(f))) return;
+    await fieldEncryption.encryptProfileFields(
+      instance.id,
+      instance.socialSecurityNumber ?? null,
+      instance.taxIdentificationNumber ?? null,
+      instance.dateOfBirth ?? null,
+      options.transaction,
+    );
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: Profile[] | Profile | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      const encSSN = instance.getDataValue('socialSecurityNumberEncrypted');
+      if (!encSSN && !instance.getDataValue('taxIdentificationNumberEncrypted') && !instance.getDataValue('dateOfBirthEncrypted')) return;
+      const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
+      if (!decrypted) return;
+      instance.set('socialSecurityNumber', decrypted.socialSecurityNumber);
+      instance.set('taxIdentificationNumber', decrypted.taxIdentificationNumber);
+      instance.set('dateOfBirth', decrypted.dateOfBirth);
+    }));
+  }
 }

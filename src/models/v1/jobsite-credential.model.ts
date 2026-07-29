@@ -10,12 +10,16 @@ import {
   UpdatedAt,
   ForeignKey,
   BelongsTo,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
 } from "../../utils/enum";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 @Table({
   tableName: "jobsite_credentials",
@@ -115,6 +119,44 @@ export class JobsiteCredential extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: JobsiteCredential, options: any) {
+    await fieldEncryption.encryptJobsiteCredentialFields(
+      instance.id,
+      instance.email ?? null,
+      instance.generatedPassword ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: JobsiteCredential, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const sensitive = ['email', 'generatedPassword'];
+    if (!sensitive.some(f => changed.includes(f))) return;
+    await fieldEncryption.encryptJobsiteCredentialFields(
+      instance.id,
+      instance.email ?? null,
+      instance.generatedPassword ?? null,
+      options.transaction,
+    );
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: JobsiteCredential[] | JobsiteCredential | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      const encEmail = instance.getDataValue('emailEncrypted');
+      if (!encEmail) return;
+      const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
+      if (!decrypted) return;
+      instance.set('email', decrypted.email);
+      instance.set('generatedPassword', decrypted.generatedPassword);
+    }));
+  }
 }
 
 export default JobsiteCredential;

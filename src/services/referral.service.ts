@@ -8,6 +8,7 @@ import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { PaymentStatus, ReferrerStatus, RevenueStatus, SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
 import ErrorHandler from "@/utils/errorHandler";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { getFrontendUrl, getFullName, updateReferrerStats } from "@/utils/helpers";
 import { EMAIL_QUEUE } from "@/jobs/background/emailWorker";
 import { getQueue } from "@/config/bullMQ";
@@ -252,7 +253,8 @@ export class ReferralService {
       let oldExpiresAt: Date | null = null;
       if ((referral as any).type === "GRP") {
         try {
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
 
           if (req.user) {
@@ -301,7 +303,8 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
@@ -603,7 +606,8 @@ export class ReferralService {
       setImmediate(async () => {
         try {
           const referredUser = await User.findByPk(referral.userId);
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const frontendUrl = getFrontendUrl();
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
@@ -705,7 +709,8 @@ export class ReferralService {
 
       // JIR-057: Audit entry — GRP decline
       if ((referral as any).type === "GRP" && req.user) {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer }, attributes: ["id", "uniqueId"] });
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["id", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
         AuditLogService.log({
           userId: (req.user as any).id,
@@ -734,7 +739,8 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
@@ -1480,7 +1486,8 @@ Skipped: ${failedEmails.length}`,
 
     setImmediate(async () => {
       try {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email", "uniqueId"] });
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
         const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
         const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
@@ -1557,14 +1564,15 @@ Skipped: ${failedEmails.length}`,
       updatedBy: actor,
     });
 
-    setImmediate(async () => {
-      try {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email"] });
-        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
-        const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
-        const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
+      setImmediate(async () => {
+        try {
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer);
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email"] }) : null;
+          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
+          const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 
-        await SlackService.notify({
+          await SlackService.notify({
           location,
           host,
           node: SlackNode.FINANCE,

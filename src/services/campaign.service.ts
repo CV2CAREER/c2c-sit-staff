@@ -10,6 +10,7 @@ import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { fieldEncryption } from '../utils/field-encryption';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import {
@@ -1874,7 +1875,8 @@ export const assignVAToClient = async (
   }
 
   // --- Assignment ---
-  const targetVa = await User.findOne({ where: { email: vaEmail } });
+  const targetVaId = await fieldEncryption.findUserByEmail(vaEmail);
+  const targetVa = targetVaId ? await User.findByPk(targetVaId) : null;
   if (!targetVa) {
     logger.warn(`${fields.displayLabel} not found for email=${vaEmail}`);
     throw new Error(`${fields.displayLabel} not found`);

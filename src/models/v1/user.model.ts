@@ -14,6 +14,9 @@ import {
   HasOne,
   HasMany,
   BeforeCreate,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import {
@@ -33,6 +36,7 @@ import {
   ProfilePicture,
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { Profile } from "./profile.model";
 import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
@@ -461,5 +465,78 @@ export class User extends Model {
     }
     const padded = nextNum.toString().padStart(3, '0');
     instance.id = today + padded;
+  }
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: User, options: any) {
+    await fieldEncryption.encryptUserFields(
+      instance.id,
+      instance.email,
+      instance.phoneNumber ?? null,
+      instance.whatsappNumber ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptUserBankFields(
+      instance.id,
+      instance.bankName ?? null,
+      instance.bsbCode ?? null,
+      instance.bankAccountNo ?? null,
+      instance.bankAccountName ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: User, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const p1Fields = ['email', 'phoneNumber', 'whatsappNumber'];
+    if (p1Fields.some(f => changed.includes(f))) {
+      await fieldEncryption.encryptUserFields(
+        instance.id,
+        instance.email,
+        instance.phoneNumber ?? null,
+        instance.whatsappNumber ?? null,
+        options.transaction,
+      );
+    }
+    const bankFields = ['bankName', 'bsbCode', 'bankAccountNo', 'bankAccountName'];
+    if (bankFields.some(f => changed.includes(f))) {
+      await fieldEncryption.encryptUserBankFields(
+        instance.id,
+        instance.bankName ?? null,
+        instance.bsbCode ?? null,
+        instance.bankAccountNo ?? null,
+        instance.bankAccountName ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: User[] | User | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      const encEmail = instance.getDataValue('emailEncrypted');
+      if (encEmail) {
+        const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
+        if (decrypted) {
+          instance.set('email', decrypted.email);
+          instance.set('phoneNumber', decrypted.phoneNumber);
+          instance.set('whatsappNumber', decrypted.whatsappNumber);
+        }
+      }
+      const encBankName = instance.getDataValue('bankNameEncrypted');
+      if (encBankName) {
+        const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
+        if (bank) {
+          instance.set('bankName', bank.bankName);
+          instance.set('bsbCode', bank.bsbCode);
+          instance.set('bankAccountNo', bank.bankAccountNo);
+          instance.set('bankAccountName', bank.bankAccountName);
+        }
+      }
+    }));
   }
 }

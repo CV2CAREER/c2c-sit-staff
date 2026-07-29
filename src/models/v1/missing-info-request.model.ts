@@ -10,10 +10,14 @@ import {
   BelongsTo,
   CreatedAt,
   UpdatedAt,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import { MissingInfoType } from "../../types/missingInfoConfig";
 import { MissingInfoTemplate } from "./missing-info-template.model";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 export const MISSING_INFO_REQUEST_STATUSES = [
   "pending",
@@ -126,4 +130,43 @@ export class MissingInfoRequest extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @AfterCreate
+  static async encryptPersonalMessageOnCreate(instance: MissingInfoRequest, options: any) {
+    if (instance.personalMessage) {
+      await fieldEncryption.encryptMissingRequestPersonalMessage(
+        instance.id,
+        instance.personalMessage,
+        options.transaction,
+      );
+    }
+  }
+
+  @BeforeUpdate
+  static async encryptPersonalMessageOnUpdate(instance: MissingInfoRequest, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    if (changed.includes('personalMessage')) {
+      await fieldEncryption.encryptMissingRequestPersonalMessage(
+        instance.id,
+        instance.personalMessage ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptPersonalMessage(instances: MissingInfoRequest[] | MissingInfoRequest | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      const enc = instance.getDataValue('personalMessageEncrypted');
+      if (enc) {
+        const decrypted = await fieldEncryption.getDecryptedMissingRequestPersonalMessage(instance.id);
+        if (decrypted !== null) {
+          instance.set('personalMessage', decrypted);
+        }
+      }
+    }));
+  }
 }
