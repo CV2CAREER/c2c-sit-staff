@@ -75,7 +75,7 @@ export const getFrontendUrl = (): string => {
     iat: IAT_FRONTEND_URL,
     sit: SIT_FRONTEND_URL,
     uat: UAT_FRONTEND_URL,
-    production: PROD_FRONTEND_URL,
+    prod: PROD_FRONTEND_URL,
     local: LOCAL_FRONTEND_URL,
   };
 

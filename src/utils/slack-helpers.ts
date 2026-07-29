@@ -1,4 +1,4 @@
-import { SLACK_USERS_TOKEN } from '../config/env';
+import { NODE_ENV, SLACK_USERS_TOKEN } from '../config/env';
 import { getConnectedRedis } from '../config/redis';
 import { getSlackClient } from '../config/slack';
 import { StandardSlackNotification } from '../types/slack.types';
@@ -52,15 +52,16 @@ export const sendStandardSlackNotification = async (
     //   channel = SlackChannel.TOWN_CRIER;
     // }
 
-    // Add mentions if teammate mentions are requested
+    // Add mentions if teammate mentions are requested — only tag real people in production,
+    // so local/pre-production runs never ping anyone on Slack.
     let mentions;
-    if (params.teamMentions === 'CSM') {
+    if (NODE_ENV === 'prod' && params.teamMentions === 'CSM') {
       const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
       mentions =
         (csmSlackMentions ?? []).length > 0
           ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
           : '';
-    } else if (params.teamMentions === 'DEVOPS') {
+    } else if (NODE_ENV === 'prod' && params.teamMentions === 'DEVOPS') {
       const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
       mentions =
         (devopsSlackMentions ?? []).length > 0

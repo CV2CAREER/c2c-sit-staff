@@ -13,6 +13,7 @@ import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import {
+  ApplicationStatus,
   SlackChannel,
   SlackEventType,
   SlackLocation,
@@ -1591,6 +1592,12 @@ export const updateJobApplicationStatus = async (
     updateData.ApplicationSubmissionDate = currentDate;
     if (statusReason) {
       updateData.StatusReason = resolveReason(statusReason);
+    }
+
+    // First submission for this client — move them off the default HOLD
+    // status now that an application is actually underway.
+    if (userObj && userObj.applicationStatus === ApplicationStatus.HOLD) {
+      await userObj.update({ applicationStatus: ApplicationStatus.COMMENCED });
     }
   } else if (statusUpper === 'EXPIRED') {
     const resolvedReason = resolveReason(statusReason);
