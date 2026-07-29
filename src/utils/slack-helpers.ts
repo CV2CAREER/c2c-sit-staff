@@ -1,4 +1,4 @@
-import { SLACK_USERS_TOKEN } from '../config/env';
+import { NODE_ENV, SLACK_USERS_TOKEN } from '../config/env';
 import { getConnectedRedis } from '../config/redis';
 import { getSlackClient } from '../config/slack';
 import { StandardSlackNotification } from '../types/slack.types';
@@ -41,31 +41,39 @@ export const sendStandardSlackNotification = async (
   try {
     const formattedMessage = formatStandardNotification(params);
 
-    // Auto-detect location for channel routing
-    const location = params.location ?? getEnvironmentFromHost(params.host);
+    // Routing is driven by the ACTUAL running environment (NODE_ENV), not the
+    // request host — host-based detection was unreliable and let staging
+    // noise drown out real production alerts.
+    const isProductionEnv = NODE_ENV === 'prod';
 
-    let channel = params.channel ?? SlackChannel.CRY_WOLF;
-    // if (
-    //   channel === SlackChannel.CRY_WOLF &&
-    //   location === SlackLocation.PRODUCTION
-    // ) {
-    //   channel = SlackChannel.TOWN_CRIER;
-    // }
+    // Outside of true production, EVERYTHING is forced into Cry Wolf —
+    // even calls that pass an explicit channel — so pre-prod noise never
+    // leaks into channels meant for real alerts. Only in production does
+    // the caller's explicit channel (or the Town Crier default) apply.
+    let channel: SlackChannel | string;
+    if (!isProductionEnv) {
+      channel = SlackChannel.CRY_WOLF;
+    } else {
+      channel = params.channel ?? SlackChannel.TOWN_CRIER;
+    }
 
-    // Add mentions if teammate mentions are requested
+    // Only tag teammates in true production — local/rat/iat/sit/uat notifications
+    // go out silently so they don't get mistaken for real production alerts.
     let mentions;
-    if (params.teamMentions === 'CSM') {
-      const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
-      mentions =
-        (csmSlackMentions ?? []).length > 0
-          ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
-          : '';
-    } else if (params.teamMentions === 'DEVOPS') {
-      const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
-      mentions =
-        (devopsSlackMentions ?? []).length > 0
-          ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
-          : '';
+    if (isProductionEnv) {
+      if (params.teamMentions === 'CSM') {
+        const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
+        mentions =
+          (csmSlackMentions ?? []).length > 0
+            ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
+            : '';
+      } else if (params.teamMentions === 'DEVOPS') {
+        const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
+        mentions =
+          (devopsSlackMentions ?? []).length > 0
+            ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
+            : '';
+      }
     }
 
     const finalMessage = mentions
