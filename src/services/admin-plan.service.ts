@@ -245,7 +245,7 @@ export const updateUserPlanByFeature = async (
 };
 
 /**
- * Activate a free 30-day Coral plan for an ambassador.
+ * Activate a free 14-day Coral plan for an ambassador.
  * Does NOT change role or isAmbassador flag — ambassador stays as guest.
  */
 export const activateCoralPlan = async (
@@ -274,7 +274,7 @@ export const activateCoralPlan = async (
         userId,
         title: coralFeature.title,
         featureId: coralFeature.id,
-        validityPeriod: "30 days",
+        validityPeriod: "14 days",
         paymentStatus: "completed",
         paymentAmount: 0,
       },
@@ -305,7 +305,7 @@ export const activateCoralPlan = async (
   const frontendUrl = getFrontendUrl();
   const subEndDate = newPlan.expiresAt
     ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
-    : "30 days from today";
+    : "14 days from today";
 
   setImmediate(async () => {
     try {
@@ -383,7 +383,7 @@ export const activateCoralPlan = async (
         trigger: "Ambassador Coral Plan Activated",
         type: SlackEventType.ADMIN_ACTION,
         channel: SlackChannel.TOWN_CRIER,
-        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email}) has been granted a *30-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
+        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email}) has been granted a *14-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
       });
     } catch (err: any) {
       logger.error(`[ActivateCoralPlan] Slack notification failed: ${err.message}`);
@@ -408,7 +408,7 @@ export const activateCoralPlan = async (
         activated: new Date().toISOString(),
         sub_start: newPlan.createdAt ?? new Date().toISOString(),
         sub_end: newPlan.expiresAt ?? null,
-        duration_days: 30,
+        duration_days: 14,
         campaign_mgt_row: "created",
       },
     });
