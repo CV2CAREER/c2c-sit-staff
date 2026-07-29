@@ -229,7 +229,7 @@ const ActivateCoralModal = ({ isOpen, toggleOpen, userId }: {
         url: ADMIN_ACTIVATE_CORAL(userId),
         mutationKey: ["admin-activate-coral", userId],
         onSuccess: () => {
-            toast.success("Coral plan activated — 30 days added");
+            toast.success("Coral plan activated — 14 days added");
             queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
         },
         onError: () => {
@@ -255,7 +255,7 @@ const ActivateCoralModal = ({ isOpen, toggleOpen, userId }: {
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900">Activate Coral Plan</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                    Grant this ambassador <span className="font-semibold text-gray-700">30 days</span> of Coral access.
+                    Grant this ambassador <span className="font-semibold text-gray-700">14 days</span> of Coral access.
                 </p>
             </div>
             <div className="bg-orange-50 border border-orange-100 rounded-lg px-4 py-3 text-sm text-orange-700 mb-5 flex items-start gap-2">
