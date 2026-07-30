@@ -1,21 +1,27 @@
 import { Chip } from "@material-tailwind/react";
+import { motion } from "framer-motion";
 
 export function Section({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div>
-      <h4 className="text-[1.375rem] font-medium">
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="min-w-0 rounded-2xl border border-career-gray-300/60 bg-career-gray-400/60 p-4 transition-colors duration-200 hover:border-career-blue-300"
+    >
+      <h4 className="text-[1.1rem] font-medium text-career-black-200">
         <span>{title}</span>
       </h4>
-      <div className="grid mt-4 gap-6">{children}</div>
-    </div>
+      <div className="grid mt-4 gap-6 min-w-0">{children}</div>
+    </motion.div>
   );
 }
 
 export function SubSection({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="">
-      <h5 className="text-[#797979] font-medium mb-1">{title}</h5>
-      <div className='empty:before:content-["N/A"] w-80 flex gap-2 flex-wrap'>
+    <div className="min-w-0">
+      <h5 className="text-[#797979] font-medium mb-1.5">{title}</h5>
+      <div className='empty:before:content-["N/A"] empty:before:text-career-gray-200 w-full min-w-0 flex gap-2 flex-wrap'>
         {Array.isArray(children)
           ? children.map?.((c,i) => (
             <Chip
@@ -23,7 +29,7 @@ export function SubSection({ title, children }: { title: string; children?: Reac
               value={c.length >= 28 ? c.substring(0, 27) + '...' : c}
               variant="ghost"
               size="sm"
-              className="!text-xs text-[#797979] !font-normal !capitalize"
+              className="!text-xs text-career-blue-800 !font-medium !capitalize !bg-career-blue-800/10"
             />
           ))
           : children}

@@ -10,7 +10,7 @@ export const SuggestedKeywordsModal = ({ isOpen, setIsOpen, keywords = [] }: { i
             <AppModal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
-                contentClassName="w-[200%] h-[200%]"
+                contentClassName="w-[95vw] max-w-4xl max-h-[85vh] overflow-auto"
             >
                 <div className="w-full rounded-3xl whitespace-nowrap">
                     <div className="min-w-full flex-shrink-0">

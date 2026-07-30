@@ -1,9 +1,11 @@
 "use client"
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { HiOutlineLightningBolt, HiOutlinePlay, HiOutlineFlag } from "react-icons/hi";
 import { useAdminMutations } from "@/hooks/api/admin.api";
 import { useAdminUserDetailContext } from "../context/userDetailContext";
 import AppModal from "@/components/modals/AppModal";
+import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 const TriggerApplicationAction = () => {
@@ -29,28 +31,39 @@ const TriggerApplicationAction = () => {
 
   return (
     <>
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
-        <div className="p-6">
-          <h2 className="text-xl font-medium mb-4">Trigger Application Action</h2>
-          <div className="flex items-center justify-between gap-4">
-            <div className="space-x-4">
-              <button
-                onClick={() => setConfirmType("START")}
-                disabled={isPending}
-                className="bg-career-blue-400 hover:bg-career-blue-300 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
-              >
-                {isPending && confirmType === "START" && <Loader2 className="w-4 h-4 animate-spin" />}
-                Application Start
-              </button>
-              <button
-                onClick={() => setConfirmType("END")}
-                disabled={isPending}
-                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center gap-2"
-              >
-                {isPending && confirmType === "END" && <Loader2 className="w-4 h-4 animate-spin" />}
-                Application End
-              </button>
-            </div>
+      <div className="relative h-full overflow-hidden rounded-xl border border-primary/15 bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <div className="flex h-full flex-col justify-center p-4 md:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <HiOutlineLightningBolt size={20} />
+            </span>
+            <h2 className="text-lg font-medium">Trigger Application Action</h2>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => setConfirmType("START")}
+              disabled={isPending}
+              className="gap-2 w-full"
+            >
+              {isPending && confirmType === "START" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <HiOutlinePlay className="w-4 h-4" />
+              )}
+              Application Start
+            </Button>
+            <Button
+              onClick={() => setConfirmType("END")}
+              disabled={isPending}
+              className="gap-2 w-full bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isPending && confirmType === "END" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <HiOutlineFlag className="w-4 h-4" />
+              )}
+              Application End
+            </Button>
           </div>
         </div>
       </div>
@@ -70,25 +83,22 @@ const TriggerApplicationAction = () => {
               : `This will mark the application as expired for ${user?.firstName} ${user?.lastName} and notify them by email.`}
           </p>
           <div className="flex gap-3 justify-end">
-            <button
+            <Button
+              variant="outline"
               onClick={() => setConfirmType(null)}
               disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+              className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleConfirm}
               disabled={isPending}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                confirmType === "START"
-                  ? "bg-career-blue-400 hover:bg-career-blue-300"
-                  : "bg-green-600 hover:bg-green-700"
-              }`}
+              className={`gap-2 ${confirmType === "END" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
             >
               {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               {confirmType === "START" ? "Yes, Start" : "Yes, End"}
-            </button>
+            </Button>
           </div>
         </div>
       </AppModal>

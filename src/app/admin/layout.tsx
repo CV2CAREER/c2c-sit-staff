@@ -20,11 +20,6 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-  icons: {
-    icon: "/images/h-logo.svg",
-    shortcut: "/images/h-logo.svg",
-    apple: "/images/h-logo.svg",
-  },
   authors: [{ name: "CVtoCAREER" }],
   creator: "CVtoCAREER",
   metadataBase: new URL("https://admin.cvtocareer.com"),
@@ -66,7 +61,7 @@ function AdminDashboardLayout({
       <AdminDashboardClientLayout>
         <main className="relative flex max-w-screen overflow-hidden overflow-x-hidden">
           <Sidebar />
-          <section className="w-full lg:max-w-[calc(100vw-250px)] min-h-screen lg:ms-[250px] bg-[#f3f3f3] overflow-hidden overflow-x-hidden">
+          <section className="dashboard-content w-full min-h-screen bg-[#f3f3f3] overflow-hidden overflow-x-hidden">
             <ViewAsUserBanner />
             <div className="p-3 sm:p-6">
               <TopBar title={"Admin"} />

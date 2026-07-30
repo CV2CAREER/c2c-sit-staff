@@ -39,9 +39,11 @@ export default function ViewAsUserBanner() {
   };
 
   return (
-    <div className="bg-orange-500 text-white px-4 py-2 flex items-center justify-between shadow-md">
-      <div className="flex items-center gap-2">
-        <AlertCircle size={16} />
+    <div className="flex flex-wrap items-center justify-between gap-3 bg-orange-500 px-4 py-2.5 text-white shadow-[0_1px_10px_rgba(234,88,12,0.25)]">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15">
+          <AlertCircle size={16} />
+        </span>
         <span className="text-sm font-medium">
           You are viewing as: <strong>{user.email}</strong>
         </span>
@@ -51,12 +53,12 @@ export default function ViewAsUserBanner() {
           </span>
         )}
       </div>
-      
+
       <Button
         variant="outline"
         size="sm"
         onClick={handleExitViewAsUser}
-        className="bg-transparent border-white text-white hover:bg-white hover:text-orange-500 text-xs"
+        className="border-white/70 bg-transparent text-xs text-white transition-colors hover:border-white hover:bg-white hover:text-orange-600"
       >
         <LogOut size={14} className="mr-1" />
         Exit View As User

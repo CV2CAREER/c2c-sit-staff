@@ -20,7 +20,7 @@ const StatCard: React.FC<StatCardProps> = ({
   const content = (
     <motion.div
       whileHover={{ scale: 1.03 }}
-      className="bg-white shadow-md p-4 rounded-md flex flex-col justify-between transition-all duration-300 hover:shadow-lg h-full"
+      className="flex h-full flex-col justify-between rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] transition-all duration-300 hover:border-primary/40 hover:shadow-[0_1px_14px_rgba(0,142,211,0.16)]"
     >
       {isLoading ? (
         <div className="animate-pulse space-y-4">
@@ -30,11 +30,15 @@ const StatCard: React.FC<StatCardProps> = ({
         </div>
       ) : (
         <>
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-[12px] sm:text-sm font-medium text-gray-600">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[12px] font-medium text-gray-600 sm:text-sm">
               {title}
             </p>
-            {icon ? <span className="text-blue">{icon}</span> : null}
+            {icon ? (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                {icon}
+              </span>
+            ) : null}
           </div>
           <h1 className="text-3xl font-bold text-gray-800">
             {(value ?? 0).toLocaleString()}

@@ -244,14 +244,14 @@ export default function JobApplicationsAndQuestionsDataTable() {
           ) : null}
         </div>
 
-        <section className="flex items-center justify-end gap-4">
+        <section className="flex w-full sm:w-auto flex-wrap sm:flex-nowrap items-center justify-start sm:justify-end gap-3 sm:gap-4">
           {/* <button
             onClick={() => setDataState(dataState === "active" ? "recycle" : "active")}
             className="px-4 py-2 rounded-md bg-slate-800 text-white hover:bg-slate-700 transition-colors"
           >
             {dataState === "active" ? `View Recycle Bin` : `View Active ${activeTable}`}
           </button> */}
-          <div className="w-[180px] bg-lightblue shadow-md rounded-md text-black p-2 flex items-center gap-2">
+          <div className="w-full sm:w-[180px] bg-lightblue shadow-md rounded-md text-black p-2 flex items-center gap-2">
             <Checkbox
               id="allow-editing"
               checked={allowEditing}
@@ -264,7 +264,7 @@ export default function JobApplicationsAndQuestionsDataTable() {
             value={activeTable}
             onValueChange={(value) => setActiveTable(value === "Applications" ? "Applications" : "Questions")}
           >
-            <SelectTrigger className="w-[180px] bg-white shadow-md">
+            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +276,7 @@ export default function JobApplicationsAndQuestionsDataTable() {
             value={dataState}
             onValueChange={(value) => setDataState(value === "active" ? "active" : "recycle")}
           >
-            <SelectTrigger className="w-[180px] bg-white shadow-md">
+            <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

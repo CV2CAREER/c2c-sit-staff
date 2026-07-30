@@ -18,7 +18,7 @@ export const CvJobTitlesModal: React.FC<CvJobTitlesModalProps> = ({
     if (!jobTitles || !Array.isArray(jobTitles) || jobTitles.length === 0) return null;
 
     return (
-      <div className="bg-white p-8 rounded-2xl shadow-lg max-w-4xl w-full">
+      <div className="bg-white p-4 md:p-8 rounded-2xl shadow-lg max-w-4xl w-full">
         <div className="flex justify-between items-center mb-6">
           <span className="text-white bg-white text-lg font-semibold w-12 h-12 rounded-full flex items-center justify-center"></span>
           <h2 className="text-2xl font-semibold text-career-blue-800">CV Job Titles</h2>

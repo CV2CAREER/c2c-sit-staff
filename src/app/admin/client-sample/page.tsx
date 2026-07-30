@@ -69,8 +69,8 @@ export default function ClientSample() {
         ),
         headerClassName: "bg-[#80D7FF]",
         flex: 1,
-        minWidth: 250,
-        maxWidth: 300,
+        minWidth: 150,
+        maxWidth: 150,
       },
       {
         field: "email",

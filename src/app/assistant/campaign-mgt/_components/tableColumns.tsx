@@ -16,6 +16,7 @@ const campaignTableKeys: (keyof CampaignTableColType)[] = [
   "Last_Name",
   "Plan",
   "ReturnCount",
+  "TourCount",
   "Order",
   "SeekSubStartDate",
   "Assurance",
@@ -152,6 +153,10 @@ const handleTableHeader = (key: string) => {
 
   if (key === "CompletedEmail") {
     return "SPC Email"
+  }
+
+  if (key === "TourCount") {
+    return "Tour"
   }
 
   // Replace underscores with spaces, insert spaces before uppercase letters (camelCase), then capitalize each word

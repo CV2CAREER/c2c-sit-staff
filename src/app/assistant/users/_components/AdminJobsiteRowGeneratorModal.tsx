@@ -50,7 +50,7 @@ const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = fals
                 onClick={() => setIsOpen(true)}
                 label="Generate Jobsite Rows"
                 variant={missingJobsiteRows ? "primary" : "secondary"}
-                className="px-4 py-2 text-sm font-medium !rounded-full"
+                className="px-4 py-2 text-sm font-medium"
                 loadingLabel="Please Wait..."
                 isLoading={!user}
                 disabled={!missingJobsiteRows}
@@ -61,7 +61,7 @@ const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = fals
                 <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div
                         ref={modalRef}
-                        className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-y-auto border border-gray-200" >
+                        className="bg-white rounded-xl shadow-[0_1px_10px_rgba(0,142,211,0.10)] w-full max-w-md max-h-[90vh] overflow-y-auto border border-primary/15" >
                         <div className="flex justify-between items-center p-6 border-b border-gray-100">
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-800">Generate Jobsite Rows</h3>
@@ -75,8 +75,8 @@ const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = fals
                         <div className="p-6 space-y-4">
                             <div className="bg-gray-50 p-4 rounded-lg">
                                 <div className="flex items-center space-x-4">
-                                    <div className="bg-blue-100 p-3 rounded-full">
-                                        <FiUser className="text-blue-600 text-lg" />
+                                    <div className="bg-primary/10 p-3 rounded-full">
+                                        <FiUser className="text-primary text-lg" />
                                     </div>
                                     <div>
                                         <h4 className="font-medium text-gray-800">{`${user?.user?.firstName ?? user?.firstName ?? ''} ${user?.user?.lastName ?? user?.lastName ?? ''}`}</h4>
@@ -93,23 +93,23 @@ const AdminJobsiteRowGeneratorModal = ({ user, userId, missingJobsiteRows = fals
                                 </div>
                             </div>
 
-                            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
-                                <h4 className="text-sm font-medium text-blue-800 mb-2">What this will do:</h4>
-                                <ul className="space-y-2 text-sm text-blue-600">
+                            <div className="bg-primary/5 p-4 rounded-lg border border-primary/15">
+                                <h4 className="text-sm font-medium text-primary mb-2">What this will do:</h4>
+                                <ul className="space-y-2 text-sm text-gray-600">
                                     <li className="flex items-start">
-                                        <FiCheck className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                                        <FiCheck className="text-primary mr-2 mt-0.5 flex-shrink-0" />
                                         Create missing jobsite rows for this user
                                     </li>
                                     <li className="flex items-start">
-                                        <FiCheck className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                                        <FiCheck className="text-primary mr-2 mt-0.5 flex-shrink-0" />
                                         Populate all required client input tables
                                     </li>
                                     <li className="flex items-start">
-                                        <FiCheck className="text-blue-500 mr-2 mt=0.5 flex-shrink-0" />
+                                        <FiCheck className="text-primary mr-2 mt=0.5 flex-shrink-0" />
                                         Trigger sample results generation
                                     </li>
                                     <li className="flex items-start">
-                                        <FiCheck className="text-blue-500 mr-2 mt=0.5 flex-shrink-0" />
+                                        <FiCheck className="text-primary mr-2 mt=0.5 flex-shrink-0" />
                                         Send completion notifications
                                     </li>
                                 </ul>

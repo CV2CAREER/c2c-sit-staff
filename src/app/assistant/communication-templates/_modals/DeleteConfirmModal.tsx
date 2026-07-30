@@ -12,7 +12,7 @@ import {
 interface DeleteConfirmModalProps {
   open: boolean;
   onClose: () => void;
-  templateName: string;
+  templateLabel: string;
   onConfirm: () => Promise<void>;
   loading: boolean;
 }
@@ -20,7 +20,7 @@ interface DeleteConfirmModalProps {
 export function DeleteConfirmModal({
   open,
   onClose,
-  templateName,
+  templateLabel,
   onConfirm,
   loading,
 }: DeleteConfirmModalProps) {
@@ -31,7 +31,7 @@ export function DeleteConfirmModal({
           <DialogTitle>Move to Recycle Bin</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-gray-600">
-          Are you sure you want to move &quot;{templateName}&quot; to the recycle bin?
+          Are you sure you want to move &quot;{templateLabel}&quot; to the recycle bin?
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

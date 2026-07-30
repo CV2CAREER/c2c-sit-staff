@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { HiOutlineAdjustments } from "react-icons/hi";
 import { Section, SubSection } from "./AdminJobPreferenceSections";
 import jobPreferencesSchema from "./jobPreferencesInfo";
 import CreatableSelect from "react-select/creatable";
@@ -70,6 +72,8 @@ const AdminUsersJobPreferencesCard = ({
     industriesExclude: preferences?.industriesExclude || [],
     industriesIncluded: preferences?.industriesIncluded || [],
     industriesExcluded: preferences?.industriesExcluded || [],
+    situationIncluded: preferences?.situationIncluded || [],
+    situationExcluded: preferences?.situationExcluded || [],
     includedJobTitles: preferences?.includedJobTitles || [],
   });
 
@@ -81,35 +85,48 @@ const AdminUsersJobPreferencesCard = ({
   const activePreferences = activeProfile === 'primary' ? preferences : secondary;
 
   return (
-    <div className="mt-6 w-full p-8 rounded-3xl bg-white">
-      <h3 className="font-medium text-2xl mb-4">Preferences</h3>
-      
+    <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <HiOutlineAdjustments size={20} />
+        </span>
+        <h3 className="font-medium text-xl md:text-2xl">Preferences</h3>
+      </div>
+
       {secondary && (
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setActiveProfile('primary')}
-            className={`px-4 py-2 rounded-md font-medium transition-all ${
-              activeProfile === 'primary' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Primary Profile
-          </button>
-          <button
-            onClick={() => setActiveProfile('secondary')}
-            className={`px-4 py-2 rounded-md font-medium transition-all ${
-              activeProfile === 'secondary' 
-                ? 'bg-blue-600 text-white shadow-md' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Secondary Profile
-          </button>
+        <div className="relative mb-6 inline-flex gap-1 rounded-full bg-career-gray-300 p-1">
+          {(["primary", "secondary"] as const).map((profile) => (
+            <button
+              key={profile}
+              onClick={() => setActiveProfile(profile)}
+              className={`relative z-10 rounded-full px-4 py-2 font-medium capitalize transition-colors duration-200 ${
+                activeProfile === profile
+                  ? "text-white"
+                  : "text-career-gray-200 hover:text-career-black-200"
+              }`}
+            >
+              {activeProfile === profile && (
+                <motion.span
+                  layoutId="preferences-tab-highlight"
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
+                />
+              )}
+              {profile} Profile
+            </button>
+          ))}
         </div>
       )}
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(auto,19.8rem))] gap-4 my-4 gap-y-8">
+      <AnimatePresence mode="wait">
+      <motion.div
+        key={activeProfile}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-4 gap-y-8"
+      >
         {jobPreferencesSchema.map((preferenceSection) => (
           <Section
             key={preferenceSection.title}
@@ -135,7 +152,7 @@ const AdminUsersJobPreferencesCard = ({
                               e.target.value,
                             )
                           }
-                          className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                          className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                         />
                       </>
                     )}
@@ -153,7 +170,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                         rows={3}
                       />
                     )}
@@ -171,7 +188,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
                       />
                     )}
                     {field.inputType === "checkbox" && (
@@ -192,7 +209,7 @@ const AdminUsersJobPreferencesCard = ({
                       field.inputType === "salarySelect") && (
                       <CreatableSelect
                         options={
-                          field as unknown as OptionsOrGroups<
+                          (field.options ?? []) as unknown as OptionsOrGroups<
                             any,
                             GroupBase<any>
                           >
@@ -223,7 +240,8 @@ const AdminUsersJobPreferencesCard = ({
                             borderColor: "black",
                             borderWidth: "1.5px",
                             borderRadius: "0.25rem",
-                            width: "300px",
+                            width: "100%",
+                            maxWidth: "300px",
                           }),
                         }}
                       />
@@ -262,7 +280,8 @@ const AdminUsersJobPreferencesCard = ({
                             borderColor: "black",
                             borderWidth: "1.5px",
                             borderRadius: "0.25rem",
-                            width: "300px",
+                            width: "100%",
+                            maxWidth: "300px",
                           }),
                         }}
                       />
@@ -323,47 +342,44 @@ const AdminUsersJobPreferencesCard = ({
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
+      </AnimatePresence>
       {!isEditable ? (
-        <div>
-          <Button
-            onClick={() => {
-              setIsEditable(true);
-            }}
-            className="bg-career-blue-400 hover:bg-blue-700 text-white py-2 px-4 rounded"
-          >
-            Edit
-          </Button>
-        </div>
+        <Button
+          onClick={() => {
+            setIsEditable(true);
+          }}
+        >
+          Edit
+        </Button>
       ) : (
-        <div>
-          <div className="flex justify-start space-x-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditable(false);
-                // setIsLoading(false);
-              }}
-              className="bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded"
-            >
-              Cancel
-            </button>
-            <Button
-              disabled={updateUserPreferencesByProfileMutation.isPending}
-              onClick={() => {
-                updateUserPreferencesByProfileMutation.mutate({
-                  userId,
-                  profileType: activeProfile,
-                  body: editedFormData,
-                });
-                setIsEditable(false);
-              }}
-            >
-              {updateUserPreferencesByProfileMutation.isPending
-                ? "Saving..."
-                : "Save Changes"}
-            </Button>
-          </div>
+        <div className="flex justify-start gap-3">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => {
+              setIsEditable(false);
+              // setIsLoading(false);
+            }}
+            className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={updateUserPreferencesByProfileMutation.isPending}
+            onClick={() => {
+              updateUserPreferencesByProfileMutation.mutate({
+                userId,
+                profileType: activeProfile,
+                body: editedFormData,
+              });
+              setIsEditable(false);
+            }}
+          >
+            {updateUserPreferencesByProfileMutation.isPending
+              ? "Saving..."
+              : "Save Changes"}
+          </Button>
         </div>
       )}
     </div>

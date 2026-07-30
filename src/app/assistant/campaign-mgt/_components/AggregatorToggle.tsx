@@ -67,7 +67,7 @@ const AggregatorToggle = ({ clientId }: AggregatorProps) => {
         <div className="relative inline-block text-left z-10 w-full">
             <button
                 type="button"
-                className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-3 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue transition-all"
+                className="inline-flex items-center justify-center text-center w-full whitespace-normal leading-snug rounded-md border border-gray-300 shadow-sm px-4 py-2.5 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue transition-all"
                 id="options-menu"
                 aria-haspopup="true"
                 aria-expanded={isOpen}
@@ -75,7 +75,7 @@ const AggregatorToggle = ({ clientId }: AggregatorProps) => {
             >
                 Manage Job Aggregators
                 <svg
-                    className="-mr-1 ml-2 h-5 w-5"
+                    className="-mr-1 ml-2 h-5 w-5 shrink-0"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -91,7 +91,7 @@ const AggregatorToggle = ({ clientId }: AggregatorProps) => {
 
             {isOpen && (
                 <div
-                    className="origin-top-right absolute right-0 mt-2 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 transition-opacity ease-out duration-200"
+                    className="origin-top-right absolute right-0 mt-2 w-full min-w-[240px] md:w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 transition-opacity ease-out duration-200"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="options-menu"

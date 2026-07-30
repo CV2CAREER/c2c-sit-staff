@@ -3,6 +3,7 @@
 "use client";
 import React, { useEffect } from "react";
 import { IoMdTime } from "react-icons/io";
+import { HiOutlineChartBar } from "react-icons/hi";
 import { Stepper, Step } from "@material-tailwind/react";
 import { Chip } from "@heroui/chip";
 import { LucideVerified } from "lucide-react";
@@ -39,10 +40,13 @@ export default function OnBoardingProgress({ userId }: { userId: string }) {
     : null;
 
   return (
-    <section className="flex flex-col gap-3 bg-white rounded-md p-4 shadow-lg">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">Onboarding Progress</h2>
+    <section className="relative overflow-hidden flex flex-col gap-3 bg-white rounded-xl p-4 md:p-6 border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <div className="flex flex-wrap gap-2 justify-between items-center">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <HiOutlineChartBar size={16} />
+          </span>
+          <h2 className="text-lg md:text-xl font-semibold">Onboarding Progress</h2>
           {formattedUpdatedAt && (
             <span className="text-xs text-gray-400">Updated: {formattedUpdatedAt}</span>
           )}
@@ -152,7 +156,7 @@ function OnboardingStatusBarStepper({ userInfo }: { userInfo: any }) {
   };
 
   return (
-    <div className="w-full h-[150px] flex justify-center items-center overflow-x-auto px-8">
+    <div className="w-full h-[150px] flex justify-center items-center overflow-x-auto px-2 md:px-8">
       {
         // @ts-ignore
         <Stepper

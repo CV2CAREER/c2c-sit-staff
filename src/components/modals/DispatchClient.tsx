@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, SendHorizontal, Users2, UserCog } from "lucide-react";
 
 interface Props {
   visibility: boolean;
@@ -84,13 +84,19 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
   return (
     <AppModal isOpen={visibility} onClose={() => togggleVisibility(false)}>
       <div className="">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-          Dispatch to PC
-        </h2>
+        <div className="flex items-center gap-2.5 mb-6">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+            <SendHorizontal size={18} className="text-primary" />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Dispatch to PC</h2>
+            <p className="text-sm text-gray-500">Assign selected clients to a Placement Controller.</p>
+          </div>
+        </div>
 
         {isInitialLoading ? (
           <div className="flex items-center justify-center h-full min-h-[200px]">
-            <Loader2 className="animate-spin h-6 w-6 text-gray-500" />
+            <Loader2 className="animate-spin h-6 w-6 text-primary" />
             <span className="ml-2 text-sm text-gray-600">
               Loading clients and PCs...
             </span>
@@ -99,13 +105,17 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
           <>
             <div className="space-y-4">
               {/* Multi-select Clients */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <Users2 size={15} className="text-primary" />
                   Select Clients
                 </label>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start border-input font-normal text-gray-700 hover:border-primary/40 hover:bg-primary/5 hover:text-gray-700"
+                    >
                       {selectedClients.length
                         ? `${selectedClients.length} client(s) selected`
                         : "Select clients"}
@@ -134,8 +144,9 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
               </div>
 
               {/* Single-select PC */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                  <UserCog size={15} className="text-primary" />
                   Select PC to dispatch to
                 </label>
                 <Select
@@ -160,7 +171,7 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end mt-6">
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-100">
               <Button
                 onClick={handleDispatch}
                 disabled={
@@ -173,7 +184,9 @@ const DispatchClient = ({ visibility, togggleVisibility }: Props) => {
                     Dispatching...
                   </>
                 ) : (
-                  "Dispatch to PC"
+                  <>
+                    <SendHorizontal size={16} className="mr-2" /> Dispatch to PC
+                  </>
                 )}
               </Button>
             </div>

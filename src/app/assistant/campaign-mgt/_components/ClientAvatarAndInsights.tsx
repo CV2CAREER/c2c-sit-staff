@@ -228,9 +228,9 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
           </div>
 
           {/* Buttons */}
-          <div className="flex flex-col lg:flex-row gap-2 justify-center items-center">
-            <Button className="w-full md:w-fit" 
-            onClick={() => 
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+            <Button className="h-auto w-full whitespace-normal text-center leading-snug py-2.5"
+            onClick={() =>
               openConfirmationModal({
                 title: "Dispatch Preferences",
                 description: "Are you sure you want to dispatch preferences?",
@@ -239,8 +239,8 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
             }
             >Dispatch Preference</Button>
 
-            <Button className="w-full md:w-fit" 
-              onClick={() => 
+            <Button className="h-auto w-full whitespace-normal text-center leading-snug py-2.5"
+              onClick={() =>
                 openConfirmationModal({
                   title: "Dispatch Preferences",
                   description: "Are you sure you want to dispatch crdentials?",
@@ -249,8 +249,8 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
               }
             >Dispatch Credentials</Button>
 
-            <Button className="w-full md:w-fit" 
-              onClick={() => 
+            <Button className="h-auto w-full whitespace-normal text-center leading-snug py-2.5"
+              onClick={() =>
                 openConfirmationModal({
                   title: "Generate Password",
                   description: "Are you sure you want to generate password for this client?",
