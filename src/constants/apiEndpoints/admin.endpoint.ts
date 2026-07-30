@@ -120,6 +120,9 @@ export const ADMIN_SAVE_ROLE_TITLE_RECOMMENDATIONS =
   '/api/v1/admin/client-support-documents/role-titles/save';
 export const ADMIN_USER_PREFERENCES = '/api/v1/admin/users/preferences';
 export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
+export const ADMIN_DISCOVERY_TRACKER = '/api/v1/admin/discovery-tracker';
+export const ADMIN_DISCOVERY_TRACKER_FILTER_VALUES =
+  '/api/v1/admin/discovery-tracker/filter-values';
 export const ADMIN_ACCESS_LEVELS = '/api/v1/admin/access-levels';
 export const ADMIN_PERSONA_RULES = '/api/v1/admin/persona-rules';
 export const ADMIN_UPDATE_USER_PREFERENCES =
