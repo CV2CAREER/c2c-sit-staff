@@ -15,6 +15,8 @@
     "sync:pricing:mongo": "tsx scripts/sync-pricing-from-mongo.ts",
     "sync:cr-options:mongo": "tsx scripts/sync-cr-options-from-mongo.ts",
     "sync:admin-ai:mongo": "tsx scripts/sync-admin-ai-from-mongo.ts",
+    "sync:schema": "tsx scripts/sync-schema.ts",
+    "sync:schema:dry": "tsx scripts/sync-schema.ts --dry-run",
     "check-all": "",
     "prepare": "node scripts/setup-hooks.js"
   },
@@ -40,6 +42,7 @@
     "docx": "^9.7.1",
     "dotenv": "^17.2.1",
     "ejs": "^3.1.10",
+    "esbuild": "^0.28.1",
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
     "firebase-admin": "^13.7.0",

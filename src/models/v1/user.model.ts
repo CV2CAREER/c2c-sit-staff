@@ -14,6 +14,10 @@ import {
   HasOne,
   HasMany,
   BeforeCreate,
+  BeforeSave,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import {
@@ -33,6 +37,7 @@ import {
   ProfilePicture,
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { Profile } from "./profile.model";
 import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
@@ -75,8 +80,7 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(false)
-  @Unique
+  @AllowNull(true)
   @Column(DataType.STRING)
   email!: string;
 
@@ -461,5 +465,92 @@ export class User extends Model {
     }
     const padded = nextNum.toString().padStart(3, '0');
     instance.id = today + padded;
+  }
+
+  @BeforeSave
+  static captureAndClearPlaintext(instance: User) {
+    (instance as any)._pii_email = instance.getDataValue('email');
+    (instance as any)._pii_phoneNumber = instance.getDataValue('phoneNumber');
+    (instance as any)._pii_whatsappNumber = instance.getDataValue('whatsappNumber');
+    (instance as any)._pii_bankName = instance.getDataValue('bankName');
+    (instance as any)._pii_bsbCode = instance.getDataValue('bsbCode');
+    (instance as any)._pii_bankAccountNo = instance.getDataValue('bankAccountNo');
+    (instance as any)._pii_bankAccountName = instance.getDataValue('bankAccountName');
+    instance.setDataValue('email', null);
+    instance.setDataValue('phoneNumber', null);
+    instance.setDataValue('whatsappNumber', null);
+    instance.setDataValue('bankName', null);
+    instance.setDataValue('bsbCode', null);
+    instance.setDataValue('bankAccountNo', null);
+    instance.setDataValue('bankAccountName', null);
+  }
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: User, options: any) {
+    const pii = instance as any;
+    await fieldEncryption.encryptUserFields(
+      instance.id,
+      pii._pii_email,
+      pii._pii_phoneNumber ?? null,
+      pii._pii_whatsappNumber ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptUserBankFields(
+      instance.id,
+      pii._pii_bankName ?? null,
+      pii._pii_bsbCode ?? null,
+      pii._pii_bankAccountNo ?? null,
+      pii._pii_bankAccountName ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: User, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['email', 'phoneNumber', 'whatsappNumber'].includes(f))) {
+      await fieldEncryption.encryptUserFields(
+        instance.id,
+        pii._pii_email,
+        pii._pii_phoneNumber ?? null,
+        pii._pii_whatsappNumber ?? null,
+        options.transaction,
+      );
+    }
+    if (changed.some(f => ['bankName', 'bsbCode', 'bankAccountNo', 'bankAccountName'].includes(f))) {
+      await fieldEncryption.encryptUserBankFields(
+        instance.id,
+        pii._pii_bankName ?? null,
+        pii._pii_bsbCode ?? null,
+        pii._pii_bankAccountNo ?? null,
+        pii._pii_bankAccountName ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: User[] | User | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      try {
+        const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
+        if (decrypted?.email) instance.setDataValue('email', decrypted.email);
+        if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
+        if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
+      } catch {}
+      try {
+        const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
+        if (bank?.bankName) {
+          instance.setDataValue('bankName', bank.bankName);
+          instance.setDataValue('bsbCode', bank.bsbCode);
+          instance.setDataValue('bankAccountNo', bank.bankAccountNo);
+          instance.setDataValue('bankAccountName', bank.bankAccountName);
+        }
+      } catch {}
+    }));
   }
 }
