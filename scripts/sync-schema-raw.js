@@ -440,7 +440,7 @@ const TABLES = {
     { name: 'before', type: 'JSONB', nullable: '' },
     { name: 'after', type: 'JSONB', nullable: '' },
     { name: 'metadata', type: 'JSONB', nullable: '' },
-    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '', default: 'DEFAULT NOW()' },
   ],
   blogs: [
     { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
@@ -862,8 +862,382 @@ const TABLES = {
     { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
     { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
   ],
-  // Many more shared tables omitted for brevity—checking most-likely-missing first.
-  // Full coverage is handled by the full coverage from the model analysis.
+  // ── Additional tables (from modelList.ts) ────────────────
+
+  uploads: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'type', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'Pending'" },
+    { name: 'document', type: 'JSONB', nullable: 'NOT NULL' },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'source', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'client'" },
+    { name: 'cvDataPoints', type: 'JSONB', nullable: '' },
+    { name: 'cvJobTitles', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'keywords', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'isDefault', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'isActive', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'approvedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'approvedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'rejectedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'rejectedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'rejectionReason', type: 'TEXT', nullable: '' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+  ],
+
+  upload_recycles: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'type', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'Pending'" },
+    { name: 'document', type: 'JSONB', nullable: 'NOT NULL' },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'source', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'client'" },
+    { name: 'cvDataPoints', type: 'JSONB', nullable: '' },
+    { name: 'cvJobTitles', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'keywords', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  features: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'title', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'tier', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'price', type: 'DECIMAL(10,2)', nullable: 'NOT NULL' },
+    { name: 'jobApplications', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 1' },
+    { name: 'cvResumeRequests', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 1' },
+    { name: 'screeningPrep', type: 'INTEGER', nullable: '', default: 'DEFAULT 0' },
+    { name: 'interviewPrep', type: 'INTEGER', nullable: '', default: 'DEFAULT 0' },
+    { name: 'resumeDevelopment', type: 'INTEGER', nullable: '', default: 'DEFAULT 0' },
+    { name: 'validityPeriod', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'pauseOptionMonths', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 0' },
+    { name: 'subscriptionBreak', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'profileLimit', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 1' },
+    { name: 'isTopUp', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'description', type: 'TEXT', nullable: '' },
+    { name: 'extra', type: 'TEXT', nullable: '' },
+    { name: 'isActive', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT true' },
+    { name: 'locationIds', type: 'TEXT[]', nullable: 'NOT NULL', default: "DEFAULT '{}'::text[]" },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  blacklisted_tokens: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'token', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'expiresAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  otp_tokens: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'otp', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'type', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'revoked', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'expiresAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  locations: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'currencyCode', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'multiplier', type: 'VARCHAR(255)', nullable: '' },
+  ],
+
+  customer_services: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'isAccredited', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+  ],
+
+  partners: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'referralCode', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'maxAllowed', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 2' },
+    { name: 'isAccredited', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'promotionalCount', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 0' },
+    { name: 'numberOfFreePromoCount', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 0' },
+    { name: 'numberOfReferralsBeforePromo', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 5' },
+    { name: 'numberOfFreePromo', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 1' },
+    { name: 'allowFreeBeforeReferal', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+  ],
+
+  resources: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'name', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'value', type: 'TEXT', nullable: 'NOT NULL' },
+  ],
+
+  sales_consultants: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'referralCode', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'isAccredited', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+  ],
+
+  sessions: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'chatSessionId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'sessionType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'sessionStatus', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'PENDING'" },
+    { name: 'time', type: 'JSONB', nullable: '' },
+    { name: 'duration', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 30' },
+    { name: 'description', type: 'TEXT', nullable: '' },
+    { name: 'meetingLink', type: 'VARCHAR(255)', nullable: '', default: "DEFAULT 'https://meet.google.com/ipd-yhtc-kkg'" },
+    { name: 'scheduleId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'grading', type: 'JSONB', nullable: '' },
+    { name: 'isGraded', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'clientId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'coachId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'sessionDate', type: 'DATE', nullable: '' },
+    { name: 'sessionDay', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'timezone', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'eventId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'evidenceLink', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'evidenceType', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'prepStatus', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'NOT_STARTED'" },
+    { name: 'evidence', type: 'JSONB', nullable: '' },
+    { name: 'prepStatusLegacy', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'NOT_STARTED'" },
+    { name: 'prepCompletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'requiresEvidence', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'validationStatus', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'PENDING'" },
+    { name: 'validationNotes', type: 'TEXT', nullable: '' },
+    { name: 'validatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'validatedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  schedules: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'timezone', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'date', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'day', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'time', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'isAvailable', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT true' },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'coachId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  client_availabilities: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'date', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'day', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'timezone', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'startTime', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'endTime', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'sessionType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'PENDING'" },
+    { name: 'isAvailable', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT true' },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'clientId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'notes', type: 'TEXT', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  interview_prep_evidence: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'filename', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'originalName', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'url', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'fileType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'size', type: 'INTEGER', nullable: '' },
+    { name: 'storagePath', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'storageType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'isUrl', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'prepId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'sessionId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  messages: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'title', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'body', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'read', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'archived', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'class', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'alert'" },
+    { name: 'action', type: 'JSONB', nullable: '' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  chats: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'sessionId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'messages', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'jobUrl', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'jobContent', type: 'TEXT', nullable: '' },
+    { name: 'clientId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+  ],
+
+  settings: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'key', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'value', type: 'TEXT', nullable: '' },
+    { name: 'updatedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  support_conversations: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'supportSessionId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'senderType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'senderId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'message', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'metadata', type: 'JSONB', nullable: '' },
+    { name: 'read', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'feedback', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  support_sessions: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'customerId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'assignedStaffId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'subject', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: '', default: "DEFAULT 'open'" },
+    { name: 'feedback', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'feedbackComment', type: 'TEXT', nullable: '' },
+    { name: 'startedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'closedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  client_contents: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'key', type: 'VARCHAR(255)', nullable: 'NOT NULL', unique: true },
+    { name: 'name', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'description', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT ''" },
+    { name: 'placement', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT ''" },
+    { name: 'groupName', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'body', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'draft'" },
+    { name: 'version', type: 'INTEGER', nullable: 'NOT NULL', default: 'DEFAULT 1' },
+    { name: 'updatedBy', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'System'" },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  interview_prep_question_answers: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'isEmailSent', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'userRole', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT ''" },
+    { name: 'jobLink', type: 'VARCHAR(2048)', nullable: '', default: "DEFAULT ''" },
+    { name: 'interviewerInformation', type: 'TEXT', nullable: '', default: "DEFAULT ''" },
+    { name: 'uploadedDocuments', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'interview', type: 'JSONB', nullable: '', default: "DEFAULT '[]'::jsonb" },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'updatedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  cv_revamps: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'uploadId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'fullName', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'url', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'pending'" },
+    { name: 'fileName', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  email_logs: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'email', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'subject', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'templateName', type: 'VARCHAR(128)', nullable: '' },
+    { name: 'status', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'sent'" },
+    { name: 'errorMessage', type: 'VARCHAR(512)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  email_templates: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'key', type: 'VARCHAR(128)', nullable: 'NOT NULL', unique: true },
+    { name: 'name', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'type', type: 'VARCHAR(255)', nullable: 'NOT NULL', default: "DEFAULT 'customer'" },
+    { name: 'body', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'variables', type: 'JSONB', nullable: 'NOT NULL', default: "DEFAULT '[]'::jsonb" },
+    { name: 'updatedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'deletedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  client_support_documents: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'clientId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'category', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'filename', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'cloudFilename', type: 'VARCHAR(512)', nullable: 'NOT NULL' },
+    { name: 'fileUrl', type: 'VARCHAR(1024)', nullable: '' },
+    { name: 'mimeType', type: 'VARCHAR(128)', nullable: '' },
+    { name: 'size', type: 'BIGINT', nullable: '' },
+    { name: 'metadata', type: 'JSONB', nullable: '' },
+    { name: 'roleTitles', type: 'JSONB', nullable: '' },
+    { name: 'clientConfirmed', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'uploadedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'uploadedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'updatedBy', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'isDeleted', type: 'BOOLEAN', nullable: 'NOT NULL', default: 'DEFAULT false' },
+    { name: 'deletedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  user_preference_history: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'userId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'profileId', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'profileType', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'updatedFields', type: 'TEXT[]', nullable: '' },
+    { name: 'updateSource', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'preferenceSnapshot', type: 'JSONB', nullable: 'NOT NULL' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  vcs_prompts: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'prompt', type: 'TEXT', nullable: 'NOT NULL' },
+    { name: 'version', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'active', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: 'NOT NULL' },
+  ],
+
+  vcs_configurations: [
+    { name: 'id', type: 'VARCHAR(255)', nullable: 'NOT NULL' },
+    { name: 'active', type: 'BOOLEAN', nullable: '', default: 'DEFAULT false' },
+    { name: 'key', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'activePromptId', type: 'VARCHAR(255)', nullable: '' },
+    { name: 'createdAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+    { name: 'updatedAt', type: 'TIMESTAMP WITH TIME ZONE', nullable: '' },
+  ],
 
 }; // end TABLES
 
@@ -897,7 +1271,29 @@ async function main() {
       [tableName]
     );
     if (!tableRows.length) {
-      console.log(`[SKIP] Table "${tableName}" does not exist. Run sequelize.sync() first.`);
+      // Table doesn't exist — create it from our column definitions
+      const colDefs = expectedCols.map(c => {
+        const parts = [`"${c.name}" ${c.type}`];
+        if (c.nullable && c.nullable === 'NOT NULL') parts.push('NOT NULL');
+        if (c.default) parts.push(c.default.replace('DEFAULT ', 'DEFAULT '));
+        if (c.unique) parts.push('UNIQUE');
+        return parts.join(' ');
+      });
+      const sql = `CREATE TABLE "${tableName}" (\n  ${colDefs.join(',\n  ')}\n);`;
+
+      if (dryRun) {
+        console.log(`[CREATE] Table "${tableName}":\n${sql}\n`);
+        continue;
+      }
+
+      try {
+        await client.query(sql);
+        console.log(`  ✓ Created table "${tableName}" (${expectedCols.length} columns)`);
+        totalAdded += expectedCols.length;
+      } catch (err) {
+        console.error(`  ✗ Failed to create table "${tableName}": ${err.message}`);
+        totalErrors++;
+      }
       continue;
     }
 

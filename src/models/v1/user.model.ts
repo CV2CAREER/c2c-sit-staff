@@ -14,6 +14,7 @@ import {
   HasOne,
   HasMany,
   BeforeCreate,
+  BeforeSave,
   AfterCreate,
   BeforeUpdate,
   AfterFind,
@@ -79,8 +80,8 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(false)
-  @Unique
+  @AllowNull(true)
+  @Column(DataType.STRING)
   email!: string;
 
   @AllowNull(false)
@@ -114,9 +115,11 @@ export class User extends Model {
   customerClass!: CustomerClass;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   phoneNumber?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   whatsappNumber?: string;
 
   // Stored as JSONB for flexibility (previously Mixed)
@@ -311,15 +314,19 @@ export class User extends Model {
   accessToken?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   bankName?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   bsbCode?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   bankAccountNo?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   bankAccountName?: string;
 
   @AllowNull(false)
@@ -460,42 +467,68 @@ export class User extends Model {
     instance.id = today + padded;
   }
 
+  @BeforeSave
+  static captureAndClearPlaintext(instance: User) {
+    (instance as any)._pii_email = instance.getDataValue('email');
+    (instance as any)._pii_phoneNumber = instance.getDataValue('phoneNumber');
+    (instance as any)._pii_whatsappNumber = instance.getDataValue('whatsappNumber');
+    (instance as any)._pii_bankName = instance.getDataValue('bankName');
+    (instance as any)._pii_bsbCode = instance.getDataValue('bsbCode');
+    (instance as any)._pii_bankAccountNo = instance.getDataValue('bankAccountNo');
+    (instance as any)._pii_bankAccountName = instance.getDataValue('bankAccountName');
+    instance.setDataValue('email', null);
+    instance.setDataValue('phoneNumber', null);
+    instance.setDataValue('whatsappNumber', null);
+    instance.setDataValue('bankName', null);
+    instance.setDataValue('bsbCode', null);
+    instance.setDataValue('bankAccountNo', null);
+    instance.setDataValue('bankAccountName', null);
+  }
+
   @AfterCreate
   static async encryptSensitiveFieldsOnCreate(instance: User, options: any) {
+    const pii = instance as any;
     await fieldEncryption.encryptUserFields(
       instance.id,
-      instance.email,
-      instance.phoneNumber ?? null,
-      instance.whatsappNumber ?? null,
+      pii._pii_email,
+      pii._pii_phoneNumber ?? null,
+      pii._pii_whatsappNumber ?? null,
       options.transaction,
     );
     await fieldEncryption.encryptUserBankFields(
       instance.id,
-      instance.bankName ?? null,
-      instance.bsbCode ?? null,
-      instance.bankAccountNo ?? null,
-      instance.bankAccountName ?? null,
+      pii._pii_bankName ?? null,
+      pii._pii_bsbCode ?? null,
+      pii._pii_bankAccountNo ?? null,
+      pii._pii_bankAccountName ?? null,
       options.transaction,
     );
   }
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: User, options: any) {
-    await fieldEncryption.encryptUserFields(
-      instance.id,
-      instance.email,
-      instance.phoneNumber ?? null,
-      instance.whatsappNumber ?? null,
-      options.transaction,
-    );
-    await fieldEncryption.encryptUserBankFields(
-      instance.id,
-      instance.bankName ?? null,
-      instance.bsbCode ?? null,
-      instance.bankAccountNo ?? null,
-      instance.bankAccountName ?? null,
-      options.transaction,
-    );
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['email', 'phoneNumber', 'whatsappNumber'].includes(f))) {
+      await fieldEncryption.encryptUserFields(
+        instance.id,
+        pii._pii_email,
+        pii._pii_phoneNumber ?? null,
+        pii._pii_whatsappNumber ?? null,
+        options.transaction,
+      );
+    }
+    if (changed.some(f => ['bankName', 'bsbCode', 'bankAccountNo', 'bankAccountName'].includes(f))) {
+      await fieldEncryption.encryptUserBankFields(
+        instance.id,
+        pii._pii_bankName ?? null,
+        pii._pii_bsbCode ?? null,
+        pii._pii_bankAccountNo ?? null,
+        pii._pii_bankAccountName ?? null,
+        options.transaction,
+      );
+    }
   }
 
   @AfterFind
@@ -503,25 +536,21 @@ export class User extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
-      const encEmail = instance.getDataValue('emailEncrypted');
-      if (encEmail) {
+      try {
         const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
-        if (decrypted) {
-          instance.set('email', decrypted.email);
-          instance.set('phoneNumber', decrypted.phoneNumber);
-          instance.set('whatsappNumber', decrypted.whatsappNumber);
-        }
-      }
-      const encBankName = instance.getDataValue('bankNameEncrypted');
-      if (encBankName) {
+        if (decrypted?.email) instance.setDataValue('email', decrypted.email);
+        if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
+        if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
+      } catch {}
+      try {
         const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
-        if (bank) {
-          instance.set('bankName', bank.bankName);
-          instance.set('bsbCode', bank.bsbCode);
-          instance.set('bankAccountNo', bank.bankAccountNo);
-          instance.set('bankAccountName', bank.bankAccountName);
+        if (bank?.bankName) {
+          instance.setDataValue('bankName', bank.bankName);
+          instance.setDataValue('bsbCode', bank.bsbCode);
+          instance.setDataValue('bankAccountNo', bank.bankAccountNo);
+          instance.setDataValue('bankAccountName', bank.bankAccountName);
         }
-      }
+      } catch {}
     }));
   }
 }

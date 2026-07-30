@@ -11,6 +11,7 @@ import {
   CreatedAt,
   UpdatedAt,
   BeforeCreate,
+  BeforeSave,
   AfterCreate,
   BeforeUpdate,
   AfterFind,
@@ -52,9 +53,11 @@ export class Credentials extends Model {
   }
 
   @AllowNull(true)
+  @Column(DataType.STRING(64))
   seekEmail?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(64))
   seekPassword?: string;
 
   @AllowNull(true)
@@ -119,21 +122,27 @@ export class Credentials extends Model {
   deletedAt?: Date;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedPCName?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedPCEmail?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedVetName?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedVetEmail?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedCompletedName?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING(128))
   AssignedCompletedEmail?: string;
 
   @AllowNull(true)
@@ -178,44 +187,72 @@ export class Credentials extends Model {
   })
   tour?: CredentialsTour;
 
+  @BeforeSave
+  static captureAndClearPlaintext(instance: Credentials) {
+    (instance as any)._pii_seekEmail = instance.getDataValue('seekEmail');
+    (instance as any)._pii_seekPassword = instance.getDataValue('seekPassword');
+    (instance as any)._pii_AssignedPCName = instance.getDataValue('AssignedPCName');
+    (instance as any)._pii_AssignedPCEmail = instance.getDataValue('AssignedPCEmail');
+    (instance as any)._pii_AssignedVetName = instance.getDataValue('AssignedVetName');
+    (instance as any)._pii_AssignedVetEmail = instance.getDataValue('AssignedVetEmail');
+    (instance as any)._pii_AssignedCompletedName = instance.getDataValue('AssignedCompletedName');
+    (instance as any)._pii_AssignedCompletedEmail = instance.getDataValue('AssignedCompletedEmail');
+    instance.setDataValue('seekEmail', null);
+    instance.setDataValue('seekPassword', null);
+    instance.setDataValue('AssignedPCName', null);
+    instance.setDataValue('AssignedPCEmail', null);
+    instance.setDataValue('AssignedVetName', null);
+    instance.setDataValue('AssignedVetEmail', null);
+    instance.setDataValue('AssignedCompletedName', null);
+    instance.setDataValue('AssignedCompletedEmail', null);
+  }
+
   @AfterCreate
   static async encryptSensitiveFieldsOnCreate(instance: Credentials, options: any) {
+    const pii = instance as any;
     await fieldEncryption.encryptCredentialFields(
       instance.id,
-      instance.seekPassword ?? null,
+      pii._pii_seekPassword ?? null,
       options.transaction,
     );
     await fieldEncryption.encryptCredentialExtendedFields(
       instance.id,
-      instance.seekEmail ?? null,
-      instance.AssignedPCName ?? null,
-      instance.AssignedPCEmail ?? null,
-      instance.AssignedVetName ?? null,
-      instance.AssignedVetEmail ?? null,
-      instance.AssignedCompletedName ?? null,
-      instance.AssignedCompletedEmail ?? null,
+      pii._pii_seekEmail ?? null,
+      pii._pii_AssignedPCName ?? null,
+      pii._pii_AssignedPCEmail ?? null,
+      pii._pii_AssignedVetName ?? null,
+      pii._pii_AssignedVetEmail ?? null,
+      pii._pii_AssignedCompletedName ?? null,
+      pii._pii_AssignedCompletedEmail ?? null,
       options.transaction,
     );
   }
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
-    await fieldEncryption.encryptCredentialFields(
-      instance.id,
-      instance.seekPassword ?? null,
-      options.transaction,
-    );
-    await fieldEncryption.encryptCredentialExtendedFields(
-      instance.id,
-      instance.seekEmail ?? null,
-      instance.AssignedPCName ?? null,
-      instance.AssignedPCEmail ?? null,
-      instance.AssignedVetName ?? null,
-      instance.AssignedVetEmail ?? null,
-      instance.AssignedCompletedName ?? null,
-      instance.AssignedCompletedEmail ?? null,
-      options.transaction,
-    );
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['seekPassword'].includes(f))) {
+      await fieldEncryption.encryptCredentialFields(
+        instance.id,
+        pii._pii_seekPassword ?? null,
+        options.transaction,
+      );
+    }
+    if (changed.some(f => ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'].includes(f))) {
+      await fieldEncryption.encryptCredentialExtendedFields(
+        instance.id,
+        pii._pii_seekEmail ?? null,
+        pii._pii_AssignedPCName ?? null,
+        pii._pii_AssignedPCEmail ?? null,
+        pii._pii_AssignedVetName ?? null,
+        pii._pii_AssignedVetEmail ?? null,
+        pii._pii_AssignedCompletedName ?? null,
+        pii._pii_AssignedCompletedEmail ?? null,
+        options.transaction,
+      );
+    }
   }
 
   @AfterFind
@@ -223,24 +260,22 @@ export class Credentials extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
-      const encPw = instance.getDataValue('seekPasswordEncrypted');
-      if (encPw) {
+      try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
-        if (pw !== null) instance.set('seekPassword', pw);
-      }
-      const encSeekEmail = instance.getDataValue('seekEmailEncrypted');
-      if (encSeekEmail) {
+        if (pw !== null) instance.setDataValue('seekPassword', pw);
+      } catch {}
+      try {
         const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
         if (ext) {
-          instance.set('seekEmail', ext.seekEmail);
-          instance.set('AssignedPCName', ext.AssignedPCName);
-          instance.set('AssignedPCEmail', ext.AssignedPCEmail);
-          instance.set('AssignedVetName', ext.AssignedVetName);
-          instance.set('AssignedVetEmail', ext.AssignedVetEmail);
-          instance.set('AssignedCompletedName', ext.AssignedCompletedName);
-          instance.set('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+          if (ext.seekEmail) instance.setDataValue('seekEmail', ext.seekEmail);
+          if (ext.AssignedPCName) instance.setDataValue('AssignedPCName', ext.AssignedPCName);
+          if (ext.AssignedPCEmail) instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
+          if (ext.AssignedVetName) instance.setDataValue('AssignedVetName', ext.AssignedVetName);
+          if (ext.AssignedVetEmail) instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
+          if (ext.AssignedCompletedName) instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
+          if (ext.AssignedCompletedEmail) instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
         }
-      }
+      } catch {}
     }));
   }
 }

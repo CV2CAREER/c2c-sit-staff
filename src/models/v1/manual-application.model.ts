@@ -174,6 +174,26 @@ export class ManualApplication extends Model {
   @Column(DataType.DATE)
   ReturnedDate?: Date | null;
 
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_score?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_reason?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_status?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ai_classified_at?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ai_prompt_version?: string | null;
+
   @CreatedAt
   createdAt!: Date;
 

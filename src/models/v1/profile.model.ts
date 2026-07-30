@@ -13,6 +13,7 @@ import {
   CreatedAt,
   UpdatedAt,
   Unique,
+  BeforeSave,
   AfterCreate,
   BeforeUpdate,
   AfterFind,
@@ -275,6 +276,7 @@ export class Profile extends Model {
   isApproved?: boolean;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   socialSecurityNumber?: string;
 
   @AllowNull(true)
@@ -282,6 +284,7 @@ export class Profile extends Model {
   veteran?: boolean;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   taxIdentificationNumber?: string;
 
   @AllowNull(true)
@@ -293,6 +296,7 @@ export class Profile extends Model {
   disabilityStatus?: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   dateOfBirth?: string;
 
   // Questions stored as JSONB array
@@ -307,26 +311,42 @@ export class Profile extends Model {
   @UpdatedAt
   updatedAt!: Date;
 
+  @BeforeSave
+  static captureAndClearPlaintext(instance: Profile) {
+    (instance as any)._pii_ssn = instance.getDataValue('socialSecurityNumber');
+    (instance as any)._pii_tin = instance.getDataValue('taxIdentificationNumber');
+    (instance as any)._pii_dob = instance.getDataValue('dateOfBirth');
+    instance.setDataValue('socialSecurityNumber', null);
+    instance.setDataValue('taxIdentificationNumber', null);
+    instance.setDataValue('dateOfBirth', null);
+  }
+
   @AfterCreate
   static async encryptSensitiveFieldsOnCreate(instance: Profile, options: any) {
+    const pii = instance as any;
     await fieldEncryption.encryptProfileFields(
       instance.id,
-      instance.socialSecurityNumber ?? null,
-      instance.taxIdentificationNumber ?? null,
-      instance.dateOfBirth ?? null,
+      pii._pii_ssn ?? null,
+      pii._pii_tin ?? null,
+      pii._pii_dob ?? null,
       options.transaction,
     );
   }
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Profile, options: any) {
-    await fieldEncryption.encryptProfileFields(
-      instance.id,
-      instance.socialSecurityNumber ?? null,
-      instance.taxIdentificationNumber ?? null,
-      instance.dateOfBirth ?? null,
-      options.transaction,
-    );
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['socialSecurityNumber', 'taxIdentificationNumber', 'dateOfBirth'].includes(f))) {
+      await fieldEncryption.encryptProfileFields(
+        instance.id,
+        pii._pii_ssn ?? null,
+        pii._pii_tin ?? null,
+        pii._pii_dob ?? null,
+        options.transaction,
+      );
+    }
   }
 
   @AfterFind
@@ -334,13 +354,13 @@ export class Profile extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
-      const encSSN = instance.getDataValue('socialSecurityNumberEncrypted');
-      if (!encSSN && !instance.getDataValue('taxIdentificationNumberEncrypted') && !instance.getDataValue('dateOfBirthEncrypted')) return;
-      const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
-      if (!decrypted) return;
-      instance.set('socialSecurityNumber', decrypted.socialSecurityNumber);
-      instance.set('taxIdentificationNumber', decrypted.taxIdentificationNumber);
-      instance.set('dateOfBirth', decrypted.dateOfBirth);
+      try {
+        const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
+        if (!decrypted) return;
+        if (decrypted.socialSecurityNumber) instance.setDataValue('socialSecurityNumber', decrypted.socialSecurityNumber);
+        if (decrypted.taxIdentificationNumber) instance.setDataValue('taxIdentificationNumber', decrypted.taxIdentificationNumber);
+        if (decrypted.dateOfBirth) instance.setDataValue('dateOfBirth', decrypted.dateOfBirth);
+      } catch {}
     }));
   }
 }

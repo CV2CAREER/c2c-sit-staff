@@ -11,6 +11,7 @@ import {
   ForeignKey,
   BelongsTo,
   AfterCreate,
+  BeforeSave,
   BeforeUpdate,
   AfterFind,
 } from "sequelize-typescript";
@@ -42,10 +43,12 @@ export class JobsiteCredential extends Model {
 
   // The client-supplied application email. Never the client's real
   // mailbox password — that is never requested or stored.
-  @AllowNull(false)
+  @AllowNull(true)
+  @Column(DataType.STRING)
   email!: string;
 
   @AllowNull(true)
+  @Column(DataType.STRING)
   generatedPassword?: string;
 
   @AllowNull(false)
@@ -116,24 +119,37 @@ export class JobsiteCredential extends Model {
   @UpdatedAt
   updatedAt!: Date;
 
+  @BeforeSave
+  static captureAndClearPlaintext(instance: JobsiteCredential) {
+    (instance as any)._pii_email = instance.getDataValue('email');
+    (instance as any)._pii_generatedPassword = instance.getDataValue('generatedPassword');
+    instance.setDataValue('email', null);
+    instance.setDataValue('generatedPassword', null);
+  }
+
   @AfterCreate
   static async encryptSensitiveFieldsOnCreate(instance: JobsiteCredential, options: any) {
+    const pii = instance as any;
     await fieldEncryption.encryptJobsiteCredentialFields(
       instance.id,
-      instance.email ?? null,
-      instance.generatedPassword ?? null,
+      pii._pii_email ?? null,
+      pii._pii_generatedPassword ?? null,
       options.transaction,
     );
   }
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: JobsiteCredential, options: any) {
-    await fieldEncryption.encryptJobsiteCredentialFields(
-      instance.id,
-      instance.email ?? null,
-      instance.generatedPassword ?? null,
-      options.transaction,
-    );
+    const changed = instance.changed();
+    if (!changed) return;
+    if (changed.some(f => ['email', 'generatedPassword'].includes(f))) {
+      await fieldEncryption.encryptJobsiteCredentialFields(
+        instance.id,
+        (instance as any)._pii_email ?? null,
+        (instance as any)._pii_generatedPassword ?? null,
+        options.transaction,
+      );
+    }
   }
 
   @AfterFind
@@ -141,12 +157,12 @@ export class JobsiteCredential extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
-      const encEmail = instance.getDataValue('emailEncrypted');
-      if (!encEmail) return;
-      const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
-      if (!decrypted) return;
-      instance.set('email', decrypted.email);
-      instance.set('generatedPassword', decrypted.generatedPassword);
+      try {
+        const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
+        if (!decrypted) return;
+        if (decrypted.email) instance.setDataValue('email', decrypted.email);
+        if (decrypted.generatedPassword) instance.setDataValue('generatedPassword', decrypted.generatedPassword);
+      } catch {}
     }));
   }
 }
