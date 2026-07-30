@@ -65,6 +65,19 @@ export const EDITABLE_FIELDS = new Set([
 
 type Actor = { name: string; email?: string };
 
+// Job_Title is stored as a spreadsheet-style formula — e.g.
+// =HYPERLINK("https://...","Data Engineer") — same format parsed for the
+// admin grid's Job Title column (see table-columns.tsx). Extracts the
+// display label and the URL so notifications can render an actual clickable
+// link instead of dumping the raw formula string.
+const parseJobTitle = (raw: string | undefined | null): { label: string; url: string | null } => {
+  const value = raw || "N/A";
+  const match = value.match(/=HYPERLINK\("([^"]+)"\s*,\s*"([^"]+)"\)/i);
+  if (!match) return { label: value, url: null };
+  const [, url, label] = match;
+  return { label, url };
+};
+
 export const listManualApplications = async (params: {
   field?: string;
   value?: string;
@@ -123,7 +136,7 @@ const notifyManualApplicationChange = (
   host: string,
   changedFields?: string[],
 ) => {
-  const jobTitle = record.Job_Title || "N/A";
+  const { label: jobTitleLabel, url: jobTitleUrl } = parseJobTitle(record.Job_Title);
   const advertiser = record.Advertiser || "N/A";
   const changedFieldsStr = changedFields?.length ? changedFields.join(", ") : undefined;
 
@@ -133,6 +146,12 @@ const notifyManualApplicationChange = (
     restored: "restored from the recycle bin",
     deleted: "permanently deleted",
   };
+
+  // Slack mrkdwn: <url|label> renders as a clickable link showing just the
+  // label; a bare <url> line underneath renders as a second clickable link
+  // showing the raw address — matches the grid's name-on-top/link-under look.
+  const jobLine = jobTitleUrl ? `<${jobTitleUrl}|${jobTitleLabel}>` : jobTitleLabel;
+  const jobLinkLine = jobTitleUrl ? `• *Link:* <${jobTitleUrl}>` : "";
 
   setImmediate(async () => {
     try {
@@ -148,7 +167,8 @@ const notifyManualApplicationChange = (
         body: [
           `📝 MANUAL APPLICATION ${action.toUpperCase().replace("-", " ")}`,
           `• *Record ID:* ${record.id}`,
-          `• *Job:* ${jobTitle} · ${advertiser}`,
+          `• *Job:* ${jobLine} · ${advertiser}`,
+          jobLinkLine,
           changedFieldsStr ? `• *Fields Changed:* ${changedFieldsStr}` : "",
           `• *Action:* Record ${actionVerb[action]}`,
           `${actor.name} via admin job discovery grid.`,
@@ -163,7 +183,8 @@ const notifyManualApplicationChange = (
     try {
       await sendManualApplicationChangeAdminEmail({
         recordId: record.id,
-        jobTitle,
+        jobTitle: jobTitleLabel,
+        jobUrl: jobTitleUrl,
         advertiser,
         action,
         changedFields: changedFieldsStr,

@@ -376,6 +376,7 @@ export const sendApplicationActionAdminEmail = async (
 interface ManualApplicationChangeAdminEmailOptions {
   recordId: string;
   jobTitle: string;
+  jobUrl?: string | null;
   advertiser: string;
   action: "updated" | "soft-deleted" | "restored" | "deleted";
   changedFields?: string;

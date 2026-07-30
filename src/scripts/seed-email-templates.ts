@@ -40,7 +40,7 @@ export const TEMPLATE_META: Record<string, { name: string; type: EmailTemplateTy
   "content-generated.ejs": { name: "Content Generated", type: EmailTemplateType.CUSTOMER, variables: ["name", "type"] },
   "deployment-failure.ejs": { name: "Admin: Deployment Failure", type: EmailTemplateType.ADMIN, variables: ["appName", "environment", "errorMessage", "timestamp", "currentYear"] },
   "deployment-success.ejs": { name: "Admin: Deployment Success", type: EmailTemplateType.ADMIN, variables: ["appName", "environment", "commitSha", "commitMessage", "deployedBy", "duration", "deploymentUrl", "logsUrl", "timestamp", "currentYear"] },
-  "discovery-tracker-change-admin.ejs": { name: "Admin: Manual Application Changed", type: EmailTemplateType.ADMIN, variables: ["recordId", "jobTitle", "advertiser", "action", "changedFields", "triggeredBy", "currentYear"] },
+  "discovery-tracker-change-admin.ejs": { name: "Admin: Manual Application Changed", type: EmailTemplateType.ADMIN, variables: ["recordId", "jobTitle", "jobUrl", "advertiser", "action", "changedFields", "triggeredBy", "currentYear"] },
   "DispatchCredentials.ejs": { name: "Dispatch Credentials", type: EmailTemplateType.CUSTOMER, variables: ["firstname", "credentials"] },
   "DispatchPreference.ejs": { name: "Dispatch Preference", type: EmailTemplateType.CUSTOMER, variables: ["firstname", "email", "link", "results"] },
   "document-update-admin.ejs": { name: "Admin: Document Updated", type: EmailTemplateType.ADMIN, variables: [] },

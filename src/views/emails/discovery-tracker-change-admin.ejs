@@ -47,7 +47,15 @@
 
         <div class="info-box">
           <p><strong>Record ID:</strong> <%= recordId %></p>
-          <p><strong>Job Title:</strong> <%= jobTitle %></p>
+          <p>
+            <strong>Job Title:</strong>
+            <% if (jobUrl) { %>
+              <a href="<%= jobUrl %>" style="color: #004174;"><%= jobTitle %></a><br />
+              <a href="<%= jobUrl %>" style="color: #6b7280; font-size: 12px; word-break: break-all;"><%= jobUrl %></a>
+            <% } else { %>
+              <%= jobTitle %>
+            <% } %>
+          </p>
           <p><strong>Advertiser:</strong> <%= advertiser %></p>
           <% if (changedFields) { %>
           <p><strong>Fields Changed:</strong> <%= changedFields %></p>
