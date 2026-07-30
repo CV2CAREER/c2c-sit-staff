@@ -9,8 +9,11 @@ export const metadata: Metadata = {
 
 export default function JobPreferencePage() {
   return (
-    <section className="flex flex-col gap-8 mt-8">
-      <PageHeader title="Job Discovery" />
+    <section className="flex flex-col gap-6 mt-6">
+      <PageHeader
+        title="Job Discovery"
+        className="rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]"
+      />
       <JobPreferenceProvider>
         <JobPreferenceDataTable />
       </JobPreferenceProvider>
