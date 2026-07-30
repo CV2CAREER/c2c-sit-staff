@@ -373,6 +373,38 @@ export const sendApplicationActionAdminEmail = async (
   });
 };
 
+interface ManualApplicationChangeAdminEmailOptions {
+  recordId: string;
+  jobTitle: string;
+  advertiser: string;
+  action: "updated" | "soft-deleted" | "restored" | "deleted";
+  changedFields?: string;
+  triggeredBy: string;
+}
+
+const MANUAL_APPLICATION_ACTION_LABELS: Record<ManualApplicationChangeAdminEmailOptions["action"], string> = {
+  updated: "Updated",
+  "soft-deleted": "Sent to Bin",
+  restored: "Restored",
+  deleted: "Permanently Deleted",
+};
+
+export const sendManualApplicationChangeAdminEmail = async (
+  options: ManualApplicationChangeAdminEmailOptions,
+): Promise<void> => {
+  const actionLabel = MANUAL_APPLICATION_ACTION_LABELS[options.action];
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `Manual Application ${actionLabel} – ${options.jobTitle}`,
+    templateName: "discovery-tracker-change-admin.ejs",
+    templateData: {
+      ...options,
+      actionLabel,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
 interface GrpConfirmedEmailOptions {
   name: string;
   email: string;

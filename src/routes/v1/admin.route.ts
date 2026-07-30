@@ -102,6 +102,7 @@ import accessLevelRouterV1 from "./access-level.route";
 import communicationTemplateRouterV1 from "./communication-template.route";
 import clientContentRouterV1 from "./client-content.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
+import discoveryTrackerRouterV1 from "./discovery-tracker.route";
 const adminRouterV1 = Router();
 
 adminRouterV1.use("/client-sample", clientSampleRouterV1);
@@ -648,6 +649,13 @@ adminRouterV1.post(
   checkBlacklistedTokens,
   isUserAuthenticated,
   generateExternalPassword,
+);
+
+adminRouterV1.use(
+  "/discovery-tracker",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  discoveryTrackerRouterV1,
 );
 
 adminRouterV1.use("/", clientAllocationRouterV1);
