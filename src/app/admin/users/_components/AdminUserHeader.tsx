@@ -50,7 +50,12 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
 
   useEffect(() => {
     if (allUserData?.data) {
-      const users = Array.isArray(allUserData.data) ? allUserData.data : (allUserData.data.items ?? []);
+      const rawData = allUserData.data;
+      const users = Array.isArray(rawData)
+        ? rawData
+        : rawData.users
+          ?? rawData.items
+          ?? [];
       setAllData((prev: any[]) => {
         const processedData = users
               ?.map((data: any) => ({
