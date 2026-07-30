@@ -24,7 +24,7 @@ const adminDocumentRouterV1 = Router();
 adminDocumentRouterV1.use(
   checkBlacklistedTokens,
   isUserAuthenticated,
-  authorizeRoles("admin", "assistant"),
+  authorizeRoles("admin"),
 );
 
 adminDocumentRouterV1.get("/get-signed-url", getDocumentSignedUrlController);

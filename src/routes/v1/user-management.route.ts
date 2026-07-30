@@ -21,57 +21,58 @@ import {
   getInflightUsers,
   updateJobPreference,
 } from "../../controllers/v1/user-management.controller";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const userManagementRouterV1 = Router();
 
 /**
  * User Management Routes (Admin/Assistant Access)
  */
-userManagementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated)
+userManagementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 // Update user details
 userManagementRouterV1.patch(
-  "/users/:userId", updateUser
+  "/users/:userId", authorizeRoles("admin"), updateUser
 );
 
 // Approve user document
 userManagementRouterV1.post(
-  "/users/documents/:documentId/approve", approveUserDocument
+  "/users/documents/:documentId/approve", authorizeRoles("admin"), approveUserDocument
 );
 
 // Reject user document
 userManagementRouterV1.post(
-  "/documents/:documentId/reject", rejectUserDocument
+  "/documents/:documentId/reject", authorizeRoles("admin"), rejectUserDocument
 );
 
 // Get pending documents for user
 userManagementRouterV1.get(
-  "/users/:userId/documents/pending", getPendingDocumentsByUserId
+  "/users/:userId/documents/pending", authorizeRoles("admin"), getPendingDocumentsByUserId
 );
 
 // Delete user (soft delete to recycle bin)
 userManagementRouterV1.delete(
-  "/users/:userId", deleteUser
+  "/users/:userId", authorizeRoles("admin"), deleteUser
 );
 
 // Restore soft deleted user
 userManagementRouterV1.post(
-  "/users/:userId/restore", restoreUser
+  "/users/:userId/restore", authorizeRoles("admin"), restoreUser
 );
 
 // Permanently delete user (irreversible)
 userManagementRouterV1.delete(
-  "/users/:userId/purge", purgeUser
+  "/users/:userId/purge", authorizeRoles("admin"), purgeUser
 );
 
 // Approve user account
 userManagementRouterV1.post(
-  "/users/:userId/approve", approveUserAccount
+  "/users/:userId/approve", authorizeRoles("admin"), approveUserAccount
 );
 
 // Send user details sample to Slack
 userManagementRouterV1.post(
-  "/users/:userId/send-slack-sample", sendUserDetailsToSlack
+  "/users/:userId/send-slack-sample", authorizeRoles("admin"), sendUserDetailsToSlack
 );
 
 // Get all feature titles
@@ -81,7 +82,7 @@ userManagementRouterV1.get(
 
 // Get user preferences by user ID
 userManagementRouterV1.get(
-  "/users/:userId/preferences", getUserPreferences
+  "/users/:userId/preferences", authorizeRoles("admin"), getUserPreferences
 );
 
 // Get job preferences history for user
@@ -116,7 +117,7 @@ userManagementRouterV1.get(
 
 // Update job preference (step-based or full)
 userManagementRouterV1.put(
-  "/users/:userId/preferences/:profileType", updateJobPreference
+  "/users/:userId/preferences/:profileType", authorizeRoles("admin"), updateJobPreference
 );
 
 export default userManagementRouterV1;

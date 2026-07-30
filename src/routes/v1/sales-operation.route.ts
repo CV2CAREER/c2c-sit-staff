@@ -15,9 +15,9 @@ const salesOperationRouterV1 = Router();
 salesOperationRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistance"));
 
 salesOperationRouterV1.get("/", getSalesOperations);
-salesOperationRouterV1.post("/", createSalesOperation);
-salesOperationRouterV1.patch("/", updateSalesOperation);
-salesOperationRouterV1.delete("/", deleteSalesOperation);
-salesOperationRouterV1.get("/export", exportSalesOperationCSV);
+salesOperationRouterV1.post("/", authorizeRoles("admin"), createSalesOperation);
+salesOperationRouterV1.patch("/", authorizeRoles("admin"), updateSalesOperation);
+salesOperationRouterV1.delete("/", authorizeRoles("admin"), deleteSalesOperation);
+salesOperationRouterV1.get("/export", authorizeRoles("admin"), exportSalesOperationCSV);
 
 export default salesOperationRouterV1;

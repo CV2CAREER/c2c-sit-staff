@@ -16,27 +16,33 @@ import {
   putAdminAiPrompts,
   putAdminAiVcs,
 } from "../../controllers/v1/admin-ai.controller";
+import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const adminAiRouterV1 = Router();
 
-adminAiRouterV1.get("/:module", getAdminAiPrompts);
-adminAiRouterV1.post("/:module", postAdminAiPrompts);
-adminAiRouterV1.put("/:module", putAdminAiPrompts);
-adminAiRouterV1.delete("/:module", deleteAdminAiPrompts);
+// GET reads are open to admin + assistant; everything that creates, edits,
+// or deletes AI prompt config is admin-only.
+const readAccess = authorizeRoles("admin", "assistant");
+const writeAccess = authorizeRoles("admin");
 
-adminAiRouterV1.get("/:module/queue", getAdminAiQueue);
-adminAiRouterV1.post("/:module/queue", postAdminAiQueue);
-adminAiRouterV1.delete("/:module/queue", deleteAdminAiQueue);
+adminAiRouterV1.get("/:module", readAccess, getAdminAiPrompts);
+adminAiRouterV1.post("/:module", writeAccess, postAdminAiPrompts);
+adminAiRouterV1.put("/:module", writeAccess, putAdminAiPrompts);
+adminAiRouterV1.delete("/:module", writeAccess, deleteAdminAiPrompts);
 
-adminAiRouterV1.get("/:module/vcs", getAdminAiVcs);
-adminAiRouterV1.post("/:module/vcs", postAdminAiVcs);
-adminAiRouterV1.put("/:module/vcs", putAdminAiVcs);
+adminAiRouterV1.get("/:module/queue", readAccess, getAdminAiQueue);
+adminAiRouterV1.post("/:module/queue", writeAccess, postAdminAiQueue);
+adminAiRouterV1.delete("/:module/queue", writeAccess, deleteAdminAiQueue);
 
-adminAiRouterV1.get("/:module/simulation", getAdminAiSimulations);
-adminAiRouterV1.post("/:module/simulation", postAdminAiSimulation);
-adminAiRouterV1.delete("/:module/simulation", deleteAdminAiSimulation);
+adminAiRouterV1.get("/:module/vcs", readAccess, getAdminAiVcs);
+adminAiRouterV1.post("/:module/vcs", writeAccess, postAdminAiVcs);
+adminAiRouterV1.put("/:module/vcs", writeAccess, putAdminAiVcs);
 
-adminAiRouterV1.get("/:module/style", getAdminAiCvStyle);
-adminAiRouterV1.post("/:module/style", postAdminAiCvStyle);
+adminAiRouterV1.get("/:module/simulation", readAccess, getAdminAiSimulations);
+adminAiRouterV1.post("/:module/simulation", writeAccess, postAdminAiSimulation);
+adminAiRouterV1.delete("/:module/simulation", writeAccess, deleteAdminAiSimulation);
+
+adminAiRouterV1.get("/:module/style", readAccess, getAdminAiCvStyle);
+adminAiRouterV1.post("/:module/style", writeAccess, postAdminAiCvStyle);
 
 export default adminAiRouterV1;

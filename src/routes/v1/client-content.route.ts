@@ -13,7 +13,7 @@ const clientContentRouterV1 = Router();
 clientContentRouterV1.use(
   checkBlacklistedTokens,
   isUserAuthenticated,
-  authorizeRoles("admin", "assistant"),
+  authorizeRoles("admin"),
 );
 
 clientContentRouterV1.get("/", getClientContentSections);
