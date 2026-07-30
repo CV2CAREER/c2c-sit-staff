@@ -91,6 +91,7 @@ export enum RevenueStatus {
   REFUNDED = "Refunded",
   PAID = "Paid",
   UNPAID = "Unpaid",
+  AWAITING_PAYID = "AWAITING_PAYID",
 }
 
 export enum ReferrerStatus {
@@ -246,6 +247,9 @@ export enum SlackEventType {
   REFERRAL_SIGNUP = "REFERRAL_SIGNUP",
   CONTACT_CREATION = "CONTACT_CREATION",
   MISSING_INFO = "MISSING_INFO",
+  MISSING_INFO_SENT = "MISSING_INFO_SENT",
+  MISSING_INFO_BULK_REMINDER = "MISSING_INFO_BULK_REMINDER",
+  MISSING_INFO_TEMPLATE_PUBLISHED = "MISSING_INFO_TEMPLATE_PUBLISHED",
   ADMIN_ACTION = "ADMIN_ACTION",
   CRON_EXECUTION = "CRON_EXECUTION",
   ERROR_ALERT = "ERROR_ALERT",
@@ -266,6 +270,7 @@ export enum SlackChannel {
   FREE_TRIALS = "C08PWPTA8FM",
   PAID_SUB = "C077H6PBBFS", // Replace with actual paid-sub channel ID
   JOB_PIPELINE = "C0B9KDACX5G", // Testing Channel
+  RETENTION_CTRL = "PENDING_RC_CHANNEL_ID", // Replace with #retention-controller channel ID
 }
 
 export enum Length {
@@ -383,4 +388,32 @@ export enum ClientAvailabilityStatus {
   PENDING = "pending",
   ACCEPTED = "accepted",
   REJECTED = "rejected",
+}
+
+// Jobsite Credential Status Enum (S.ADM.19 / C.CLT.16)
+// pending: client submitted, nothing forwarded yet
+// forwarded: client clicked "I have completed the email forwarding process"
+// accepted: admin clicked Accept (requires forwarded) — client can no longer
+//   edit the email from here on. From this stage, admin can send as many
+//   Test emails as they like (no status change) before making a Decision:
+//   Approve or Reject.
+// active: admin approved the mailbox (requires accepted) — sends the
+//   approval email + Slack notification, the only state that clears the
+//   application gate. Admin can Unapprove to revert to accepted.
+// failed: rejected by admin at any stage, with one of the 5 closed reasons
+export enum JobsiteCredentialStatus {
+  PENDING = "pending",
+  FORWARDED = "forwarded",
+  ACCEPTED = "accepted",
+  ACTIVE = "active",
+  FAILED = "failed",
+}
+
+// Jobsite Credential Rejection Reason Enum — closed list, never free text
+export enum JobsiteCredentialRejectionReason {
+  DELEGATION_NOT_GRANTED = "Delegation not granted",
+  MAILBOX_NOT_REACHABLE = "Mailbox not reachable",
+  TWO_FA_BLOCKING = "2FA blocking delegated access",
+  EMAIL_REJECTED_BY_JOBSITE = "Email rejected by jobsite",
+  EMAIL_ALREADY_IN_USE = "Email already in use",
 }

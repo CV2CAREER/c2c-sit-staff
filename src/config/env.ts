@@ -1,7 +1,7 @@
-// import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 
-// // LOAD ENVIRONMENT VARIABLES
-// dotenv.config();
+// LOAD ENVIRONMENT VARIABLES
+dotenv.config();
 
 export const NODE_ENV = process.env.NODE_ENV;
 export const PORT = process.env.PORT;
@@ -15,8 +15,27 @@ export const DATABASE_NAME = process.env.DB_NAME;
 export const DATABASE_USERNAME = process.env.DB_USER;
 export const DATABASE_PASSWORD = process.env.DB_PASSWORD;
 export const DATABASE_HOST = process.env.DB_HOST;
-export const DATABASE_PORT =
-  parseInt(process.env.DB_PORT || '5432', 10) || 5432;
+export const DATABASE_PORT = parseInt(process.env.DB_PORT || '5432', 10) || 5432;
+
+
+// DATABASE CONNECTION POOL
+// The managed Postgres cluster has a hard `max_connections` limit shared by every
+// environment (RAT/IAT/SIT/UAT/PROD). Keep the sum of DB_POOL_MAX across all
+// running environments below the cluster's usable connection limit.
+const toInt = (value: string | undefined, fallback: number): number => {
+  const parsed = parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+export const DB_POOL_MAX = toInt(process.env.DB_POOL_MAX, 10);
+export const DB_POOL_MIN = toInt(process.env.DB_POOL_MIN, 0);
+export const DB_POOL_ACQUIRE = toInt(process.env.DB_POOL_ACQUIRE, 30000);
+export const DB_POOL_IDLE = toInt(process.env.DB_POOL_IDLE, 10000);
+export const DB_POOL_EVICT = toInt(process.env.DB_POOL_EVICT, 5000);
+export const DB_STATEMENT_TIMEOUT = toInt(
+  process.env.DB_STATEMENT_TIMEOUT,
+  30000
+);
 
 // PROXY DATABASE
 export const REDIS_PORT = parseInt(process.env.CLIENT_SAMPLE_REDIS_PORT!, 10);
@@ -94,6 +113,7 @@ export const JWT_VERIFICATION_SECRET_KEY_EXPIRY = parseInt(
 
 // EMAIL
 export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
+export const PRODUCT_OWNER_EMAIL = process.env.PRODUCT_OWNER_EMAIL || process.env.TEAM_EMAIL!;
 
 // ACCESS TOKEN SECRET
 export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;

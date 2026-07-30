@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import path from "path";
 import { Request, Response } from "express";
 import formidable, { type File as FormidableFile, type Files } from "formidable";
 import catchAsyncError from "../../utils/catchAsyncError";
@@ -8,7 +7,8 @@ import { getServiceLogger } from "../../utils/createLogger";
 import { UploadService } from "../../services/admin-upload.service";
 import { SlackService } from "../../services/slack.service";
 import { sendMail } from "../../config/sendGrid";
-import { TEAM_EMAIL } from "../../config/env";
+import { TEAM_EMAIL, CLIENT_APP_DOMAIN } from "../../config/env";
+import { User } from "../../models/v1/user.model";
 import { UploadType, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import {
@@ -135,6 +135,12 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
           .map((doc) => doc.type)
           .join(", ");
 
+        const documentNames = documents
+          .map((doc) => doc.document.name)
+          .join(", ");
+
+        const uploadTimestamp = new Date().toLocaleString();
+
         const slackHost = req.get("host") || process.env.CLIENT_APP_DOMAIN || "localhost";
         const environment = getEnvironmentFromHost(slackHost);
 
@@ -163,14 +169,13 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
               email: TEAM_EMAIL,
               subject: `📄 Revised Document Uploaded - by ${(req as any).user?.firstName} ${(req as any).user?.lastName}`,
               templateName: "admin-revised-documents.ejs",
-              templateDir: path.resolve(__dirname, "../../views/emails"),
               templateData: {
                 title: "Document Upload Notification",
                 message: `Admin has uploaded Revised documents for user.`,
                 userId,
                 documentTypes,
                 uploadCount: uploads.length,
-                timestamp: new Date().toLocaleString(),
+                timestamp: uploadTimestamp,
                 currentYear: new Date().getFullYear(),
               },
             });
@@ -180,6 +185,44 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
               `Failed to send team email notification: ${emailError?.message || emailError}`,
             );
           }
+        }
+
+        // Send email notification to the client (user)
+        try {
+          const user = await User.findByPk(userId);
+
+          if (user?.email) {
+            const clientName =
+              `${user.firstName || ""} ${user.lastName || ""}`.trim() || "there";
+
+            await sendMail({
+              email: user.email,
+              subject: `📄 Your Revised Document is Ready - CVtoCAREER`,
+              templateName: "client-revised-documents.ejs",
+              templateData: {
+                title: "Revised Document Available",
+                name: clientName,
+                message:
+                  "Our team has uploaded a revised version of your document(s). Please find the details below.",
+                documentNames,
+                documentTypes,
+                timestamp: uploadTimestamp,
+                frontendUrl: CLIENT_APP_DOMAIN || "",
+                currentYear: new Date().getFullYear(),
+              },
+            });
+            logger.info(
+              `✅ Client notification email sent for revised document upload to user ${userId}`,
+            );
+          } else {
+            logger.warn(
+              `Skipped client email for revised document upload: no email found for user ${userId}`,
+            );
+          }
+        } catch (clientEmailError: any) {
+          logger.error(
+            `Failed to send client email notification: ${clientEmailError?.message || clientEmailError}`,
+          );
         }
       });
 

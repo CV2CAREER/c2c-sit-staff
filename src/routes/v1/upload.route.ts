@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  activateUploadDocument,
   getAllUploadDocuments,
   updateUploadDocument
 } from "../../controllers/v1/upload.controller";
@@ -26,6 +27,14 @@ uploadRouterV1.get(
  */
 uploadRouterV1.patch(
   "/:uploadId", updateUploadDocument,
+);
+
+/**
+ * Activate an admin-generated upload
+ * PATCH /api/v1/uploads/:uploadId/activate
+ */
+uploadRouterV1.patch(
+  "/:uploadId/activate", activateUploadDocument,
 );
 
 // Admin document operations

@@ -22,6 +22,8 @@ import { User } from '../models/v1/user.model';
 import { Credentials } from '../models/v1/credentials.model';
 import { Schedule } from '../models/v1/schedule.model';
 import { ClientAvailability } from '../models/v1/client-availability.model';
+import { JobsiteCredential } from '../models/v1/jobsite-credential.model';
+import { JobsiteCredentialAudit } from '../models/v1/jobsite-credential-audit.model';
 import { InterviewPrepEvidence } from '../models/v1/interview-prep-evidence.model';
 import { Message } from '../models/v1/message.model';
 import { Chat } from '../models/v1/chat.model';
@@ -60,10 +62,19 @@ import { AccessLevel } from '../models/v1/access-level.model';
 import { AccessRule } from '../models/v1/access-rule.model';
 import { UserAccessLevel } from '../models/v1/user-access-level.model';
 import { CommunicationTemplate } from '../models/v1/communication-template.model';
+import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
+import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
+import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
+import { ClientSupportDocument } from '../models/v1/client-support-document.model';
+import { EmailLog } from "../models/v1/email-log.model";
+import { EmailTemplate } from "../models/v1/email-template.model";
+import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
+import { TourCount } from '../models/v1/tour-count.model';
+import { CredentialsTour } from '../models/v1/credentials-tour.model';
 
 export const modelList = [
   User,
@@ -91,6 +102,8 @@ export const modelList = [
   BlacklistedToken,
   Schedule,
   ClientAvailability,
+  JobsiteCredential,
+  JobsiteCredentialAudit,
   InterviewPrepEvidence,
   Message,
   Chat,
@@ -126,6 +139,7 @@ export const modelList = [
   AccessRule,
   UserAccessLevel,
   CommunicationTemplate,
+  ClientContent,
   AuditLog,
   PassKeyVault,
   SubscriptionAllocation,
@@ -134,4 +148,12 @@ export const modelList = [
   VCSPrompt,
   VCS,
   MissingInfoRequest,
+  MissingInfoTemplate,
+  MissingInfoTemplateField,
+  ClientSupportDocument,
+  EmailLog,
+  EmailTemplate,
+  InterviewPackProcess,
+  TourCount,
+  CredentialsTour,
 ];

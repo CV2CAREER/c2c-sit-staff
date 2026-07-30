@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body
+    style="
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f4f5;
+      padding: 40px 16px;
+      color: #333;
+      margin: 0;
+      line-height: 1.6;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div
+        style="
+          background: #1e6641;
+          padding: 36px 32px 32px;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 20px">
+          <div style="display: inline-block; background: #fff; border-radius: 8px; padding: 8px 20px">
+            <img
+              src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+              alt="CVtoCAREER"
+              style="display: block; width: 149px; height: 32px"
+            />
+          </div>
+        </div>
+        <h1
+          style="
+            margin: 0;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+          "
+        >
+          Your Coral Plan Is Active
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 36px 32px">
+        <p style="margin: 0 0 16px; font-size: 15px">
+          Dear <strong><%= name %></strong>,
+        </p>
+
+        <p style="margin: 0 0 24px; font-size: 15px">
+          You're set up, and your <strong>14-day Coral plan starts today</strong>.
+        </p>
+
+        <!-- Plan box -->
+        <div
+          style="
+            background: #f0faf4;
+            border-left: 4px solid #1e6641;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 28px;
+          "
+        >
+          <p style="margin: 0 0 12px; font-size: 15px; font-weight: 700; color: #1e6641">
+            Your plan
+          </p>
+          <p style="margin: 0 0 6px; font-size: 14px; color: #333">
+            <strong>Plan:</strong> Coral &middot; Ambassador
+          </p>
+          <p style="margin: 0 0 6px; font-size: 14px; color: #333">
+            <strong>Runs until:</strong> <%= subEndDate %>
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #333">
+            <strong>Includes:</strong> 1 client profile
+          </p>
+        </div>
+
+        <p style="margin: 0 0 28px; font-size: 15px; color: #333">
+          <strong>Every friend who signs up and subscribes earns you +14 more days.</strong> No cap while you're on Coral &mdash; just share your link.
+        </p>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin-bottom: 32px">
+          <a
+            href="<%= frontendUrl %>/dashboard/referrals"
+            style="
+              background: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: 600;
+              padding: 14px 36px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 15px;
+            "
+          >
+            Get my referral link &rarr;
+          </a>
+        </div>
+
+        <!-- Signature -->
+        <p style="margin: 0 0 4px; font-size: 14px; color: #555">Best regards,</p>
+        <p style="margin: 0; font-size: 15px; font-weight: 700; color: #333">The CVtoCAREER Team</p>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          padding: 20px 32px;
+          background: #f8f9fa;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 16px">
+          <a href="https://facebook.com/cvtocareer" style="display: inline-block; margin: 0 6px; text-decoration: none">
+            <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png" alt="Facebook" style="width: 28px; height: 28px; display: inline-block; border-radius: 50%" />
+          </a>
+          <a href="https://x.com/cvtocareer" style="display: inline-block; margin: 0 6px; text-decoration: none">
+            <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png" alt="X" style="width: 28px; height: 28px; display: inline-block; border-radius: 50%" />
+          </a>
+          <a href="https://instagram.com/cvtocareer" style="display: inline-block; margin: 0 6px; text-decoration: none">
+            <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png" alt="Instagram" style="width: 28px; height: 28px; display: inline-block; border-radius: 50%" />
+          </a>
+          <a href="https://linkedin.com/company/cvtocareer" style="display: inline-block; margin: 0 6px; text-decoration: none">
+            <img src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png" alt="LinkedIn" style="width: 28px; height: 28px; display: inline-block; border-radius: 50%" />
+          </a>
+        </div>
+        <p style="margin: 0 0 8px; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER PTY LTD. All rights reserved.
+        </p>
+        <div>
+          <a href="<%= frontendUrl %>/dashboard/account?run=unsubscribe" style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px">Unsubscribe</a>
+          <span style="color: #d1d5db">&bull;</span>
+          <a href="<%= frontendUrl %>/privacy-policy" style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px">Privacy Policy</a>
+          <span style="color: #d1d5db">&bull;</span>
+          <a href="<%= frontendUrl %>" style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px">Website</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

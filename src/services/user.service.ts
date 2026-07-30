@@ -24,14 +24,11 @@ export const handleGetUserInfo = async (userId: string) => {
     throw new ErrorHandler("Invalid user ID.", 400);
   }
 
-  let user: User | null = await getCachedUser(userId);
+  const user = await User.findByPk(userId, {
+    include: [{ model: Plan, as: "activePlan" }],
+  });
 
-  if (user) {
-    logger.info("User fetched from REDIS");
-  } else {
-    user = await hopeUserIdExists(userId);  // ✅ reassigns outer `user`
-    setCachedUser(userId, user);
-  }
+  if (!user) throw new ErrorHandler("No record of this account", 404);
 
   return { user };
 };
@@ -57,7 +54,7 @@ export const loginUser = async (req: any, body: { email: string; password: strin
   }
 
   // Check if user has a valid staff role
-  const validStaffRoles = ["coach", "admin", "assistant", "technology", "cse", "partner", "sales"];
+  const validStaffRoles = ["coach", "admin", "assistant", "technology", "cse", "sales"];
   if (!validStaffRoles.includes(user.role)) {
     throw new ErrorHandler("Access denied. This account does not have the required permissions to access this system.", 403);
   }
@@ -559,12 +556,16 @@ export const getAllUsers = async (query: {
   
   // User Type / Role filter
   if (userType) {
-    where.role = userType;
+    if (userType === "ambassador") {
+      where.isAmbassador = true;
+    } else {
+      where.role = userType;
+    }
   }
   
-  // Plan filter
+  // Plan filter — selectedPlan stores the plan title (e.g. "Coral", "Gold")
   if (plan) {
-    where.planId = plan;
+    where.selectedPlan = { [Op.iLike]: plan };
   }
 
   // Date range filter

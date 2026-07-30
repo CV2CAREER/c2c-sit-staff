@@ -28,6 +28,8 @@ export interface JobPreferenceFormData {
   industries?: { id: string; name: string }[];
   industriesIncluded?: { id: string; name: string }[];
   industriesExcluded?: { id: string; name: string }[];
+  situationIncluded?: string[];
+  situationExcluded?: string[];
   classifications?: { id: string; name: string }[];
   classificationsIncluded?: { id: string; name: string }[];
   classificationsExcluded?: { id: string; name: string }[];
