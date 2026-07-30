@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import {
@@ -157,7 +158,16 @@ export const useDiscoveryTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Sending to recycle bin...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Sent to recycle bin", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send record to recycle bin", { id: "discovery-tracker-action" });
+    },
   });
 
   const restoreRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
@@ -174,7 +184,16 @@ export const useDiscoveryTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Restoring record...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Record restored", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to restore record", { id: "discovery-tracker-action" });
+    },
   });
 
   const deleteRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
@@ -189,7 +208,16 @@ export const useDiscoveryTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Deleting record...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Record deleted permanently", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete record", { id: "discovery-tracker-action" });
+    },
   });
 
   const updateRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
@@ -204,7 +232,16 @@ export const useDiscoveryTracker = ({
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Saving changes...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Changes saved", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to save changes", { id: "discovery-tracker-action" });
+    },
   });
 
   return {
