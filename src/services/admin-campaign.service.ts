@@ -410,10 +410,10 @@ export const handleCampaignManagement = async (
   const isCoralPlan = plan?.toLowerCase() === "coral";
   const planExp = !plan ? 0 : plan?.toLowerCase() === "gold" ? 6 : 12;
   const CampaignEnd = isCoralPlan
-    ? getFutureDateFromDays(30)
+    ? getFutureDateFromDays(14)
     : getFutureDateFromMonth(planExp) as string;
   const SeekSubDurDays = isCoralPlan
-    ? 30
+    ? 14
     : getFutureDateFromMonth(planExp, 1, true) as number;
 
   // Check if the customer already exists in credentials (by email OR userId).
@@ -579,9 +579,9 @@ export const handleCampaignManagement = async (
         ...(existing.seekExternalCredentials as object),
         Plan: plan,
         Active: true,
-        CampaignEnd: isCoralPlan ? getFutureDateFromDays(30) : undefined,
-        SeekSubEndDate: isCoralPlan ? getFutureDateFromDays(30) : undefined,
-        SeekSubDurDays: isCoralPlan ? 30 : 183,
+        CampaignEnd: isCoralPlan ? getFutureDateFromDays(14) : undefined,
+        SeekSubEndDate: isCoralPlan ? getFutureDateFromDays(14) : undefined,
+        SeekSubDurDays: isCoralPlan ? 14 : 183,
       },
     });
   }
