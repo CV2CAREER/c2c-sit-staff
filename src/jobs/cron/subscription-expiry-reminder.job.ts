@@ -1,6 +1,5 @@
 import cron from "node-cron";
-import { Op } from "sequelize";
-import { Plan } from "../../models/v1/plan.model";
+import { Op, literal } from "sequelize";
 import { User } from "../../models/v1/user.model";
 import { Credentials } from "../../models/v1/credentials.model";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -24,18 +23,87 @@ const MILESTONES: Array<{ from: number; to: number; label: string; emoji: string
   { from: 0,  to: 0,  label: "0 days (today)", emoji: "🔴",  severity: SlackSeverity.INFO },
 ];
 
-function getDayString(daysFromNow: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+// SeekSubEndDate is stored inside credentials.seekExternalCredentials as a
+// "DD-MM-YYYY" string, e.g. "17-06-2027". Returns null when absent/unparseable.
+function parseSeekSubEndDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+
+  const match = value.trim().match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (!match) return null;
+
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  if (
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() !== Number(month) - 1 ||
+    date.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return date;
 }
 
-// Returns the inclusive date range [fromDay, toDay] as "YYYY-MM-DD" strings.
-function getDayRange(fromDays: number, toDays: number): { from: string; to: string } {
-  return { from: getDayString(fromDays), to: getDayString(toDays) };
+// Whole days between today and the end date (0 = expires today, negative = past).
+function daysUntil(endDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  return Math.round((end.getTime() - today.getTime()) / 86_400_000);
+}
+
+interface ExpiringClient {
+  clientId: string;
+  jsonb: Record<string, any>;
+  endDate: Date;
+  daysRemaining: number;
+}
+
+// Loads only the clients whose SeekSubEndDate falls inside the milestone window.
+// The date lives in a JSONB blob as "DD-MM-YYYY", so the comparison is done in
+// Postgres — pulling every credentials row into Node times the statement out.
+// The CASE guard keeps to_date() from erroring on malformed values.
+async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
+  const minDays = Math.min(...MILESTONES.map((m) => m.from));
+  const maxDays = Math.max(...MILESTONES.map((m) => m.to));
+
+  const endDateExpr = `
+    to_date(
+      CASE
+        WHEN "seekExternalCredentials"->>'SeekSubEndDate' ~ '^\\d{1,2}-\\d{1,2}-\\d{4}$'
+        THEN "seekExternalCredentials"->>'SeekSubEndDate'
+        ELSE '01-01-1970'
+      END,
+      'DD-MM-YYYY'
+    )`;
+
+  const credentials = await Credentials.findAll({
+    where: {
+      clientId: { [Op.ne]: null },
+      [Op.and]: literal(
+        `${endDateExpr} BETWEEN CURRENT_DATE + ${minDays} AND CURRENT_DATE + ${maxDays}`,
+      ),
+    },
+    attributes: ["clientId", "seekExternalCredentials"],
+    raw: true,
+  });
+
+  return credentials.flatMap((credential) => {
+    const jsonb = ((credential as any).seekExternalCredentials || {}) as Record<string, any>;
+    const endDate = parseSeekSubEndDate(jsonb.SeekSubEndDate);
+    if (!endDate) return [];
+
+    return [
+      {
+        clientId: credential.clientId as string,
+        jsonb,
+        endDate,
+        daysRemaining: daysUntil(endDate),
+      },
+    ];
+  });
 }
 
 // Keyed by the `from` value of each milestone bucket.
@@ -61,54 +129,39 @@ const NEXT_STEPS: Record<number, string> = {
   ].join("\n"),
 };
 
-async function notifyMilestone(from: number, to: number, label: string, emoji: string, severity: SlackSeverity) {
-  const { from: fromDate, to: toDate } = getDayRange(from, to);
+async function notifyMilestone(
+  clients: ExpiringClient[],
+  from: number,
+  to: number,
+  label: string,
+  emoji: string,
+  severity: SlackSeverity,
+) {
+  const expiring = clients.filter(
+    (client) => client.daysRemaining >= from && client.daysRemaining <= to,
+  );
 
-  const plans = await Plan.findAll({
-    where: {
-      expiresAt: { [Op.between]: [fromDate, toDate] },
-      hasExpired: false,
-      deletedAt: null,
-    },
-    attributes: ["id", "userId", "title", "expiresAt"],
-    raw: true,
-  });
-
-  if (plans.length === 0) {
+  if (expiring.length === 0) {
     logger.info(`✅ No subscriptions expiring in ${label}`);
     return;
   }
 
-  const userIds = plans.map((p) => p.userId);
-
-  const credentials = await Credentials.findAll({
-    where: { clientId: { [Op.in]: userIds } },
-    attributes: ["clientId", "seekExternalCredentials"],
-    raw: true,
-  });
-
-  const credByUserId = new Map(
-    credentials.map((c) => [c.clientId, (c as any).seekExternalCredentials || {}])
-  );
-
-  const clientLines = plans
-    .map((plan) => {
-      const jsonb = credByUserId.get(plan.userId) || {};
+  const clientLines = expiring
+    .map(({ clientId, jsonb, endDate }) => {
       const name =
         `${jsonb.First_Name || ""} ${jsonb.Last_Name || ""}`.trim() ||
-        `User ${plan.userId}`;
+        `User ${clientId}`;
       const email = jsonb.Alias_Email || "N/A";
-      const expiryDate = plan.expiresAt
-        ? new Date(plan.expiresAt as any).toLocaleDateString("en-GB")
-        : "Unknown";
-      return `• *${name}* (${email}) — Plan: *${plan.title}* — Expires: ${expiryDate}`;
+      const planTitle = jsonb.Plan || "Unknown";
+      const expiryDate = endDate.toLocaleDateString("en-GB");
+      return `• *${name}* (${email}) — Plan: *${planTitle}* — Expires: ${expiryDate}`;
     })
     .join("\n");
 
   const body = [
     `${emoji} *SUBSCRIPTION EXPIRY REMINDER — ${label.toUpperCase()} REMAINING*`,
     "",
-    `*${plans.length} client(s) affected:*`,
+    `*${expiring.length} client(s) affected:*`,
     clientLines,
     "",
     "*Next Steps:*",
@@ -132,7 +185,7 @@ async function notifyMilestone(from: number, to: number, label: string, emoji: s
 
   if (from === 0) {
     await Promise.all(
-      plans.map(async (plan) => {
+      expiring.map(async ({ clientId }) => {
         await User.update(
           {
             campaignActive: false,
@@ -141,15 +194,15 @@ async function notifyMilestone(from: number, to: number, label: string, emoji: s
             plan: null,
             planId: null,
           },
-          { where: { id: plan.userId } },
+          { where: { id: clientId } },
         );
 
-        logger.info(`Marked plan ${plan.id} as expired for user ${plan.userId} and reset user subscription fields`);
+        logger.info(`Subscription ended for user ${clientId} — reset user subscription fields`);
       }),
     );
   }
 
-  logger.info(`📢 Sent ${label} expiry reminder for ${plans.length} client(s)`);
+  logger.info(`📢 Sent ${label} expiry reminder for ${expiring.length} client(s)`);
 }
 
 /**
@@ -158,8 +211,12 @@ async function notifyMilestone(from: number, to: number, label: string, emoji: s
  */
 export async function runSubscriptionExpiryReminderJob() {
   logger.info("🔔 Running subscription expiry reminder job...");
+
+  const clients = await loadClientsWithEndDate();
+
   for (const milestone of MILESTONES) {
     await notifyMilestone(
+      clients,
       milestone.from,
       milestone.to,
       milestone.label,

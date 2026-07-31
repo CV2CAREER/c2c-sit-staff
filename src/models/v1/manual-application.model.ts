@@ -12,6 +12,7 @@ import {
   UpdatedAt,
 } from 'sequelize-typescript';
 import { User } from './user.model';
+import { CredentialsTour } from './credentials-tour.model';
 
 @Table({
   tableName: 'manual_applications',
@@ -28,6 +29,10 @@ import { User } from './user.model';
     {
       name: 'idx_manual_application_status',
       fields: ['Status'],
+    },
+    {
+      name: 'idx_manual_application_credentials_tour_id',
+      fields: ['credentialsTourId'],
     },
   ],
 })
@@ -92,6 +97,20 @@ export class ManualApplication extends Model {
   @BelongsTo(() => User, 'client_id')
   user?: User;
 
+  // Which of the client's credentials tours this manual application
+  // belongs to, so applications can be attributed to a specific paid
+  // campaign cycle.
+  @ForeignKey(() => CredentialsTour)
+  @AllowNull(true)
+  @Column(DataType.UUID)
+  credentialsTourId?: string;
+
+  @BelongsTo(() => CredentialsTour, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  credentialsTour?: CredentialsTour;
+
   @AllowNull(true)
   @Default('N/A')
   @Column(DataType.STRING(45))
@@ -126,6 +145,34 @@ export class ManualApplication extends Model {
   @Default(false)
   @Column(DataType.BOOLEAN)
   isDeleted!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.BOOLEAN)
+  CoverLetterRequired?: boolean | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  DeclinedReasons?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ApprovedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ApprovedDate?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ReturnReason?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ReturnedBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ReturnedDate?: Date | null;
 
   @CreatedAt
   createdAt!: Date;

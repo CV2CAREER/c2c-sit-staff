@@ -1067,6 +1067,8 @@ class UserManagementService {
         classificationsExcluded,
         industriesIncluded,
         industriesExcluded,
+        situationIncluded,
+        situationExcluded,
         advertisers,
         advertisersInclude,
         advertisersExcluded,
@@ -1085,6 +1087,8 @@ class UserManagementService {
       if (advertisersExclude !== undefined) { profile.advertisersExcluded = advertisersExclude; profile.advertisersExclude = advertisersExclude; }
       if (industriesIncluded !== undefined) profile.industriesInclude = industriesIncluded;
       if (industriesExcluded !== undefined) profile.industriesExclude = industriesExcluded;
+      if (situationIncluded !== undefined) profile.situationIncluded = situationIncluded;
+      if (situationExcluded !== undefined) profile.situationExcluded = situationExcluded;
       if (workingRight !== undefined) profile.workingRight = workingRight;
       if (query.step02) updatedSteps.push('02');
       if (query.step03) updatedSteps.push('03');

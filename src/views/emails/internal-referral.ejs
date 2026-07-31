@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f5; padding: 32px 16px; color: #333; margin: 0; line-height: 1.6">
+    <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08)">
+
+      <%
+        var headerBg, headingText, sectionLabel;
+        var isCoralActive   = referralType === 'Coral';
+        var isGRPApproved   = referralType === 'GRP' && action === 'Approved';
+        var isGRPDeclined   = referralType === 'GRP' && action === 'Declined';
+        var isCRPPaid       = referralType === 'CRP';
+
+        if (isCoralActive) {
+          headerBg = '#0d6e8a';
+          headingText = '🪸 Coral activated — a new Ambassador is live';
+          sectionLabel = 'Ambassador';
+        } else if (isGRPApproved) {
+          headerBg = '#16a34a';
+          headingText = '🎁 GRP referral approved — +14 days';
+          sectionLabel = 'Referral';
+        } else if (isGRPDeclined) {
+          headerBg = '#dc2626';
+          headingText = '✕ GRP referral declined';
+          sectionLabel = 'Referral';
+        } else if (isCRPPaid) {
+          headerBg = '#16a34a';
+          headingText = '✓ CRP payout marked as paid';
+          sectionLabel = 'Payout closed';
+        } else {
+          headerBg = '#1e3a5f';
+          headingText = '[Internal] Referral ' + action;
+          sectionLabel = 'Details';
+        }
+      %>
+
+      <!-- Header -->
+      <div style="background: <%= headerBg %>; padding: 24px 32px; text-align: center">
+        <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; color: rgba(255,255,255,0.65); text-transform: uppercase">CVtoCAREER</p>
+        <h1 style="margin: 0; color: #fff; font-size: 18px; font-weight: 700; line-height: 1.3"><%= headingText %></h1>
+      </div>
+
+      <div style="padding: 28px 32px">
+        <p style="margin: 0 0 22px; font-size: 15px; color: #333">Dear Team,</p>
+
+        <!-- Section label -->
+        <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #6b7280; text-transform: uppercase"><%= sectionLabel %></p>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+
+          <% if (isCoralActive) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; width: 42%; border-bottom: 1px solid #f3f4f6"><strong>Client</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referrerName %><% if (typeof referrerId !== 'undefined' && referrerId) { %> &middot; <%= referrerId %><% } %></td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Sign Up As</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6">Ambassador</td>
+          </tr>
+          <% if (typeof registeredDate !== 'undefined' && registeredDate) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Registered</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= registeredDate %></td>
+          </tr>
+          <% } %>
+          <% if (typeof activatedDate !== 'undefined' && activatedDate) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Activated</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= activatedDate %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Prerequisites</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6">CV &#10003; &nbsp;&middot;&nbsp; Job Preferences &#10003; &nbsp;&middot;&nbsp; Application email &#10003;</td>
+          </tr>
+          <% if (typeof subStart !== 'undefined' && subStart && typeof subEnd !== 'undefined' && subEnd) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Sub Start &middot; Sub End</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= subStart %> &nbsp;&middot;&nbsp; <%= subEnd %> (14 days)</td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555"><strong>Campaign Mgt row</strong></td>
+            <td style="padding: 9px 0; color: #333">created</td>
+          </tr>
+
+          <% } else if (isGRPApproved) { %>
+          <% if (typeof referralId !== 'undefined' && referralId) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; width: 42%; border-bottom: 1px solid #f3f4f6"><strong>Referral ID</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referralId %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Referrer</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referrerName %> (Ambassador)</td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Referred</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= refereeName %> &mdash; subscription live</td>
+          </tr>
+          <% if (typeof adminName !== 'undefined' && adminName) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Approved by</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= adminName %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Applied via</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6">Change Plan EXTEND</td>
+          </tr>
+          <% if (typeof oldEndDate !== 'undefined' && oldEndDate && typeof newEndDate !== 'undefined' && newEndDate) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Sub end date</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= oldEndDate %> &rarr; <%= newEndDate %></td>
+          </tr>
+          <% } %>
+          <% if (typeof confirmedCount !== 'undefined' && confirmedCount !== null) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555"><strong>Confirmed referrals to date</strong></td>
+            <td style="padding: 9px 0; color: #333"><%= confirmedCount %></td>
+          </tr>
+          <% } %>
+
+          <% } else if (isGRPDeclined) { %>
+          <% if (typeof referralId !== 'undefined' && referralId) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; width: 42%; border-bottom: 1px solid #f3f4f6"><strong>Referral ID</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referralId %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Referrer</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referrerName %></td>
+          </tr>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Referred</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= refereeName %></td>
+          </tr>
+          <% if (typeof reasonCode !== 'undefined' && reasonCode) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Reason</strong></td>
+            <td style="padding: 9px 0; color: #dc2626; border-bottom: 1px solid #f3f4f6"><%= reasonCode %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Note</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><% if (typeof declinedNote !== 'undefined' && declinedNote) { %><%= declinedNote %><% } else { %><span style="color:#9ca3af">&mdash;</span><% } %></td>
+          </tr>
+          <% if (typeof adminName !== 'undefined' && adminName) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Declined by</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= adminName %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555"><strong>Referrer notified</strong></td>
+            <td style="padding: 9px 0; color: #333">yes &mdash; with the reason</td>
+          </tr>
+
+          <% } else { %>
+          <!-- CRP Paid or generic fallback -->
+          <% if (typeof referralId !== 'undefined' && referralId) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; width: 42%; border-bottom: 1px solid #f3f4f6"><strong>Referral ID</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referralId %></td>
+          </tr>
+          <% } %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>Referrer</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= referrerName %></td>
+          </tr>
+          <% if (typeof payId !== 'undefined' && payId) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555; border-bottom: 1px solid #f3f4f6"><strong>PayID &middot; Amount</strong></td>
+            <td style="padding: 9px 0; color: #333; border-bottom: 1px solid #f3f4f6"><%= payId %> &middot; $50</td>
+          </tr>
+          <% } %>
+          <% if (typeof adminName !== 'undefined' && adminName) { %>
+          <tr>
+            <td style="padding: 9px 0; color: #555<% if (typeof paidDate === 'undefined' || !paidDate) { %>"><% } else { %>; border-bottom: 1px solid #f3f4f6"><% } %><strong>Marked paid by</strong></td>
+            <td style="padding: 9px 0; color: #333<% if (typeof paidDate === 'undefined' || !paidDate) { %>"><% } else { %>; border-bottom: 1px solid #f3f4f6"><% } %><%= adminName %><% if (typeof paidDate !== 'undefined' && paidDate) { %> on <%= paidDate %><% } %></td>
+          </tr>
+          <% } %>
+          <% } %>
+
+        </table>
+
+        <!-- Footer note -->
+        <% if (isCoralActive) { %>
+        <p style="margin: 22px 0 0; font-size: 13px; color: #555; font-style: italic; border-top: 1px solid #f3f4f6; padding-top: 16px">
+          The clock started on the activation date, not the registration date. The days spent setting up did not come out of their thirty.
+        </p>
+        <% } else if (isGRPApproved) { %>
+        <p style="margin: 22px 0 0; font-size: 13px; color: #555; font-style: italic; border-top: 1px solid #f3f4f6; padding-top: 16px">
+          Routed through Change Plan &mdash; not a direct write to the sub end date.
+        </p>
+        <% } else if (isGRPDeclined) { %>
+        <p style="margin: 22px 0 0; font-size: 13px; color: #555; font-style: italic; border-top: 1px solid #f3f4f6; padding-top: 16px">
+          The Ambassador has been told exactly why. If they dispute it, the reason is on the record.
+        </p>
+        <% } else if (isCRPPaid) { %>
+        <p style="margin: 22px 0 0; font-size: 13px; color: #555; font-style: italic; border-top: 1px solid #f3f4f6; padding-top: 16px">
+          Removed from the unpaid payout report.
+        </p>
+        <% } %>
+
+        <div style="margin-top: 24px">
+          <a href="<%= adminUrl %>" style="background: #1e3a5f; color: #fff; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 6px; display: inline-block; font-size: 14px">
+            View in Admin &rarr;
+          </a>
+        </div>
+      </div>
+
+      <div style="padding: 16px 32px; background: #f8f9fa; border-top: 1px solid #e5e7eb; text-align: center">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">&copy; <%= currentYear %> CVtoCAREER PTY LTD &mdash; Internal Use Only</p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -48,7 +48,7 @@ import {
   putCampaignSheet,
 } from "../../controllers/v1/campaign-sheets.controller";
 import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
-import { updateUserPlanByFeatureController, confirmUserProgressController } from "../../controllers/v1/admin-plan.controller";
+import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController } from "../../controllers/v1/admin-plan.controller";
 import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
@@ -100,7 +100,9 @@ import adminDocumentRouterV1 from "./admin-document.route";
 import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
 import communicationTemplateRouterV1 from "./communication-template.route";
+import clientContentRouterV1 from "./client-content.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
+import discoveryTrackerRouterV1 from "./discovery-tracker.route";
 const adminRouterV1 = Router();
 
 adminRouterV1.use("/client-sample", clientSampleRouterV1);
@@ -159,6 +161,10 @@ adminRouterV1.use(
 adminRouterV1.use(
   "/templates",
   communicationTemplateRouterV1,
+);
+adminRouterV1.use(
+  "/client-content",
+  clientContentRouterV1,
 );
 adminRouterV1.use("/documents", adminDocumentRouterV1);
 adminRouterV1.all(
@@ -565,6 +571,28 @@ adminRouterV1.patch(
   authorizeRoles("admin", "assistant"),
   updateUserPlanByFeatureController,
 );
+adminRouterV1.post(
+  "/users/:userId/activate-coral",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin", "assistant"),
+  activateCoralPlanController,
+);
+adminRouterV1.delete(
+  "/users/:userId/activate-coral",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin", "assistant"),
+  deactivateCoralPlanController,
+);
+
+adminRouterV1.get(
+  "/ambassador/generate-link/:userId",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  authorizeRoles("admin", "assistant"),
+  generateAmbassadorLinkController,
+);
 
 adminRouterV1.patch(
   "/users/:userId/progress",
@@ -621,6 +649,13 @@ adminRouterV1.post(
   checkBlacklistedTokens,
   isUserAuthenticated,
   generateExternalPassword,
+);
+
+adminRouterV1.use(
+  "/discovery-tracker",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  discoveryTrackerRouterV1,
 );
 
 adminRouterV1.use("/", clientAllocationRouterV1);

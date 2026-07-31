@@ -128,6 +128,16 @@ export class Profile extends Model {
   @Default([])
   @Column(DataType.ARRAY(DataType.STRING))
   industriesExclude?: string[];
+  
+  @AllowNull(true)
+  @Default([])
+  @Column(DataType.ARRAY(DataType.STRING))
+  situationIncluded?: string[];
+
+  @AllowNull(true)
+  @Default([])
+  @Column(DataType.ARRAY(DataType.STRING))
+  situationExcluded?: string[];
 
   @AllowNull(true)
   @Default([])

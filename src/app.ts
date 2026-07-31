@@ -51,8 +51,11 @@ import uploadRouterV1 from "./routes/v1/upload.route"
 import jobsiteRouterV1 from "./routes/v1/jobsite.route"
 import campaignManagementRouterV1 from "./routes/v1/campaign-management.route";
 import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
+import clientSupportDocumentRouterV1 from "./routes/v1/client-support-document.route";
 import viewAsUserRouterV1 from "./routes/v1/view-as-user.route";
 import communicationTemplateRouterV1 from "./routes/v1/communication-template.route";
+import missingInfoTemplateRouterV1 from "./routes/v1/missing-info-template.route";
+import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -63,6 +66,7 @@ import placementRouterV1 from "./routes/v1/placement.route";
 // Coaches
 import coachRouterV1 from "./routes/v1/coach.route"
 import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route"
+import jobsiteCredentialRouterV1 from "./routes/v1/jobsite-credential.route"
 
 export const app = express();
 
@@ -216,8 +220,11 @@ app.use("/api/v1/uploads", uploadRouterV1)
 app.use("/api/v1/campaigns", campaignManagementRouterV1);
 app.use("/api/v1/jobsite", jobsiteRouterV1);
 app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
+app.use("/api/v1/admin/client-support-documents", clientSupportDocumentRouterV1);
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
 app.use("/api/v1/communication-template", communicationTemplateRouterV1);
+app.use("/api/v1/missing-info-templates", missingInfoTemplateRouterV1);
+app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);
@@ -231,6 +238,7 @@ app.use("/api/v1/coaches", coachRouterV1);
 app.use("/api/v1/schedules", scheduleRouterV1);
 app.use("/api/v1/availabilities", availabilityRouterV1);
 app.use("/api/v1/client-availabilities", clientAvailabilityRouterV1);
+app.use("/api/v1/jobsite-credentials", jobsiteCredentialRouterV1);
 app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation

@@ -1,9 +1,8 @@
-import path from "path";
 import { sendMail } from "../config/sendGrid";
-import { TEAM_EMAIL } from "../config/env";
-import { name } from "ejs";
-
-const mailDirectory = path.resolve(__dirname, "../views/emails");
+import { TEAM_EMAIL, PRODUCT_OWNER_EMAIL } from "../config/env";
+import { SlackService } from "./slack.service";
+import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
+import { getEnvironmentFromHost } from "../utils/slack-helpers";
 
 interface DeploymentSuccessEmailOptions {
   email: string;
@@ -25,7 +24,6 @@ export const sendDeploymentSuccessEmail = async (
     email: options.email,
     subject: `✅ ${options.appName} deployed to ${options.environment}`,
     templateName: "deployment-success.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       timestamp: options.timestamp ?? new Date().toUTCString(),
@@ -48,7 +46,6 @@ export const sendDeploymentFailureEmail = async (
     email: options.email,
     subject: `❌ ${options.appName} deployment failed on ${options.environment}`,
     templateName: "deployment-failure.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       timestamp: new Date().toUTCString(),
@@ -71,7 +68,6 @@ export const sendActivationEmail = async (
     email: options.email,
     subject: `Activate Your Account`,
     templateName: "activation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -93,7 +89,6 @@ export const sendNewReferralEmail = async (
     email: options.email,
     subject: `New Invitee Alert`,
     templateName: "new-referral-alert.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -114,7 +109,6 @@ export const sendAdminActivationEmail = async (
     email: TEAM_EMAIL,
     subject: `New User Registration: Action Required`,
     templateName: "admin-activation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -135,7 +129,6 @@ export const sendWelcomeEmail = async (
     email: options.email,
     subject: `Welcome Email`,
     templateName: "welcome-email.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -156,7 +149,6 @@ export const sendAdminWelcomeEmail = async (
     email: TEAM_EMAIL,
     subject: `${options.name} ${options.lastName} Welcome to CVtoCAREER`,
     templateName: "admin-welcome-email.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -178,7 +170,6 @@ export const sendNewOTPEmail = async (
     email: options.email,
     subject: `New OTP Token`,
     templateName: "new-otp.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -200,7 +191,6 @@ export const sendAdminNewOTPEmail = async (
     email: TEAM_EMAIL,
     subject: `${options.name} ${options.lastName} New OTP Token`,
     templateName: "admin-new-otp.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -222,7 +212,6 @@ export const sendPasswordResetEmail = async (
     email: options.email,
     subject: `Request for Password Change`,
     templateName: "reset-password.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -250,7 +239,6 @@ export const sendTermsConditionsEmail = async (
     email: options.email,
     subject: `Terms & Conditions - ${options.planName}`,
     templateName: "terms-conditions.ejs",
-    templateDir: mailDirectory,
     templateData: {
       name: options.name,
       planName: options.planName,
@@ -286,7 +274,6 @@ export const sendReferralInvitationEmail = async (
     email: options.email,
     subject: `${options.referrerName} invites you to join CVtoCAREER`,
     templateName: "referral-invitation.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -308,7 +295,6 @@ export const sendReferralClaimedEmail = async (
     email: options.email,
     subject: `Your referral has been claimed!`,
     templateName: "referral-claimed.ejs",
-    templateDir: mailDirectory,
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -334,7 +320,27 @@ export const sendApplicationActionUserEmail = async (
     email: options.email,
     subject,
     templateName: "application-action-user.ejs",
-    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface CoralActiveEmailOptions {
+  name: string;
+  email: string;
+  subEndDate: string;
+  frontendUrl: string;
+}
+
+export const sendCoralActiveEmail = async (
+  options: CoralActiveEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your Coral plan is active — CVtoCAREER`,
+    templateName: "coral-active.ejs",
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
@@ -360,7 +366,275 @@ export const sendApplicationActionAdminEmail = async (
     email: TEAM_EMAIL,
     subject,
     templateName: "application-action-admin.ejs",
-    templateDir: mailDirectory,
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface ManualApplicationChangeAdminEmailOptions {
+  recordId: string;
+  jobTitle: string;
+  jobUrl?: string | null;
+  advertiser: string;
+  action: "updated" | "soft-deleted" | "restored" | "deleted";
+  changedFields?: string;
+  triggeredBy: string;
+}
+
+const MANUAL_APPLICATION_ACTION_LABELS: Record<ManualApplicationChangeAdminEmailOptions["action"], string> = {
+  updated: "Updated",
+  "soft-deleted": "Sent to Bin",
+  restored: "Restored",
+  deleted: "Permanently Deleted",
+};
+
+export const sendManualApplicationChangeAdminEmail = async (
+  options: ManualApplicationChangeAdminEmailOptions,
+): Promise<void> => {
+  const actionLabel = MANUAL_APPLICATION_ACTION_LABELS[options.action];
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `Manual Application ${actionLabel} – ${options.jobTitle}`,
+    templateName: "discovery-tracker-change-admin.ejs",
+    templateData: {
+      ...options,
+      actionLabel,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface GrpConfirmedEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  frontendUrl: string;
+}
+
+export const sendGrpConfirmedEmail = async (
+  options: GrpConfirmedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your referral has been approved — CVtoCAREER`,
+    templateName: "grp-confirmed.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface GrpDeclinedEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  declinedReason: string;
+  frontendUrl: string;
+}
+
+export const sendGrpDeclinedEmail = async (
+  options: GrpDeclinedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Update on your referral — CVtoCAREER`,
+    templateName: "grp-declined.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface CrpPaidEmailOptions {
+  name: string;
+  email: string;
+  payoutAmount: string;
+  frontendUrl: string;
+}
+
+export const sendCrpPaidEmail = async (
+  options: CrpPaidEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your referral reward has been paid — CVtoCAREER`,
+    templateName: "crp-paid.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface CrpPayoutOwedEmailOptions {
+  referrerName: string;
+  referrerEmail: string;
+  referrerId?: string;       // customer uniqueId
+  refereeName: string;
+  refereeEmail: string;
+  payoutAmount: string;
+  adminUrl: string;
+  referralId?: string;       // sequential ID e.g. "CRP-001"
+  payId?: string;
+  referredSubDate?: string;  // date the referred person subscribed
+}
+
+export const sendCrpPayoutOwedEmail = async (
+  options: CrpPayoutOwedEmailOptions,
+): Promise<void> => {
+  const subject = `💰 CRP payout owed — ${options.referrerName} · $50 UNPAID`;
+  const templateData = { ...options, currentYear: new Date().getFullYear() };
+
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject,
+    templateName: "crp-payout-owed.ejs",
+    templateData,
+  });
+
+  if (PRODUCT_OWNER_EMAIL && PRODUCT_OWNER_EMAIL !== TEAM_EMAIL) {
+    await sendMail({
+      email: PRODUCT_OWNER_EMAIL,
+      subject,
+      templateName: "crp-payout-owed.ejs",
+      templateData,
+    });
+  }
+};
+
+interface InternalReferralEmailOptions {
+  // Always required
+  referralType: string; // "Coral" | "GRP" | "CRP" | "PRP"
+  action: string;       // "Approved" | "Declined" | "Coral Plan Activated" | "Payout Paid"
+  adminUrl: string;
+
+  // Referrer / ambassador info
+  referrerName: string;
+  referrerEmail: string;
+  referrerId?: string;       // customer uniqueId
+
+  // Referred person
+  refereeName: string;
+  refereeEmail: string;
+
+  // Coral-specific
+  registeredDate?: string;
+  activatedDate?: string;
+  subStart?: string;
+  subEnd?: string;
+
+  // GRP / CRP — shared
+  referralId?: string;       // sequential ID e.g. "GRP-001"
+  adminName?: string;        // who approved / declined / marked paid
+
+  // GRP Approved
+  oldEndDate?: string;
+  newEndDate?: string;
+  confirmedCount?: number;
+
+  // GRP Declined
+  reasonCode?: string;
+  declinedNote?: string;
+
+  // CRP Paid
+  payId?: string;
+  paidDate?: string;
+
+  extra?: string;
+}
+
+export const sendInternalReferralEmail = async (
+  options: InternalReferralEmailOptions,
+): Promise<void> => {
+  const subjects: Record<string, string> = {
+    "Coral Plan Activated": `🪸 Coral activated — ${options.referrerName}`,
+    "Approved":             `🎁 GRP referral approved — ${options.referrerName} → ${options.refereeName}`,
+    "Declined":             `✕ GRP referral declined — ${options.referrerName}`,
+    "Payout Paid":          `✓ CRP payout marked as paid — ${options.referrerName}`,
+  };
+  const subject = subjects[options.action] ?? `[Internal] Referral ${options.action}: ${options.referrerName}`;
+
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject,
+    templateName: "internal-referral.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface PrpInternalEmailOptions {
+  partnerName: string;
+  partnerEmail: string;
+  refereeName: string;
+  refereeEmail: string;
+  adminUrl: string;
+}
+
+export const sendPrpInternalEmail = async (
+  options: PrpInternalEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: TEAM_EMAIL,
+    subject: `🤝 Channel Partner referral — thank-you sent · ${options.partnerName}`,
+    templateName: "prp-internal.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+export const sendRCFollowUpTag = async (params: {
+  host: string;
+  fullName: string;
+  customerId: string | null | undefined;
+  templateId: string;
+}): Promise<void> => {
+  const location = getEnvironmentFromHost(params.host);
+  const timestamp = new Date().toISOString();
+  const clientLine = params.customerId
+    ? `${params.fullName} · ${params.customerId}`
+    : params.fullName;
+
+  await SlackService.notify({
+    location,
+    host: params.host,
+    node: SlackNode.MESSAGING,
+    provider: SlackProvider.SYSTEM,
+    severity: SlackSeverity.INFO,
+    trigger: `RC follow-up: ${params.templateId}`,
+    type: SlackEventType.SYSTEM_NOTIFICATION,
+    channel: SlackChannel.RETENTION_CTRL,
+    body: `📲 RC follow-up — reach out on WhatsApp
+Client: ${clientLine}
+Message sent: ${params.templateId}
+Sent at: ${timestamp}
+Confirm: did it land, and do they know what to do next?
+@retention-controller please confirm on WhatsApp.`,
+  });
+};
+
+interface PrpThankyouEmailOptions {
+  name: string;
+  email: string;
+  referrerName: string;
+  frontendUrl: string;
+}
+
+export const sendPrpThankyouEmail = async (
+  options: PrpThankyouEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Thank you for your partnership — CVtoCAREER`,
+    templateName: "prp-thankyou.ejs",
     templateData: {
       ...options,
       currentYear: new Date().getFullYear(),
