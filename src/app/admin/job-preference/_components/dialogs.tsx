@@ -8,7 +8,6 @@ export function JobPrefDataTableActionDialogs({ recordId }: { recordId: string |
   const {
     activeDialog,
     setActiveDialog,
-    selectedTable,
     tracker,
   } = useJobPreferenceData();
 
@@ -23,7 +22,7 @@ export function JobPrefDataTableActionDialogs({ recordId }: { recordId: string |
             <Button
               variant="destructive"
               onClick={() => {
-                tracker.softDeleteRecord.mutate({ id: recordId, category: selectedTable.label });
+                tracker.softDeleteRecord.mutate({ id: recordId });
                 setActiveDialog(null);
               }}
             >
@@ -41,7 +40,7 @@ export function JobPrefDataTableActionDialogs({ recordId }: { recordId: string |
           <DialogFooter>
             <Button
               onClick={() => {
-                tracker.restoreRecord.mutate({ id: recordId, category: selectedTable.label });
+                tracker.restoreRecord.mutate({ id: recordId });
                 setActiveDialog(null);
               }}
             >
@@ -60,7 +59,7 @@ export function JobPrefDataTableActionDialogs({ recordId }: { recordId: string |
             <Button
               variant="destructive"
               onClick={() => {
-                tracker.deleteRecord.mutate({ id: recordId, category: selectedTable.label });
+                tracker.deleteRecord.mutate({ id: recordId });
                 setActiveDialog(null);
               }}
             >

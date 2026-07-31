@@ -6,75 +6,77 @@ import { GridColDef } from "@mui/x-data-grid-pro";
 import { Recycle, Trash2 } from "lucide-react";
 import { JobPrefDataTableActionDialogs } from "./dialogs";
 
-export type JobPrefTableName =
-  | "advertisers"
-  | "country-states-cities"
-  | "classification"
-  | "job-type"
-  | "craft"
-  | "salary-options"
-  | "working-rights";
-
 type DataState = "active" | "recycle";
 
-const countryStateAndCitiesColumns: GridColDef[] = [
+// Every manual_applications column shown as-is — this grid is a direct view
+// of that table (see discovery-tracker.service.ts's EDITABLE_FIELDS for
+// which of these can actually be edited in place).
+const columns: GridColDef[] = [
   { field: "actions", headerName: "Actions", width: 100, align: "center" },
+  { field: "id", headerName: "ID", width: 90 },
+  { field: "Client", headerName: "Client", flex: 1 },
+  { field: "Status", headerName: "Status", flex: 1 },
+  { field: "StatusReason", headerName: "Status Reason", flex: 1 },
   {
-    field: "_id",
-    headerName: "ID",
-    renderCell(params) {
-      return <p>{params.row._doc?._id || params.row._id}</p>;
+    field: "Job_Title",
+    headerName: "Job Title",
+    width: 220,
+    renderCell: (params) => {
+      const raw = params.value as string | undefined;
+      if (!raw) return null;
+
+      const match = raw.match(/=HYPERLINK\("([^"]+)"\s*,\s*"([^"]+)"\)/i);
+      if (!match) return <p className="truncate">{raw}</p>;
+
+      const [, url, label] = match;
+      return (
+        <div className="py-1 leading-tight overflow-hidden">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block truncate text-sm font-medium text-primary hover:underline"
+            title={label}
+          >
+            {label}
+          </a>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block truncate text-[11px] text-gray-400 hover:underline"
+            title={url}
+          >
+            {url}
+          </a>
+        </div>
+      );
     },
-    width: 80,
   },
-  {
-    field: "country",
-    headerName: "Countries",
-    renderCell(params) {
-      return <p>{params.row._doc?.country || params.row.country}</p>;
-    },
-    flex: 1,
-  },
-  { field: "states", headerName: "States", flex: 1 },
-  { field: "cities", headerName: "Cities", flex: 1 },
+  { field: "JobId", headerName: "Job ID", flex: 1 },
+  { field: "Internal_Jobsite", headerName: "Internal Jobsite", flex: 1 },
+  { field: "External_Jobsite", headerName: "External Jobsite", flex: 1 },
+  { field: "Job_Type", headerName: "Job Type", flex: 1 },
+  { field: "Advertiser", headerName: "Advertiser", flex: 1 },
+  { field: "Location", headerName: "Location", flex: 1 },
+  { field: "Country", headerName: "Country", flex: 1 },
+  { field: "QualityScore", headerName: "Quality Score", flex: 1 },
+  { field: "ApplicationSubmittedBy", headerName: "Submitted By", flex: 1 },
+  { field: "ApplicationSubmissionDate", headerName: "Submission Date", flex: 1 },
+  { field: "DiscoveredBy", headerName: "Discovered By", flex: 1 },
+  { field: "DiscoveryDate", headerName: "Discovery Date", flex: 1 },
+  { field: "VettedBy", headerName: "Vetted By", flex: 1 },
+  { field: "VettedDate", headerName: "Vetted Date", flex: 1 },
+  { field: "CoverLetterRequired", headerName: "Cover Letter Required", flex: 1 },
+  { field: "DeclinedReasons", headerName: "Declined Reasons", flex: 1 },
+  { field: "ApprovedBy", headerName: "Approved By", flex: 1 },
+  { field: "ApprovedDate", headerName: "Approved Date", flex: 1 },
+  { field: "ReturnReason", headerName: "Return Reason", flex: 1 },
+  { field: "ReturnedBy", headerName: "Returned By", flex: 1 },
+  { field: "ReturnedDate", headerName: "Returned Date", flex: 1 },
 ];
 
-const advertisersColumns: GridColDef[] = [
-  { field: "actions", headerName: "Actions", width: 100, align: "center" },
-  { field: "id", headerName: "ID", width: 80 },
-  { field: "label", headerName: "Label", flex: 1 },
-  { field: "value", headerName: "Value", flex: 1 },
-];
-
-const sharedColumns: GridColDef[] = [
-  { field: "actions", headerName: "Actions", width: 100, align: "center" },
-  {
-    field: "label",
-    headerName: "Label",
-    renderCell(params) {
-      return <p>{params.row._doc?.label || params.row.label}</p>;
-    },
-    flex: 1,
-  },
-  { field: "value", headerName: "Value", flex: 1 },
-];
-
-const getColumnsForTable = (tableName: string): GridColDef[] => {
-  switch (tableName.toLowerCase()) {
-    case "advertisers":
-      return advertisersColumns;
-    case "country-states-cities":
-      return countryStateAndCitiesColumns;
-    case "classification":
-    case "job-type":
-    case "craft":
-    case "salary-options":
-    case "working-rights":
-      return sharedColumns;
-    default:
-      return [];
-  }
-};
+const getColumnsForTable = (): GridColDef[] => columns;
 
 export default getColumnsForTable;
 
@@ -93,7 +95,7 @@ export const renderActionsMenu = (
     return {
       ...column,
       renderCell: (params: any) => {
-        const recordId = params.row._id || params.row._doc?._id;
+        const recordId = params.row.id;
 
         return (
           <>
