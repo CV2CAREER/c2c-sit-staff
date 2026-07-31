@@ -16,6 +16,7 @@ import { SlackService } from './slack.service';
 import { classifyJob, PROMPT_VERSION } from './ai-vetting.service';
 import { systemConfigApplicationService } from './admin/system-config.application.service';
 import {
+  ApplicationStatus,
   SlackChannel,
   SlackEventType,
   SlackLocation,
@@ -1684,6 +1685,12 @@ export const updateJobApplicationStatus = async (
     updateData.ApplicationSubmissionDate = currentDate;
     if (statusReason) {
       updateData.StatusReason = resolveReason(statusReason);
+    }
+
+    // First submission for this client — move them off the default HOLD
+    // status now that an application is actually underway.
+    if (userObj && userObj.applicationStatus === ApplicationStatus.HOLD) {
+      await userObj.update({ applicationStatus: ApplicationStatus.COMMENCED });
     }
   } else if (statusUpper === 'EXPIRED') {
     const resolvedReason = resolveReason(statusReason);

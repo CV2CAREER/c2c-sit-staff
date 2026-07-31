@@ -187,7 +187,7 @@ export class User extends Model {
   resetTokenVerified!: boolean;
 
   @AllowNull(false)
-  @Default(ApplicationStatus.COMMENCED)
+  @Default(ApplicationStatus.HOLD)
   @Column(DataType.ENUM(...Object.values(ApplicationStatus)))
   applicationStatus!: ApplicationStatus;
 

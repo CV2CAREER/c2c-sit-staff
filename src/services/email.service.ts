@@ -315,7 +315,7 @@ export const sendApplicationActionUserEmail = async (
   const subject =
     options.action === "start"
       ? "Your Application Has Commenced"
-      : "Your Application Has Expired";
+      : "Your Application Has Ended";
   await sendMail({
     email: options.email,
     subject,
@@ -361,7 +361,7 @@ export const sendApplicationActionAdminEmail = async (
   const subject =
     options.action === "start"
       ? `Application Commenced – ${options.name}`
-      : `Application Expired – ${options.name}`;
+      : `Application Ended – ${options.name}`;
   await sendMail({
     email: TEAM_EMAIL,
     subject,
