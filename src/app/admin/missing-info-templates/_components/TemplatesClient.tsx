@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { useFetchData } from "@/hooks/useApi";
+import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
+import * as templateEndpoints from "@/constants/apiEndpoints/missing-info-template.endpoint";
 import {
   MissingInfoTemplate,
   useMissingInfoTemplates,
@@ -89,7 +91,9 @@ export default function TemplatesClient() {
   const handleNewTemplate = async () => {
     const toastId = toast.loading("Creating template...");
     try {
-      const maxNum = templates.reduce((max, t) => {
+      const allRes = await axiosInstance.get(templateEndpoints.MISSING_INFO_TEMPLATES);
+      const allTemplates: MissingInfoTemplate[] = allRes.data?.data ?? [];
+      const maxNum = allTemplates.reduce((max, t) => {
         const match = t.name?.match(/^Untitled Template (\d+)$/);
         return match ? Math.max(max, parseInt(match[1], 10)) : max;
       }, 0);
