@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 const CATEGORIES = [
@@ -46,16 +47,18 @@ export default function BuilderToolbar({
   type,
   onTypeChange,
 }: BuilderToolbarProps) {
+  const router = useRouter();
+
   return (
     <div className="bg-white border-b border-[#E5E9EF]">
       <div className="flex items-center gap-3.5 px-7 py-4">
-        <a
-          href={backHref}
+        <button
+          onClick={() => router.push(backHref)}
           className="flex items-center gap-2 rounded-full bg-[#F3F4F6] hover:bg-[#E5E9EF] transition-colors text-[#10365A] pl-2 pr-3 py-1.5"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-[13px] font-semibold whitespace-nowrap">Missing Information Templates</span>
-        </a>
+        </button>
         <label className="text-[13px] font-semibold text-[#1F2937] whitespace-nowrap">
           Template name:
         </label>
