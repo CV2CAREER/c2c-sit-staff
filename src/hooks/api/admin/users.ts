@@ -143,7 +143,13 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       isError: pcsAssistant.isError,
       error: pcsAssistant.error,
     };
-  }, [pcsAssistant]);
+  }, [
+    pcsAssistant.data,
+    pcsAssistant.isLoading,
+    pcsAssistant.isSuccess,
+    pcsAssistant.isError,
+    pcsAssistant.error,
+  ]);
 
   const plans = useFetchData<any>({
     method: 'GET',
@@ -491,6 +497,41 @@ export const useUsersQueries = (options: AdminQueriesOptions) => {
       userPreferences.isSuccess,
       userPreferences.isError,
       userPreferences.error,
+      featureTitles.data,
+      featureTitles.isLoading,
+      featureTitles.isSuccess,
+      featureTitles.isError,
+      featureTitles.error,
+      userPreferencesV2.data,
+      userPreferencesV2.isLoading,
+      userPreferencesV2.isSuccess,
+      userPreferencesV2.isError,
+      userPreferencesV2.error,
+      userPreferencesHistory.data,
+      userPreferencesHistory.isLoading,
+      userPreferencesHistory.isSuccess,
+      userPreferencesHistory.isError,
+      userPreferencesHistory.error,
+      userReferrals.data,
+      userReferrals.isLoading,
+      userReferrals.isSuccess,
+      userReferrals.isError,
+      userReferrals.error,
+      userDocuments.data,
+      userDocuments.isLoading,
+      userDocuments.isSuccess,
+      userDocuments.isError,
+      userDocuments.error,
+      userProfileSafe.data,
+      userProfileSafe.isLoading,
+      userProfileSafe.isSuccess,
+      userProfileSafe.isError,
+      userProfileSafe.error,
+      userProgress.data,
+      userProgress.isLoading,
+      userProgress.isSuccess,
+      userProgress.isError,
+      userProgress.error,
     ]
   );
 };

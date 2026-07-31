@@ -43,7 +43,7 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
               }}
               className="flex flex-row gap-4 items-center my-1 rounded-md text-sm p-2 cursor-pointer text-gray-600 hover:bg-lightblue"
             >
-              <LIcon />
+              <LIcon size={40} />
               <p>{link.name}</p>
             </div>
           );
@@ -60,7 +60,7 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
                 <div
                   className={`flex flex-row gap-4 my-1 items-center rounded-md p-2 cursor-pointer text-sm ${isGroupActive ? "text-blue bg-lightblue font-bold" : "text-gray-600"}`}
                 >
-                  <LParentIcon />
+                  <LParentIcon size={20} />
                   <p>{link.name}</p>
                   <Icon name="caretDown" />
                 </div>
@@ -91,7 +91,7 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
                           href={child.href}
                           key={child.name}
                         >
-                          <LChildIcon />
+                          <LChildIcon size={20} />
                           {child.name}
                         </Link>
                       </DropdownItem>
@@ -114,7 +114,7 @@ const StaffNavRoutes = ({ links, onPress }: StaffNavRoutesProps) => {
               }}
               className={`flex flex-row gap-4 items-center my-1 rounded-md text-sm p-2 cursor-pointer ${isActive ? "text-blue font-bold bg-lightblue" : "text-gray-600"}`}
             >
-              <LIcon />
+              <LIcon size={20} />
               <p>{link.name}</p>
             </Link>
           );

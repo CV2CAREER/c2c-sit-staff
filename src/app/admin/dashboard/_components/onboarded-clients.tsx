@@ -15,6 +15,7 @@ import {
 import { TimeRangeSelector } from "@/components/ui/time-range-selector";
 import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import { useState } from "react";
+import { UserCheck } from "lucide-react";
 
 const chartConfig = {
   clients: {
@@ -36,10 +37,15 @@ export default function OnboardedClientsChart() {
   const { data: chartData = [], isLoading } = onboardedClientsDomain;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <CardHeader className="border-b border-gray-100">
         <CardTitle className="flex justify-between items-center text-md sm:text-lg md:text-2xl">
-          <h1>Onboarded Clients</h1>
+          <span className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <UserCheck size={18} />
+            </span>
+            Onboarded Clients
+          </span>
           <TimeRangeSelector styles="bg-gray-200" value={range} onChange={setRange} />
         </CardTitle>
       </CardHeader>

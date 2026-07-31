@@ -89,8 +89,8 @@ const handleExtractData = async (id: string) => {
 
   return (
     <div className="cv-data-points-manager">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Button
             onClick={() => refetch()}
             disabled={isLoading}

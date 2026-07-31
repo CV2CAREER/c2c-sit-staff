@@ -20,9 +20,12 @@ const TopBarActions = () => {
 
   return (
     <>
-      <div className="hidden lg:flex items-center gap-4 rounded-full bg-gray-100 p-2">
-        <Search />
-        <input className="bg-transparent outline-none" placeholder="Search" />
+      <div className="hidden items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 transition-colors focus-within:border-primary/40 focus-within:bg-white focus-within:shadow-[0_1px_10px_rgba(0,142,211,0.10)] lg:flex">
+        <Search size={18} className="text-primary" />
+        <input
+          className="w-40 bg-transparent text-sm outline-none placeholder:text-gray-400 xl:w-56"
+          placeholder="Search"
+        />
       </div>
       <RxHamburgerMenu
         onClick={handleDrawerOpen}
@@ -46,8 +49,8 @@ const TopBarActions = () => {
                   priority
                 />
               </DrawerHeader>
-              <DrawerBody>
-                <RenderNavRoutes onClose={onClose} />
+              <DrawerBody className="nav-scope-light">
+                <RenderNavRoutes onClose={onClose} collapsed={false} />
                 <Logout />
               </DrawerBody>
             </>

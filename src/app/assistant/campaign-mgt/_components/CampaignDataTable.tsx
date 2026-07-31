@@ -36,6 +36,19 @@ import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import CustomModalAQ from "@/components/modals/CustomModalAQ";
 import CloseIcon from '@mui/icons-material/Close';
 import CDEsPreferences from "@/components/GenerateAQComponents/CDEsPreferences";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Upload,
+  ListRestart,
+  Save,
+  RadioTower,
+  PencilLine,
+  Users2,
+  Archive,
+  LayoutGrid,
+  Settings2,
+} from "lucide-react";
 
 export type Pred = {
   role: string;
@@ -297,6 +310,8 @@ const queryClient = useQueryClient();
         // ── PC assignment (AssignVA + EditModal need VaName / VaEmail) ─
         VaName: client.AssignedPCName ?? null,
         VaEmail: client.AssignedPCEmail ?? null,
+        AssignedPCName: client.AssignedPCName ?? null,
+        AssignedPCEmail: client.AssignedPCEmail ?? null,
         // ── Vet assignment ─
         VetName: client.AssignedVetName ?? null,
         VetEmail: client.AssignedVetEmail ?? null,
@@ -307,8 +322,6 @@ const queryClient = useQueryClient();
         CompletedEmail: client.AssignedCompletedEmail ?? null,
         AssignedCompletedName: client.AssignedCompletedName ?? null,
         AssignedCompletedEmail: client.AssignedCompletedEmail ?? null,
-        AssignedPCName: client.AssignedPCName ?? null,
-        AssignedPCEmail: client.AssignedPCEmail ?? null,
         updateBy: client.updatedBy ?? null,
 
         // ── Metadata ──────────────────────────────────────────────
@@ -442,54 +455,87 @@ const queryClient = useQueryClient();
 
 
   return (
-    <main className="mt-10">
+    <main className="flex flex-col gap-4 mb-10">
       <ImportData isModalOpen={isImportModalOpen} setShowModal={setIsImportModalOpen} />
-      
-      <section className="mb-[80px]">
-        <section className="mb-9">
 
-          {/* Template Updates section */}
-          <section className="flex flex-wrap gap-4 mb-5">
-            <Combobox
-              list={rows
-                .map((user: any) => ({
-                  value: user.id,
-                  label: `${user.Full_Name}`,
-                }))
-                .sort((a, b) => a.label.localeCompare(b.label))}
-              placeholder="Client Name"
-              selectedItem={selectedClient}
-              setSelectedItem={setSelectedClient}
-              noItemsMessage="No client found"
-              loadingMore={shouldFetchMoreUsers}
-              setLoadingMore={setShouldFetchMoreUsers}
-            />
+      {/* Bulk Template Update */}
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-4 p-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Client</span>
+              <Combobox
+                list={rows
+                  .map((user: any) => ({
+                    value: user.id,
+                    label: `${user.Full_Name}`,
+                  }))
+                  .sort((a, b) => a.label.localeCompare(b.label))}
+                placeholder="Client Name"
+                selectedItem={selectedClient}
+                setSelectedItem={setSelectedClient}
+                noItemsMessage="No client found"
+                loadingMore={shouldFetchMoreUsers}
+                setLoadingMore={setShouldFetchMoreUsers}
+                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+              />
+            </div>
 
-            <SearchInput
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-            />
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Search</span>
+              <SearchInput
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                className="h-9 w-full min-w-[200px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
+              />
+            </div>
 
-            <Combobox
-              list={[...templateNamesList].sort((a, b) => a.label.localeCompare(b.label))}
-              placeholder="Template Name"
-              selectedItem={selectedTemplate}
-              setSelectedItem={setSelectedTemplate}
-              noItemsMessage="No template found"
-            />
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Template</span>
+              <Combobox
+                list={[...templateNamesList].sort((a, b) => a.label.localeCompare(b.label))}
+                placeholder="Template Name"
+                selectedItem={selectedTemplate}
+                setSelectedItem={setSelectedTemplate}
+                noItemsMessage="No template found"
+                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+              />
+            </div>
 
-            <Combobox
-              list={[...aggregatorsList].sort((a, b) => a.label.localeCompare(b.label))}
-              placeholder="Aggregator"
-              selectedItem={selectedAggregator}
-              setSelectedItem={setSelectedAggregator}
-              noItemsMessage="No aggregator found"
-            />
-          </section>
+            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Aggregator</span>
+              <Combobox
+                list={[...aggregatorsList].sort((a, b) => a.label.localeCompare(b.label))}
+                placeholder="Aggregator"
+                selectedItem={selectedAggregator}
+                setSelectedItem={setSelectedAggregator}
+                noItemsMessage="No aggregator found"
+                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          
-          {/* Update record section */}
-          <section className="flex flex-wrap gap-4">
+      {/* Regex Trigger, Allow Editing, Table View & Dropdown Config */}
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Settings2 size={16} className="hidden text-gray-400 sm:block" />
+            <CRUDDropDown columnHeaders={columnHeaders} />
+
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+              <RadioTower size={16} className="text-primary" />
+              Trigger regex for all users
+              <Switch checked={false} />
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+              <Checkbox checked={isEditable} onClick={() => setIsEditable(prev => !prev)} />
+              <PencilLine size={16} className="text-primary" />
+              Allow Editing
+            </label>
+
             <Select
               onValueChange={(value) => {
                 switch (value) {
@@ -505,7 +551,7 @@ const queryClient = useQueryClient();
                 }
               }}
             >
-              <SelectTrigger className="w-[180px] bg-white shadow-md">
+              <SelectTrigger className="w-full sm:w-[200px] bg-white">
                 <SelectValue
                   placeholder=
                   "Record Actions"
@@ -517,95 +563,119 @@ const queryClient = useQueryClient();
                 <SelectItem value="update-record">Update Record</SelectItem>
               </SelectContent>
             </Select>
-          </section>
-        </section>
-      </section>
-
-      {/* Reggex Triggers, Allow Editing, & Table State Section */}
-      <section className="flex justify-between flex-col sm:flex-row ">
-        <div>
-          <CRUDDropDown columnHeaders={columnHeaders} />
-        </div>
-        <div className="my-5 grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          <div className="bg-lightblue shadow-md rounded-md text-sm sm:w-full w-9/12 text-black p-2 flex items-center gap-2 md:col-span-2 lg:col-span-1 justify-between">
-            Trigger regex for all users <Switch checked={false} />
           </div>
-          {( 
-            <div className="bg-lightblue shadow-md rounded-md text-sm sm:w-full w-9/12 text-black p-2 flex items-center gap-2">
-              <Checkbox className="bg-white" checked={isEditable} onClick={() => setIsEditable(prev => !prev)} /> Allow Editing
-            </div>
-          )}
-          <Select
-            onValueChange={(value: "active" | "recycle" | "all") =>
-              setClientDataState(value)
-            }
+
+          <Tabs
+            value={clientDataState}
+            onValueChange={(value) => setClientDataState(value as "active" | "recycle" | "all")}
           >
-            <SelectTrigger className="w-[180px] bg-white shadow-md">
-              <SelectValue
-                placeholder={
-                  clientDataState === "active" ? "Active Clients" :
-                  clientDataState === "recycle" ? "Recycle Bin" : "All Clients"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Clients</SelectItem>
-              <SelectItem value="active">Active Users</SelectItem>
-              <SelectItem value="recycle">Recycle Bin</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
+            <TabsList className="rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
+              <TabsTrigger
+                value="all"
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <LayoutGrid size={14} />
+                All Clients
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <Users2 size={14} />
+                Active Users
+              </TabsTrigger>
+              <TabsTrigger
+                value="recycle"
+                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <Archive size={14} />
+                Recycle Bin
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Campaign Table Section */}
-      <section>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold">All Clients ({tableData.length} records)</h2>
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 space-y-0 border-b border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-900">All Clients</CardTitle>
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              {tableData.length} records
+            </span>
+          </div>
           {
-            isEditable && 
-            <div className="flex flex-row gap-4">
-              <Button onClick={() => setIsImportModalOpen(!isImportModalOpen)}>Import Data</Button>
-              <Button onClick={() => setFillDownIsOpen(!fillDownIsOpen)}>Fill Drop Down</Button>
+            isEditable &&
+            <div className="flex flex-row flex-wrap gap-3 w-full md:w-auto">
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setIsImportModalOpen(!isImportModalOpen)}
+              >
+                <Upload size={16} /> Import Data
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => setFillDownIsOpen(!fillDownIsOpen)}
+              >
+                <ListRestart size={16} /> Fill Drop Down
+              </Button>
               {
                 saveMultiple &&
-                <Button onClick={() => saveMultipleData()}>Save Data</Button>
+                <Button className="gap-2" onClick={() => saveMultipleData()}>
+                  <Save size={16} /> Save Data
+                </Button>
               }
             </div>
           }
-        </div>
-        <div className="h-[700px] w-full">
-          <StyledDataGridPro
-            slots={
-              {
-                toolbar: GridToolbar,
-                loadingOverlay: LoadingSpinner,
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="h-[500px] md:h-[700px] w-full">
+            <StyledDataGridPro
+              slots={
+                {
+                  toolbar: GridToolbar,
+                  loadingOverlay: LoadingSpinner,
+                }
               }
-            }
-            showToolbar={true}
-            rows={tableData}
-            loading={isLoading}
-            getRowId={(row) => row.id}
-            rowHeight={38}
-            rowReordering
-            disableRowSelectionOnClick
-            rowBufferPx={100}
-            columns={memoizedColumns}
-            columnBufferPx={5}
-            checkboxSelection={isEditable}
-            pagination
-            paginationMode="client"
-            pageSizeOptions={[10, 20, 50, 100]}
-            paginationModel={paginationModel}
-            onPaginationModelChange={(model: any) => {
-              setPaginationModel(model);
-            }}
-            pinnedColumns={{ left: ['__check__', 'CustomerId', 'generatePassword', 'actions'] }}
-            onColumnOrderChange={(e: any) => {
-              moveTo("MASTERSHEET", e.column.field, e.targetIndex);
-            }}
-          />
-        </div>
-      </section>
+              showToolbar={true}
+              rows={tableData}
+              loading={isLoading}
+              getRowId={(row) => row.id}
+              rowHeight={38}
+              rowReordering
+              disableRowSelectionOnClick
+              rowBufferPx={100}
+              columns={memoizedColumns}
+              columnBufferPx={5}
+              checkboxSelection={isEditable}
+              pagination
+              paginationMode="client"
+              pageSizeOptions={[10, 20, 50, 100]}
+              paginationModel={paginationModel}
+              onPaginationModelChange={(model: any) => {
+                setPaginationModel(model);
+              }}
+              pinnedColumns={{ left: ['__check__', 'CustomerId', 'generatePassword', 'actions'] }}
+              onColumnOrderChange={(e: any) => {
+                moveTo("MASTERSHEET", e.column.field, e.targetIndex);
+              }}
+              sx={{
+                border: "1px solid #f1f5f9",
+                borderRadius: "12px",
+                "& .MuiDataGrid-columnHeaders": {
+                  backgroundColor: "rgba(0, 142, 211, 0.08)",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: "rgba(0, 142, 211, 0.06)",
+                },
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Campaign Table Fill Down Modal */}
       <CustomModal toggleVisibility={setFillDownIsOpen} visibility={fillDownIsOpen}>
@@ -633,7 +703,7 @@ const queryClient = useQueryClient();
           </div>
 
           {
-            clientData ? 
+            clientData ?
             <div>
               <KwRtModalComponent
                 loading={isLoading}
@@ -644,13 +714,13 @@ const queryClient = useQueryClient();
                 masterSheet={true}
               />
 
-              <div className="mt-6 w-full p-8 rounded-xl bg-white shadow-lg">
+              <div className="mt-6 w-full p-4 md:p-8 rounded-xl bg-white shadow-lg">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-semibold text-gray-900">Edit CDEs</h3>
                 </div>
                 {preferences && (
                   <CDEsPreferences
-                    //@ts-ignore 
+                    //@ts-ignore
                     id={usersId ?? mongoClientID}
                     preference={preferences}
                     loading={isLoading}
@@ -661,7 +731,7 @@ const queryClient = useQueryClient();
                   />
                 )}
               </div>
-            </div> 
+            </div>
             :
             <LoadingSpinner/>
           }

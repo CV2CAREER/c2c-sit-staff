@@ -12,36 +12,36 @@ import { useAdminMutations } from "@/hooks/api/admin.api";
 const furtherAccountOptions = [
     {
         value: "Accept Account",
-        className: "text-career-gray-200 hover:bg-career-blue-200",
+        className: "text-career-gray-200 hover:bg-primary/10",
         action: "account-mutate",
         actionText: "accept this account",
         modalButtonText: "Accept",
     },
     {
         value: "Suspend Account",
-        className: "text-career-gray-200 hover:bg-career-blue-200",
+        className: "text-career-gray-200 hover:bg-primary/10",
         action: "account-mutate",
         actionText: "suspend this account",
         modalButtonText: "Suspend"
     },
     {
         value: "Restrict Account",
-        className: "text-career-gray-200 hover:bg-career-blue-200",
+        className: "text-career-gray-200 hover:bg-primary/10",
         action: "account-mutate",
         actionText: "restrict this account",
         modalButtonText: "Restrict"
     },
     {
         value: "Dispatch Sample Results",
-        className: "text-career-gray-200 hover:bg-career-blue-200"
+        className: "text-career-gray-200 hover:bg-primary/10"
     },
     {
         value: "Accept Documents",
-        className: "text-career-gray-200 hover:bg-career-blue-200"
+        className: "text-career-gray-200 hover:bg-primary/10"
     },
     {
         value: "Reject Documents",
-        className: "text-red-700 hover:bg-career-blue-200"
+        className: "text-red-700 hover:bg-primary/10"
     },
     {
         value: "Delete Account",
@@ -52,15 +52,15 @@ const furtherAccountOptions = [
     },
     {
         value: "Assign Referrer",
-        className: "text-career-gray-200 hover:bg-career-blue-200"
+        className: "text-career-gray-200 hover:bg-primary/10"
     },
     {
         value: "Update Referral Numbers",
-        className: "text-career-gray-200 hover:bg-career-blue-200"
+        className: "text-career-gray-200 hover:bg-primary/10"
     },
     {
         value: "Allow Free Before Referral",
-        className: "text-career-gray-200 hover:bg-career-blue-200"
+        className: "text-career-gray-200 hover:bg-primary/10"
     }
 ]
 
@@ -82,7 +82,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
         <>
             <Menu placement="bottom-end">
                 <MenuHandler>
-                    <button className="bg-career-blue-200 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-[0.25rem]">
+                    <button className="bg-primary/10 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-lg transition-colors hover:bg-primary/20">
                         <Icon name="more" />
                     </button>
                 </MenuHandler>
@@ -92,7 +92,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
                     onPointerLeaveCapture={() => { }}
                     onResize={() => { }}
                     onResizeCapture={() => { }}
-                    className="p-0 w-72 rounded-[4px] bg-white h-auto flex flex-col justify-center -ml-12 absolute z-50"
+                    className="p-1 w-72 rounded-lg border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] bg-white h-auto flex flex-col justify-center -ml-12 absolute z-50"
                 >
                     {
 
@@ -135,11 +135,18 @@ const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonS
             contentClassName="w-[200%]"
         >
             <div className="flex justify-center">
-                <div className="bg-white rounded-lg w-72">
-                    <h2 className="font-semibold text-xl">{`Are You Sure you want to ${actionText}?`}</h2>
-                    <div className="flex justify-between mt-3">
+                <div className="bg-white rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] p-4 w-72">
+                    <h2 className="font-semibold text-lg text-gray-900">{`Are you sure you want to ${actionText}?`}</h2>
+                    <div className="flex justify-between gap-3 mt-4">
                         <Button
-                            className={`text-white p-2 w-1/2 rounded-lg ${affirmButtonStyles}`}
+                            variant="outline"
+                            className="flex-1 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                            onClick={() => setIsOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="flex-1"
                             onClick={() => {
                                 if (action === "Accept") {
                                     acceptMutation.mutate({ userId, action: action.toLowerCase() })
@@ -151,7 +158,6 @@ const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonS
                         >
                             {action}
                         </Button>
-                        <Button className="ml-1 shadow-sm p-2 w-1/2 rounded-lg" onClick={() => setIsOpen(false)}>Cancel</Button>
                     </div>
                 </div>
             </div>

@@ -8,6 +8,7 @@ export const useDocumentsQueries = (options: AdminQueriesOptions) => {
     fetchDocuments = false,
     fetchCvRevamp = false,
     fetchUserDocsAndPreferences = false,
+    fetchClientSupportDocuments = false,
     userId = "",
     docId = "",
   } = options;
@@ -35,8 +36,25 @@ export const useDocumentsQueries = (options: AdminQueriesOptions) => {
     queryKey: ["admin-user-docs-and-preferences", userId],
     enabled: fetchUserDocsAndPreferences && !!userId,
   });
-  
+
+  // Role title CSVs, support images and support spreadsheets.
+  const clientSupportDocuments = useFetchData<any>({
+    method: "GET",
+    url: userId
+      ? endpoints.ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT(userId)
+      : "",
+    queryKey: ["client-support-documents", userId],
+    enabled: fetchClientSupportDocuments && !!userId,
+  });
+
   return useMemo(() => ({
+    clientSupportDocumentsDomain: {
+      data: clientSupportDocuments.data?.data,
+      isLoading: clientSupportDocuments.isLoading,
+      isSuccess: clientSupportDocuments.isSuccess,
+      isError: clientSupportDocuments.isError,
+      error: clientSupportDocuments.error,
+    },
     documentsDomain: {
       data: documents.data?.data,
       isLoading: documents.isLoading,
@@ -59,7 +77,7 @@ export const useDocumentsQueries = (options: AdminQueriesOptions) => {
       error: userDocsAndPreferences.error,
     },
   }), [
-    documents, cvRevamp, userDocsAndPreferences
+    documents, cvRevamp, userDocsAndPreferences, clientSupportDocuments
   ]);
 };
 
@@ -76,6 +94,13 @@ export const useDocumentsMutations = () => {
       method: "POST",
       url: endpoints.ADMIN_DOCUMENT_REVIEW,
       mutationKey: ["admin-submit-document-review"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    uploadClientSupportDocumentsMutation: useMutateData<any, FormData>({
+      method: "POST",
+      url: endpoints.ADMIN_CLIENT_SUPPORT_DOCUMENTS,
+      mutationKey: ["admin-upload-client-support-documents"],
       onSuccess: () => {},
       onError: () => {},
     }),

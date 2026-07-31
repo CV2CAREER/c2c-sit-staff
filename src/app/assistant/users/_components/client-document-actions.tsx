@@ -16,7 +16,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download } from "lucide-react";
+import { MoreHorizontal, Download, CheckCircle2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axiosInstance from "@/services/api-client";
@@ -26,7 +26,7 @@ import { SERVER_URI } from "@/constants/env";
 interface DocumentActionsProps {
   document_: any;
   allDocuments: any[]
-  actions: ["download", "default", "keywords", "role-titles"];
+  actions: ("download" | "default" | "keywords" | "role-titles" | "activate")[];
 }
 
 export default function DocumentTableActions({
@@ -36,7 +36,7 @@ export default function DocumentTableActions({
 }: DocumentActionsProps) {
   const queryClient = useQueryClient();
   const [activeDialog, setActiveDialog] = useState<
-    "download" | "default" | "keywords" | "role-titles" | null
+    "download" | "default" | "keywords" | "role-titles" | "activate" | null
   >(null);
 
   const handleDownloadDocs = async (documentId: string) => {
@@ -44,7 +44,7 @@ export default function DocumentTableActions({
 
     const target = allDocuments.find(
     (dt: any) =>
-        dt._id === documentId
+        dt._id === documentId || dt.id === documentId
     );
 
     if (!target) {
@@ -54,14 +54,13 @@ export default function DocumentTableActions({
         return;
     }
 
-    // Log the full document structure to understand the data format
-    // console.log('Full target document:', JSON.stringify(target, null, 2));
-    // console.log('target.document type:', Array.isArray(target.document) ? 'array' : typeof target.document);
-
-
-
-    const name = target?.document[0]?.filename ?? target?.document?.filename;
-    const cloudFilename = target?.document[0]?.cloudFilename ?? target?.document?.cloudFilename;
+    // `document` may be an array (admin uploads) or a single object (client
+    // uploads). The stored storage identifier is `cloudFilename` on admin
+    // uploads and `publicId` on client uploads.
+    const doc0 = Array.isArray(target?.document) ? target.document[0] : target?.document;
+    const name = doc0?.filename ?? doc0?.name ?? target?.filename ?? target?.name;
+    const cloudFilename =
+        doc0?.cloudFilename ?? doc0?.publicId ?? target?.cloudFilename ?? target?.publicId;
 
     if (!name || !cloudFilename) {
         toast.dismiss();
@@ -69,21 +68,20 @@ export default function DocumentTableActions({
         return;
     }
 
-
-
-    // Pass the cloudFilename as-is to the API
-    // The API will handle removing any bucket prefixes
+    // Always mint a FRESH signed URL server-side. URLs persisted on the
+    // document die once the Firebase signing key rotates (SignatureDoesNotMatch).
     const filePath = cloudFilename;
 
     try {
-        const res = await axiosInstance.get(`${SERVER_URI}/api/v1/admin/documents/get-signed-url?filePath=${filePath}&filename=${encodeURIComponent(name)}`);
-        
-        if (!res?.data?.url) {
+        const res = await axiosInstance.get(`${SERVER_URI}/api/v1/admin/documents/get-signed-url?filePath=${encodeURIComponent(filePath)}&filename=${encodeURIComponent(name)}`);
+
+        const url = res?.data?.data?.url ?? res?.data?.url;
+        if (!url) {
             throw new Error("No download URL received from server");
         }
 
         const link = document.createElement('a');
-        link.href = res.data.url;
+        link.href = url;
         link.setAttribute('download', name);
         document.body.appendChild(link);
         link.click();
@@ -133,7 +131,24 @@ export default function DocumentTableActions({
       toast.error("Could not download document");
     },
   });
-  
+
+  const activateUploadAction = useMutation({
+    mutationFn: (uploadId: string) => {
+      toast.loading("Activating document...");
+      return axiosInstance.patch(`${SERVER_URI}/api/v1/uploads/${uploadId}/activate`);
+    },
+    onSuccess: () => {
+      toast.dismiss();
+      toast.success("Document activated");
+      queryClient.invalidateQueries({ queryKey: ["admin-user-documents", document_.userId] });
+    },
+    onError: (error: any) => {
+      toast.dismiss();
+      const errorMessage = error?.response?.data?.message || "Could not activate document";
+      toast.error(errorMessage);
+    },
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const restoreUserAction = useMutation({
     mutationFn: (userId: string) => {
@@ -187,22 +202,24 @@ export default function DocumentTableActions({
               case "download":
                 return (
                   <DropdownMenuItem
-                    onClick={() => {
-                      const target = allDocuments.find(
-                        (dt: any) => dt.id === document_.id || dt._id === document_.id
-                      );
-                      const url = target?.url || target?.document?.url;
-                      if (url) {
-                        window.location.href = url;
-                        toast.success("Document downloaded successfully");
-                      } else {
-                        toast.error("Document URL not available");
-                      }
-                    }}
+                    onClick={() => downloadDocumentAction.mutate(document_.id)}
                     key="download"
                   >
                     <Download />
                     <span>Download Resume</span>
+                  </DropdownMenuItem>
+                );
+              case "activate":
+                // Only admin-generated, not-yet-active uploads offer this —
+                // client uploads and already-active documents don't need it.
+                if (document_.source !== "admin" || document_.isActive) return null;
+                return (
+                  <DropdownMenuItem
+                    onClick={() => setActiveDialog("activate")}
+                    key="activate"
+                  >
+                    <CheckCircle2 />
+                    <span>Activate</span>
                   </DropdownMenuItem>
                 );
             //   case "default":
@@ -258,6 +275,29 @@ export default function DocumentTableActions({
               }}
             >
               Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )}
+
+      {activeDialog === "activate" && (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Activate this document?</DialogTitle>
+            <DialogDescription>
+              {document_.fileName} was generated by an admin and is currently
+              inactive. Activating it makes it live for the client.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              className="bg-[#0D9F6E] hover:bg-[#0b8a5f]"
+              onClick={() => {
+                activateUploadAction.mutate(document_.id);
+                setActiveDialog(null);
+              }}
+            >
+              Activate
             </Button>
           </DialogFooter>
         </DialogContent>

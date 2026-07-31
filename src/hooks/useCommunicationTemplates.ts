@@ -16,14 +16,16 @@ type CommunicationTemplateUser = {
   isEmailVerified?: boolean;
 };
 
+export type EmailTemplateType = "admin" | "customer";
+
 export type CommunicationTemplate = {
-  _id: string;
   id: string;
-  templateName: string;
-  persona: string;
-  subject: string;
+  key: string;
+  name: string;
+  type: EmailTemplateType;
   body: string;
-  isDeleted: boolean;
+  variables: string[];
+  updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -35,20 +37,30 @@ type NotifyPayload = {
   mode?: "email" | "whatsapp";
 };
 
-type TemplatePayload = {
-  id?: string;
-  templateName: string;
-  persona: string;
-  subject: string;
+type CreateTemplatePayload = {
+  key: string;
+  name: string;
+  type: EmailTemplateType;
   body: string;
+  variables?: string[];
+};
+
+type UpdateTemplatePayload = {
+  id: string;
+  name?: string;
+  type?: EmailTemplateType;
+  body?: string;
+  variables?: string[];
 };
 
 export function useCommunicationTemplates({
   fetchUsers = true,
   recycleBin = false,
+  category,
 }: {
   fetchUsers?: boolean;
   recycleBin?: boolean;
+  category?: EmailTemplateType;
 } = {}) {
   const queryClient = useQueryClient();
 
@@ -62,9 +74,12 @@ export function useCommunicationTemplates({
   const templatesQuery = useFetchData<CommunicationTemplate[]>({
     method: "GET",
     url: endpoints.ADMIN_TEMPLATES,
-    queryKey: ["communication-templates", recycleBin ? "deleted" : "active"],
+    queryKey: ["communication-templates", recycleBin ? "deleted" : "active", category ?? "all"],
     enabled: true,
-    params: recycleBin ? { type: "deleted" } : {},
+    params: {
+      ...(recycleBin ? { status: "deleted" } : {}),
+      ...(category ? { category } : {}),
+    },
   });
 
   const invalidateTemplates = async () => {
@@ -75,7 +90,7 @@ export function useCommunicationTemplates({
   };
 
   const createTemplate = useMutation({
-    mutationFn: async (payload: TemplatePayload) => {
+    mutationFn: async (payload: CreateTemplatePayload) => {
       const response = await axiosInstance.post<ApiSuccess<CommunicationTemplate>>(
         endpoints.ADMIN_TEMPLATES,
         payload,
@@ -86,7 +101,7 @@ export function useCommunicationTemplates({
   });
 
   const updateTemplate = useMutation({
-    mutationFn: async (payload: TemplatePayload & { id: string }) => {
+    mutationFn: async (payload: UpdateTemplatePayload) => {
       const response = await axiosInstance.patch<ApiSuccess<CommunicationTemplate>>(
         endpoints.ADMIN_TEMPLATES,
         payload,
@@ -97,9 +112,9 @@ export function useCommunicationTemplates({
   });
 
   const softDeleteTemplate = useMutation({
-    mutationFn: async (identifier: string) => {
+    mutationFn: async (key: string) => {
       const response = await axiosInstance.patch<ApiSuccess<CommunicationTemplate>>(
-        `${endpoints.ADMIN_TEMPLATES}?action=soft-delete&templateName=${encodeURIComponent(identifier)}`,
+        `${endpoints.ADMIN_TEMPLATES}?action=soft-delete&key=${encodeURIComponent(key)}`,
       );
       return response.data.data;
     },
@@ -107,31 +122,11 @@ export function useCommunicationTemplates({
   });
 
   const restoreTemplate = useMutation({
-    mutationFn: async (identifier: string) => {
+    mutationFn: async (key: string) => {
       const response = await axiosInstance.patch<ApiSuccess<CommunicationTemplate>>(
-        `${endpoints.ADMIN_TEMPLATES}?action=restore&templateName=${encodeURIComponent(identifier)}`,
+        `${endpoints.ADMIN_TEMPLATES}?action=restore&key=${encodeURIComponent(key)}`,
       );
       return response.data.data;
-    },
-    onSuccess: invalidateTemplates,
-  });
-
-  const duplicateTemplate = useMutation({
-    mutationFn: async (templateName: string) => {
-      const response = await axiosInstance.post<ApiSuccess<CommunicationTemplate>>(
-        `${endpoints.ADMIN_TEMPLATES}?request=duplicate&templateName=${encodeURIComponent(templateName)}`,
-      );
-      return response.data.data;
-    },
-    onSuccess: invalidateTemplates,
-  });
-
-  const deleteTemplate = useMutation({
-    mutationFn: async (identifier: string) => {
-      const response = await axiosInstance.delete<ApiSuccess<unknown>>(
-        `${endpoints.ADMIN_TEMPLATES}?templateName=${encodeURIComponent(identifier)}`,
-      );
-      return response.data;
     },
     onSuccess: invalidateTemplates,
   });
@@ -180,16 +175,12 @@ export function useCommunicationTemplates({
       updateTemplate: updateTemplate.mutateAsync,
       softDeleteTemplate: softDeleteTemplate.mutateAsync,
       restoreTemplate: restoreTemplate.mutateAsync,
-      duplicateTemplate: duplicateTemplate.mutateAsync,
-      deleteTemplate: deleteTemplate.mutateAsync,
       notifyMissingInfo: notifyMissingInfo.mutateAsync,
       isMutating:
         createTemplate.isPending ||
         updateTemplate.isPending ||
         softDeleteTemplate.isPending ||
         restoreTemplate.isPending ||
-        duplicateTemplate.isPending ||
-        deleteTemplate.isPending ||
         notifyMissingInfo.isPending,
     },
     backendStatus: {

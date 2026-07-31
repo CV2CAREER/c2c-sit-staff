@@ -7,6 +7,7 @@ import { Loader2, CircleAlert } from "lucide-react";
 import { useAuthStore } from "@/store/user.store";
 import { useUserQueries } from "@/hooks/api/user.api";
 import { getRoleRoute } from "@/hooks/api/auth.api";
+import { setSessionHint } from "@/lib/auth-session";
 import toast from "react-hot-toast";
 
 export default function AuthInitiateContent() {
@@ -52,7 +53,11 @@ export default function AuthInitiateContent() {
         if (userSuccess && userData?.user) {
             const user = userData.user;
             setUser(user);
-            
+
+            // Mirror the session for the middleware, so /login now redirects away
+            const token = searchParams?.get("token");
+            if (token) setSessionHint(user.role, token);
+
             // Centralized RFT role-based redirect
             const destination = getRoleRoute(user.role);
             router.push(destination);
@@ -64,7 +69,7 @@ export default function AuthInitiateContent() {
             // Optional: redirect to login after a delay
             setTimeout(() => router.push("/login"), 3000);
         }
-    }, [userSuccess, userError, userData, setUser, router]);
+    }, [userSuccess, userError, userData, setUser, router, searchParams]);
 
   // Render UI based on status and error
   return (

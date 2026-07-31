@@ -2,40 +2,68 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { toast } from "react-hot-toast";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
-import { ADMIN_JOB_PREFERENCES } from "@/constants/apiEndpoints/admin.endpoint";
+import {
+  ADMIN_DISCOVERY_TRACKER,
+  ADMIN_DISCOVERY_TRACKER_FILTER_VALUES,
+} from "@/constants/apiEndpoints/admin.endpoint";
 
-export type DiscoveryCategory =
-  | "advertisers"
-  | "classification"
-  | "country-states-cities"
-  | "craft"
-  | "job-type"
-  | "salary-options"
-  | "working-rights";
+// Real manual_applications columns the "Users Filter" dropdown can narrow
+// the grid by — mirrors FILTERABLE_FIELDS in discovery-tracker.service.ts.
+export const DISCOVERY_FILTER_FIELDS = [
+  { value: "Advertiser", label: "Advertiser" },
+  { value: "Job_Type", label: "Job Type" },
+  { value: "Country", label: "Country" },
+  { value: "Status", label: "Status" },
+  { value: "Internal_Jobsite", label: "Internal Jobsite" },
+  { value: "External_Jobsite", label: "External Jobsite" },
+];
 
 export type DiscoveryState = "active" | "recycle";
 
-export type DiscoveryOption = {
-  _id?: string;
-  id?: string | number;
-  label?: string;
-  value?: string;
-  country?: string;
-  states?: string[];
-  cities?: string[];
+// One row = one manual_applications record, every column included.
+export type DiscoveryRecord = {
+  id: string;
+  Client?: string;
+  Status?: string;
+  StatusReason?: string;
+  Job_Title?: string;
+  JobId?: string;
+  Internal_Jobsite?: string;
+  External_Jobsite?: string;
+  Job_Type?: string;
+  Advertiser?: string;
+  Location?: string;
+  Country?: string;
+  ApplicationSubmittedBy?: string;
+  ApplicationSubmissionDate?: string;
+  DiscoveredBy?: string;
+  DiscoveryDate?: string;
+  VettedBy?: string;
+  VettedDate?: string;
+  QualityScore?: string | null;
+  isDeleted?: boolean;
+  CoverLetterRequired?: boolean | null;
+  DeclinedReasons?: string | null;
+  ApprovedBy?: string | null;
+  ApprovedDate?: string | null;
+  ReturnReason?: string | null;
+  ReturnedBy?: string | null;
+  ReturnedDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 };
 
 type DiscoveryListPayload = {
-  rows: DiscoveryOption[];
+  rows: DiscoveryRecord[];
   totalCount: number;
 };
 
 type DiscoveryMutationInput = {
-  id?: string | number;
-  category: string;
+  id: string | number;
   action?: "soft-delete" | "restore";
   body?: Record<string, unknown>;
 };
@@ -55,68 +83,61 @@ const toApiError = (error: unknown): ApiError => {
 
 const unwrap = <T,>(response: ApiSuccess<T>) => response.data;
 
-const normalizeDiscoveryPayload = (payload: unknown): DiscoveryListPayload => {
-  const source = payload as
-    | {
-        rows?: DiscoveryOption[];
-        totalCount?: number;
-        items?: DiscoveryOption[];
-        total?: number;
-        data?: DiscoveryOption[];
-        count?: number;
-      }
-    | DiscoveryOption[]
-    | null
-    | undefined;
-
-  if (Array.isArray(source)) {
-    return { rows: source, totalCount: source.length };
-  }
-
-  return {
-    rows: source?.rows ?? source?.items ?? source?.data ?? [],
-    totalCount:
-      source?.totalCount ??
-      source?.total ??
-      source?.count ??
-      (source?.rows?.length ?? source?.items?.length ?? source?.data?.length ?? 0),
-  };
-};
-
 export const useDiscoveryTracker = ({
   state,
-  category,
-  page,
-  pageSize,
+  field,
+  value,
 }: {
   state: DiscoveryState;
-  category: DiscoveryCategory;
-  page: number;
-  pageSize: number;
+  field?: string;
+  value?: string;
 }) => {
   const queryClient = useQueryClient();
-  const skip = page * pageSize;
 
   const discoveryQuery = useQuery<DiscoveryListPayload, ApiError>({
-    queryKey: ["discovery-tracker", state, category, page, pageSize],
+    queryKey: ["discovery-tracker", state, field, value],
     queryFn: async () => {
       try {
-        const response = await axiosInstance.get<ApiSuccess<unknown>>(ADMIN_JOB_PREFERENCES, {
-          params: {
-            category,
-            state,
-            skip,
-            limit: pageSize,
-            page: page + 1,
-            isDeleted: state === "recycle",
+        const response = await axiosInstance.get<ApiSuccess<DiscoveryListPayload>>(
+          ADMIN_DISCOVERY_TRACKER,
+          {
+            params: {
+              field,
+              value,
+              state,
+              isDeleted: state === "recycle",
+            },
           },
-        });
+        );
 
-        return normalizeDiscoveryPayload(unwrap(response.data));
+        return unwrap(response.data);
       } catch (error) {
         throw toApiError(error);
       }
     },
+    // The grid loads every row for the current filter in one shot (no
+    // server-side pagination) — keep it cached so navigating away and back
+    // doesn't re-fetch the whole table every time. Mutations below still
+    // force a fresh fetch via invalidateQueries regardless of this window.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const filterValuesQuery = useQuery<string[], ApiError>({
+    queryKey: ["discovery-tracker-filter-values", field],
+    queryFn: async () => {
+      try {
+        const response = await axiosInstance.get<ApiSuccess<string[]>>(
+          ADMIN_DISCOVERY_TRACKER_FILTER_VALUES,
+          { params: { field } },
+        );
+        return unwrap(response.data);
+      } catch (error) {
+        throw toApiError(error);
+      }
+    },
+    enabled: !!field,
   });
 
   const invalidate = () => {
@@ -125,66 +146,102 @@ export const useDiscoveryTracker = ({
 
   const softDeleteRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
     mutationKey: ["discovery-tracker-soft-delete"],
-    mutationFn: async ({ id, category: rowCategory }) => {
+    mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_JOB_PREFERENCES, {
-          isDeleted: true,
-        }, {
-          params: { id, category: rowCategory, action: "soft-delete" },
-        });
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(
+          ADMIN_DISCOVERY_TRACKER,
+          { isDeleted: true },
+          { params: { id, action: "soft-delete" } },
+        );
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Sending to recycle bin...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Sent to recycle bin", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send record to recycle bin", { id: "discovery-tracker-action" });
+    },
   });
 
   const restoreRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
     mutationKey: ["discovery-tracker-restore"],
-    mutationFn: async ({ id, category: rowCategory }) => {
+    mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_JOB_PREFERENCES, {
-          isDeleted: false,
-        }, {
-          params: { id, category: rowCategory, action: "restore" },
-        });
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(
+          ADMIN_DISCOVERY_TRACKER,
+          { isDeleted: false },
+          { params: { id, action: "restore" } },
+        );
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Restoring record...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Record restored", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to restore record", { id: "discovery-tracker-action" });
+    },
   });
 
   const deleteRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
     mutationKey: ["discovery-tracker-delete"],
-    mutationFn: async ({ id, category: rowCategory }) => {
+    mutationFn: async ({ id }) => {
       try {
-        const response = await axiosInstance.delete<ApiSuccess<unknown>>(ADMIN_JOB_PREFERENCES, {
-          params: { id, category: rowCategory },
+        const response = await axiosInstance.delete<ApiSuccess<unknown>>(ADMIN_DISCOVERY_TRACKER, {
+          params: { id },
         });
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Deleting record...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Record deleted permanently", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to delete record", { id: "discovery-tracker-action" });
+    },
   });
 
   const updateRecord = useMutation<ApiSuccess<unknown>, ApiError, DiscoveryMutationInput>({
     mutationKey: ["discovery-tracker-update"],
-    mutationFn: async ({ id, category: rowCategory, body = {} }) => {
+    mutationFn: async ({ id, body = {} }) => {
       try {
-        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_JOB_PREFERENCES, body, {
-          params: { id, category: rowCategory },
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(ADMIN_DISCOVERY_TRACKER, body, {
+          params: { id },
         });
         return response.data;
       } catch (error) {
         throw toApiError(error);
       }
     },
-    onSuccess: invalidate,
+    onMutate: () => {
+      toast.loading("Saving changes...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Changes saved", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to save changes", { id: "discovery-tracker-action" });
+    },
   });
 
   return {
@@ -195,6 +252,7 @@ export const useDiscoveryTracker = ({
     isError: discoveryQuery.isError,
     error: discoveryQuery.error,
     refetch: discoveryQuery.refetch,
+    filterValues: filterValuesQuery.data ?? [],
     softDeleteRecord,
     restoreRecord,
     deleteRecord,

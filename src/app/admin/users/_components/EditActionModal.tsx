@@ -35,10 +35,25 @@ import {
 import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
 import { useUpdateUser } from "../hooks/users-all";
+import { PencilLine } from "lucide-react";
+
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
+    {children}
+  </h4>
+);
+
+// "middleName" / "Adecco_Aggregator" -> "Middle Name" / "Adecco Aggregator"
+const humanizeFieldName = (field: string) =>
+  field
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
 
 const formSchema = z.object({
   firstName: z.string().min(2).max(50),
-  middleName: z.string().min(2).max(50).optional(),
+  middleName: z.string().min(2).max(50).or(z.literal('')).optional(),
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
   gender: z.enum(["male", "female", "Male", "Female"]).optional(),
@@ -133,7 +148,10 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
   return (
     <DialogContent className="h-[70vh] overflow-auto">
       <DialogHeader>
-        <DialogTitle className="text-blue">Edit User</DialogTitle>
+        <DialogTitle className="flex items-center gap-2 text-primary">
+          <PencilLine size={18} />
+          Edit User
+        </DialogTitle>
       </DialogHeader>
 
         <Form {...form}>
@@ -141,7 +159,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-8 text-black px-1"
           >
-              <div className="flex gap-3">
+              <SectionLabel>Personal Information</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="firstName"
@@ -170,7 +189,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="lastName"
@@ -226,7 +245,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                   </FormItem>
                 )}
               />
-              <div className="flex gap-3">
+              <SectionLabel>Classification &amp; Contact</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="customerClass"
@@ -277,7 +297,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="whatsappNumber"
@@ -301,7 +321,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                         <SearchSelect
                           name="country"
                           placeholder="Country of Residence"
-                          className="col-span-full text-[#455A64]"
+                          className="w-full text-[#455A64]"
                           options={countries}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
@@ -324,7 +344,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="heritage"
@@ -335,7 +355,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                         <SearchSelect
                           name="heritage"
                           placeholder="Heritage"
-                          className="col-span-full text-[#455A64]"
+                          className="w-full text-[#455A64]"
                           options={countries}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
@@ -387,7 +407,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <SectionLabel>Account</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="role"
@@ -456,7 +477,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 )}
               />
 
-              <div className="flex gap-3">
+              <SectionLabel>Flags &amp; Notes</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="hasCoverLetter"
@@ -491,7 +513,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="socials"
@@ -525,13 +547,27 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
       <DialogFooter>
         <Button
           variant="outline"
+          className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
           onClick={() => {
             setDialog(null);
           }}
         >
           Cancel
         </Button>
-        <Button onClick={() => form.handleSubmit(onSubmit)()}>Update</Button>
+        <Button
+          onClick={() =>
+            form.handleSubmit(onSubmit, (errors) => {
+              const [firstField, firstError] = Object.entries(errors)[0] ?? [];
+              toast.error(
+                firstField
+                  ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
+                  : 'Please fix the highlighted fields before updating.'
+              );
+            })()
+          }
+        >
+          Update
+        </Button>
       </DialogFooter>
     </DialogContent>
   );

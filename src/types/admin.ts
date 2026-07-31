@@ -75,6 +75,7 @@ export type CampaignMgtQueriedDataType = {
   CustomerId: string | null;
   Plan: string | null;
   ReturnCount: number | null;
+  TourCount: number | null;
   Order: string | null;
   SeekSubStartDate: string | null;
   Assurance: string | null;
@@ -337,5 +338,7 @@ export type AdminPreferencesType = {
     industriesExclude: string[];
     industriesIncluded: string[];
     industriesExcluded: string[];
+    situationIncluded: string[];
+    situationExcluded: string[];
     includedJobTitles: string[];
 }

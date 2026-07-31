@@ -1,10 +1,26 @@
 "use client";
 import React, { useMemo } from "react";
-import { FaArrowRight } from "react-icons/fa6";
 import toast from "react-hot-toast";
 import StatCard from "./stats-card";
 import { useFilterStore } from "@/store/filterStore";
 import { useAdminQueries } from "@/hooks/api/admin.api";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Users,
+  BadgeCheck,
+  BadgeX,
+  UserPlus,
+  UserX,
+  Server,
+  ServerCog,
+  ServerOff,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Heart,
+  RotateCcw,
+  UserRoundCheck,
+} from "lucide-react";
 
 const DashboardCards = () => {
   const { startDate, endDate } = useFilterStore();
@@ -63,98 +79,100 @@ const DashboardCards = () => {
     {
       title: "Users",
       value: queryTotalUsersCount.data ?? 0,
-      linkIcon: true,
+      icon: <Users size={18} />,
       route: "/admin/users",
     },
     {
       title: "Active Subscriptions",
       value: applicationsData,
-      linkIcon: false,
+      icon: <BadgeCheck size={18} />,
     },
     {
       title: "Inactive Subscriptions",
       value: (queryTotalUsersCount.data ?? 0) - applicationsData,
-      linkIcon: false,
+      icon: <BadgeX size={18} />,
     },
     {
       title: "Guests",
       value: queryTotalGuestsCount.data ?? 0,
-      linkIcon: true,
+      icon: <UserPlus size={18} />,
       route: "/admin/users/?filter=guests",
     },
     {
       title: "Inactive Guest Subscriptions",
       value: queryTotalGuestsCount.data ?? 0, // Placeholder as v1 lacks specific inactive guest sub count
-      linkIcon: false,
+      icon: <UserX size={18} />,
     },
     {
       title: "Aggregators",
       value: aggregatorsData.total,
-      linkIcon: true,
+      icon: <Server size={18} />,
       route: "/admin/status-report",
     },
     {
       title: "Active Aggregators",
       value: aggregatorsData.active,
-      linkIcon: true,
+      icon: <ServerCog size={18} />,
       route: "/admin/status-report",
     },
     {
       title: "Inactive Aggregators",
       value: aggregatorsData.total - aggregatorsData.active,
-      linkIcon: true,
+      icon: <ServerOff size={18} />,
       route: "/admin/status-report",
     },
     {
       title: "Total Applications",
       value: (applicationsBreakdown?.successful || 0) + (applicationsBreakdown?.failed || 0),
-      linkIcon: true,
+      icon: <FileText size={18} />,
       route: "/admin/job-applications",
     },
     {
       title: "Successful Applications",
       value: applicationsBreakdown?.successful || 0,
-      linkIcon: true,
+      icon: <CheckCircle2 size={18} />,
       route: "/admin/job-applications",
     },
     {
       title: "Failed Applications",
       value: applicationsBreakdown?.failed || 0,
-      linkIcon: true,
+      icon: <XCircle size={18} />,
       route: "/admin/job-applications",
     },
     {
       title: "Loyalists",
       value: queryOverallStats.data?.loyalists ?? 0,
-      linkIcon: false,
+      icon: <Heart size={18} />,
     },
     {
       title: "Returnees",
       value: queryOverallStats.data?.returnees ?? 0,
-      linkIcon: true,
+      icon: <RotateCcw size={18} />,
       route: "/admin/users/?filter=returnees",
     },
     {
       title: "Followers",
       value: (queryFollowersCount.data as any)?.count || 0,
-      linkIcon: true,
+      icon: <UserRoundCheck size={18} />,
       route: "/admin/users/?filter=followers",
     },
   ];
 
   return (
-    <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-6">
-      {DASHBOARD_CARDS_DATA.map((card, idx) => (
-        <StatCard
-          key={idx}
-          title={card.title}
-          value={card.value}
-          icon={<FaArrowRight/>}
-          route={card.route}
-          isLoading={isLoading}
-        />
-      ))}
-    </section>
+    <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <CardContent className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 p-4">
+        {DASHBOARD_CARDS_DATA.map((card, idx) => (
+          <StatCard
+            key={idx}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            route={card.route}
+            isLoading={isLoading}
+          />
+        ))}
+      </CardContent>
+    </Card>
   );
 };
 
