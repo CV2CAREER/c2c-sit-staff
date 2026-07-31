@@ -206,18 +206,15 @@ export const ADMIN_BLOG_STATS = '/api/v1/admin/blog/stats';
 export const ADMIN_BLOG_EDIT_POST = (id: string) =>
   `/api/v1/admin/blog?id=${id}`;
 
-// Admin Prompts Endpoints
-const normalizeAiModulePath = (basePath: string) =>
-  basePath.replace(/^prompts\//, '');
-export const ADMIN_PROMPTS_BASE = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}`;
-export const ADMIN_PROMPTS_SIMULATION = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/simulation`;
-export const ADMIN_PROMPTS_QUEUE = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/queue`;
-export const ADMIN_PROMPTS_VCS = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/vcs`;
-export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/ai/cv-ai/style`;
+// Admin Prompts Endpoints (key-based VCS prompt store)
+export const ADMIN_VCS_PROMPTS = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPTS_DELETED = '/api/v1/admin/prompts?status=deleted';
+export const ADMIN_VCS_PROMPT_BY_ID = (id: string) =>
+  `/api/v1/admin/prompts/${id}`;
+export const ADMIN_VCS_PROMPT_RESTORE = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPT_PERMANENT = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPT_USAGE_SUMMARY = '/api/v1/admin/prompts/usage/summary';
+export const ADMIN_VCS_PROMPT_USAGE_LOGS = '/api/v1/admin/prompts/usage';
 
 // Admin Training Tracker Endpoints
 export const ADMIN_TRAINING_TRACKER = '/api/v1/training-tracker';

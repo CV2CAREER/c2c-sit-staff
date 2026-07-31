@@ -1,8 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 
-// import type { Config } from "tailwindcss";
-import { heroui } from "@heroui/theme";
-import tailwindcssAnimate from "tailwindcss-animate";
+const { heroui } = require("@heroui/theme");
+const tailwindcssAnimate = require("tailwindcss-animate");
 
 const config = {
   darkMode: ["class"],
