@@ -11,6 +11,7 @@ import { ClientSupportDocument } from '../models/v1/client-support-document.mode
 import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
+import { VCSPromptUsageLog } from "../models/v1/vcs-prompt-usage-log.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
 import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
@@ -114,6 +115,22 @@ const ensureJobsiteCredentialsTables = async () => {
   logger.info('jobsite_credentials tables ensured');
 };
 
+// Adds the `deletedAt`/`deletedBy` soft-delete columns to `vcs_configurations`
+// on existing databases — remove once every environment is up to date.
+const ensureVcsPromptsSoftDeleteColumns = async () => {
+  logger.info('Ensuring vcs_configurations soft-delete columns exist');
+  await VCS.sync({ alter: true });
+  logger.info('vcs_configurations soft-delete columns ensured');
+};
+
+// Creates `vcs_prompt_usage_logs` on existing databases — brand new table,
+// remove once every environment is up to date.
+const ensureVcsPromptUsageLogsTable = async () => {
+  logger.info('Ensuring vcs_prompt_usage_logs table exists');
+  await VCSPromptUsageLog.sync({ force: false });
+  logger.info('vcs_prompt_usage_logs table ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -154,6 +171,8 @@ export const connectDB = async (): Promise<void> => {
         // await ensureClientSupportDocumentsTable();
         // await ensureEmailTemplatesTable();
         // await ensureVcsPromptsTable();
+        await ensureVcsPromptsSoftDeleteColumns();
+        await ensureVcsPromptUsageLogsTable();
         // await ensureInterviewPackProcessesTable();
         // await ensureTourCountsTable();
         await ensureJobsiteCredentialsTables();
@@ -217,6 +236,8 @@ export const connectDB = async (): Promise<void> => {
         // await ensureClientSupportDocumentsTable();
         // await ensureEmailTemplatesTable();
         // await ensureVcsPromptsTable();
+        await ensureVcsPromptsSoftDeleteColumns();
+        await ensureVcsPromptUsageLogsTable();
         // await ensureInterviewPackProcessesTable();
         // await ensureTourCountsTable();
 

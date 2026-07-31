@@ -44,6 +44,7 @@ export class VCSPrompt extends Model {
 @Table({
   tableName: "vcs_configurations",
   timestamps: true,
+  paranoid: true,
 })
 export class VCS extends Model {
   @PrimaryKey
@@ -54,7 +55,7 @@ export class VCS extends Model {
   @Default(false)
   @Column(DataType.BOOLEAN)
   active!: boolean;
-  
+
   @AllowNull(false)
   @Column(DataType.STRING)
   key!: string;
@@ -65,6 +66,14 @@ export class VCS extends Model {
 
   @BelongsTo(() => VCSPrompt, "activePromptId")
   activePrompt?: VCSPrompt;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  deletedBy?: string;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  deletedAt?: Date;
 
   @CreatedAt
   createdAt!: Date;
