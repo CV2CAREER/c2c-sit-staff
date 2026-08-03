@@ -78,16 +78,36 @@ export default function ViewResponsesModal({ open, requestId, onClose }: ViewRes
                 </tr>
               </thead>
               <tbody>
-                {detail.responses.map((r) => (
-                  <tr key={r.id} className="border-b border-[#E5E9EF] last:border-b-0">
-                    <td className="px-4 py-3 text-[#10365A] font-semibold align-top">
-                      {r.fieldLabel}
-                    </td>
-                    <td className="px-4 py-3 text-[#1F2937] whitespace-pre-wrap break-words">
-                      {r.fieldValue || "\u2014"}
-                    </td>
-                  </tr>
-                ))}
+                {detail.responses.map((r) => {
+                  const rawValue = r.fieldValue ?? "";
+                  const isUrl =
+                    rawValue.startsWith("http://") || rawValue.startsWith("https://");
+                  const fileName = isUrl ? rawValue.split("/").pop()?.split("?")[0] : "";
+                  return (
+                    <tr key={r.id} className="border-b border-[#E5E9EF] last:border-b-0">
+                      <td className="px-4 py-3 text-[#10365A] font-semibold align-top">
+                        {r.fieldLabel}
+                      </td>
+                      <td className="px-4 py-3 text-[#1F2937] whitespace-pre-wrap break-words">
+                        {isUrl ? (
+                          <a
+                            href={rawValue}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#0B96D6] underline inline-flex items-center gap-1"
+                          >
+                            {fileName || "View uploaded file"}
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                          </a>
+                        ) : (
+                          rawValue || "\u2014"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
