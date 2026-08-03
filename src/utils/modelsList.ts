@@ -68,6 +68,7 @@ import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
 import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
+import { MissingInfoResponse } from '../models/v1/missing-info-response.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
@@ -150,6 +151,7 @@ export const modelList = [
   MissingInfoRequest,
   MissingInfoTemplate,
   MissingInfoTemplateField,
+  MissingInfoResponse,
   ClientSupportDocument,
   EmailLog,
   EmailTemplate,
