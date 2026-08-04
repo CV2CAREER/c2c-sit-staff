@@ -6,6 +6,7 @@ import { EmailTemplate } from "../models/v1/email-template.model";
 import { EmailLog, EmailLogStatus } from "../models/v1/email-log.model";
 import { User } from "../models/v1/user.model";
 import { SlackService } from "../services/slack.service";
+import { fieldEncryption } from "../utils/field-encryption";
 import {
   SlackChannel,
   SlackEventType,
@@ -82,8 +83,7 @@ const resolveUserId = async (
   options: Pick<EmailOptions, "email" | "userId">,
 ): Promise<string | undefined> => {
   if (options.userId) return options.userId;
-  const user = await User.findOne({ where: { email: options.email } });
-  return user?.id;
+  return (await fieldEncryption.findUserByEmail(options.email)) ?? undefined;
 };
 
 // Writes one `email_logs` row per send attempt so every sendMail() call site

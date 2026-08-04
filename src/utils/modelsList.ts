@@ -66,6 +66,7 @@ import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { VCSPromptUsageLog } from '../models/v1/vcs-prompt-usage-log.model';
+import { VCSPromptSimulationRun } from '../models/v1/vcs-prompt-simulation.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
 import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
@@ -149,6 +150,7 @@ export const modelList = [
   VCSPrompt,
   VCS,
   VCSPromptUsageLog,
+  VCSPromptSimulationRun,
   MissingInfoRequest,
   MissingInfoTemplate,
   MissingInfoTemplateField,

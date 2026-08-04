@@ -1,8 +1,3 @@
-// services/vcs-prompt-usage.service.ts
-//
-// Records and reports on every AI call made with a VCS-backed prompt (see
-// vcs-prompt.service.ts) — latency, prompt/response size, success — so the
-// admin panel can show how fast/reliable the AI actually is per prompt key.
 import { fn, col, literal } from "sequelize";
 import { getServiceLogger } from "../utils/createLogger";
 import { VCSPromptUsageLog } from "../models/v1/vcs-prompt-usage-log.model";
@@ -93,30 +88,35 @@ export class VcsPromptUsageService {
       const rows = (await VCSPromptUsageLog.findAll({
         attributes: [
           "key",
+          "version",
           [fn("COUNT", col("id")), "totalCalls"],
           [fn("AVG", col("durationMs")), "avgDurationMs"],
           [fn("MIN", col("durationMs")), "minDurationMs"],
           [fn("MAX", col("durationMs")), "maxDurationMs"],
           [fn("AVG", col("promptLength")), "avgPromptLength"],
           [fn("AVG", col("responseLength")), "avgResponseLength"],
-          [fn("MAX", col("createdAt")), "lastUsedAt"],
+          [fn("MAX", col("createdAt")), "lastRunAt"],
           [
             fn("SUM", literal(`CASE WHEN "success" THEN 1 ELSE 0 END`)),
             "successCount",
           ],
         ],
-        group: ["key"],
-        order: [["key", "ASC"]],
+        group: ["key", "version"],
+        order: [
+          ["key", "ASC"],
+          ["version", "ASC"],
+        ],
         raw: true,
       })) as unknown as Array<{
         key: string;
+        version: string | null;
         totalCalls: string;
         avgDurationMs: string | null;
         minDurationMs: string | null;
         maxDurationMs: string | null;
         avgPromptLength: string | null;
         avgResponseLength: string | null;
-        lastUsedAt: string;
+        lastRunAt: string;
         successCount: string;
       }>;
 
@@ -125,6 +125,7 @@ export class VcsPromptUsageService {
         const successCount = Number(row.successCount) || 0;
         return {
           key: row.key,
+          version: row.version ?? null,
           totalCalls,
           avgDurationMs: row.avgDurationMs ? Math.round(Number(row.avgDurationMs)) : 0,
           minDurationMs: row.minDurationMs ? Math.round(Number(row.minDurationMs)) : 0,
@@ -134,7 +135,7 @@ export class VcsPromptUsageService {
             ? Math.round(Number(row.avgResponseLength))
             : 0,
           successRate: totalCalls > 0 ? Math.round((successCount / totalCalls) * 100) : 100,
-          lastUsedAt: row.lastUsedAt,
+          lastRunAt: row.lastRunAt,
         };
       });
     } catch (error: any) {

@@ -30,10 +30,28 @@ const serializeVcs = (vcs: VCS, prompt: VCSPrompt | null) => ({
   activePromptId: vcs.activePromptId,
   prompt: prompt?.prompt ?? "",
   version: prompt?.version ?? null,
+  category: vcs.category ?? null,
+  model: vcs.model ?? null,
+  temperature: vcs.temperature ?? null,
+  maxTokens: vcs.maxTokens ?? null,
   deletedAt: vcs.deletedAt ?? null,
   deletedBy: vcs.deletedBy ?? null,
+  updatedBy: vcs.updatedBy ?? null,
   createdAt: vcs.createdAt,
   updatedAt: vcs.updatedAt,
+});
+
+const serializeVersion = (v: VCSPrompt) => ({
+  id: v.id,
+  vcsId: v.vcsId ?? null,
+  prompt: v.prompt,
+  version: v.version,
+  status: v.status,
+  createdBy: v.createdBy ?? null,
+  deployedBy: v.deployedBy ?? null,
+  deployedAt: v.deployedAt ?? null,
+  createdAt: v.createdAt,
+  updatedAt: v.updatedAt,
 });
 
 const normalizeKey = (key: unknown) => String(key || "").trim().toLowerCase();
@@ -55,11 +73,22 @@ const nextVersion = (currentVersion: string | null | undefined) => {
   return (base + 0.1).toFixed(1);
 };
 
+type PromptActionLabel =
+  | "Created"
+  | "Updated"
+  | "Deleted"
+  | "Restored"
+  | "Permanently Deleted"
+  | "Draft Saved"
+  | "Pushed to Live"
+  | "Rolled Back"
+  | "Version Restored";
+
 // Fire-and-forget Slack + team-email notification — never allowed to affect
 // the outcome of the CRUD action it's reporting on.
 const notifyPromptChange = (
   req: Request | undefined,
-  actionLabel: "Created" | "Updated" | "Deleted" | "Restored" | "Permanently Deleted",
+  actionLabel: PromptActionLabel,
   vcs: VCS,
   prompt: VCSPrompt | null,
   actor: Actor,
@@ -143,6 +172,25 @@ export class VcsPromptService {
     }
   }
 
+  static async listVersions(vcsId: string) {
+    try {
+      const vcsRow = await VCS.findByPk(vcsId);
+      if (!vcsRow) {
+        throw new Error("Prompt not found");
+      }
+
+      const rows = await VCSPrompt.findAll({
+        where: { vcsId },
+        order: [["createdAt", "DESC"]],
+      });
+
+      return rows.map(serializeVersion);
+    } catch (error: any) {
+      logger.error(`Failed to list VCS prompt versions: ${error.message}`);
+      throw error;
+    }
+  }
+
   static async createPrompt(
     req: Request | undefined,
     data: { key: unknown; prompt: unknown; active?: unknown },
@@ -168,17 +216,25 @@ export class VcsPromptService {
         );
       }
 
-      const promptRow = await VCSPrompt.create({
-        prompt,
-        version: "1",
-        active: true,
-      });
-
       const vcsRow = await VCS.create({
         key,
         active,
-        activePromptId: promptRow.id,
+        updatedBy: actorLabel(actor),
       });
+
+      const deployedBy = actorLabel(actor);
+      const promptRow = await VCSPrompt.create({
+        vcsId: vcsRow.id,
+        prompt,
+        version: "1",
+        status: "live",
+        active: true,
+        deployedBy,
+        deployedAt: new Date(),
+      });
+
+      vcsRow.activePromptId = promptRow.id;
+      await vcsRow.save();
 
       notifyPromptChange(req, "Created", vcsRow, promptRow, actor);
 
@@ -189,10 +245,20 @@ export class VcsPromptService {
     }
   }
 
+  // Metadata-only update — key/category/model/temperature/maxTokens/active.
+  // Prompt *text* changes go through saveDraft/pushToLive instead, since
+  // editing text should never silently become what production reads.
   static async updatePrompt(
     req: Request | undefined,
     id: string,
-    data: { key?: unknown; prompt?: unknown; active?: unknown },
+    data: {
+      key?: unknown;
+      active?: unknown;
+      category?: unknown;
+      model?: unknown;
+      temperature?: unknown;
+      maxTokens?: unknown;
+    },
     actor: Actor,
   ) {
     try {
@@ -218,36 +284,214 @@ export class VcsPromptService {
         vcsRow.active = Boolean(data.active);
       }
 
-      let activePrompt = await VCSPrompt.findByPk(vcsRow.activePromptId);
-
-      if (data.prompt !== undefined) {
-        const nextPrompt = String(data.prompt).trim();
-        if (!nextPrompt) {
-          throw new Error("Prompt text cannot be empty");
-        }
-
-        if (nextPrompt !== activePrompt?.prompt) {
-          if (activePrompt) {
-            await activePrompt.update({ active: false });
-          }
-
-          activePrompt = await VCSPrompt.create({
-            prompt: nextPrompt,
-            version: nextVersion(activePrompt?.version),
-            active: true,
-          });
-
-          vcsRow.activePromptId = activePrompt.id;
-        }
+      if (data.category !== undefined) {
+        vcsRow.category = data.category ? String(data.category).trim() : undefined;
       }
 
+      if (data.model !== undefined) {
+        vcsRow.model = data.model ? String(data.model).trim() : undefined;
+      }
+
+      if (data.temperature !== undefined) {
+        const temp = data.temperature === null ? undefined : Number(data.temperature);
+        vcsRow.temperature = temp !== undefined && Number.isFinite(temp) ? temp : undefined;
+      }
+
+      if (data.maxTokens !== undefined) {
+        const tokens = data.maxTokens === null ? undefined : Number(data.maxTokens);
+        vcsRow.maxTokens = tokens !== undefined && Number.isFinite(tokens) ? tokens : undefined;
+      }
+
+      vcsRow.updatedBy = actorLabel(actor);
       await vcsRow.save();
+
+      const activePrompt = await VCSPrompt.findByPk(vcsRow.activePromptId);
 
       notifyPromptChange(req, "Updated", vcsRow, activePrompt, actor);
 
       return serializeVcs(vcsRow, activePrompt);
     } catch (error: any) {
       logger.error(`Failed to update VCS prompt: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Creates or updates the single in-progress draft for a key. Never touches
+  // VCS.activePromptId — production keeps reading whatever is live until an
+  // explicit pushToLive.
+  static async saveDraft(
+    req: Request | undefined,
+    vcsId: string,
+    data: { prompt: unknown },
+    actor: Actor,
+  ) {
+    try {
+      const vcsRow = await VCS.findByPk(vcsId);
+      if (!vcsRow) {
+        throw new Error("Prompt not found");
+      }
+
+      const nextPrompt = String(data.prompt || "").trim();
+      if (!nextPrompt) {
+        throw new Error("Prompt text cannot be empty");
+      }
+
+      let draft = await VCSPrompt.findOne({ where: { vcsId, status: "draft" } });
+
+      if (draft) {
+        draft.prompt = nextPrompt;
+        draft.createdBy = actorLabel(actor);
+        await draft.save();
+      } else {
+        const liveVersion = vcsRow.activePromptId
+          ? await VCSPrompt.findByPk(vcsRow.activePromptId)
+          : null;
+
+        draft = await VCSPrompt.create({
+          vcsId,
+          prompt: nextPrompt,
+          version: nextVersion(liveVersion?.version),
+          status: "draft",
+          active: false,
+          createdBy: actorLabel(actor),
+        });
+      }
+
+      vcsRow.updatedBy = actorLabel(actor);
+      await vcsRow.save();
+
+      notifyPromptChange(req, "Draft Saved", vcsRow, draft, actor);
+
+      return serializeVersion(draft);
+    } catch (error: any) {
+      logger.error(`Failed to save VCS prompt draft: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // Looks up a version scoped to its key. Pre-migration keys have a live
+  // VCSPrompt row that predates the vcsId column, so a strict {id, vcsId}
+  // match misses it — if the id being asked for is exactly this key's
+  // current activePromptId, adopt/backfill it in place instead of 404ing.
+  static async findVersionForVcs(vcsRow: VCS, versionId: string): Promise<VCSPrompt | null> {
+    const version = await VCSPrompt.findOne({ where: { id: versionId, vcsId: vcsRow.id } });
+    if (version) return version;
+
+    if (vcsRow.activePromptId === versionId) {
+      const candidate = await VCSPrompt.findByPk(versionId);
+      if (candidate && !candidate.vcsId) {
+        candidate.vcsId = vcsRow.id;
+        if (!candidate.status) candidate.status = "live";
+        await candidate.save();
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  // Shared promotion logic for pushToLive/restoreVersion/rollbackToPrevious —
+  // retires whatever is currently live and repoints VCS.activePromptId at
+  // the target version.
+  private static async promoteToLive(
+    req: Request | undefined,
+    vcsRow: VCS,
+    targetVersion: VCSPrompt,
+    actor: Actor,
+    actionLabel: PromptActionLabel,
+  ) {
+    if (targetVersion.status === "live") {
+      throw new Error("Version is already live");
+    }
+
+    const currentLive = vcsRow.activePromptId
+      ? await VCSPrompt.findByPk(vcsRow.activePromptId)
+      : null;
+
+    if (currentLive && currentLive.id !== targetVersion.id) {
+      currentLive.status = "retired";
+      currentLive.active = false;
+      await currentLive.save();
+    }
+
+    const deployedBy = actorLabel(actor);
+    targetVersion.status = "live";
+    targetVersion.active = true;
+    targetVersion.deployedBy = deployedBy;
+    targetVersion.deployedAt = new Date();
+    await targetVersion.save();
+
+    vcsRow.activePromptId = targetVersion.id;
+    vcsRow.updatedBy = deployedBy;
+    await vcsRow.save();
+
+    notifyPromptChange(req, actionLabel, vcsRow, targetVersion, actor);
+
+    return serializeVcs(vcsRow, targetVersion);
+  }
+
+  static async pushToLive(req: Request | undefined, vcsId: string, versionId: string, actor: Actor) {
+    try {
+      const vcsRow = await VCS.findByPk(vcsId);
+      if (!vcsRow) {
+        throw new Error("Prompt not found");
+      }
+
+      const targetVersion = await this.findVersionForVcs(vcsRow, versionId);
+      if (!targetVersion) {
+        throw new Error("Version not found");
+      }
+
+      return await this.promoteToLive(req, vcsRow, targetVersion, actor, "Pushed to Live");
+    } catch (error: any) {
+      logger.error(`Failed to push VCS prompt version live: ${error.message}`);
+      throw error;
+    }
+  }
+
+  static async restoreVersion(
+    req: Request | undefined,
+    vcsId: string,
+    versionId: string,
+    actor: Actor,
+  ) {
+    try {
+      const vcsRow = await VCS.findByPk(vcsId);
+      if (!vcsRow) {
+        throw new Error("Prompt not found");
+      }
+
+      const targetVersion = await this.findVersionForVcs(vcsRow, versionId);
+      if (!targetVersion) {
+        throw new Error("Version not found");
+      }
+
+      return await this.promoteToLive(req, vcsRow, targetVersion, actor, "Version Restored");
+    } catch (error: any) {
+      logger.error(`Failed to restore VCS prompt version: ${error.message}`);
+      throw error;
+    }
+  }
+
+  static async rollbackToPrevious(req: Request | undefined, vcsId: string, actor: Actor) {
+    try {
+      const vcsRow = await VCS.findByPk(vcsId);
+      if (!vcsRow) {
+        throw new Error("Prompt not found");
+      }
+
+      const previous = await VCSPrompt.findOne({
+        where: { vcsId, status: "retired" },
+        order: [["deployedAt", "DESC"]],
+      });
+
+      if (!previous) {
+        throw new Error("No previous version to roll back to");
+      }
+
+      return await this.promoteToLive(req, vcsRow, previous, actor, "Rolled Back");
+    } catch (error: any) {
+      logger.error(`Failed to roll back VCS prompt: ${error.message}`);
       throw error;
     }
   }
@@ -313,9 +557,7 @@ export class VcsPromptService {
       notifyPromptChange(req, "Permanently Deleted", vcsRow, activePrompt, actor);
 
       await vcsRow.destroy({ force: true });
-      if (activePromptId) {
-        await VCSPrompt.destroy({ where: { id: activePromptId } });
-      }
+      await VCSPrompt.destroy({ where: { vcsId: id }, force: true });
 
       return true;
     } catch (error: any) {

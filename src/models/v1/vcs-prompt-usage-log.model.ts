@@ -9,14 +9,6 @@ import {
   CreatedAt,
 } from "sequelize-typescript";
 
-/**
- * One row per AI call made with a VCS-backed prompt (see
- * models/v1/keyword-population.model.ts) — an append-only performance log
- * so the admin panel can show how the AI is actually behaving per prompt
- * key (latency, prompt/response size, success rate) rather than just the
- * prompt text itself. `key`/`version` are snapshotted at call time so the
- * log stays meaningful even if the prompt is later edited or deleted.
- */
 @Table({
   tableName: "vcs_prompt_usage_logs",
   timestamps: true,

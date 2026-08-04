@@ -11,8 +11,8 @@ const getActor = (req: any) => ({
 });
 
 const errorStatus = (message: string) => {
-  if (message === "Prompt not found") return 404;
-  if (message.includes("already exists")) return 409;
+  if (message === "Prompt not found" || message === "Version not found") return 404;
+  if (message.includes("already exists") || message === "Version is already live") return 409;
   return 400;
 };
 
@@ -70,6 +70,66 @@ export const permanentlyDeleteVcsPrompt = catchAsyncError(async (req: any, res: 
   try {
     await VcsPromptService.hardDeletePrompt(req, req.params.id, getActor(req));
     return res.apiSuccess({}, "Prompt permanently deleted");
+  } catch (error: any) {
+    return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
+  }
+});
+
+export const listVcsPromptVersions = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const data = await VcsPromptService.listVersions(req.params.vcsId);
+    return res.apiSuccess(data, "Versions retrieved successfully");
+  } catch (error: any) {
+    return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
+  }
+});
+
+export const saveVcsPromptDraft = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const data = await VcsPromptService.saveDraft(
+      req,
+      req.params.vcsId,
+      req.body || {},
+      getActor(req),
+    );
+    return res.apiSuccess(data, "Draft saved successfully");
+  } catch (error: any) {
+    return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
+  }
+});
+
+export const pushVcsPromptVersionLive = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const data = await VcsPromptService.pushToLive(
+      req,
+      req.params.vcsId,
+      req.params.versionId,
+      getActor(req),
+    );
+    return res.apiSuccess(data, "Version pushed to live");
+  } catch (error: any) {
+    return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
+  }
+});
+
+export const restoreVcsPromptVersion = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const data = await VcsPromptService.restoreVersion(
+      req,
+      req.params.vcsId,
+      req.params.versionId,
+      getActor(req),
+    );
+    return res.apiSuccess(data, "Version restored successfully");
+  } catch (error: any) {
+    return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
+  }
+});
+
+export const rollbackVcsPromptVersion = catchAsyncError(async (req: any, res: Response) => {
+  try {
+    const data = await VcsPromptService.rollbackToPrevious(req, req.params.vcsId, getActor(req));
+    return res.apiSuccess(data, "Rolled back successfully");
   } catch (error: any) {
     return res.apiError(new ErrorHandler(error.message, errorStatus(error.message)));
   }

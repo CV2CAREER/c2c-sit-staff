@@ -1,6 +1,7 @@
 import { User } from "../models/v1/user.model";
 import { Upload } from "../models/v1/upload.model";
 import { getServiceLogger } from "./createLogger";
+import { fieldEncryption } from "./field-encryption";
 
 const logger = getServiceLogger("user-progress-processor");
 
@@ -82,7 +83,8 @@ export class UserProgressProcessor {
      * @returns {Promise<Object|null>} - A Promise that resolves to the updated user object if successful, or null if the user with the specified email is not found.
      */
     verifyEmail = async (email: string) => {
-        const user = await User.findOne({ where: { email } });
+        const id = await fieldEncryption.findUserByEmail(email);
+        const user = id ? await User.findByPk(id) : null;
         
         if (!user) {
             return null;

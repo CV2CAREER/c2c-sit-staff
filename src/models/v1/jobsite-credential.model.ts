@@ -10,12 +10,17 @@ import {
   UpdatedAt,
   ForeignKey,
   BelongsTo,
+  AfterCreate,
+  BeforeSave,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
 } from "../../utils/enum";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 @Table({
   tableName: "jobsite_credentials",
@@ -38,12 +43,10 @@ export class JobsiteCredential extends Model {
 
   // The client-supplied application email. Never the client's real
   // mailbox password — that is never requested or stored.
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.STRING)
   email!: string;
 
-  // System-generated password for the jobsite accounts the SPC opens
-  // manually. Not the client's own credential.
   @AllowNull(true)
   @Column(DataType.STRING)
   generatedPassword?: string;
@@ -115,6 +118,53 @@ export class JobsiteCredential extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @BeforeSave
+  static captureAndClearPlaintext(instance: JobsiteCredential) {
+    (instance as any)._pii_email = instance.getDataValue('email');
+    (instance as any)._pii_generatedPassword = instance.getDataValue('generatedPassword');
+    instance.setDataValue('email', null);
+    instance.setDataValue('generatedPassword', null);
+  }
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: JobsiteCredential, options: any) {
+    const pii = instance as any;
+    await fieldEncryption.encryptJobsiteCredentialFields(
+      instance.id,
+      pii._pii_email ?? null,
+      pii._pii_generatedPassword ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: JobsiteCredential, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    if (changed.some(f => ['email', 'generatedPassword'].includes(f))) {
+      await fieldEncryption.encryptJobsiteCredentialFields(
+        instance.id,
+        (instance as any)._pii_email ?? null,
+        (instance as any)._pii_generatedPassword ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: JobsiteCredential[] | JobsiteCredential | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      try {
+        const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
+        if (!decrypted) return;
+        if (decrypted.email) instance.setDataValue('email', decrypted.email);
+        if (decrypted.generatedPassword) instance.setDataValue('generatedPassword', decrypted.generatedPassword);
+      } catch {}
+    }));
+  }
 }
 
 export default JobsiteCredential;

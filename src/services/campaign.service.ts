@@ -10,9 +10,13 @@ import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { fieldEncryption } from '../utils/field-encryption';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
+import { classifyJob, PROMPT_VERSION } from './ai-vetting.service';
+import { systemConfigApplicationService } from './admin/system-config.application.service';
 import {
+  ApplicationStatus,
   SlackChannel,
   SlackEventType,
   SlackLocation,
@@ -1269,6 +1273,96 @@ export const saveManualApplication = async (
     }
   });
 
+  setImmediate(async () => {
+    try {
+      const flag = await systemConfigApplicationService.get('ai-vetting-enabled');
+      if (!flag?.value?.enabled) return;
+
+      const profile = await Profile.findOne({
+        where: { userId: manualApplication.client_id, isActive: true },
+      });
+      if (!profile) {
+        logger.warn(`No active profile found for client ${manualApplication.client_id} — skipping AI vetting`);
+        return;
+      }
+
+      const result = await classifyJob(manualApplication, profile);
+
+      const updateFields: any = {
+        ai_status: result.status,
+      };
+
+      if (result.status === 'classified') {
+        updateFields.ai_score = result.score;
+        updateFields.ai_reason = result.reason;
+        updateFields.ai_classified_at = new Date();
+        updateFields.ai_prompt_version = PROMPT_VERSION;
+      } else {
+        updateFields.ai_reason = result.reason;
+      }
+
+      await manualApplication.update(updateFields);
+      logger.info(`AI vetting complete for job ${manualApplication.id}: ${result.status === 'classified' ? result.score : 'FAILED'}`);
+
+      if (result.status === 'classified' && result.score === 'MQA') {
+        const learningMonth = flag?.value?.learningMonth !== false;
+        const mqaLive = flag?.value?.mqaLiveFromDayOne !== false;
+        if (learningMonth && mqaLive) {
+          const creds = await Credentials.findOne({
+            where: { clientId: manualApplication.client_id, isDeleted: false },
+          });
+          if (creds) {
+            const spcName = await getSlackIdOrName(
+              creds?.AssignedCompletedEmail,
+              creds?.AssignedCompletedName,
+            );
+            const vpcName = await getSlackIdOrName(
+              creds?.AssignedVetEmail,
+              creds?.AssignedVetName,
+            );
+            const dpcName = await getSlackIdOrName(
+              creds?.AssignedPCEmail,
+              creds?.AssignedPCName,
+            );
+            const userObj = await User.findOne({
+              where: { id: creds.clientId },
+            });
+            const clientFullName = userObj
+              ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
+              : 'N/A';
+            const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
+
+            await SlackService.notify({
+              location: getEnvironmentFromHost(host || ''),
+              host: host || '',
+              node: SlackNode.HUMAN_RESOURCE,
+              provider: SlackProvider.HUBSTAFF,
+              severity: SlackSeverity.INFO,
+              trigger: 'AI Vetting Agent',
+              type: SlackEventType.SYSTEM_JOB,
+              channel: SlackChannel.JOB_PIPELINE,
+              body: [
+                `🤖 AI VETTED — MQA`,
+                `• *SPC:* ${spcName}`,
+                `• *VPC:* ${vpcName}`,
+                `• *DPC:* ${dpcName}`,
+                `• *Client:* ${clientFullName}`,
+                `• *Job:* ${jobLink}`,
+                `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+                `• *Reason:* ${result.reason}`,
+                `• *Quality:* AI MQA`,
+                `• *Status:* Awaiting SPC Approval`,
+                `${spcName} please approve within 30 min.`,
+              ].join('\n'),
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.error(`AI vetting failed for job ${manualApplication.id}: ${err}`);
+    }
+  });
+
   return {
     success: true,
     message: 'Manual application saved successfully.',
@@ -1592,6 +1686,12 @@ export const updateJobApplicationStatus = async (
     if (statusReason) {
       updateData.StatusReason = resolveReason(statusReason);
     }
+
+    // First submission for this client — move them off the default HOLD
+    // status now that an application is actually underway.
+    if (userObj && userObj.applicationStatus === ApplicationStatus.HOLD) {
+      await userObj.update({ applicationStatus: ApplicationStatus.COMMENCED });
+    }
   } else if (statusUpper === 'EXPIRED') {
     const resolvedReason = resolveReason(statusReason);
     if (resolvedReason) {
@@ -1874,7 +1974,8 @@ export const assignVAToClient = async (
   }
 
   // --- Assignment ---
-  const targetVa = await User.findOne({ where: { email: vaEmail } });
+  const targetVaId = await fieldEncryption.findUserByEmail(vaEmail);
+  const targetVa = targetVaId ? await User.findByPk(targetVaId) : null;
   if (!targetVa) {
     logger.warn(`${fields.displayLabel} not found for email=${vaEmail}`);
     throw new Error(`${fields.displayLabel} not found`);
