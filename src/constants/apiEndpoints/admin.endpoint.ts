@@ -118,6 +118,8 @@ export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT = (clientId: string) =>
   `/api/v1/admin/client-support-documents/client/${clientId}`;
 export const ADMIN_SAVE_ROLE_TITLE_RECOMMENDATIONS =
   '/api/v1/admin/client-support-documents/role-titles/save';
+export const ADMIN_CLIENT_SUPPORT_DOCUMENT_ACTIVATE = (id: string) =>
+  `/api/v1/admin/client-support-documents/${id}/activate`;
 export const ADMIN_USER_PREFERENCES = '/api/v1/admin/users/preferences';
 export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
 export const ADMIN_DISCOVERY_TRACKER = '/api/v1/admin/discovery-tracker';

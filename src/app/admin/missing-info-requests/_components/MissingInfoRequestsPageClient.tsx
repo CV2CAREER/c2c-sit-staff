@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useOutstandingRequests,
   useRequestStats,
@@ -11,6 +12,7 @@ import {
 import RequestStatusBadge from "./RequestStatusBadge";
 import AgeIndicator from "./AgeIndicator";
 import BulkReminderModal from "./BulkReminderModal";
+import ViewResponsesModal from "./ViewResponsesModal";
 import EmptyState from "./EmptyState";
 
 const AGE_FILTERS = [
@@ -19,14 +21,33 @@ const AGE_FILTERS = [
   { key: "7", label: ">7 days" },
 ];
 
+const STATUS_FILTERS = [
+  { key: "", label: "All requests" },
+  { key: "pending", label: "Pending" },
+  { key: "viewed", label: "Viewed" },
+  { key: "in_progress", label: "In progress" },
+  { key: "submitted", label: "Submitted" },
+];
+
 export default function MissingInfoRequestsPageClient() {
   const [search, setSearch] = useState("");
   const [ageFilter, setAgeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [viewRequestId, setViewRequestId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const param = searchParams.get("request");
+    if (param) {
+      setViewRequestId(param);
+    }
+  }, [searchParams]);
 
   const { data: requests, pagination, isLoading } = useOutstandingRequests({
     age: ageFilter || undefined,
+    status: statusFilter || undefined,
   });
 
   const { stats } = useRequestStats();
@@ -186,6 +207,20 @@ export default function MissingInfoRequestsPageClient() {
               {f.label}
             </button>
           ))}
+          <div className="w-px h-5 bg-[#E5E9EF]" />
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
+                statusFilter === f.key
+                  ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
+                  : "bg-white border border-[#E5E9EF] text-[#1F2937]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
           <div className="flex-1" />
           {selectedIds.size > 0 && (
             <button
@@ -250,12 +285,22 @@ export default function MissingInfoRequestsPageClient() {
                       {req.reminderCount > 0 ? `${req.reminderCount} sent` : "\u2014"}
                     </td>
                     <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => handleResend(req)}
-                        className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-                      >
-                        Resend
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {req.status === "submitted" && (
+                          <button
+                            onClick={() => setViewRequestId(req.id)}
+                            className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                          >
+                            View responses
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleResend(req)}
+                          className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                        >
+                          Resend
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -296,6 +341,13 @@ export default function MissingInfoRequestsPageClient() {
         selectedRequests={filteredRequests.filter((r) => selectedIds.has(r.id))}
         onConfirm={handleBulkReminder}
         isSending={isSending}
+      />
+
+      {/* View responses modal */}
+      <ViewResponsesModal
+        open={viewRequestId !== null}
+        requestId={viewRequestId}
+        onClose={() => setViewRequestId(null)}
       />
     </div>
   );

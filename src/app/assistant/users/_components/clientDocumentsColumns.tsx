@@ -88,8 +88,9 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
                     width: 120,
                     headerClassName: "bg-[#D4FFFF]",
                     renderCell: (params: any) => {
-                        // Only admin-generated uploads carry this gate — client
-                        // uploads and support documents show a dash instead.
+                        // Only admin-generated documents (Upload rows and
+                        // ClientSupportDocument rows both use source: "admin")
+                        // carry this gate — client uploads show a dash instead.
                         if (params.row.source !== "admin") return <p className="text-career-gray-200">—</p>
                         return params.row.isActive ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -242,6 +243,10 @@ export const generateClientDocumentRows = (rows: any[]) => {
         fileName: row.document?.name ?? row.document?.[0]?.filename ?? "Unknown File",
         type: row.type,
         source: row.source,
+        // Distinguishes this row from a ClientSupportDocument row for the
+        // shared DocumentTableActions component — the two record types
+        // live in different tables with different activate endpoints.
+        recordType: "upload",
         isActive: row.isActive,
         userId: row.userId,
         dateUpdated: row.updatedAt,
