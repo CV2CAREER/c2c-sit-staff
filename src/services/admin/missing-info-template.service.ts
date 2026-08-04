@@ -23,6 +23,7 @@ export class MissingInfoTemplateService {
     const templates = await MissingInfoTemplate.findAll({
       where,
       order: [["createdAt", "DESC"]],
+      include: [{ model: MissingInfoTemplateField, as: "fields" }],
     });
 
     return templates;

@@ -4,6 +4,7 @@ import ErrorHandler from "@/utils/errorHandler";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
 import { MissingInfoTemplate } from "@/models/v1/missing-info-template.model";
 import { MissingInfoTemplateField } from "@/models/v1/missing-info-template-field.model";
+import { MissingInfoResponse } from "@/models/v1/missing-info-response.model";
 import { User } from "@/models/v1/user.model";
 import { getServiceLogger } from "@/utils/createLogger";
 import { sendMail } from "@/config/sendGrid";
@@ -282,6 +283,64 @@ export class MissingInfoRequestStaffService {
     });
 
     return stats;
+  }
+
+  static async getRequestResponses(requestId: string) {
+    const request = await MissingInfoRequest.findByPk(requestId, {
+      include: [
+        {
+          model: User,
+          as: "targetUser",
+          attributes: ["id", "firstName", "middleName", "lastName", "email"],
+        },
+        {
+          model: MissingInfoTemplate,
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    const responses = await MissingInfoResponse.findAll({
+      where: { requestId },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const fieldIds = [...new Set(responses.map((r: any) => r.fieldId))];
+    const fields = fieldIds.length
+      ? await MissingInfoTemplateField.findAll({ where: { id: fieldIds } })
+      : [];
+
+    const fieldMap = new Map<string, MissingInfoTemplateField>();
+    for (const f of fields) {
+      fieldMap.set(f.id, f);
+    }
+
+    const result = responses.map((r: any) => {
+      const field = fieldMap.get(r.fieldId);
+      return {
+        id: r.id,
+        fieldId: r.fieldId,
+        fieldName: r.fieldName || field?.fieldName || null,
+        fieldLabel: r.fieldLabel || field?.fieldLabel || r.fieldId,
+        fieldValue: r.fieldValue,
+        createdAt: r.createdAt,
+      };
+    });
+
+    return {
+      requestId: request.id,
+      clientName: [request.targetUser?.firstName, request.targetUser?.middleName, request.targetUser?.lastName]
+        .filter(Boolean)
+        .join(" "),
+      clientEmail: request.targetUser?.email,
+      templateName: request.template?.name,
+      status: request.status,
+      responses: result,
+    };
   }
 
   static async bulkSendReminder(requestIds: string[], user: any) {
