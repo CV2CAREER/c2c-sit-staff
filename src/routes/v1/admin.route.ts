@@ -58,6 +58,7 @@ import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.contro
 
 import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
 import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
+import vcsPromptRouterV1 from "./vcs-prompt.route";
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 import applicationRouterV1 from "./application.route";
 import interviewPrepRouterV1 from "./interview-prep.route";
@@ -95,7 +96,6 @@ import clientSampleRouterV1 from "./client-sample.route";
 import trainingTrackerRouterV1 from "./training-tracker.route";
 import crTrackingRouterV1 from "./cr-tracking.route";
 import crEOTRouterV1 from "./cr-eot.route";
-import adminAiRouterV1 from "./admin-ai.route";
 import adminDocumentRouterV1 from "./admin-document.route";
 import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
@@ -139,16 +139,10 @@ adminRouterV1.put(
 adminRouterV1.use("/applications", applicationRouterV1);
 adminRouterV1.use("/interview-prep", interviewPrepRouterV1);
 adminRouterV1.use(
-  "/ai",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  adminAiRouterV1,
-);
-adminRouterV1.use(
   "/prompts",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminAiRouterV1,
+  vcsPromptRouterV1,
 );
 adminRouterV1.use(
   "/training-tracker",

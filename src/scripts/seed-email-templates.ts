@@ -62,6 +62,7 @@ export const TEMPLATE_META: Record<string, { name: string; type: EmailTemplateTy
   "session-confirmed.ejs": { name: "Session Confirmed", type: EmailTemplateType.CUSTOMER, variables: ["date", "time", "timezone", "sessionType", "meetingLink", "duration", "frontendUrl", "currentYear", "name", "coachName"] },
   "session-rescheduled.ejs": { name: "Session Rescheduled", type: EmailTemplateType.CUSTOMER, variables: ["date", "time", "timezone", "sessionType", "meetingLink", "duration", "frontendUrl", "currentYear", "name", "coachName", "clientName", "clientEmail", "coachEmail", "recipientType"] },
   "terms-conditions.ejs": { name: "Terms & Conditions", type: EmailTemplateType.CUSTOMER, variables: ["name", "planName", "validityPeriod", "frontendUrl", "currentYear"] },
+  "vcs-prompt-change-admin.ejs": { name: "Admin: AI Prompt Changed", type: EmailTemplateType.ADMIN, variables: ["actionLabel", "key", "version", "active", "triggeredBy", "promptExcerpt", "currentYear"] },
   "welcome-email.ejs": { name: "Welcome Email", type: EmailTemplateType.CUSTOMER, variables: ["name", "email", "frontendUrl", "currentYear"] },
 };
 
