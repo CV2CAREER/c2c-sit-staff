@@ -9,6 +9,7 @@ import {
   ClientSupportDocumentCategory,
 } from "../../models/v1/client-support-document.model";
 import {
+  activateClientSupportDocument,
   deleteClientSupportDocument,
   getClientSupportDocument,
   listClientSupportDocuments,
@@ -190,6 +191,28 @@ export const getClientSupportDocumentUrlController = catchAsyncError(
     );
 
     return res.apiSuccess({ url }, "Signed URL generated successfully", 200);
+  },
+);
+
+/** PATCH — activate a support document, sharing it with the client. */
+export const activateClientSupportDocumentController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("Document id is required", 400));
+    }
+
+    try {
+      const document = await activateClientSupportDocument(id, req.user?.id);
+      return res.apiSuccess(document, "Document activated successfully", 200);
+    } catch (error: any) {
+      const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(`Failed to activate client support document ${id}: ${error.message}`);
+      return res.apiError(
+        new ErrorHandler(error.message || "Failed to activate document", statusCode),
+      );
+    }
   },
 );
 

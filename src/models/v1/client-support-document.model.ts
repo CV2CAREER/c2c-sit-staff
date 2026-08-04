@@ -108,6 +108,16 @@ export class ClientSupportDocument extends Model {
   @Column(DataType.BOOLEAN)
   clientConfirmed!: boolean;
 
+  /**
+   * Created false — mirrors Upload's admin-generated-content gate. The
+   * client isn't notified and the document doesn't count as shared until
+   * an admin explicitly activates it via activateClientSupportDocument.
+   */
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isActive!: boolean;
+
   /** Staff user id that uploaded the file. */
   @AllowNull(true)
   @Column(DataType.STRING)

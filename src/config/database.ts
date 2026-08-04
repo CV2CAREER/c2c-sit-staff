@@ -114,6 +114,14 @@ const ensureJobsiteCredentialsTables = async () => {
   logger.info('jobsite_credentials tables ensured');
 };
 
+// Adds the `isActive` activation-gate column to `client_support_documents`
+// on existing databases — remove once every environment is up to date.
+const ensureClientSupportDocumentsActivationColumn = async () => {
+  logger.info('Ensuring client_support_documents isActive column exists');
+  await ClientSupportDocument.sync({ alter: true });
+  logger.info('client_support_documents isActive column ensured');
+};
+
 export const connectDB = async (): Promise<void> => {
   const initialDelay = 5000; // 5s
   const maxDelay = 30000; // 30s
@@ -157,6 +165,7 @@ export const connectDB = async (): Promise<void> => {
         // await ensureInterviewPackProcessesTable();
         // await ensureTourCountsTable();
         await ensureJobsiteCredentialsTables();
+        await ensureClientSupportDocumentsActivationColumn();
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
