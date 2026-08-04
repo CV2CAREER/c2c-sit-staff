@@ -8,6 +8,7 @@ import {
   getOutstandingRequests,
   getRequestStats,
   bulkSendReminder,
+  getRequestResponses,
 } from "@/controllers/v1/missing-info-request-staff.controller";
 
 const missingInfoRequestStaffRouter = Router();
@@ -23,5 +24,6 @@ missingInfoRequestStaffRouter.post("/send", sendMissingInfoRequest);
 missingInfoRequestStaffRouter.get("/outstanding", getOutstandingRequests);
 missingInfoRequestStaffRouter.get("/stats", getRequestStats);
 missingInfoRequestStaffRouter.post("/bulk-reminder", bulkSendReminder);
+missingInfoRequestStaffRouter.get("/:requestId/responses", getRequestResponses);
 
 export default missingInfoRequestStaffRouter;
