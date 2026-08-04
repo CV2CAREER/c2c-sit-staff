@@ -90,21 +90,10 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     ],
   },
   {
-    name: "AI",
-    groupId: 3,
+    name: "AI Prompts",
+    href: "/admin/prompts",
     icon: Bot,
     access: ["admin"],
-    children: [
-      { name: "QA AI Prompt", href: "/admin/prompts/qa-ai", icon: Folders },
-      { name: "AQ AI Prompt", href: "/admin/prompts/aq-ai", icon: Folders },
-      { name: "CV AI Prompt", href: "/admin/prompts/cv-ai", icon: Folders },
-      { name: "Preference AI Prompt", href: "/admin/prompts/preference-ai", icon: Folders },
-      { name: "Job Match AI Prompt", href: "/admin/prompts/job-match-ai", icon: Folders },
-      { name: "Interview Prep", href: "/admin/prompts/interview-preparation", icon: Folders },
-      { name: "Keyword Generation", href: "/admin/prompts/keyword-generator", icon: Folders },
-      { name: "Market Viability", href: "/admin/prompts/market-viability", icon: Folders },
-      { name: "VA AI Prompt", href: "/admin/prompts/va-ai", icon: Folders },
-    ],
   },
   {
     name: "Trackers",
