@@ -175,10 +175,11 @@ export const unapproveJobsiteCredential = catchAsyncError(
     }
 
     const { id } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
 
     logger.info(`Admin ${adminId} unapproving jobsite credential: ${id}`);
 
-    const credential = await unapproveJobsiteCredentialService(id, adminId);
+    const credential = await unapproveJobsiteCredentialService(id, adminId, host);
 
     res.apiSuccess(credential, "Credential moved back a stage");
   },
@@ -193,10 +194,11 @@ export const sendTestEmail = catchAsyncError(
     }
 
     const { id } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
 
     logger.info(`Admin ${adminId} sending test email for jobsite credential: ${id}`);
 
-    const credential = await sendTestEmailService(id, adminId);
+    const credential = await sendTestEmailService(id, adminId, host);
 
     res.apiSuccess(credential, "Test email sent");
   },
@@ -211,10 +213,11 @@ export const approveJobsiteCredential = catchAsyncError(
     }
 
     const { id } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
 
     logger.info(`Admin ${adminId} approving jobsite credential: ${id}`);
 
-    const credential = await approveJobsiteCredentialService(id, adminId);
+    const credential = await approveJobsiteCredentialService(id, adminId, host);
 
     res.apiSuccess(credential, "Credential approved — now ACTIVE");
   },
@@ -230,6 +233,7 @@ export const rejectJobsiteCredential = catchAsyncError(
 
     const { id } = req.params;
     const { reason, note } = req.body;
+    const host = req.headers.host || req.headers.origin || "localhost";
 
     if (
       !reason ||
@@ -248,6 +252,7 @@ export const rejectJobsiteCredential = catchAsyncError(
       adminId,
       reason,
       note,
+      host,
     );
 
     res.apiSuccess(credential, "Credential rejected successfully");
