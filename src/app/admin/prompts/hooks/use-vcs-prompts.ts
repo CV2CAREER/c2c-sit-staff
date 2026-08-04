@@ -8,8 +8,28 @@ export interface VcsPrompt {
   activePromptId: string;
   prompt: string;
   version: string | null;
+  category: string | null;
+  model: string | null;
+  temperature: number | null;
+  maxTokens: number | null;
   deletedAt: string | null;
   deletedBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VcsPromptVersionStatus = "draft" | "live" | "retired";
+
+export interface VcsPromptVersion {
+  id: string;
+  vcsId: string | null;
+  prompt: string;
+  version: string;
+  status: VcsPromptVersionStatus;
+  createdBy: string | null;
+  deployedBy: string | null;
+  deployedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,17 +81,76 @@ export const useCreateVcsPrompt = () => {
 export interface UpdateVcsPromptInput {
   id: string;
   key?: string;
-  prompt?: string;
   active?: boolean;
+  category?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
-// PUT /api/v1/admin/prompts/{id}
+// PUT /api/v1/admin/prompts/{id} — metadata only (key/category/model/temp/
+// maxTokens/active). Prompt *text* changes go through useSaveVcsPromptDraft
+// + usePushVcsPromptVersionLive instead.
 export const useUpdateVcsPrompt = () => {
   return useMutateData<VcsPrompt, UpdateVcsPromptInput>({
     method: "PUT",
     url: endpoints.ADMIN_VCS_PROMPTS,
     mutationKey: ["update-vcs-prompt"],
     paramKey: "id",
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+// GET /api/v1/admin/prompts/{vcsId}/versions
+export const useVcsPromptVersions = (vcsId: string, enabled = true) => {
+  return useFetchData<VcsPromptVersion[]>({
+    method: "GET",
+    url: endpoints.ADMIN_VCS_PROMPT_VERSIONS(vcsId),
+    queryKey: ["vcs-prompts", "versions", vcsId],
+    enabled: enabled && !!vcsId,
+  });
+};
+
+// POST /api/v1/admin/prompts/{vcsId}/draft
+export const useSaveVcsPromptDraft = () => {
+  return useMutateData<VcsPromptVersion, { vcsId: string; prompt: string }>({
+    method: "POST",
+    url: (data) => endpoints.ADMIN_VCS_PROMPT_DRAFT(data.vcsId),
+    mutationKey: ["save-vcs-prompt-draft"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+// POST /api/v1/admin/prompts/{vcsId}/versions/{versionId}/push
+export const usePushVcsPromptVersionLive = () => {
+  return useMutateData<VcsPrompt, { vcsId: string; versionId: string }>({
+    method: "POST",
+    url: (data) => endpoints.ADMIN_VCS_PROMPT_PUSH_LIVE(data.vcsId, data.versionId),
+    mutationKey: ["push-vcs-prompt-version-live"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+// POST /api/v1/admin/prompts/{vcsId}/versions/{versionId}/restore
+export const useRestoreVcsPromptVersion = () => {
+  return useMutateData<VcsPrompt, { vcsId: string; versionId: string }>({
+    method: "POST",
+    url: (data) => endpoints.ADMIN_VCS_PROMPT_RESTORE_VERSION(data.vcsId, data.versionId),
+    mutationKey: ["restore-vcs-prompt-version"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+// POST /api/v1/admin/prompts/{vcsId}/rollback
+export const useRollbackVcsPromptVersion = () => {
+  return useMutateData<VcsPrompt, { vcsId: string }>({
+    method: "POST",
+    url: (data) => endpoints.ADMIN_VCS_PROMPT_ROLLBACK(data.vcsId),
+    mutationKey: ["rollback-vcs-prompt-version"],
     onSuccess: () => {},
     onError: () => {},
   });

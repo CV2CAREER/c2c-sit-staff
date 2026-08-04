@@ -4,6 +4,7 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 
 export interface VcsPromptUsageSummaryRow {
   key: string;
+  version: string | null;
   totalCalls: number;
   avgDurationMs: number;
   minDurationMs: number;
@@ -11,7 +12,7 @@ export interface VcsPromptUsageSummaryRow {
   avgPromptLength: number;
   avgResponseLength: number;
   successRate: number;
-  lastUsedAt: string;
+  lastRunAt: string;
 }
 
 // GET /api/v1/admin/prompts/usage/summary — per-key AI performance snapshot

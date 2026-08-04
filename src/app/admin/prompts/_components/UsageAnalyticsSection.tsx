@@ -20,41 +20,42 @@ const formatMs = (ms?: number) => {
 
 const summaryColumns: GridColDef[] = [
   { field: "key", headerName: "Key", flex: 1, minWidth: 240 },
+  { field: "version", headerName: "Version", width: 90, valueFormatter: (v) => v ?? "—" },
   { field: "totalCalls", headerName: "Calls", width: 90 },
   {
     field: "avgDurationMs",
     headerName: "Avg Time",
-    width: 110,
+    width: 150,
     valueFormatter: (value) => formatMs(value as number),
   },
   {
     field: "minDurationMs",
     headerName: "Min Time",
-    width: 100,
+    width: 150,
     valueFormatter: (value) => formatMs(value as number),
   },
   {
     field: "maxDurationMs",
     headerName: "Max Time",
-    width: 100,
+    width: 150,
     valueFormatter: (value) => formatMs(value as number),
   },
   {
     field: "avgPromptLength",
     headerName: "Avg Prompt",
-    width: 120,
+    width: 150,
     valueFormatter: (value) => `${(value as number).toLocaleString()} ch`,
   },
   {
     field: "avgResponseLength",
     headerName: "Avg Response",
-    width: 130,
+    width: 150,
     valueFormatter: (value) => `${(value as number).toLocaleString()} ch`,
   },
   {
     field: "successRate",
     headerName: "Success",
-    width: 100,
+    width: 150,
     renderCell: (params) => {
       const rate = params.value as number;
       return (
@@ -73,8 +74,8 @@ const summaryColumns: GridColDef[] = [
     },
   },
   {
-    field: "lastUsedAt",
-    headerName: "Last Used",
+    field: "lastRunAt",
+    headerName: "Last run",
     width: 180,
     valueFormatter: (value) => formatDate(value as string),
   },
@@ -112,13 +113,13 @@ const logColumns: GridColDef[] = [
     width: 100,
     renderCell: (params) =>
       params.value ? (
-        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <span className="flex h-full items-center gap-1 text-xs font-medium text-emerald-600">
           <CheckCircle2 size={13} />
           OK
         </span>
       ) : (
         <span
-          className="flex items-center gap-1 text-xs font-medium text-red-600"
+          className="flex h-full items-center gap-1 text-xs font-medium text-red-600"
           title={params.row.errorMessage || undefined}
         >
           <XCircle size={13} />
@@ -194,7 +195,7 @@ const UsageAnalyticsSection = () => {
             <StyledDataGridPro
               rows={summaryRows}
               columns={summaryColumns}
-              getRowId={(row) => row.key}
+              getRowId={(row) => `${row.key}-${row.version ?? "none"}`}
               loading={summaryLoading}
               rowHeight={40}
               disableRowSelectionOnClick
