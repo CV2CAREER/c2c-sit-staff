@@ -17,7 +17,6 @@ import {
 import TemplateCard from "./TemplateCard";
 import EmptyState from "./EmptyState";
 import SendMissingInfoRequestModal from "../_modals/SendMissingInfoRequestModal";
-import ClientPreviewModal from "../_modals/ClientPreviewModal";
 
 type Client = {
   id: string;
@@ -37,7 +36,6 @@ export default function TemplatesClient() {
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
   const [deleteConfirm, setDeleteConfirm] = useState<MissingInfoTemplate | null>(null);
   const [sendModalTemplate, setSendModalTemplate] = useState<MissingInfoTemplate | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<MissingInfoTemplate | null>(null);
 
   const { data: usersData, isLoading: usersLoading } = useFetchData<{ users: Client[]; count: number }>({
     method: "GET",
@@ -355,19 +353,7 @@ export default function TemplatesClient() {
           template={sendModalTemplate}
           clients={clients}
           onSend={handleSendRequest}
-          onPreview={() => {
-            setPreviewTemplate(sendModalTemplate);
-          }}
           isSending={isSending}
-        />
-      )}
-
-      {/* Client preview modal */}
-      {previewTemplate && (
-        <ClientPreviewModal
-          open
-          onClose={() => setPreviewTemplate(null)}
-          template={previewTemplate}
         />
       )}
     </div>

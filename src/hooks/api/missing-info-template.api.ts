@@ -304,3 +304,39 @@ export function useBulkReminder() {
     isSending: bulkMutation.isPending,
   };
 }
+
+export type RequestResponse = {
+  id: string;
+  fieldId: string;
+  fieldName: string | null;
+  fieldLabel: string;
+  fieldValue: string | null;
+  createdAt: string;
+};
+
+export type RequestResponsesData = {
+  requestId: string;
+  clientName: string;
+  clientEmail: string;
+  templateName?: string;
+  status: string;
+  responses: RequestResponse[];
+};
+
+export function useRequestResponses(requestId: string | null) {
+  const query = useFetchData<RequestResponsesData>({
+    method: "GET",
+    url: requestId ? endpoints.MISSING_INFO_REQUEST_RESPONSES(requestId) : "",
+    queryKey: ["missing-info-request-responses", requestId ?? "none"],
+    enabled: !!requestId,
+    staleEarly: true,
+  });
+
+  return {
+    data: query.data?.data ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}

@@ -37,7 +37,6 @@ interface SendMissingInfoRequestModalProps {
     personalMessage?: string;
     channel: "email" | "whatsapp";
   }) => void;
-  onPreview: () => void;
   isSending: boolean;
 }
 
@@ -72,7 +71,6 @@ export default function SendMissingInfoRequestModal({
   template,
   clients,
   onSend,
-  onPreview,
   isSending,
 }: SendMissingInfoRequestModalProps) {
   const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
@@ -151,14 +149,6 @@ export default function SendMissingInfoRequestModal({
             disabled
             className="border border-[#E5E9EF] bg-[#F9FAFB] rounded-lg text-[13px]"
           />
-
-          <button
-            type="button"
-            onClick={onPreview}
-            className="text-[12px] text-[#0B96D6] font-semibold mt-2 text-left hover:underline"
-          >
-            Preview what client will see →
-          </button>
 
           <Label className="text-[12px] font-semibold text-[#1F2937] mt-3.5 mb-1.5">Linked to job application</Label>
           <Input
