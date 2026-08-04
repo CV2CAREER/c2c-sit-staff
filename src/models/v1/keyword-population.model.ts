@@ -28,8 +28,15 @@ export class VCSPrompt extends Model {
   @Column(DataType.STRING)
   vcsId?: string;
 
+  // Typed `any`, not `VCS`, on purpose: `VCS` is declared further down in
+  // this file, and a direct class-typed property here makes TypeScript's
+  // emitDecoratorMetadata emit `__metadata("design:type", VCS)` at
+  // VCSPrompt's class-evaluation time — before the VCS class binding
+  // exists — which throws "Cannot access 'VCS' before initialization" in
+  // the compiled build. The lazy `() => VCS` callback below is unaffected
+  // and still wires the association correctly at runtime.
   @BelongsTo(() => VCS, "vcsId")
-  vcs?: VCS;
+  vcs?: any;
 
   @AllowNull(false)
   @Column(DataType.TEXT)
