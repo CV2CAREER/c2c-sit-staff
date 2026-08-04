@@ -279,6 +279,7 @@ export const uploadClientSupportDocuments = async ({
       size: uploadResult.size,
       metadata,
       roleTitles,
+      isActive: false,
       uploadedBy,
       uploadedAt: new Date(),
       updatedBy: uploadedBy,
@@ -291,7 +292,9 @@ export const uploadClientSupportDocuments = async ({
     created.push(record);
   }
 
-  notifyUpload(client, created, uploadedBy);
+  // Deliberately no notifyUpload here — the client isn't told about these
+  // until an admin reviews and activates them (activateClientSupportDocument
+  // below), same gate Upload's admin-generated documents use.
 
   return created;
 };
@@ -429,6 +432,46 @@ export const getClientSupportDocument = async (
   if (!document || document.isDeleted) {
     throw new ErrorHandler("Document not found", 404);
   }
+
+  return document;
+};
+
+/**
+ * Activates a support document — created inactive (isActive: false), so it
+ * doesn't count as shared with the client until an admin explicitly turns
+ * it on here. This is also the point the deferred client notification
+ * (email + Slack) fires, matching Upload's admin-generated-document gate.
+ */
+export const activateClientSupportDocument = async (
+  id: string,
+  activatedBy?: string,
+): Promise<ClientSupportDocument> => {
+  const document = await ClientSupportDocument.findByPk(id);
+
+  if (!document || document.isDeleted) {
+    throw new ErrorHandler("Document not found", 404);
+  }
+
+  if (document.isActive) {
+    logger.info(`Client support document ${id} was already active`);
+    return document;
+  }
+
+  await document.update({ isActive: true, updatedBy: activatedBy });
+
+  const client = await User.findByPk(document.clientId, {
+    attributes: ["id", "email", "firstName", "lastName"],
+  });
+
+  if (client) {
+    notifyUpload(client, [document], activatedBy);
+  } else {
+    logger.warn(
+      `Activated client support document ${id} but client ${document.clientId} was not found — skipped client notification`,
+    );
+  }
+
+  logger.info(`Activated client support document ${id}`);
 
   return document;
 };
