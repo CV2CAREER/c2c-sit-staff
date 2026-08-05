@@ -75,6 +75,7 @@ import { EmailTemplate } from "../models/v1/email-template.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 
 export const modelList = [
   User,
@@ -156,4 +157,5 @@ export const modelList = [
   InterviewPackProcess,
   TourCount,
   CredentialsTour,
+  AiVettingComparison,
 ];

@@ -14,7 +14,8 @@ import { fieldEncryption } from '../utils/field-encryption';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
 import { classifyJob, PROMPT_VERSION } from './ai-vetting.service';
-import { systemConfigApplicationService } from './admin/system-config.application.service';
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
+import { aiVettingConfigApplicationService } from './admin/ai-vetting-config.application.service';
 import {
   ApplicationStatus,
   SlackChannel,
@@ -1206,6 +1207,13 @@ export const saveManualApplication = async (
 
     Country: jobData.country || 'N/A',
 
+    Salary: jobData.salary || 'N/A',
+
+    Skills:
+      Array.isArray(jobData.skills) && jobData.skills.length > 0
+        ? jobData.skills.join(', ')
+        : jobData.skills || 'N/A',
+
     Status: 'UNATTENDED',
 
     // Discovery details
@@ -1275,8 +1283,8 @@ export const saveManualApplication = async (
 
   setImmediate(async () => {
     try {
-      const flag = await systemConfigApplicationService.get('ai-vetting-enabled');
-      if (!flag?.value?.enabled) return;
+      const config = await aiVettingConfigApplicationService.getConfig();
+      if (!config.enabled) return;
 
       const profile = await Profile.findOne({
         where: { userId: manualApplication.client_id, isActive: true },
@@ -1304,58 +1312,108 @@ export const saveManualApplication = async (
       await manualApplication.update(updateFields);
       logger.info(`AI vetting complete for job ${manualApplication.id}: ${result.status === 'classified' ? result.score : 'FAILED'}`);
 
-      if (result.status === 'classified' && result.score === 'MQA') {
-        const learningMonth = flag?.value?.learningMonth !== false;
-        const mqaLive = flag?.value?.mqaLiveFromDayOne !== false;
-        if (learningMonth && mqaLive) {
-          const creds = await Credentials.findOne({
-            where: { clientId: manualApplication.client_id, isDeleted: false },
-          });
-          if (creds) {
-            const spcName = await getSlackIdOrName(
-              creds?.AssignedCompletedEmail,
-              creds?.AssignedCompletedName,
-            );
-            const vpcName = await getSlackIdOrName(
-              creds?.AssignedVetEmail,
-              creds?.AssignedVetName,
-            );
-            const dpcName = await getSlackIdOrName(
-              creds?.AssignedPCEmail,
-              creds?.AssignedPCName,
-            );
-            const userObj = await User.findOne({
-              where: { id: creds.clientId },
-            });
-            const clientFullName = userObj
-              ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
-              : 'N/A';
-            const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
+      if (result.status !== 'classified') return;
 
-            await SlackService.notify({
-              location: getEnvironmentFromHost(host || ''),
-              host: host || '',
-              node: SlackNode.HUMAN_RESOURCE,
-              provider: SlackProvider.HUBSTAFF,
-              severity: SlackSeverity.INFO,
-              trigger: 'AI Vetting Agent',
-              type: SlackEventType.SYSTEM_JOB,
-              channel: SlackChannel.JOB_PIPELINE,
-              body: [
-                `🤖 AI VETTED — MQA`,
-                `• *SPC:* ${spcName}`,
-                `• *VPC:* ${vpcName}`,
-                `• *DPC:* ${dpcName}`,
-                `• *Client:* ${clientFullName}`,
-                `• *Job:* ${jobLink}`,
-                `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
-                `• *Reason:* ${result.reason}`,
-                `• *Quality:* AI MQA`,
-                `• *Status:* Awaiting SPC Approval`,
-                `${spcName} please approve within 30 min.`,
-              ].join('\n'),
-            });
-          }
+      const pipeline = await resolvePipelineNames(manualApplication.client_id);
+      const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
+
+      // MQA → SPC approval alert during the learning month.
+      if (result.score === 'MQA' && config.learningMonth && config.mqaLiveFromDayOne) {
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — MQA`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* AI MQA`,
+              `• *Status:* Awaiting SPC Approval`,
+              `${pipeline.spcName} please approve within 30 min.`,
+            ].join('\n'),
+          });
+        }
+      }
+
+      // Post-learning rollout: HQA auto-vets and routes to submission.
+      if (result.score === 'HQA' && config.hqaAutoSubmit) {
+        await manualApplication.update({
+          Status: 'VETTED',
+          QualityScore: 'HQA',
+          VettedBy: 'AI Vetting Agent',
+          VettedDate: new Date(),
+        });
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — HQA (Auto-Submit)`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* HQA`,
+              `• *Status:* Vetted (AI)`,
+              `${pipeline.spcName} please submit.`,
+            ].join('\n'),
+          });
+        }
+      }
+
+      // Post-learning rollout: LQA auto-skips and routes back to discovery.
+      if (result.score === 'LQA' && config.lqaAutoSkip) {
+        await manualApplication.update({
+          Status: 'SKIPPED',
+          QualityScore: 'LQA',
+          StatusReason: 'AI vetted — LQA (auto-skip)',
+          VettedBy: 'AI Vetting Agent',
+          VettedDate: new Date(),
+        });
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — LQA (Auto-Skip)`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* LQA`,
+              `• *Status:* Skipped (AI)`,
+              `${pipeline.dpcName} please find another job for ${pipeline.clientFullName}.`,
+            ].join('\n'),
+          });
         }
       }
     } catch (err) {
@@ -1713,6 +1771,10 @@ export const updateJobApplicationStatus = async (
 
   await application.update(updateData);
 
+  if (statusUpper === 'VETTED') {
+    logAiVettingComparison(application, fullName, currentDate);
+  }
+
   if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
     const submitReason = statusReason ? resolveReason(statusReason) : '';
     message = bullet([
@@ -1842,6 +1904,86 @@ export const updateJobApplicationStatus = async (
     message: 'Manual application status updated successfully.',
     data: application,
   };
+};
+
+/**
+ * Resolves the Slack names for a client's SPC / VPC / DPC plus the client's
+ * full name. Returns `creds: null` when no credentials row exists so callers
+ * can skip Slack notifications that require the assignment.
+ */
+const resolvePipelineNames = async (clientId?: string) => {
+  if (!clientId) {
+    return {
+      creds: null,
+      spcName: 'N/A',
+      vpcName: 'N/A',
+      dpcName: 'N/A',
+      clientFullName: 'N/A',
+    };
+  }
+
+  const creds = await Credentials.findOne({
+    where: { clientId, isDeleted: false },
+  });
+
+  if (!creds) {
+    return {
+      creds: null,
+      spcName: 'N/A',
+      vpcName: 'N/A',
+      dpcName: 'N/A',
+      clientFullName: 'N/A',
+    };
+  }
+
+  const [spcName, vpcName, dpcName] = await Promise.all([
+    getSlackIdOrName(creds?.AssignedCompletedEmail, creds?.AssignedCompletedName),
+    getSlackIdOrName(creds?.AssignedVetEmail, creds?.AssignedVetName),
+    getSlackIdOrName(creds?.AssignedPCEmail, creds?.AssignedPCName),
+  ]);
+
+  const userObj = await User.findOne({ where: { id: creds.clientId } });
+  const clientFullName = userObj
+    ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
+    : 'N/A';
+
+  return { creds, spcName, vpcName, dpcName, clientFullName };
+};
+
+/**
+ * Non-blocking: logs an AI Score vs human VPC call comparison row when a job
+ * was AI-classified and is then vetted by a human. Never throws to the caller.
+ */
+const logAiVettingComparison = (
+  application: ManualApplication,
+  humanVettedBy: string,
+  humanVettedAt: Date
+) => {
+  if (!application.ai_score || application.ai_status !== 'classified') {
+    return;
+  }
+
+  setImmediate(async () => {
+    try {
+      await AiVettingComparison.create({
+        manualApplicationId: application.id,
+        ai_score: application.ai_score,
+        ai_reason: application.ai_reason,
+        human_score: application.QualityScore || null,
+        human_vetted_by: humanVettedBy || null,
+        human_vetted_at: humanVettedAt,
+        agreement: application.ai_score === application.QualityScore,
+        classified_at: application.ai_classified_at,
+      });
+      logger.info(
+        `Logged AI vs human comparison for job ${application.id}: AI=${application.ai_score} / Human=${application.QualityScore}`
+      );
+    } catch (err: any) {
+      logger.error(
+        `Failed to log AI vetting comparison for job ${application.id}: ${err.message}`
+      );
+    }
+  });
 };
 
 /**

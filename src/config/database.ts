@@ -15,8 +15,8 @@ import { InterviewPackProcess } from "../models/v1/interview-pack-process.model"
 import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
 import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
 import { TourCount } from '../models/v1/tour-count.model';
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 
-// import { ManualApplication } from '../models/v1/manual-application.model';
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 // import { AccessLevelService } from "../services/admin/access-level.service";
 // import { CommunicationTemplateService } from "../services/admin/communication-template.service";
@@ -141,7 +141,23 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        // await ManualApplication.sync({ alter: true }); // new schema
+        // AI Vetting Agent (Sprint 17): adds the 5 ai_* columns to
+        // manual_applications and creates the ai_vetting_comparisons table
+        // on existing environments where the full sync below is skipped.
+        // NOTE: `alter: true` would also try to change unrelated column
+        // types (some referenced by views) and fail, so we only ADD the
+        // missing ai_* columns idempotently instead.
+        await newSequelize.query(`
+          ALTER TABLE manual_applications
+            ADD COLUMN IF NOT EXISTS ai_status VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS ai_score VARCHAR(5),
+            ADD COLUMN IF NOT EXISTS ai_reason TEXT,
+            ADD COLUMN IF NOT EXISTS ai_classified_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS ai_prompt_version VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS "Salary" VARCHAR(700) DEFAULT 'N/A',
+            ADD COLUMN IF NOT EXISTS "Skills" TEXT DEFAULT 'N/A';
+        `);
+        await AiVettingComparison.sync({ force: false }); // new table
         // await TrainingTracker.sync({ alter: true });
         // await Profile.sync({ alter: true });
         // await Upload.sync({ alter: true }); // new isActive column
