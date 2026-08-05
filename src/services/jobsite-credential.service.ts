@@ -298,6 +298,7 @@ async function sendAcceptedNotification(
 export async function unapproveJobsiteCredential(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -350,7 +351,7 @@ export async function unapproveJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendUnapprovedNotification(credential, statusFrom, statusTo);
+        await sendUnapprovedNotification(credential, statusFrom, statusTo, host);
       } catch (err) {
         logger.error("Background unapproved Slack notification error:", err);
       }
@@ -369,10 +370,12 @@ async function sendUnapprovedNotification(
   credential: JobsiteCredential,
   statusFrom: JobsiteCredentialStatus,
   statusTo: JobsiteCredentialStatus,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -392,6 +395,7 @@ async function sendUnapprovedNotification(
 export async function sendTestEmail(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -431,7 +435,7 @@ export async function sendTestEmail(
 
     setImmediate(async () => {
       try {
-        await sendTestEmailMessage(credential, adminId);
+        await sendTestEmailMessage(credential, adminId, host);
       } catch (err) {
         logger.error("Background test email send error:", err);
       }
@@ -448,6 +452,7 @@ export async function sendTestEmail(
 async function sendTestEmailMessage(
   credential: JobsiteCredential,
   adminId: string,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const currentYear = new Date().getFullYear();
@@ -489,6 +494,7 @@ async function sendTestEmailMessage(
   }
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -507,6 +513,7 @@ async function sendTestEmailMessage(
 export async function approveJobsiteCredential(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -555,7 +562,7 @@ export async function approveJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendActiveNotifications(credential, adminId);
+        await sendActiveNotifications(credential, adminId, host);
       } catch (err) {
         logger.error("Background active notification error:", err);
       }
@@ -573,6 +580,7 @@ export async function approveJobsiteCredential(
 async function sendActiveNotifications(
   credential: JobsiteCredential,
   adminId: string,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -617,6 +625,7 @@ async function sendActiveNotifications(
   }
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -631,7 +640,8 @@ export async function rejectJobsiteCredential(
   credentialId: string,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note?: string,
+  host: string,
+  note: string | undefined,
 ): Promise<JobsiteCredential> {
   try {
     if (
@@ -684,7 +694,7 @@ export async function rejectJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendRejectedNotifications(credential, adminId, reason, note);
+        await sendRejectedNotifications(credential, adminId, reason, host, note);
       } catch (err) {
         logger.error("Background reject notification error:", err);
       }
@@ -702,7 +712,8 @@ async function sendRejectedNotifications(
   credential: JobsiteCredential,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note?: string,
+  host: string,
+  note: string | undefined,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -754,6 +765,7 @@ async function sendRejectedNotifications(
 
   // Slack → TOWN_CRIER
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.ERROR,
