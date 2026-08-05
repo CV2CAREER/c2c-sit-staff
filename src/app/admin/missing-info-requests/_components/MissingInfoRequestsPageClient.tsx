@@ -6,11 +6,13 @@ import {
   useOutstandingRequests,
   useRequestStats,
   useBulkReminder,
+  useRequestResponses,
   OutstandingRequest,
 } from "@/hooks/api/missing-info-template.api";
 import RequestStatusBadge from "./RequestStatusBadge";
 import AgeIndicator from "./AgeIndicator";
 import BulkReminderModal from "./BulkReminderModal";
+import ViewResponsesModal from "./ViewResponsesModal";
 import EmptyState from "./EmptyState";
 
 const AGE_FILTERS = [
@@ -24,6 +26,7 @@ export default function MissingInfoRequestsPageClient() {
   const [ageFilter, setAgeFilter] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [viewResponsesId, setViewResponsesId] = useState<string | null>(null);
 
   const { data: requests, pagination, isLoading } = useOutstandingRequests({
     age: ageFilter || undefined,
@@ -31,6 +34,10 @@ export default function MissingInfoRequestsPageClient() {
 
   const { stats } = useRequestStats();
   const { sendBulkReminder, isSending } = useBulkReminder();
+
+  const { data: responsesData, isLoading: isResponsesLoading } = useRequestResponses(
+    viewResponsesId || ""
+  );
 
   const filteredRequests = (requests || []).filter((req) => {
     if (!search) return true;
@@ -88,6 +95,10 @@ export default function MissingInfoRequestsPageClient() {
       toast.dismiss(toastId);
       toast.error("Failed to resend.");
     }
+  };
+
+  const handleViewResponses = (id: string) => {
+    setViewResponsesId(id);
   };
 
   if (isLoading) {
@@ -250,12 +261,22 @@ export default function MissingInfoRequestsPageClient() {
                       {req.reminderCount > 0 ? `${req.reminderCount} sent` : "\u2014"}
                     </td>
                     <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => handleResend(req)}
-                        className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-                      >
-                        Resend
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleResend(req)}
+                          className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                        >
+                          Resend
+                        </button>
+                        {req.status === "submitted" && (
+                          <button
+                            onClick={() => handleViewResponses(req.id)}
+                            className="border border-[#E5E9EF] bg-white text-[#0B96D6] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#EAF6FF] transition-colors"
+                          >
+                            View Responses
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -288,7 +309,7 @@ export default function MissingInfoRequestsPageClient() {
         )}
       </div>
 
-      {/* Bulk reminder modal */}
+       {/* Bulk reminder modal */}
       <BulkReminderModal
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
@@ -296,6 +317,14 @@ export default function MissingInfoRequestsPageClient() {
         selectedRequests={filteredRequests.filter((r) => selectedIds.has(r.id))}
         onConfirm={handleBulkReminder}
         isSending={isSending}
+      />
+
+      {/* View Responses Modal */}
+      <ViewResponsesModal
+        open={viewResponsesId !== null}
+        onClose={() => setViewResponsesId(null)}
+        data={responsesData}
+        isLoading={isResponsesLoading}
       />
     </div>
   );

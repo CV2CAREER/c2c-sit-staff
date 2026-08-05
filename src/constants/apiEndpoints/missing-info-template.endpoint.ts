@@ -7,3 +7,4 @@ export const MISSING_INFO_REQUESTS_STAFF_SEND = '/api/v1/missing-info-requests/s
 export const MISSING_INFO_REQUESTS_STAFF_OUTSTANDING = '/api/v1/missing-info-requests/outstanding';
 export const MISSING_INFO_REQUESTS_STAFF_STATS = '/api/v1/missing-info-requests/stats';
 export const MISSING_INFO_REQUESTS_STAFF_BULK_REMINDER = '/api/v1/missing-info-requests/bulk-reminder';
+export const MISSING_INFO_REQUESTS_STAFF_RESPONSES = (id: string) => `/api/v1/missing-info-requests/${id}/responses`;
