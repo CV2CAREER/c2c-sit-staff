@@ -280,4 +280,25 @@ export const fieldEncryption = {
       WHERE id = :requestId
     `, opts);
   },
+
+  async getDecryptedMissingResponseFieldValue(responseId: string): Promise<string | null> {
+    const [result] = await db().query(
+      `SELECT get_decrypted_missing_response_field_value(:responseId, :key) AS value`,
+      { replacements: { responseId, key: KEY }, type: QueryTypes.SELECT }
+    );
+    return (result as any)?.value ?? null;
+  },
+
+  async encryptMissingResponseFieldValue(
+    responseId: string,
+    value: string | null,
+    transaction?: Transaction,
+  ): Promise<void> {
+    const opts = { replacements: { responseId, key: KEY, value }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    await db().query(`
+      UPDATE missing_info_responses SET
+        "fieldValueEncrypted" = CASE WHEN :value IS NOT NULL THEN pgp_sym_encrypt(:value, :key) ELSE NULL END
+      WHERE id = :responseId
+    `, opts);
+  },
 };
