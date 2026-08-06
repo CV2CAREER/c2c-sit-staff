@@ -22,11 +22,26 @@ const logger = getServiceLogger('plac-pipeline-ops-report-job');
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+// Africa/Lagos has no DST — it's fixed UTC+1 year-round — so this is
+// computed directly against that offset rather than via getDate()/setDate(),
+// which operate in the server process's local timezone (UTC on this
+// DigitalOcean droplet). This job fires at 00:10 WAT (= 23:10 UTC the day
+// before), so at that instant the UTC calendar hasn't rolled over yet;
+// server-local date math silently picks a boundary one day further back
+// than intended.
 function getDaysAgoDate(days: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const lagosToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date()); // 'YYYY-MM-DD', in WAT wall-clock terms
+
+  const targetUTC = new Date(`${lagosToday}T00:00:00Z`);
+  targetUTC.setUTCDate(targetUTC.getUTCDate() - days);
+  const targetYMD = targetUTC.toISOString().slice(0, 10);
+
+  return new Date(`${targetYMD}T00:00:00.000+01:00`);
 }
 
 function formatDate(date: Date): string {
