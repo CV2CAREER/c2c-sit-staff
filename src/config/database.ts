@@ -6,15 +6,7 @@ import { ensureAnalyticsIndexes } from '../services/admin/analytics.index-bootst
 import { ensureCampaignIndexes } from '../services/admin/campaign.index-bootstrap.service';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
-import { ClientContentService } from '../services/admin/client-content.service';
-import { ClientSupportDocument } from '../models/v1/client-support-document.model';
-import { EmailLog } from "../models/v1/email-log.model";
-import { EmailTemplate } from "../models/v1/email-template.model";
-import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
-import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
-import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
-import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
-import { TourCount } from '../models/v1/tour-count.model';
+
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
