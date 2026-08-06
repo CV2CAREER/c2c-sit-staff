@@ -11,7 +11,6 @@ import AdminUsersJobSites from "../_components/AdminUsersJobSites";
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
-import OnBoardingProgress from "../_components/onboarding-progress";
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -98,10 +97,6 @@ function UserDetailsContent({ userId }: { userId: string }) {
                     <TriggerApplicationAction/>
                 </div>
             </motion.div>
-            <motion.div variants={itemVariants}>
-                <OnBoardingProgress userId={currentUserId}/>
-            </motion.div>
-            {/* <OnboardingStatus/> */}
             <motion.div variants={itemVariants}>
                 <ClientDocument userId={currentUserId} />
             </motion.div>
