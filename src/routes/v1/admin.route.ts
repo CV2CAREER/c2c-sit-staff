@@ -58,6 +58,7 @@ import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.contro
 
 import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
 import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
+import vcsPromptRouterV1 from "./vcs-prompt.route";
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 import applicationRouterV1 from "./application.route";
 import interviewPrepRouterV1 from "./interview-prep.route";
@@ -155,7 +156,7 @@ adminRouterV1.use(
   "/prompts",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminAiRouterV1,
+  vcsPromptRouterV1,
 );
 adminRouterV1.use(
   "/training-tracker",
