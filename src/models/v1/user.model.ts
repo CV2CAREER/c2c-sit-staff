@@ -47,6 +47,7 @@ import { Location } from "./location.model";
 import { Aggregator } from "./aggregator.model";
 import { Credentials } from "./credentials.model";
 import { Plan } from "./plan.model";
+import { ClientJourneyStep } from "./client-journey-step.model";
 
 @Table({
   tableName: "users",
@@ -422,6 +423,10 @@ export class User extends Model {
   // Aggregator relationship
   @HasMany(() => Aggregator, "userId")
   aggregators?: Aggregator[];
+  
+  // Client journey step-completion relationship
+  @HasMany(() => ClientJourneyStep, "userId")
+  journeySteps?: ClientJourneyStep[];
 
   // Credentials relationship
   @HasOne(() => Credentials, "clientId")

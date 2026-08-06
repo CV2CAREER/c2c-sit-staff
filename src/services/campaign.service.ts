@@ -32,7 +32,6 @@ import {
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
 import { Op, Sequelize } from 'sequelize';
-import { Logger } from 'winston';
 
 const logger = getServiceLogger('campaign-service');
 
@@ -2048,7 +2047,7 @@ export const assignVAToClient = async (
     logger.warn('User not found');
   }
 
-  const fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
+  const fullName = formatClientName(user);
 
   if (isUnassign) {
     logger.info(`Unassigning ${fields.displayLabel} for credId=${credId}`);
