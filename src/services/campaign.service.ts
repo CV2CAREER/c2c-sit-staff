@@ -2057,9 +2057,8 @@ export const assignVAToClient = async (
     let tagName = `Previously assigned ${fields.displayLabel}`;
 
     if (currentEmail) {
-      const targetUser = await User.findOne({
-        where: { email: currentEmail },
-      });
+      const targetUserId = currentEmail ? await fieldEncryption.findUserByEmail(currentEmail) : null;
+      const targetUser = targetUserId ? await User.findByPk(targetUserId) : null;
 
       if (targetUser) {
         const slackId = await getSlackIdByEmail(currentEmail);

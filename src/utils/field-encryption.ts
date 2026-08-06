@@ -122,6 +122,37 @@ export const fieldEncryption = {
     return (result as any)?.email ?? null;
   },
 
+  async findReferrerByEmail(email: string): Promise<string | null> {
+    const [result] = await db().query(
+      `SELECT id FROM find_referrer_by_email(:email)`,
+      { replacements: { email }, type: QueryTypes.SELECT }
+    );
+    return (result as any)?.id ?? null;
+  },
+
+  async findUsersByEmailPartial(search: string, limit = 1): Promise<string[]> {
+    const rows = await db().query(
+      `SELECT u.id FROM users u
+       WHERE u."emailEncrypted" IS NOT NULL
+         AND pgp_sym_decrypt(u."emailEncrypted", :key) ILIKE :pattern
+       LIMIT :limit`,
+      { replacements: { key: KEY, pattern: `%${search}%`, limit }, type: QueryTypes.SELECT }
+    );
+    return (rows as any[]).map((r: any) => r.id);
+  },
+
+  async findCredentialsBySeekEmail(emails: string[]): Promise<any[]> {
+    const rows = await db().query(
+      `SELECT c.id, c."clientId",
+              pgp_sym_decrypt(c."seekEmailEncrypted", :key) AS "seekEmail"
+       FROM credentials c
+       WHERE c."seekEmailEncrypted" IS NOT NULL
+         AND LOWER(pgp_sym_decrypt(c."seekEmailEncrypted", :key)) IN (:emails)`,
+      { replacements: { key: KEY, emails: emails.map((e) => e.toLowerCase()) }, type: QueryTypes.SELECT }
+    );
+    return rows as any[];
+  },
+
   // ── Phase 1 write helpers (encrypt on create/update) ──
 
   async encryptUserFields(

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { getServiceLogger } from "../utils/createLogger";
 import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
+import { fieldEncryption } from "../utils/field-encryption";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
@@ -880,10 +881,10 @@ export async function importJobsiteCredentialsFromCsv(
     }
 
     try {
-      const client = await User.findOne({
-        where: { email: clientEmail.trim() },
+      const clientUserId = await fieldEncryption.findUserByEmail(clientEmail.trim());
+      const client = clientUserId ? await User.findByPk(clientUserId, {
         attributes: ["id"],
-      });
+      }) : null;
 
       if (!client) {
         result.skipped.push({
