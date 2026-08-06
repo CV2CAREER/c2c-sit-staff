@@ -50,7 +50,9 @@ import {
 } from '@mui/x-data-grid-pro';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useFetchData } from '@/hooks/useApi';
+import Tooltip from '@mui/material/Tooltip';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { FiLoader } from 'react-icons/fi';
 import {
@@ -315,6 +317,16 @@ const ClientDataTable: React.FC<{
     clientToursDomain,
   } = useAdminQueries(adminQueriesOptions);
 
+  const aiVettingConfigQuery = useFetchData<any>({
+    method: 'GET',
+    url: '/api/v1/admin/ai-vetting',
+    queryKey: ['admin-ai-vetting-config'],
+    enabled: true,
+    staleEarly: true,
+  });
+  const aiVettingConfig = aiVettingConfigQuery.data?.data ?? {};
+  const isLearningMonth = aiVettingConfig?.learningMonth === true;
+
   const {
     dispatchSampleMutation,
     updateCampaignSheetMutation,
@@ -536,6 +548,8 @@ const ClientDataTable: React.FC<{
   const resolvedClientId = String(params?.id ?? clientId);
 
   const [isSampleResultsLoading, setIsSampleResultsLoading] = useState(false);
+  const sampleResultsPollRef = useRef<NodeJS.Timeout | null>(null);
+  const sampleResultsPollInFlightRef = useRef(false);
 
   // const isDataOptionLoading =
   //   dataOption?.value === 'job_applications'
@@ -597,6 +611,9 @@ const ClientDataTable: React.FC<{
       Client_Id: item?.Client ?? 'N/A',
       Updated_At: item?.updatedAt ?? 'N/A',
       CoverLetterRequired: item?.CoverLetterRequired,
+      AI_Score: item?.ai_score ?? null,
+      AI_Reason: item?.ai_reason ?? null,
+      AI_Status: item?.ai_status ?? null,
       user: item?.user,
     };
   };
@@ -700,6 +717,50 @@ const ClientDataTable: React.FC<{
             {params.value ? 'Yes' : 'No'}
           </span>
         ),
+      },
+      {
+        field: 'AI_Score',
+        headerName: 'AI Score',
+        width: 160,
+        renderCell: (params: any) => {
+          const score = params.value;
+          const status = params.row?.AI_Status;
+          const reason = params.row?.AI_Reason;
+
+          let label = 'N/A';
+          let color = '#999';
+
+          if (status === 'pending') {
+            label = 'PENDING';
+          } else if (status === 'failed') {
+            label = 'FAILED';
+          } else if (typeof score === 'string') {
+            label = score;
+            color = score in colors ? colors[score as keyof typeof colors] : '#999';
+          }
+
+          return (
+            <div className="flex items-center gap-1.5">
+              <Tooltip
+                title={reason || 'No AI reason available'}
+                arrow
+                placement="top"
+              >
+                <span
+                  className="rounded-md px-3 py-1 text-xs font-bold text-white"
+                  style={{ background: color, cursor: 'help' }}
+                >
+                  {label}
+                </span>
+              </Tooltip>
+              {isLearningMonth && status === 'classified' && (
+                <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                  Learning Month
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       { field: 'Discovered_By', headerName: 'Discovered By', width: 170 },
       {
@@ -955,11 +1016,14 @@ const ClientDataTable: React.FC<{
     isManualDiscoveryView,
   ]);
 
-  const fetchSampleResults = useCallback(async () => {
+  const fetchSampleResults = useCallback(async (isPoll = false) => {
     if (dataOption?.value !== 'manual_discovery') return;
+    if (sampleResultsPollInFlightRef.current) return;
+
+    sampleResultsPollInFlightRef.current = true;
 
     try {
-      setIsSampleResultsLoading(true);
+      if (!isPoll) setIsSampleResultsLoading(true);
 
       const response = await axiosInstance.get(
         `/api/v1/campaigns/clients/${resolvedClientId}/applications/manual`,
@@ -984,17 +1048,41 @@ const ClientDataTable: React.FC<{
       setTotalTableCount(
         response.data?.data?.pagination?.totalCount ?? mappedRows.length
       );
+
+      const hasPendingAI = mappedRows.some(
+        (row: any) => row.AI_Status == null || row.AI_Score == null
+      );
+
+      if (sampleResultsPollRef.current) {
+        clearTimeout(sampleResultsPollRef.current);
+        sampleResultsPollRef.current = null;
+      }
+
+      if (hasPendingAI) {
+        sampleResultsPollRef.current = setTimeout(
+          () => fetchSampleResults(true),
+          5000
+        );
+      }
     } catch (error: any) {
       setTableData([]);
       setTotalTableCount(0);
       toast.error(handleApiError(error, 'Failed to fetch sample results'));
     } finally {
       setIsSampleResultsLoading(false);
+      sampleResultsPollInFlightRef.current = false;
     }
   }, [dataOption?.value, resolvedClientId, isApplicationmodalOpen, selectedTour]);
 
   useEffect(() => {
     fetchSampleResults();
+
+    return () => {
+      if (sampleResultsPollRef.current) {
+        clearTimeout(sampleResultsPollRef.current);
+        sampleResultsPollRef.current = null;
+      }
+    };
   }, [fetchSampleResults]);
 
   // UPDATED useEffect to process applicationData correctly

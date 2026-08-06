@@ -58,6 +58,7 @@ export function useMissingInfoTemplates(filter?: { category?: string; status?: s
     url: endpoints.MISSING_INFO_TEMPLATES,
     queryKey,
     enabled: true,
+    forceRefresh: true,
     params: filter?.status || filter?.category
       ? { ...(filter.status && { status: filter.status }), ...(filter.category && { category: filter.category }) }
       : undefined,
@@ -223,6 +224,39 @@ export type RequestStats = {
   templateCount: number;
 };
 
+export type RequestResponse = {
+  id: string;
+  fieldId: string;
+  fieldName: string | null;
+  fieldLabel: string;
+  fieldType: string;
+  fieldValue: string | null;
+  createdAt: string;
+};
+
+export type RequestResponsesData = {
+  request: {
+    id: string;
+    token: string;
+    status: string;
+    channel: string;
+    personalMessage: string | null;
+    requestedAt: string;
+    requestedByName: string | null;
+    template: {
+      id: string;
+      name: string;
+      type: string;
+    } | null;
+    client: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+  };
+  responses: RequestResponse[];
+};
+
 export function useSendRequest() {
   const queryClient = useQueryClient();
 
@@ -302,5 +336,22 @@ export function useBulkReminder() {
   return {
     sendBulkReminder: bulkMutation.mutateAsync,
     isSending: bulkMutation.isPending,
+  };
+}
+
+export function useRequestResponses(requestId: string) {
+  const query = useFetchData<RequestResponsesData>({
+    method: "GET",
+    url: endpoints.MISSING_INFO_REQUESTS_STAFF_RESPONSES(requestId),
+    queryKey: ["missing-info-responses", requestId],
+    enabled: !!requestId,
+  });
+
+  return {
+    data: query.data?.data ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
   };
 }
