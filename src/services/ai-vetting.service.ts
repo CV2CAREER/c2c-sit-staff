@@ -2,28 +2,25 @@ import { getServiceLogger } from "../utils/createLogger";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
 import { ManualApplication } from "../models/v1/manual-application.model";
 import { Profile } from "../models/v1/profile.model";
+import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
+import ErrorHandler from "../utils/errorHandler";
 
 const logger = getServiceLogger("ai-vetting");
 
-export const PROMPT_VERSION = "1.4";
+export const AI_VETTING_PROMPT_KEY = "ai_vetting_classification_prompt";
 
 export interface AiVettingResult {
   score: "HQA" | "MQA" | "LQA" | null;
   reason: string;
   status: "classified" | "failed";
+  promptVersion: string | null;
 }
 
 const safeList = (arr: string[] | undefined | null): string =>
   arr && arr.length > 0 ? arr.join(", ") : "Not specified";
 
-const buildClassificationPrompt = (
-  job: ManualApplication,
-  profile: Profile
-): string => {
+const buildClientProfile = (profile: Profile): string => {
   return [
-    "You are a job vetting assistant. Classify this job against the client's profile criteria.",
-    "",
-    "CLIENT PROFILE:",
     `- Target Titles: ${safeList(profile.titles)}`,
     `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
     `- Target Keywords: ${safeList(profile.keywords)}`,
@@ -36,8 +33,11 @@ const buildClassificationPrompt = (
     `- Target Industries: ${safeList(profile.industriesInclude)}`,
     `- Excluded Industries: ${safeList(profile.industriesExclude)}`,
     `- Target Job Types: ${safeList(profile.jobTypes)}`,
-    "",
-    "JOB DETAILS:",
+  ].join("\n");
+};
+
+const buildJobDetails = (job: ManualApplication): string => {
+  return [
     `- Title: ${job.Job_Title || "N/A"}`,
     `- Company: ${job.Advertiser || "N/A"}`,
     `- Location: ${job.Location || "N/A"}`,
@@ -45,34 +45,34 @@ const buildClassificationPrompt = (
     `- Job Type: ${job.Job_Type || "N/A"}`,
     `- Salary: ${job.Salary || "Not specified"}`,
     `- Skills/Tech: ${job.Skills && job.Skills !== "N/A" ? job.Skills : "Not specified"}`,
-    "",
-    "LOCATION MATCHING RULES:",
-    "- If the job Location or Country mentions Remote, Hybrid, WFH, Work From Home, or similar, treat it as a remote/hybrid role and match it against any Remote entry in the client's Target Locations or Cities.",
-    "- A job located in the client's Target Country should NOT be rejected for location simply because the city is not listed or differs from Target Cities; only reject for location when the country itself is outside the client's targets.",
-    "- If the client targets both specific cities AND Remote, a remote role matches regardless of the city/state.",
-    "- Only say a criterion is missing/not provided when the JOB DETAILS value is literally N/A, Not specified, or empty. If the field has a value, use it.",
-    "",
-    "SALARY MATCHING:",
-    "- Salary is a SOFT criterion and must NEVER alone cause an LQA.",
-    "- A job paying AT OR ABOVE the client's minimum salary is acceptable regardless of how high it goes. Exceeding the client's maximum is a POSITIVE, not a downgrade.",
-    "- Only mention salary as a concern when the job pays CLEARLY BELOW the client's minimum, and even then rate it at most MQA.",
-    "- If the client's salary range or the job's salary is Not specified, do not penalise for it.",
-    "",
-    "SKILLS MATCHING:",
-    "- Compare the job's Skills/Tech against the client's Target Keywords (and avoid Excluded Keywords).",
-    "- Missing skills are EXPECTED — most job listings do not state skills. A job with no Skills/Tech must NOT be downgraded or used as a reason for LQA; treat it as neutral.",
-    "- Only use skills as a NEGATIVE factor when the job explicitly lists skills that are excluded or clearly contradict the client's targets.",
-    "",
-    "Respond with JSON only. Do not include markdown formatting or code blocks.",
-    '{ "score": "HQA", "reason": "Brief one-line reason for the classification" }',
-    "",
-    "HQA = Strong match on all or nearly all criteria",
-    "MQA = Genuine but imperfect fit — one criterion is off, borderline, or unclear",
-    "LQA = Poor fit on one or more criteria",
   ].join("\n");
 };
 
-const parseClassificationResponse = (raw: string): AiVettingResult => {
+export const getVcsPrompt = async (): Promise<{ prompt: string; version: string }> => {
+  const vcsRow = await VCS.findOne({
+    where: { key: AI_VETTING_PROMPT_KEY, active: true },
+  });
+
+  if (!vcsRow) {
+    throw new ErrorHandler(
+      `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" is not configured — run seed-vcs-ai-vetting-prompt.ts`,
+      500,
+    );
+  }
+
+  const promptRow = await VCSPrompt.findByPk(vcsRow.activePromptId);
+
+  if (!promptRow) {
+    throw new ErrorHandler(
+      `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" has no active version deployed`,
+      500,
+    );
+  }
+
+  return { prompt: promptRow.prompt, version: promptRow.version };
+};
+
+const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "promptVersion"> => {
   const trimmed = raw.trim();
 
   let json: any;
@@ -124,7 +124,14 @@ export const classifyJob = async (
   job: ManualApplication,
   profile: Profile,
 ): Promise<AiVettingResult> => {
-  const prompt = buildClassificationPrompt(job, profile);
+  const { prompt: promptTemplate, version } = await getVcsPrompt();
+
+  const clientProfile = buildClientProfile(profile);
+  const jobDetails = buildJobDetails(job);
+
+  const prompt = promptTemplate
+    .replace(/\{\{CLIENT_PROFILE\}\}/g, clientProfile)
+    .replace(/\{\{JOB_DETAILS\}\}/g, jobDetails);
 
   logger.info(
     `Classifying job ${job.id} for client ${job.client_id} (${job.Job_Title})`
@@ -134,15 +141,16 @@ export const classifyJob = async (
     const raw = await queryDigitalOceanAI(prompt);
     const result = parseClassificationResponse(raw);
     logger.info(
-      `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"}`
+      `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"} (prompt v${version})`
     );
-    return result;
+    return { ...result, promptVersion: version };
   } catch (err: any) {
     logger.error(`AI classification failed for job ${job.id}: ${err.message}`);
     return {
       score: null,
       reason: `AI service error: ${err.message}`,
       status: "failed",
+      promptVersion: version,
     };
   }
 };

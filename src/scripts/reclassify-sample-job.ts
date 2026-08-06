@@ -10,7 +10,7 @@ dotenv.config();
 
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { Profile } from '../models/v1/profile.model';
-import { classifyJob, PROMPT_VERSION } from '../services/ai-vetting.service';
+import { classifyJob } from '../services/ai-vetting.service';
 import { getSequelize } from '../utils/sequelize';
 
 const JOB_ID = '5907761d-a611-4226-be24-e7d0d0b78aef';
@@ -48,7 +48,7 @@ const main = async (): Promise<void> => {
     ai_status: 'classified',
     ai_score: result.score,
     ai_reason: result.reason,
-    ai_prompt_version: PROMPT_VERSION,
+    ai_prompt_version: result.promptVersion,
     ai_classified_at: new Date(),
   });
   console.log('\nRow updated.');
