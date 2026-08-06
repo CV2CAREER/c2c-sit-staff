@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Op } from "sequelize";
 import ErrorHandler from "@/utils/errorHandler";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
+import { MissingInfoResponse } from "@/models/v1/missing-info-response.model";
 import { MissingInfoTemplate } from "@/models/v1/missing-info-template.model";
 import { MissingInfoTemplateField } from "@/models/v1/missing-info-template-field.model";
 import { User } from "@/models/v1/user.model";
@@ -282,6 +283,66 @@ export class MissingInfoRequestStaffService {
     });
 
     return stats;
+  }
+
+  static async getRequestResponses(requestId: string) {
+    const request = await MissingInfoRequest.findByPk(requestId, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    const responses = await MissingInfoResponse.findAll({
+      where: { requestId },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const template = (request as any).template;
+    const templateFields = template?.fields || [];
+
+    const fieldMap = new Map<string, { fieldLabel: string; fieldType: string }>();
+    for (const f of templateFields) {
+      fieldMap.set(f.id, { fieldLabel: f.fieldLabel, fieldType: f.fieldType });
+    }
+
+    const formattedResponses = responses.map((r: any) => {
+      const fieldInfo = fieldMap.get(r.fieldId) || { fieldLabel: r.fieldLabel || r.fieldName || "Unknown", fieldType: "text" };
+      return {
+        id: r.id,
+        fieldId: r.fieldId,
+        fieldName: r.fieldName,
+        fieldLabel: fieldInfo.fieldLabel,
+        fieldType: fieldInfo.fieldType,
+        fieldValue: r.fieldValue,
+        createdAt: r.createdAt,
+      };
+    });
+
+    return {
+      request: {
+        id: request.id,
+        token: request.token,
+        status: request.status,
+        channel: request.channel,
+        personalMessage: request.personalMessage,
+        requestedAt: request.requestedAt,
+        requestedByName: request.requestedByName,
+        template: template ? { id: template.id, name: template.name, type: template.type } : null,
+        client: (request as any).targetUser
+          ? {
+              id: (request as any).targetUser.id,
+              name: `${(request as any).targetUser.firstName || ""} ${(request as any).targetUser.lastName || ""}`.trim(),
+              email: (request as any).targetUser.email,
+            }
+          : null,
+      },
+      responses: formattedResponses,
+    };
   }
 
   static async bulkSendReminder(requestIds: string[], user: any) {

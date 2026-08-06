@@ -3,6 +3,7 @@ import db from "@/database/postgres";
 import { getConnectedRedis } from "@/config/redis";
 import catchAsyncError from "@/utils/catchAsyncError";
 import ErrorHandler from "@/utils/errorHandler";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { getServiceLogger } from "@/utils/createLogger";
 import { Op } from "sequelize";
 
@@ -125,12 +126,7 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
 
     const uniqueEmails = [...new Set(emailEntries.map((e) => e.email))];
 
-    const credentials: any[] = await db.credentials.findMany({
-      where: {
-        seekEmail: { [Op.in]: uniqueEmails },
-      },
-      attributes: ["id", "seekEmail", "clientId"],
-    });
+    const credentials: any[] = await fieldEncryption.findCredentialsBySeekEmail(uniqueEmails);
 
     const uniqueClientIds = [
       ...new Set(

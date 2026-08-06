@@ -2,28 +2,25 @@ import { getServiceLogger } from "../utils/createLogger";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
 import { ManualApplication } from "../models/v1/manual-application.model";
 import { Profile } from "../models/v1/profile.model";
+import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
+import ErrorHandler from "../utils/errorHandler";
 
 const logger = getServiceLogger("ai-vetting");
 
-export const PROMPT_VERSION = "1.0";
+export const AI_VETTING_PROMPT_KEY = "ai_vetting_classification_prompt";
 
 export interface AiVettingResult {
   score: "HQA" | "MQA" | "LQA" | null;
   reason: string;
   status: "classified" | "failed";
+  promptVersion: string | null;
 }
 
 const safeList = (arr: string[] | undefined | null): string =>
   arr && arr.length > 0 ? arr.join(", ") : "Not specified";
 
-const buildClassificationPrompt = (
-  job: ManualApplication,
-  profile: Profile
-): string => {
+const buildClientProfile = (profile: Profile): string => {
   return [
-    "You are a job vetting assistant. Classify this job against the client's profile criteria.",
-    "",
-    "CLIENT PROFILE:",
     `- Target Titles: ${safeList(profile.titles)}`,
     `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
     `- Target Keywords: ${safeList(profile.keywords)}`,
@@ -32,28 +29,50 @@ const buildClassificationPrompt = (
     `- Target Cities: ${safeList(profile.city)}`,
     `- Target States: ${safeList(profile.state)}`,
     `- Target Country: ${profile.country || "Not specified"}`,
-    `- Salary Range: ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
+    `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
     `- Target Industries: ${safeList(profile.industriesInclude)}`,
     `- Excluded Industries: ${safeList(profile.industriesExclude)}`,
     `- Target Job Types: ${safeList(profile.jobTypes)}`,
-    "",
-    "JOB DETAILS:",
+  ].join("\n");
+};
+
+const buildJobDetails = (job: ManualApplication): string => {
+  return [
     `- Title: ${job.Job_Title || "N/A"}`,
     `- Company: ${job.Advertiser || "N/A"}`,
     `- Location: ${job.Location || "N/A"}`,
     `- Country: ${job.Country || "N/A"}`,
     `- Job Type: ${job.Job_Type || "N/A"}`,
-    "",
-    "Respond with JSON only. Do not include markdown formatting or code blocks.",
-    '{ "score": "HQA", "reason": "Brief one-line reason for the classification" }',
-    "",
-    "HQA = Strong match on all or nearly all criteria",
-    "MQA = Genuine but imperfect fit — one criterion is off, borderline, or unclear",
-    "LQA = Poor fit on one or more criteria",
+    `- Salary: ${job.Salary || "Not specified"}`,
+    `- Skills/Tech: ${job.Skills && job.Skills !== "N/A" ? job.Skills : "Not specified"}`,
   ].join("\n");
 };
 
-const parseClassificationResponse = (raw: string): AiVettingResult => {
+export const getVcsPrompt = async (): Promise<{ prompt: string; version: string }> => {
+  const vcsRow = await VCS.findOne({
+    where: { key: AI_VETTING_PROMPT_KEY, active: true },
+  });
+
+  if (!vcsRow) {
+    throw new ErrorHandler(
+      `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" is not configured — run seed-vcs-ai-vetting-prompt.ts`,
+      500,
+    );
+  }
+
+  const promptRow = await VCSPrompt.findByPk(vcsRow.activePromptId);
+
+  if (!promptRow) {
+    throw new ErrorHandler(
+      `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" has no active version deployed`,
+      500,
+    );
+  }
+
+  return { prompt: promptRow.prompt, version: promptRow.version };
+};
+
+const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "promptVersion"> => {
   const trimmed = raw.trim();
 
   let json: any;
@@ -105,7 +124,14 @@ export const classifyJob = async (
   job: ManualApplication,
   profile: Profile,
 ): Promise<AiVettingResult> => {
-  const prompt = buildClassificationPrompt(job, profile);
+  const { prompt: promptTemplate, version } = await getVcsPrompt();
+
+  const clientProfile = buildClientProfile(profile);
+  const jobDetails = buildJobDetails(job);
+
+  const prompt = promptTemplate
+    .replace(/\{\{CLIENT_PROFILE\}\}/g, clientProfile)
+    .replace(/\{\{JOB_DETAILS\}\}/g, jobDetails);
 
   logger.info(
     `Classifying job ${job.id} for client ${job.client_id} (${job.Job_Title})`
@@ -115,15 +141,16 @@ export const classifyJob = async (
     const raw = await queryDigitalOceanAI(prompt);
     const result = parseClassificationResponse(raw);
     logger.info(
-      `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"}`
+      `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"} (prompt v${version})`
     );
-    return result;
+    return { ...result, promptVersion: version };
   } catch (err: any) {
     logger.error(`AI classification failed for job ${job.id}: ${err.message}`);
     return {
       score: null,
       reason: `AI service error: ${err.message}`,
       status: "failed",
+      promptVersion: version,
     };
   }
 };

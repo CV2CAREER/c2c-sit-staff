@@ -122,6 +122,37 @@ export const fieldEncryption = {
     return (result as any)?.email ?? null;
   },
 
+  async findReferrerByEmail(email: string): Promise<string | null> {
+    const [result] = await db().query(
+      `SELECT id FROM find_referrer_by_email(:email)`,
+      { replacements: { email }, type: QueryTypes.SELECT }
+    );
+    return (result as any)?.id ?? null;
+  },
+
+  async findUsersByEmailPartial(search: string, limit = 1): Promise<string[]> {
+    const rows = await db().query(
+      `SELECT u.id FROM users u
+       WHERE u."emailEncrypted" IS NOT NULL
+         AND pgp_sym_decrypt(u."emailEncrypted", :key) ILIKE :pattern
+       LIMIT :limit`,
+      { replacements: { key: KEY, pattern: `%${search}%`, limit }, type: QueryTypes.SELECT }
+    );
+    return (rows as any[]).map((r: any) => r.id);
+  },
+
+  async findCredentialsBySeekEmail(emails: string[]): Promise<any[]> {
+    const rows = await db().query(
+      `SELECT c.id, c."clientId",
+              pgp_sym_decrypt(c."seekEmailEncrypted", :key) AS "seekEmail"
+       FROM credentials c
+       WHERE c."seekEmailEncrypted" IS NOT NULL
+         AND LOWER(pgp_sym_decrypt(c."seekEmailEncrypted", :key)) IN (:emails)`,
+      { replacements: { key: KEY, emails: emails.map((e) => e.toLowerCase()) }, type: QueryTypes.SELECT }
+    );
+    return rows as any[];
+  },
+
   // ── Phase 1 write helpers (encrypt on create/update) ──
 
   async encryptUserFields(
@@ -278,6 +309,27 @@ export const fieldEncryption = {
       UPDATE missing_info_requests SET
         "personalMessageEncrypted" = CASE WHEN :message IS NOT NULL THEN pgp_sym_encrypt(:message, :key) ELSE NULL END
       WHERE id = :requestId
+    `, opts);
+  },
+
+  async getDecryptedMissingResponseFieldValue(responseId: string): Promise<string | null> {
+    const [result] = await db().query(
+      `SELECT get_decrypted_missing_response_field_value(:responseId, :key) AS value`,
+      { replacements: { responseId, key: KEY }, type: QueryTypes.SELECT }
+    );
+    return (result as any)?.value ?? null;
+  },
+
+  async encryptMissingResponseFieldValue(
+    responseId: string,
+    value: string | null,
+    transaction?: Transaction,
+  ): Promise<void> {
+    const opts = { replacements: { responseId, key: KEY, value }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    await db().query(`
+      UPDATE missing_info_responses SET
+        "fieldValueEncrypted" = CASE WHEN :value IS NOT NULL THEN pgp_sym_encrypt(:value, :key) ELSE NULL END
+      WHERE id = :responseId
     `, opts);
   },
 };

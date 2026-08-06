@@ -96,6 +96,7 @@ import clientSampleRouterV1 from "./client-sample.route";
 import trainingTrackerRouterV1 from "./training-tracker.route";
 import crTrackingRouterV1 from "./cr-tracking.route";
 import crEOTRouterV1 from "./cr-eot.route";
+import adminAiVettingRouterV1 from "./admin-ai-vetting.route";
 import adminDocumentRouterV1 from "./admin-document.route";
 import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
@@ -138,6 +139,12 @@ adminRouterV1.put(
 
 adminRouterV1.use("/applications", applicationRouterV1);
 adminRouterV1.use("/interview-prep", interviewPrepRouterV1);
+adminRouterV1.use(
+  "/ai-vetting",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  adminAiVettingRouterV1,
+);
 adminRouterV1.use(
   "/prompts",
   checkBlacklistedTokens,
