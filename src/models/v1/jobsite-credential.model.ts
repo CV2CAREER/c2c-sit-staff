@@ -13,6 +13,7 @@ import {
   AfterCreate,
   BeforeSave,
   BeforeUpdate,
+  AfterUpdate,
   AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
@@ -136,6 +137,8 @@ export class JobsiteCredential extends Model {
       pii._pii_generatedPassword ?? null,
       options.transaction,
     );
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_generatedPassword) instance.setDataValue('generatedPassword', pii._pii_generatedPassword);
   }
 
   @BeforeUpdate
@@ -164,6 +167,13 @@ export class JobsiteCredential extends Model {
         if (decrypted.generatedPassword) instance.setDataValue('generatedPassword', decrypted.generatedPassword);
       } catch {}
     }));
+  }
+
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: JobsiteCredential) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_generatedPassword) instance.setDataValue('generatedPassword', pii._pii_generatedPassword);
   }
 }
 

@@ -12,6 +12,7 @@ dotenv.config();
 import bcrypt from 'bcryptjs';
 import { getSequelize } from '../utils/sequelize';
 import { User } from '../models/v1/user.model';
+import { fieldEncryption } from '../utils/field-encryption';
 
 const ADMIN_EMAIL = 'admin@c2c.com';
 const ADMIN_PASSWORD = 'Admin@123456';
@@ -24,7 +25,8 @@ const BCRYPT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 12;
     await sequelize.authenticate();
     console.log('Connected to database\n');
 
-    const existing = await User.findOne({ where: { email: ADMIN_EMAIL } });
+    const existingId = await fieldEncryption.findUserByEmail(ADMIN_EMAIL);
+    const existing = existingId ? await User.findByPk(existingId) : null;
 
     if (existing) {
       console.log(`Admin already exists: ${ADMIN_EMAIL} (id: ${existing.id})`);

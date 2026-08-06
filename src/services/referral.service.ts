@@ -106,17 +106,26 @@ export class ReferralService {
 
       // Fetch isAmbassador + role + referrer names in one batch query
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
-      const referrerUsers = await User.findAll({
-        where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
-        raw: true,
+      const referrerEmailToId = new Map<string, string>();
+      for (const refEmail of referrerEmails) {
+        const rid = await fieldEncryption.findUserByEmail(refEmail);
+        if (rid) referrerEmailToId.set(refEmail, rid);
+      }
+      const referrerUserIds = [...referrerEmailToId.values()];
+      const referrerUsers = referrerUserIds.length
+        ? await User.findAll({ where: { id: { [Op.in]: referrerUserIds } }, attributes: ['id', 'isAmbassador', 'role', 'firstName', 'lastName'] })
+        : [];
+      const referrerUserById = new Map(referrerUsers.map((u: any) => [u.id, u]));
+      const ambassadorMap = new Map<string, boolean>();
+      const partnerMap = new Map<string, boolean>();
+      const referrerNameMap = new Map<string, string>();
+      referrerEmailToId.forEach((rid, refEmail) => {
+        const u = referrerUserById.get(rid);
+        if (!u) return;
+        ambassadorMap.set(refEmail, u.isAmbassador);
+        partnerMap.set(refEmail, u.role === 'partner');
+        referrerNameMap.set(refEmail, u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : refEmail);
       });
-      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
-      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
-      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
-        u.email,
-        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
-      ]));
 
       const mapped = rows.map((ref: any) => {
         const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
@@ -191,17 +200,26 @@ export class ReferralService {
       });
 
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
-      const referrerUsers = await User.findAll({
-        where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
-        raw: true,
+      const referrerEmailToId = new Map<string, string>();
+      for (const refEmail of referrerEmails) {
+        const rid = await fieldEncryption.findUserByEmail(refEmail);
+        if (rid) referrerEmailToId.set(refEmail, rid);
+      }
+      const referrerUserIds = [...referrerEmailToId.values()];
+      const referrerUsers = referrerUserIds.length
+        ? await User.findAll({ where: { id: { [Op.in]: referrerUserIds } }, attributes: ['id', 'isAmbassador', 'role', 'firstName', 'lastName'] })
+        : [];
+      const referrerUserById = new Map(referrerUsers.map((u: any) => [u.id, u]));
+      const ambassadorMap = new Map<string, boolean>();
+      const partnerMap = new Map<string, boolean>();
+      const referrerNameMap = new Map<string, string>();
+      referrerEmailToId.forEach((rid, refEmail) => {
+        const u = referrerUserById.get(rid);
+        if (!u) return;
+        ambassadorMap.set(refEmail, u.isAmbassador);
+        partnerMap.set(refEmail, u.role === 'partner');
+        referrerNameMap.set(refEmail, u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : refEmail);
       });
-      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
-      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
-      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
-        u.email,
-        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
-      ]));
 
       const mapped = rows.map((ref: any) => ({
         ...ref,
@@ -1128,18 +1146,16 @@ export class ReferralService {
     }
 
     // Check if email already exists as registered user
-    const existingEmailUser = await User.findOne({ 
-      where: { email: referralData.email.toLowerCase() } 
-    });
+    const existingEmailUserId = await fieldEncryption.findUserByEmail(referralData.email.toLowerCase());
+    const existingEmailUser = existingEmailUserId ? await User.findByPk(existingEmailUserId) : null;
     if (existingEmailUser) {
       throw new ErrorHandler(`User with email ${referralData.email} is already registered`, 400);
     }
 
     // Check if phone number already exists as registered user
     if (referralData.phoneNumber) {
-      const existingPhoneUser = await User.findOne({ 
-        where: { phoneNumber: referralData.phoneNumber } 
-      });
+      const existingPhoneUserId = await fieldEncryption.findUserByPhone(referralData.phoneNumber);
+      const existingPhoneUser = existingPhoneUserId ? await User.findByPk(existingPhoneUserId) : null;
       if (existingPhoneUser) {
         throw new ErrorHandler(`User with phone number ${referralData.phoneNumber} is already registered`, 400);
       }

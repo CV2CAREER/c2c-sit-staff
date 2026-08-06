@@ -221,6 +221,80 @@ export class BlogService {
     }
   }
 
+  static async getPublishedBlogPosts(filters: { category?: string; search?: string } = {}) {
+    try {
+      const whereClause: any = {
+        isPublished: true,
+        recycled: false,
+      };
+
+      if (filters.category && filters.category !== "All") {
+        whereClause.category = filters.category;
+      }
+
+      if (filters.search) {
+        const searchLower = `%${filters.search.toLowerCase()}%`;
+        whereClause[Op.or] = [
+          { title: { [Op.iLike]: searchLower } },
+          { excerpt: { [Op.iLike]: searchLower } },
+          { category: { [Op.iLike]: searchLower } },
+        ];
+      }
+
+      const posts = await Blog.findAll({
+        where: whereClause,
+        order: [["publishedAt", "DESC"]],
+        attributes: [
+          "id",
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "author",
+          "featuredImage",
+          "category",
+          "tags",
+          "publishedAt",
+          "viewCount",
+        ],
+      });
+
+      return posts.map(toLegacyBlogPost);
+    } catch (error: any) {
+      logger.error(`Failed to get published blog posts: ${error.message}`);
+      throw error;
+    }
+  }
+
+  static async getPublishedBlogPostBySlug(slug: string) {
+    try {
+      const post = await Blog.findOne({
+        where: {
+          slug,
+          isPublished: true,
+          recycled: false,
+        },
+      });
+
+      if (!post) {
+        throw new Error("Blog post not found");
+      }
+
+      setImmediate(async () => {
+        try {
+          await Blog.increment("viewCount", { where: { id: post.id } });
+        } catch (err) {
+          logger.error(`Failed to increment view count: ${err}`);
+        }
+      });
+
+      return toLegacyBlogPost(post);
+    } catch (error: any) {
+      logger.error(`Failed to get published blog post by slug: ${error.message}`);
+      throw error;
+    }
+  }
+
   static async getBlogStats() {
     const now = new Date();
     const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

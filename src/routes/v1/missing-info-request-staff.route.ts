@@ -7,6 +7,7 @@ import {
   sendMissingInfoRequest,
   getOutstandingRequests,
   getRequestStats,
+  getRequestResponses,
   bulkSendReminder,
 } from "@/controllers/v1/missing-info-request-staff.controller";
 
@@ -22,6 +23,7 @@ missingInfoRequestStaffRouter.use(
 missingInfoRequestStaffRouter.post("/send", authorizeRoles("admin"), sendMissingInfoRequest);
 missingInfoRequestStaffRouter.get("/outstanding", getOutstandingRequests);
 missingInfoRequestStaffRouter.get("/stats", getRequestStats);
+missingInfoRequestStaffRouter.get("/:id/responses", getRequestResponses);
 missingInfoRequestStaffRouter.post("/bulk-reminder", authorizeRoles("admin"), bulkSendReminder);
 
 export default missingInfoRequestStaffRouter;
