@@ -2,7 +2,7 @@ import CustomButton from '../CustomButton/CustomButton';
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { parsePhoneNumber } from 'libphonenumber-js';
-import { utils, read } from 'xlsx';
+import ExcelJS from 'exceljs';
 import Icon from '../Icons';
 import { ButtonProperties } from '@/lib/helpers';
 import { generatePartnerCode } from '@/utils/helperFns';
@@ -104,41 +104,64 @@ const BulkReferral = ({
     if (file) {
       const reader = new FileReader();
 
-      reader.onload = (e: any) => {
-        const data = new Uint8Array(e.target.result as ArrayBuffer); // Read file as binary
-        const workbook = read(data, { type: 'array' });
+      reader.onload = async (e: any) => {
+        try {
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(e.target.result as ArrayBuffer);
 
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+          const worksheet = workbook.worksheets[0];
+          const headerRow = worksheet?.getRow(1);
+          const headers: string[] = [];
+          headerRow?.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+            headers[colNumber - 1] = cell.text.trim();
+          });
 
-        // Convert sheet to JSON
-        const rows: RowData[] = utils.sheet_to_json<RowData>(sheet);
+          if (headers.length === 0) {
+            toast.error('The file is empty or invalid');
+            setLoading(false);
+            return;
+          }
 
-        if (rows.length === 0) {
-          toast.error('The file is empty or invalid');
+          if (!validateHeaders(headers)) {
+            toast.error('The uploaded file is missing required headers or is invalid.');
+            setLoading(false);
+            return;
+          }
+
+          // Convert each subsequent row to an object keyed by the header row
+          const rows: RowData[] = [];
+          worksheet!.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const rowObj: Record<string, any> = {};
+            row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+              const header = headers[colNumber - 1];
+              if (header) rowObj[header] = cell.text;
+            });
+            if (Object.keys(rowObj).length > 0) rows.push(rowObj as RowData);
+          });
+
+          if (rows.length === 0) {
+            toast.error('The file is empty or invalid');
+            setLoading(false);
+            return;
+          }
+
+          const { valid, invalid } = validateExcelRows(rows);
+
+          setValidRows(valid);
+          setSpreadSheetAdded(true);
+
+          if (invalid.length > 0) {
+            toast(`Removed ${invalid.length} rows due to invalid data`);
+          }
+          setTimeout(() => {
+            setLoading(false);
+          }, 1500);
+        } catch (error) {
+          console.error(error);
+          toast.error('Failed to read the uploaded file');
           setLoading(false);
-          return;
         }
-
-        // Extract headers from the first row
-        const headers = Object.keys(rows[0]);
-        if (!validateHeaders(headers)) {
-          toast.error('The uploaded file is missing required headers or is invalid.');
-          setLoading(false);
-          return;
-        }
-
-        const { valid, invalid } = validateExcelRows(rows);
-
-        setValidRows(valid);
-        setSpreadSheetAdded(true);
-
-        if (invalid.length > 0) {
-          toast(`Removed ${invalid.length} rows due to invalid data`);
-        }
-        setTimeout(() => {
-          setLoading(false);
-        }, 1500);
       };
 
       reader.readAsArrayBuffer(file);

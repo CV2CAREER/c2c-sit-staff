@@ -18,7 +18,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import SearchInput from "@/components/ui/search";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import RejectCredentialModal from "./reject-credential-modal";
 import ConfirmActionModal from "./confirm-action-modal";
 import ImportCsvModal from "./import-csv-modal";
@@ -222,23 +222,56 @@ const JobsiteCredentialsDataTable: React.FC = () => {
       "Last Updated": c.updatedAt ? new Date(c.updatedAt).toLocaleString() : "",
     }));
 
-  const handleExportCsv = () => {
-    const worksheet = XLSX.utils.json_to_sheet(buildExportRows());
-    const csv = XLSX.utils.sheet_to_csv(worksheet);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `jobsite-credentials-${tab}.csv`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleExportExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(buildExportRows());
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Jobsite Credentials");
-    XLSX.writeFile(workbook, `jobsite-credentials-${tab}.xlsx`);
+  const csvCell = (value: unknown) => {
+    const str = String(value ?? "");
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const handleExportCsv = () => {
+    const exportRows = buildExportRows();
+    if (exportRows.length === 0) return;
+
+    const headers = Object.keys(exportRows[0]);
+    const lines = [
+      headers.join(","),
+      ...exportRows.map((row) =>
+        headers.map((header) => csvCell((row as Record<string, unknown>)[header])).join(","),
+      ),
+    ];
+
+    downloadBlob(
+      new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" }),
+      `jobsite-credentials-${tab}.csv`,
+    );
+  };
+
+  const handleExportExcel = async () => {
+    const exportRows = buildExportRows();
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Jobsite Credentials");
+
+    if (exportRows.length > 0) {
+      worksheet.columns = Object.keys(exportRows[0]).map((key) => ({ header: key, key }));
+      worksheet.addRows(exportRows);
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadBlob(
+      new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `jobsite-credentials-${tab}.xlsx`,
+    );
   };
 
   const columns: GridColDef[] = useMemo(
