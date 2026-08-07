@@ -9,7 +9,6 @@ import {
   getRequestStats,
   getRequestResponses,
   bulkSendReminder,
-  getRequestResponses,
 } from "@/controllers/v1/missing-info-request-staff.controller";
 
 const missingInfoRequestStaffRouter = Router();
