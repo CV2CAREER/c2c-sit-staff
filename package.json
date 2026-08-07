@@ -9,7 +9,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "audit": "npm audit --omit=dev",
-    "check-all": "",
+    "check-all": "npm run audit && npm run build",
     "prepare": "node scripts/setup-hooks.js"
   },
   "dependencies": {
@@ -56,7 +56,6 @@
     "@tiptap/extension-underline": "^3.22.0",
     "@tiptap/react": "^3.22.0",
     "@tiptap/starter-kit": "^3.22.0",
-    "@types/diff": "^7.0.2",
     "antd": "^6.3.4",
     "axios": "^1.7.2",
     "chart.js": "^4.5.1",
@@ -68,7 +67,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.20",
     "deep-object-diff": "^1.1.9",
-    "diff": "^9.0.0",
+    "exceljs": "^4.4.0",
     "formik": "^2.4.9",
     "framer-motion": "^12.38.0",
     "libphonenumber-js": "^1.12.40",
@@ -98,7 +97,6 @@
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6",
     "zustand": "^4.5.4"
   },
@@ -121,6 +119,7 @@
     "typescript": "^5"
   },
   "overrides": {
-    "tailwindcss": "$tailwindcss"
+    "tailwindcss": "$tailwindcss",
+    "uuid": "^11.1.1"
   }
 }
