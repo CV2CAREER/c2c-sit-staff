@@ -13,11 +13,16 @@ import {
   CreatedAt,
   UpdatedAt,
   Unique,
+  BeforeSave,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import { Plan } from "./plan.model";
 import { Classification, Question } from "../../types/profile.types";
 import { AggregatorLink } from "../../types/aggregator.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 @Table({
   tableName: "profiles",
@@ -305,4 +310,57 @@ export class Profile extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @BeforeSave
+  static captureAndClearPlaintext(instance: Profile) {
+    (instance as any)._pii_ssn = instance.getDataValue('socialSecurityNumber');
+    (instance as any)._pii_tin = instance.getDataValue('taxIdentificationNumber');
+    (instance as any)._pii_dob = instance.getDataValue('dateOfBirth');
+    instance.setDataValue('socialSecurityNumber', null);
+    instance.setDataValue('taxIdentificationNumber', null);
+    instance.setDataValue('dateOfBirth', null);
+  }
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: Profile, options: any) {
+    const pii = instance as any;
+    await fieldEncryption.encryptProfileFields(
+      instance.id,
+      pii._pii_ssn ?? null,
+      pii._pii_tin ?? null,
+      pii._pii_dob ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: Profile, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['socialSecurityNumber', 'taxIdentificationNumber', 'dateOfBirth'].includes(f))) {
+      await fieldEncryption.encryptProfileFields(
+        instance.id,
+        pii._pii_ssn ?? null,
+        pii._pii_tin ?? null,
+        pii._pii_dob ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: Profile[] | Profile | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      try {
+        const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
+        if (!decrypted) return;
+        if (decrypted.socialSecurityNumber) instance.setDataValue('socialSecurityNumber', decrypted.socialSecurityNumber);
+        if (decrypted.taxIdentificationNumber) instance.setDataValue('taxIdentificationNumber', decrypted.taxIdentificationNumber);
+        if (decrypted.dateOfBirth) instance.setDataValue('dateOfBirth', decrypted.dateOfBirth);
+      } catch {}
+    }));
+  }
 }

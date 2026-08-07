@@ -7,34 +7,32 @@ import {
 } from "../../controllers/v1/slack-manage.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const slackManageRouterV1 = Router();
 
+slackManageRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
+
 slackManageRouterV1.get(
   "/",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
   getAllSlackMessages,
 );
 
 slackManageRouterV1.post(
   "/",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
+  authorizeRoles("admin"),
   createSlackMessage,
 );
 
 slackManageRouterV1.put(
   "/:id",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
+  authorizeRoles("admin"),
   updateSlackMessage,
 );
 
 slackManageRouterV1.get(
   "/:id",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
+  authorizeRoles("admin"),
   getMessageById,
 );
 

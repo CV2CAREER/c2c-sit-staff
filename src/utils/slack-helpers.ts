@@ -57,23 +57,21 @@ export const sendStandardSlackNotification = async (
       channel = params.channel ?? SlackChannel.TOWN_CRIER;
     }
 
-    // Only tag teammates in true production — local/rat/iat/sit/uat notifications
-    // go out silently so they don't get mistaken for real production alerts.
+    // Add mentions if teammate mentions are requested — only tag real people in production,
+    // so local/pre-production runs never ping anyone on Slack.
     let mentions;
-    if (isProductionEnv) {
-      if (params.teamMentions === 'CSM') {
-        const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
-        mentions =
-          (csmSlackMentions ?? []).length > 0
-            ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
-            : '';
-      } else if (params.teamMentions === 'DEVOPS') {
-        const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
-        mentions =
-          (devopsSlackMentions ?? []).length > 0
-            ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
-            : '';
-      }
+    if (NODE_ENV === 'prod' && params.teamMentions === 'CSM') {
+      const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
+      mentions =
+        (csmSlackMentions ?? []).length > 0
+          ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
+          : '';
+    } else if (NODE_ENV === 'prod' && params.teamMentions === 'DEVOPS') {
+      const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
+      mentions =
+        (devopsSlackMentions ?? []).length > 0
+          ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
+          : '';
     }
 
     const finalMessage = mentions

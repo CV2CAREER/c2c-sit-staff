@@ -7,10 +7,11 @@ import { PlacementController } from '../../controllers/v1/placement.controller';
 // 	triggerLeaderboardJob,
 // 	triggerUnsatisfiedClientsReport,
 // } from '../../controllers/cronJob.controller';
+import { authorizeRoles } from '@/middlewares/authorizeRoles';
 
 const placementRouterV1 = Router();
 
-placementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
+placementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 /**
  * Placement Controller Routes

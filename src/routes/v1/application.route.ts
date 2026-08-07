@@ -16,9 +16,9 @@ applicationRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 
 // Application Endpoints
 applicationRouterV1.get("/", getApplications);
-applicationRouterV1.post("/emails", authorizeRoles("admin", "assistant"), postApplicationEmail);
-applicationRouterV1.delete("/:applicationId", softDeleteApplication);
-applicationRouterV1.patch("/:applicationId/restore", restoreApplication);
-applicationRouterV1.delete("/:applicationId/permanent", permanentDeleteApplication);
+applicationRouterV1.post("/emails", authorizeRoles("admin"), postApplicationEmail);
+applicationRouterV1.delete("/:applicationId", authorizeRoles("admin"), softDeleteApplication);
+applicationRouterV1.patch("/:applicationId/restore", authorizeRoles("admin"), restoreApplication);
+applicationRouterV1.delete("/:applicationId/permanent", authorizeRoles("admin"), permanentDeleteApplication);
 
 export default applicationRouterV1;

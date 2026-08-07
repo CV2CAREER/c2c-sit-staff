@@ -6,17 +6,9 @@ import { ensureAnalyticsIndexes } from '../services/admin/analytics.index-bootst
 import { ensureCampaignIndexes } from '../services/admin/campaign.index-bootstrap.service';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
-import { ClientContentService } from '../services/admin/client-content.service';
-import { ClientSupportDocument } from '../models/v1/client-support-document.model';
-import { EmailLog } from "../models/v1/email-log.model";
-import { EmailTemplate } from "../models/v1/email-template.model";
-import { VCS, VCSPrompt } from "../models/v1/keyword-population.model";
-import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
-import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
-import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
-import { TourCount } from '../models/v1/tour-count.model';
 
-// import { ManualApplication } from '../models/v1/manual-application.model';
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
+
 // import { TrainingTrackerSession } from "../models/v1/training-tracker-session.model";
 // import { AccessLevelService } from "../services/admin/access-level.service";
 // import { CommunicationTemplateService } from "../services/admin/communication-template.service";
@@ -25,94 +17,6 @@ const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
 const isProduction = NODE_ENV !== 'local';
 
-// const ensureTrainingTrackerSessions = async () => {
-//   await TrainingTrackerSession.sync({ force: false });
-
-//   for (const sessionNumber of [1, 2, 3, 4]) {
-//     await TrainingTrackerSession.findOrCreate({
-//       where: { sessionNumber },
-//       defaults: {
-//         sessionNumber,
-//         name: `Session ${sessionNumber}`,
-//       },
-//     });
-//   }
-// };
-
-// const ensureCRTrackingHistoryTable = async () => {
-//   await CRTrackingHistory.sync({ force: false });
-// };
-
-// const ensureAccessLevelTables = async () => {
-//   await AccessLevelService.ensureAccessLevelTablesAndSeed();
-// };
-
-// const ensureCommunicationTemplatesTable = async () => {
-//   await CommunicationTemplateService.ensureTemplatesTable();
-// };
-
-const ensureClientContentTable = async () => {
-  await ClientContentService.ensureClientContentTable();
-};
-
-// Creates `client_support_documents` (and its category ENUM) on existing
-// databases, where the full sync below is skipped. `alter` so that columns
-// added after the table was first created (roleTitles, clientConfirmed) land
-// too — remove once every environment is up to date.
-// const ensureClientSupportDocumentsTable = async () => {
-//   logger.info('Ensuring client_support_documents table exists');
-//   await ClientSupportDocument.sync({ force: false });
-//   await EmailLog.sync({ force: false });
-//   logger.info('client_support_documents table ensured');
-// };
-
-// Creates `email_templates` on existing databases and seeds it from the .ejs
-// files under views/emails on every boot — seeding is upsert-by-name so it's
-// safe to run repeatedly and never overwrites a template an admin has edited
-// via the DB unless SEED_EMAIL_TEMPLATES_FORCE=true is set. `alter` so columns
-// added after the table first existed (e.g. `variables`) land on deploy too.
-// const ensureEmailTemplatesTable = async () => {
-//   logger.info('Ensuring email_templates table exists');
-//   await EmailTemplate.sync({ alter: true });
-//   logger.info('email_templates table ensured');
-// };
-
-// Creates `vcs_prompts`/`vcs_configurations` on existing databases and seeds
-// the AI-generation prompts stored there (cover letter, role title
-// recommendations), each under its own `key` so they don't collide with the
-// `upload_role_titles_prompt` config already stored in the same tables.
-// `alter` so the `key` column added to VCS lands on deploy too.
-// const ensureVcsPromptsTable = async () => {
-//   logger.info('Ensuring vcs_prompts/vcs_configurations tables exist');
-//   await VCSPrompt.sync({ alter: true });
-//   await VCS.sync({ alter: true });
-//   logger.info('vcs_prompts/vcs_configurations tables ensured');
-// };
-
-// Creates `interview_pack_processes` on existing databases — remove once
-// every environment is up to date.
-// const ensureInterviewPackProcessesTable = async () => {
-//   logger.info('Ensuring interview_pack_processes table exists');
-//   await InterviewPackProcess.sync({ force: false });
-//   logger.info('interview_pack_processes table ensured');
-// };
-
-// Creates `tour_counts` on existing databases — remove once every
-// environment is up to date.
-// const ensureTourCountsTable = async () => {
-//   logger.info('Ensuring tour_counts table exists');
-//   await TourCount.sync({ force: false });
-//   logger.info('tour_counts table ensured');
-// };
-
-// Creates `jobsite_credentials` and `jobsite_credential_audits` on existing
-// databases — brand new tables, remove once every environment is up to date.
-const ensureJobsiteCredentialsTables = async () => {
-  logger.info('Ensuring jobsite_credentials tables exist');
-  await JobsiteCredential.sync({ force: false });
-  await JobsiteCredentialAudit.sync({ force: false });
-  logger.info('jobsite_credentials tables ensured');
-};
 
 // Adds the `isActive` activation-gate column to `client_support_documents`
 // on existing databases — remove once every environment is up to date.
@@ -149,7 +53,23 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
-        // await ManualApplication.sync({ alter: true }); // new schema
+        // AI Vetting Agent (Sprint 17): adds the 5 ai_* columns to
+        // manual_applications and creates the ai_vetting_comparisons table
+        // on existing environments where the full sync below is skipped.
+        // NOTE: `alter: true` would also try to change unrelated column
+        // types (some referenced by views) and fail, so we only ADD the
+        // missing ai_* columns idempotently instead.
+        await newSequelize.query(`
+          ALTER TABLE manual_applications
+            ADD COLUMN IF NOT EXISTS ai_status VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS ai_score VARCHAR(5),
+            ADD COLUMN IF NOT EXISTS ai_reason TEXT,
+            ADD COLUMN IF NOT EXISTS ai_classified_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS ai_prompt_version VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS "Salary" VARCHAR(700) DEFAULT 'N/A',
+            ADD COLUMN IF NOT EXISTS "Skills" TEXT DEFAULT 'N/A';
+        `);
+        await AiVettingComparison.sync({ force: false }); // new table
         // await TrainingTracker.sync({ alter: true });
         // await Profile.sync({ alter: true });
         // await Upload.sync({ alter: true }); // new isActive column
@@ -218,16 +138,6 @@ export const connectDB = async (): Promise<void> => {
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
         await newSequelize.sync({ alter: true });
-        // await ensureTrainingTrackerSessions();
-        // await ensureCRTrackingHistoryTable();
-        // await ensureAccessLevelTables();
-        // await ensureCommunicationTemplatesTable();
-        await ensureClientContentTable();
-        // await ensureClientSupportDocumentsTable();
-        // await ensureEmailTemplatesTable();
-        // await ensureVcsPromptsTable();
-        // await ensureInterviewPackProcessesTable();
-        // await ensureTourCountsTable();
 
         // Get tables AFTER sync
         const tablesAfter: string[] = await queryInterface.showAllTables();

@@ -20,6 +20,7 @@ dotenv.config();
 
 import { getSequelize } from '../utils/sequelize';
 import { User } from '../models/v1/user.model';
+import { fieldEncryption } from '../utils/field-encryption';
 import { Feature, SubscriptionTier } from '../models/v1/feature.model';
 import { Plan } from '../models/v1/plan.model';
 import { Profile } from '../models/v1/profile.model';
@@ -356,7 +357,8 @@ async function getOrCreateFeature(tier: SubscriptionTier): Promise<Feature> {
 
 async function createTestAccount(account: TestAccount): Promise<void> {
   // Check if user already exists
-  let user = await User.findOne({ where: { email: account.email } });
+  const existingUserId = await fieldEncryption.findUserByEmail(account.email);
+  let user = existingUserId ? await User.findByPk(existingUserId) : null;
 
   if (user) {
     console.log(`  User already exists: ${account.email}`);

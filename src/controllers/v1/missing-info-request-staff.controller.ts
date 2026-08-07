@@ -29,6 +29,13 @@ export const getRequestStats = catchAsyncError(async (req: any, res: Response) =
   return res.apiSuccess(stats, "Stats fetched", 200);
 });
 
+export const getRequestResponses = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Fetching responses for request ${id}`);
+  const result = await MissingInfoRequestStaffService.getRequestResponses(id);
+  return res.apiSuccess(result, "Request responses fetched", 200);
+});
+
 export const bulkSendReminder = catchAsyncError(async (req: any, res: Response) => {
   const { requestIds } = req.body;
   logger.info(`Bulk reminder triggered by: ${req.user?.email ?? "unknown"}, count: ${requestIds?.length ?? 0}`);

@@ -1,7 +1,6 @@
 import { getServiceLogger } from "../../utils/createLogger";
 import { AuditLog } from "../../models/v1/audit-log.model";
-import { User } from "../../models/v1/user.model";
-import { Op } from "sequelize";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 const logger = getServiceLogger("audit-log-service");
 
@@ -61,14 +60,9 @@ export class AuditLogService {
       const where: any = {};
 
       if (search) {
-        const user = await User.findOne({
-          where: { email: { [Op.iLike]: `%${search}%` } },
-          attributes: ['id'],
-          raw: true
-        });
-
-        if (user) {
-          where.userId = user.id;
+        const [matchedUserId] = await fieldEncryption.findUsersByEmailPartial(search, 1);
+        if (matchedUserId) {
+          where.userId = matchedUserId;
         }
       }
 

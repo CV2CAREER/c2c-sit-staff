@@ -3,6 +3,7 @@ import { getServiceLogger } from "../utils/createLogger";
 import ErrorHandler from "../utils/errorHandler";
 import { Upload } from "../models/v1/upload.model";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { AdminDocumentService } from "./admin-document.service";
 import {
   InterviewPackProcess,
@@ -54,20 +55,22 @@ export class InterviewPackService {
     jobContent: string,
     jobLink: string | undefined,
     previousContext: Record<string, unknown> | null,
-  ): Promise<string> {
+  ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
     const { VCS, VCSPrompt } = await import("../models/v1/keyword-population.model");
     const foundVCS = await VCS.findOne({ where: { active: true, key } });
     const promptRow = foundVCS ? await VCSPrompt.findByPk(foundVCS.activePromptId) : null;
 
-    if (!promptRow) {
+    if (!promptRow || !foundVCS) {
       throw new ErrorHandler(`Interview pack prompt "${key}" is not configured`, 500);
     }
 
-    return promptRow.prompt
+    const prompt = promptRow.prompt
       .replace(/\{\{CV_CONTENT\}\}/g, cvText)
       .replace(/\{\{JOB_CONTENT\}\}/g, jobContent || "")
       .replace(/\{\{JOB_LINK\}\}/g, jobLink || "Not provided")
       .replace(/\{\{PREVIOUS_CONTEXT\}\}/g, previousContext ? JSON.stringify(previousContext) : "");
+
+    return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
   }
 
   private static parseStageJson<T>(aiResponse: string, stageLabel: string): T {
@@ -189,8 +192,42 @@ export class InterviewPackService {
 
       const key = STAGE_PROMPT_KEYS[stage - 1];
       const stageLabel = STAGE_LABELS[stage - 1];
-      const prompt = await this.getStagePrompt(key, resumeText, process.jobContent, process.jobLink, previousContext);
-      const aiResponse = await queryDigitalOceanAI(prompt);
+      const { prompt, vcsId, promptId, version } = await this.getStagePrompt(
+        key,
+        resumeText,
+        process.jobContent,
+        process.jobLink,
+        previousContext,
+      );
+
+      const startedAt = Date.now();
+      let aiResponse: string;
+      try {
+        aiResponse = await queryDigitalOceanAI(prompt);
+        VcsPromptUsageService.record({
+          key,
+          vcsId,
+          promptId,
+          version,
+          promptLength: prompt.length,
+          responseLength: aiResponse.length,
+          durationMs: Date.now() - startedAt,
+          success: true,
+        });
+      } catch (error: any) {
+        VcsPromptUsageService.record({
+          key,
+          vcsId,
+          promptId,
+          version,
+          promptLength: prompt.length,
+          durationMs: Date.now() - startedAt,
+          success: false,
+          errorMessage: error?.message,
+        });
+        throw error;
+      }
+
       const stageResult = this.parseStageJson<Record<string, unknown>>(aiResponse, stageLabel);
 
       const resultField = STAGE_RESULT_FIELDS[stage - 1];

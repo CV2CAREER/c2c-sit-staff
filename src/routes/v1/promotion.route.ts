@@ -8,10 +8,11 @@ import {
 } from "../../controllers/v1/promotion.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const promotionRouterV1 = Router();
 
-promotionRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
+promotionRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin"));
 
 promotionRouterV1.route("/")
   .get(getPromotions)

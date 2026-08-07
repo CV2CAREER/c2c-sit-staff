@@ -251,6 +251,7 @@ export const rejectJobsiteCredential = catchAsyncError(
       id,
       adminId,
       reason,
+      host,
       note,
       host,
     );

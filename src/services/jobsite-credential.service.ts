@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { getServiceLogger } from "../utils/createLogger";
 import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
+import { fieldEncryption } from "../utils/field-encryption";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
@@ -640,8 +641,8 @@ export async function rejectJobsiteCredential(
   credentialId: string,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note: string | undefined,
   host: string,
+  note: string | undefined,
 ): Promise<JobsiteCredential> {
   try {
     if (
@@ -694,7 +695,7 @@ export async function rejectJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendRejectedNotifications(credential, adminId, reason, note, host);
+        await sendRejectedNotifications(credential, adminId, reason, host, note);
       } catch (err) {
         logger.error("Background reject notification error:", err);
       }
@@ -712,8 +713,8 @@ async function sendRejectedNotifications(
   credential: JobsiteCredential,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note: string | undefined,
   host: string,
+  note: string | undefined,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -892,10 +893,10 @@ export async function importJobsiteCredentialsFromCsv(
     }
 
     try {
-      const client = await User.findOne({
-        where: { email: clientEmail.trim() },
+      const clientUserId = await fieldEncryption.findUserByEmail(clientEmail.trim());
+      const client = clientUserId ? await User.findByPk(clientUserId, {
         attributes: ["id"],
-      });
+      }) : null;
 
       if (!client) {
         result.skipped.push({
