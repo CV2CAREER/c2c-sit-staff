@@ -2,6 +2,7 @@ import { Router } from "express";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import {
+  activateClientSupportDocumentController,
   deleteClientSupportDocumentController,
   getClientSupportDocumentUrlController,
   getClientSupportDocumentsController,
@@ -32,6 +33,11 @@ clientSupportDocumentRouterV1.get(
 clientSupportDocumentRouterV1.get(
   "/:id/download-url",
   getClientSupportDocumentUrlController,
+);
+
+clientSupportDocumentRouterV1.patch(
+  "/:id/activate",
+  activateClientSupportDocumentController,
 );
 
 clientSupportDocumentRouterV1.delete(
