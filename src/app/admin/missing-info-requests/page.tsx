@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import MissingInfoRequestsPageClient from "./_components/MissingInfoRequestsPageClient";
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function MissingInfoRequestsPage() {
-  return <MissingInfoRequestsPageClient />;
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[13px] text-[#9CA3AF]">Loading requests...</div>}>
+      <MissingInfoRequestsPageClient />
+    </Suspense>
+  );
 }

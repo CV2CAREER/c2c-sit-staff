@@ -25,6 +25,11 @@ export const generateSupportDocumentRows = (documents: any[]) =>
       fileName: doc.filename ?? "Unknown File",
       type: CATEGORY_LABELS[doc.category] ?? doc.category,
       source: "admin",
+      // Distinguishes this row from an Upload row for the shared
+      // DocumentTableActions component — the two record types live in
+      // different tables with different activate endpoints.
+      recordType: "supportDocument",
+      isActive: doc.isActive,
       dateUpdated: doc.uploadedAt ?? doc.createdAt,
       extractionType: "N/A",
       dataPoints: roleTitleCount

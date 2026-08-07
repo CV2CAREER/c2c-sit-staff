@@ -48,24 +48,29 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
   }, [userData?.data, setUser])
 
   useEffect(() => {
-    if (allUserData?.data) {
-      const users = Array.isArray(allUserData.data) ? allUserData.data : (allUserData.data.items ?? []);
-      setAllData((prev: any[]) => {
-        const processedData = users
-              ?.map((data: any) => ({
-                Full_Name: `${data.firstName} ${data.lastName}`,
-                email: data.email,
-                id: data.id,
-              }))
-              .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name));
-        // Only update if data actually changed
-        if (JSON.stringify(prev) === JSON.stringify(processedData)) {
-          return prev;
-        }
-        return processedData;
-      });
-    }
-  }, [allUserData?.data]);
+      if (allUserData?.data) {
+        const rawData = allUserData.data;
+        const users = Array.isArray(rawData)
+          ? rawData
+          : rawData.users
+            ?? rawData.items
+            ?? [];
+        setAllData((prev: any[]) => {
+          const processedData = users
+                ?.map((data: any) => ({
+                  Full_Name: `${data.firstName} ${data.lastName}`,
+                  email: data.email,
+                  id: data.id,
+                }))
+                .sort((a: any, b: any) => a.Full_Name.localeCompare(b.Full_Name));
+          // Only update if data actually changed
+          if (JSON.stringify(prev) === JSON.stringify(processedData)) {
+            return prev;
+          }
+          return processedData;
+        });
+      }
+    }, [allUserData?.data]);
 
   const handleDropDownIsOpened = () => {
     setDropdownIsOpened((prev) => !prev);

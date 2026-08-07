@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useOutstandingRequests,
   useRequestStats,
@@ -21,15 +22,25 @@ const AGE_FILTERS = [
   { key: "7", label: ">7 days" },
 ];
 
+const STATUS_FILTERS = [
+  { key: "", label: "All requests" },
+  { key: "pending", label: "Pending" },
+  { key: "viewed", label: "Viewed" },
+  { key: "in_progress", label: "In progress" },
+  { key: "submitted", label: "Submitted" },
+];
+
 export default function MissingInfoRequestsPageClient() {
   const [search, setSearch] = useState("");
   const [ageFilter, setAgeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [viewResponsesId, setViewResponsesId] = useState<string | null>(null);
 
   const { data: requests, pagination, isLoading } = useOutstandingRequests({
     age: ageFilter || undefined,
+    status: statusFilter || undefined,
   });
 
   const { stats } = useRequestStats();
@@ -190,6 +201,20 @@ export default function MissingInfoRequestsPageClient() {
               onClick={() => setAgeFilter(f.key)}
               className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
                 ageFilter === f.key
+                  ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
+                  : "bg-white border border-[#E5E9EF] text-[#1F2937]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-[#E5E9EF]" />
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
+                statusFilter === f.key
                   ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
                   : "bg-white border border-[#E5E9EF] text-[#1F2937]"
               }`}
