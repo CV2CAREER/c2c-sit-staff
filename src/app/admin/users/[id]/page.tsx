@@ -11,7 +11,7 @@ import AdminUserJobsiteCredential from "../_components/AdminUserJobsiteCredentia
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
-import OnBoardingProgress from "../_components/onboarding-progress";
+import AdminClientJourney from "../_components/AdminClientJourney";
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -99,9 +99,8 @@ function UserDetailsContent({ userId }: { userId: string }) {
                 </div>
             </motion.div>
             <motion.div variants={itemVariants}>
-                <OnBoardingProgress userId={currentUserId}/>
+                <AdminClientJourney userId={currentUserId}/>
             </motion.div>
-            {/* <OnboardingStatus/> */}
             <motion.div variants={itemVariants}>
                 <ClientDocument userId={currentUserId} />
             </motion.div>

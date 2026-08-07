@@ -50,7 +50,7 @@ const TriggerApplicationAction = () => {
               ) : (
                 <HiOutlinePlay className="w-4 h-4" />
               )}
-              Application Start
+              Commence Application
             </Button>
             <Button
               onClick={() => setConfirmType("END")}
@@ -62,7 +62,7 @@ const TriggerApplicationAction = () => {
               ) : (
                 <HiOutlineFlag className="w-4 h-4" />
               )}
-              Application End
+              End Application
             </Button>
           </div>
         </div>
