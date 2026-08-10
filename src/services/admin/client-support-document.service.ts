@@ -279,7 +279,7 @@ export const uploadClientSupportDocuments = async ({
       size: uploadResult.size,
       metadata,
       roleTitles,
-      isActive: false,
+      isActive: true,
       uploadedBy,
       uploadedAt: new Date(),
       updatedBy: uploadedBy,
@@ -292,9 +292,9 @@ export const uploadClientSupportDocuments = async ({
     created.push(record);
   }
 
-  // Deliberately no notifyUpload here — the client isn't told about these
-  // until an admin reviews and activates them (activateClientSupportDocument
-  // below), same gate Upload's admin-generated documents use.
+  // Documents are active immediately, so the client is notified right away
+  // instead of waiting on a separate admin activation step.
+  notifyUpload(client, created, uploadedBy);
 
   return created;
 };
@@ -437,10 +437,9 @@ export const getClientSupportDocument = async (
 };
 
 /**
- * Activates a support document — created inactive (isActive: false), so it
- * doesn't count as shared with the client until an admin explicitly turns
- * it on here. This is also the point the deferred client notification
- * (email + Slack) fires, matching Upload's admin-generated-document gate.
+ * Activates a support document. New uploads are created active already;
+ * this only matters for legacy rows created inactive under the old gated
+ * flow, and fires the client notification (email + Slack) for those.
  */
 export const activateClientSupportDocument = async (
   id: string,
