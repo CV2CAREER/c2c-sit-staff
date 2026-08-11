@@ -99,7 +99,7 @@ const TriggerApplicationAction = () => {
               className={`gap-2 ${confirmType === "END" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
             >
               {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              {confirmType === "START" ? "Yes, Start" : "Yes, End"}
+              {confirmType === "START" ? "Yes" : "Yes"}
             </Button>
           </div>
         </div>
