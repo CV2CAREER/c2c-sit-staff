@@ -376,6 +376,21 @@ html.rail-collapsed {
   border-radius: 999px;
 }
 
+/* Horizontal, single-row filter/tab strips (e.g. Client Documents type filters). */
+.filter-tabs-scroll {
+  scrollbar-width: thin;
+}
+.filter-tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.filter-tabs-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.filter-tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .nav-eyebrow {
   padding: 14px 10px 6px;
   font-size: 11px;
