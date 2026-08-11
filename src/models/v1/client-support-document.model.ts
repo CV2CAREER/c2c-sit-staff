@@ -109,12 +109,13 @@ export class ClientSupportDocument extends Model {
   clientConfirmed!: boolean;
 
   /**
-   * Created false — mirrors Upload's admin-generated-content gate. The
-   * client isn't notified and the document doesn't count as shared until
-   * an admin explicitly activates it via activateClientSupportDocument.
+   * Created active — the client is notified and the document counts as
+   * shared as soon as staff upload it. activateClientSupportDocument is
+   * kept only to let an admin flip on any pre-existing rows that were
+   * created inactive under the old gated flow.
    */
   @AllowNull(false)
-  @Default(false)
+  @Default(true)
   @Column(DataType.BOOLEAN)
   isActive!: boolean;
 
