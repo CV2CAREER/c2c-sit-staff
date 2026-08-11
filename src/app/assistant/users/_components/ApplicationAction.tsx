@@ -32,37 +32,39 @@ const TriggerApplicationAction = () => {
   return (
     <>
       <div className="relative h-full overflow-hidden rounded-xl border border-primary/15 bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <div className="flex h-full flex-col justify-center p-4 md:p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-full flex-col justify-center gap-3 p-4 md:p-6">
+          <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
               <HiOutlineLightningBolt size={20} />
             </span>
-            <h2 className="text-lg font-medium">Trigger Application Action</h2>
+            <h2 className="text-lg font-medium text-career-black-200">Trigger Application Action</h2>
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex gap-3">
             <Button
               onClick={() => setConfirmType("START")}
               disabled={isPending}
-              className="gap-2 w-full"
+              title="Commence Application — starts the application process and notifies the client"
+              className="flex-1 gap-2"
             >
               {isPending && confirmType === "START" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <HiOutlinePlay className="w-4 h-4" />
               )}
-              Commence Application
+              Commence
             </Button>
             <Button
               onClick={() => setConfirmType("END")}
               disabled={isPending}
-              className="gap-2 w-full bg-emerald-600 hover:bg-emerald-700"
+              title="End Application — closes out the application cycle and notifies the client"
+              className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700"
             >
               {isPending && confirmType === "END" ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <HiOutlineFlag className="w-4 h-4" />
               )}
-              End Application
+              End
             </Button>
           </div>
         </div>
@@ -75,7 +77,7 @@ const TriggerApplicationAction = () => {
       >
         <div className="px-8 py-6">
           <h2 className="text-xl font-semibold mb-2 text-black">
-            {confirmType === "START" ? "Start Application?" : "End Application?"}
+            {confirmType === "START" ? "Commence Application?" : "End Application?"}
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
             {confirmType === "START"

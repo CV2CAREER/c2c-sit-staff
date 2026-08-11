@@ -90,14 +90,18 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
   {
     name: "roleTitleRecommendations",
     label: "Role Title Recommendations",
-    hint: "CSV only — mandatory",
-    extensions: ["csv"],
-    accept: ".csv,text/csv",
+    hint: "CSV · XLSX — mandatory",
+    extensions: ["csv", "xlsx"],
+    accept:
+      ".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     isNew: true,
     isSupportDocument: true,
     instructions: <CsvInstructions />,
-    validateContents: async (file) =>
-      validateRoleTitleCsv(await file.text()).errors,
+    validateContents: async (file) => {
+      // Only CSVs have a text structure we can check headers/rows against.
+      if (!file.name.toLowerCase().endsWith(".csv")) return [];
+      return validateRoleTitleCsv(await file.text()).errors;
+    },
     downloadTemplate: downloadRoleTitleTemplate,
   },
   {
