@@ -131,9 +131,9 @@ export const updateUpload = async (uploadId: string, updateData: any) => {
 };
 
 /**
- * Activates an admin-generated upload (source: "admin") — these are created
- * with isActive: false so an admin-generated document doesn't count as live
- * until an admin has reviewed it and explicitly turns it on.
+ * Activates an admin-generated upload (source: "admin"). New uploads are
+ * created active already; this only matters for legacy rows created
+ * inactive under the old gated flow.
  * @param uploadId ID of upload to activate
  */
 export const activateUpload = async (uploadId: string) => {

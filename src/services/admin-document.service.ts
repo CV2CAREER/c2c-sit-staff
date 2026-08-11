@@ -773,6 +773,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         logger.info(`[SaveCoverLetter] Saved cover letter upload ${upload.id} for user ${targetUserId}`);
@@ -1045,6 +1046,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         // Advance the client's onboarding progress bar to the
@@ -1119,6 +1121,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);

@@ -37,6 +37,7 @@ export class UploadService {
       document: file.document,
       status: UploadStatus.REVISED,
       source: UploadSource.ADMIN,
+      isActive: true,
     }));
 
     const uploads = await Upload.bulkCreate(uploadsData);
