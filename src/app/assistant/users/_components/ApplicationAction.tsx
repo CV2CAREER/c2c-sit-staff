@@ -77,7 +77,7 @@ const TriggerApplicationAction = () => {
       >
         <div className="px-8 py-6">
           <h2 className="text-xl font-semibold mb-2 text-black">
-            {confirmType === "START" ? "Start Application?" : "End Application?"}
+            {confirmType === "START" ? "Commence Application?" : "End Application?"}
           </h2>
           <p className="text-gray-600 mb-6 text-sm">
             {confirmType === "START"

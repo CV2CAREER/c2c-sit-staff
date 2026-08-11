@@ -98,7 +98,7 @@ const TriggerApplicationAction = () => {
           </span>
 
           <h2 className="relative mt-4 text-xl font-semibold text-white">
-            {confirmType === "START" ? "Start Application?" : "End Application?"}
+            {confirmType === "START" ? "Commence Application?" : "End Application?"}
           </h2>
           <p className="relative mt-1.5 text-sm text-white/80 max-w-[260px] mx-auto leading-relaxed">
             {confirmType === "START"
