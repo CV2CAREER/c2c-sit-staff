@@ -106,10 +106,22 @@
   font-style: normal;
 }
 
+/* `.dashboard-content` sizes itself with `calc(100vw - sidebar-width)` (see
+   below) — `vw` doesn't subtract the browser's scrollbar, unlike a normal
+   `%` width, so whenever a page's content grows tall enough to toggle the
+   vertical scrollbar on/off (e.g. expanding a section), everything below
+   the sidebar shifts by the scrollbar's width. Reserving the gutter always
+   keeps `100vw` accurate and stops that shift. `overflow-y: scroll` is the
+   fallback for browsers without `scrollbar-gutter` support. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: 'Poppins', sans-serif;
   color: var(--accent);
-    
+
 }
 
 .sidebar {
@@ -362,6 +374,21 @@ html.rail-collapsed {
 .nav-scroll::-webkit-scrollbar-thumb {
   background: var(--rail-hairline);
   border-radius: 999px;
+}
+
+/* Horizontal, single-row filter/tab strips (e.g. Client Documents type filters). */
+.filter-tabs-scroll {
+  scrollbar-width: thin;
+}
+.filter-tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.filter-tabs-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+.filter-tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .nav-eyebrow {

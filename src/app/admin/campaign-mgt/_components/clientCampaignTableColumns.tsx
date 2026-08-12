@@ -247,6 +247,9 @@ const manualDiscoveryColumns = [
   "Timestamp_Vetted",          
   "Submitted_By",              
   "Timestamp_Submitted",
+  "AI_Score",
+  "AI_Reason",
+  "AI_Status",
 ];
 
 const jobserveColumns = [

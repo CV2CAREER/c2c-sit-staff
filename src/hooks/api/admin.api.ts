@@ -11,6 +11,7 @@ import { useSystemQueries, useSystemMutations } from "./admin/system";
 import { useUnsubscribedUsersQueries, useUnsubscribedUsersMutations } from "./admin/unsubscribed-users";
 import { useChatbotQueries, useChatbotMutations } from "./admin/chatbot";
 import { useJobsiteCredentialQueries, useJobsiteCredentialMutations } from "./admin/jobsite-credential";
+import { useClientJourneyQueries, useClientJourneyMutations } from "./admin/client-journey";
 
 export * from "./admin/types";
 
@@ -26,6 +27,7 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
   const unsubscribedUsers = useUnsubscribedUsersQueries(options);
   const chatbot = useChatbotQueries(options);
   const jobsiteCredential = useJobsiteCredentialQueries(options);
+  const clientJourney = useClientJourneyQueries(options);
 
   return useMemo(() => ({
     ...dashboard,
@@ -39,7 +41,8 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     ...chatbot,
     ...unsubscribedUsers,
     ...jobsiteCredential,
-  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot, unsubscribedUsers, jobsiteCredential]);
+    ...clientJourney,
+  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot, unsubscribedUsers, jobsiteCredential, clientJourney]);
 };
 
 export const useAdminMutations = () => {
@@ -63,5 +66,6 @@ export const useAdminMutations = () => {
     ...useUnsubscribedUsersMutations(),
     ...chatbot,
     ...useJobsiteCredentialMutations(),
+    ...useClientJourneyMutations(),
   };
 };

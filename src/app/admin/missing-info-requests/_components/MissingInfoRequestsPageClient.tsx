@@ -7,6 +7,7 @@ import {
   useOutstandingRequests,
   useRequestStats,
   useBulkReminder,
+  useRequestResponses,
   OutstandingRequest,
 } from "@/hooks/api/missing-info-template.api";
 import RequestStatusBadge from "./RequestStatusBadge";
@@ -35,15 +36,7 @@ export default function MissingInfoRequestsPageClient() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [viewRequestId, setViewRequestId] = useState<string | null>(null);
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const param = searchParams.get("request");
-    if (param) {
-      setViewRequestId(param);
-    }
-  }, [searchParams]);
+  const [viewResponsesId, setViewResponsesId] = useState<string | null>(null);
 
   const { data: requests, pagination, isLoading } = useOutstandingRequests({
     age: ageFilter || undefined,
@@ -52,6 +45,10 @@ export default function MissingInfoRequestsPageClient() {
 
   const { stats } = useRequestStats();
   const { sendBulkReminder, isSending } = useBulkReminder();
+
+  const { data: responsesData, isLoading: isResponsesLoading } = useRequestResponses(
+    viewResponsesId || ""
+  );
 
   const filteredRequests = (requests || []).filter((req) => {
     if (!search) return true;
@@ -109,6 +106,10 @@ export default function MissingInfoRequestsPageClient() {
       toast.dismiss(toastId);
       toast.error("Failed to resend.");
     }
+  };
+
+  const handleViewResponses = (id: string) => {
+    setViewResponsesId(id);
   };
 
   if (isLoading) {
@@ -285,21 +286,21 @@ export default function MissingInfoRequestsPageClient() {
                       {req.reminderCount > 0 ? `${req.reminderCount} sent` : "\u2014"}
                     </td>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        {req.status === "submitted" && (
-                          <button
-                            onClick={() => setViewRequestId(req.id)}
-                            className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-                          >
-                            View responses
-                          </button>
-                        )}
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleResend(req)}
                           className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
                         >
                           Resend
                         </button>
+                        {req.status === "submitted" && (
+                          <button
+                            onClick={() => handleViewResponses(req.id)}
+                            className="border border-[#E5E9EF] bg-white text-[#0B96D6] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#EAF6FF] transition-colors"
+                          >
+                            View Responses
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -333,7 +334,7 @@ export default function MissingInfoRequestsPageClient() {
         )}
       </div>
 
-      {/* Bulk reminder modal */}
+       {/* Bulk reminder modal */}
       <BulkReminderModal
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
@@ -343,11 +344,12 @@ export default function MissingInfoRequestsPageClient() {
         isSending={isSending}
       />
 
-      {/* View responses modal */}
+      {/* View Responses Modal */}
       <ViewResponsesModal
-        open={viewRequestId !== null}
-        requestId={viewRequestId}
-        onClose={() => setViewRequestId(null)}
+        open={viewResponsesId !== null}
+        onClose={() => setViewResponsesId(null)}
+        data={responsesData}
+        isLoading={isResponsesLoading}
       />
     </div>
   );

@@ -5,6 +5,8 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import MuiXLicense from "./muiXLicense";
 import { SIDEBAR_NO_FLASH_SCRIPT } from "@/components/sidebar/useSidebarCollapse";
+import MaintenanceWrapper from "@/components/layout/MaintenanceWrapper";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: {
@@ -64,7 +66,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             },
           }}
         />
-        <AppProvider>{children}</AppProvider>
+        <Suspense fallback={<div />}>
+          <MaintenanceWrapper>
+            <AppProvider>{children}</AppProvider>
+          </MaintenanceWrapper>
+        </Suspense>
       </body>
     </html>
   );

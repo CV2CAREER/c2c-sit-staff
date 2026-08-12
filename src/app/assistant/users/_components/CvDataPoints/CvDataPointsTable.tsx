@@ -82,17 +82,23 @@ export default function CvDataPointsTable({
       filterable: false,
       renderCell: (params: GridRenderCellParams<CvDataPoint>) => (
         <div>
-          <Link
-            href={params.value?.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 hover:text-blue-600"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            {params.value?.name}
-          </Link>
+          {params.value?.url ? (
+            <Link
+              href={params.value.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-600"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {params.value.name}
+            </Link>
+          ) : (
+            <span className="text-gray-400">
+              {params.value?.name || 'No document'}
+            </span>
+          )}
         </div>
       ),
     },

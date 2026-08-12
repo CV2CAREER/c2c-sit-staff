@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,111 +9,137 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useRequestResponses, RequestResponsesData } from "@/hooks/api/missing-info-template.api";
+import { RequestResponse, RequestResponsesData } from "@/hooks/api/missing-info-template.api";
 
 interface ViewResponsesModalProps {
   open: boolean;
-  requestId: string | null;
   onClose: () => void;
+  data: RequestResponsesData | null;
+  isLoading: boolean;
 }
 
-export default function ViewResponsesModal({ open, requestId, onClose }: ViewResponsesModalProps) {
-  const { data, isLoading, isError, error, refetch } = useRequestResponses(
-    open ? requestId : null,
-  );
-
-  useEffect(() => {
-    if (open && requestId) {
-      refetch();
+function formatValue(value: string | null, fieldType: string): string {
+  if (!value) return "—";
+  
+  if (fieldType === "file") {
+    return value;
+  }
+  
+  if (fieldType === "date") {
+    try {
+      return new Date(value).toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return value;
     }
-  }, [open, requestId, refetch]);
+  }
+  
+  return value;
+}
 
-  const detail: RequestResponsesData | null = data;
+export default function ViewResponsesModal({
+  open,
+  onClose,
+  data,
+  isLoading,
+}: ViewResponsesModalProps) {
+  if (!data) return null;
+
+  const { request, responses } = data;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[560px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Client Responses</DialogTitle>
+          <DialogTitle className="text-[#10365A]">
+            Responses for {request.client?.name || "Client"}
+          </DialogTitle>
           <DialogDescription>
-            {detail
-              ? `${detail.clientName || "\u2014"}${detail.clientEmail ? ` \u2022 ${detail.clientEmail}` : ""}`
-              : "Loading responses..."}
+            {request.template?.name} • {responses.length} response{responses.length !== 1 ? "s" : ""}
+            {request.personalMessage && (
+              <p className="mt-1 text-[12px] text-[#6B7280] italic">
+                "{request.personalMessage}"
+              </p>
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        {isLoading && (
-          <div className="py-10 text-center text-[13px] text-[#9CA3AF]">
-            Loading responses...
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-[#9CA3AF] text-[13px]">Loading responses...</p>
           </div>
-        )}
-
-        {isError && (
-          <div className="py-10 text-center text-[13px] text-red-500">
-            Failed to load responses.{" "}
-            {(error as any)?.response?.data?.message ||
-              (error as any)?.message ||
-              "Please try again."}
+        ) : responses.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-[#9CA3AF] text-[13px]">No responses submitted yet.</p>
           </div>
-        )}
+        ) : (
+          <div className="overflow-y-auto max-h-[60vh] p-4 space-y-4">
+            {responses.map((response) => (
+              <div
+                key={response.id}
+                className="border border-[#E5E9EF] rounded-xl bg-white p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="text-[12px] font-semibold text-[#1F2937]">
+                      {response.fieldLabel}
+                    </p>
+                    <p className="text-[11px] text-[#9CA3AF] mt-0.5">
+                      Type: {response.fieldType}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-[#9CA3AF]">
+                      {new Date(response.createdAt).toLocaleString("en-AU", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
 
-        {!isLoading && !isError && detail && detail.responses.length === 0 && (
-          <div className="py-10 text-center text-[13px] text-[#9CA3AF]">
-            No responses submitted yet.
-          </div>
-        )}
-
-        {!isLoading && !isError && detail && detail.responses.length > 0 && (
-          <div className="rounded-xl border border-[#E5E9EF] overflow-hidden">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr className="bg-[#F9FAFB] border-b border-[#E5E9EF]">
-                  <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-2.5 font-semibold w-[35%]">
-                    Field
-                  </th>
-                  <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-2.5 font-semibold">
-                    Value
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {detail.responses.map((r) => {
-                  const rawValue = r.fieldValue ?? "";
-                  const isUrl =
-                    rawValue.startsWith("http://") || rawValue.startsWith("https://");
-                  const fileName = isUrl ? rawValue.split("/").pop()?.split("?")[0] : "";
-                  return (
-                    <tr key={r.id} className="border-b border-[#E5E9EF] last:border-b-0">
-                      <td className="px-4 py-3 text-[#10365A] font-semibold align-top">
-                        {r.fieldLabel}
-                      </td>
-                      <td className="px-4 py-3 text-[#1F2937] whitespace-pre-wrap break-words">
-                        {isUrl ? (
-                          <a
-                            href={rawValue}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#0B96D6] underline inline-flex items-center gap-1"
-                          >
-                            {fileName || "View uploaded file"}
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                          </a>
-                        ) : (
-                          rawValue || "\u2014"
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                <div className="mt-3 p-3 bg-[#F9FAFB] rounded-lg">
+                  {response.fieldType === "file" ? (
+                    <a
+                      href={formatValue(response.fieldValue, response.fieldType)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-[13px] text-[#0B96D6] hover:underline"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                        />
+                      </svg>
+                      View File
+                    </a>
+                  ) : (
+                    <p className="text-[13px] text-[#1F2937] whitespace-pre-wrap">
+                      {formatValue(response.fieldValue, response.fieldType)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} className="border border-[#E5E9EF] text-[#10365A] font-semibold text-[13px]">
             Close
           </Button>
         </DialogFooter>

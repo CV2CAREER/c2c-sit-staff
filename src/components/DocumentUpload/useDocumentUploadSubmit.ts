@@ -80,7 +80,12 @@ export const useDocumentUploadSubmit = (
 
       toast.success("Document uploaded and reviewed successfully");
       onUploaded?.();
-      queryClient.invalidateQueries({ queryKey: ["admin-documents", userId] });
+      // "admin-user-documents" is the resume/cover-letter table's actual
+      // query key (userDocumentsDomain in useUsersQueries) — not
+      // "admin-documents", which nothing in the app renders.
+      queryClient.invalidateQueries({
+        queryKey: ["admin-user-documents", userId],
+      });
       queryClient.invalidateQueries({
         queryKey: ["client-support-documents", userId],
       });

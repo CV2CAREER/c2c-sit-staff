@@ -1,58 +1,64 @@
 "use client";
-import React from "react";
-import Link from "next/link";
 
-const promptRoutes = [
-  { name: "QA AI Prompt", href: "/admin/prompts/qa-ai" },
-  { name: "AQ AI Prompt", href: "/admin/prompts/aq-ai" },
-  { name: "CV AI Prompt", href: "/admin/prompts/cv-ai" },
-  { name: "Preference AI Prompt", href: "/admin/prompts/preference-ai" },
-  { name: "Job Match AI Prompt", href: "/admin/prompts/job-match-ai" },
-  {
-    name: "Interview Preparation",
-    href: "/admin/prompts/interview-preparation",
-  },
-  { name: "Keyword Generator", href: "/admin/prompts/keyword-generator" },
-  { name: "Market Viability", href: "/admin/prompts/market-viability" },
-  { name: "VA AI Prompt", href: "/admin/prompts/va-ai" },
-];
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { Activity } from "lucide-react";
+import PageHeader from "@/components/PageHeader/PageHeader";
+import { Button } from "@/components/ui/button";
+import CreatePromptDialog from "./_components/CreatePromptDialog";
+import RecycleBinDialog from "./_components/RecycleBinDialog";
+import UsageAnalyticsSection from "./_components/UsageAnalyticsSection";
+import PromptsTable from "./_components/PromptsTable";
+import { VcsPrompt } from "./hooks/use-vcs-prompts";
 
-const Page = () => {
+const PromptsPage = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [showUsage, setShowUsage] = useState(false);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["vcs-prompts"] });
+
+  const openEditor = (prompt: VcsPrompt) => {
+    router.push(`/admin/prompts/${prompt.id}`);
+  };
+
   return (
-    <div className="flex flex-col h-full min-h-full">
-      {/* Header Section */}
-      <div className="mt-6 mb-12">
-        <div className="w-full bg-gray-200 rounded-2xl p-4 md:p-6 flex flex-col xl:flex-row items-center justify-between">
-          <div className="text-black md:w-full lg:w-1/2 lg:pr-6">
-            <h2 className="text-lg md:text-2xl mb-1 font-medium font-sharp-grotesk">
-              AI Prompts Dashboard
-            </h2>
-            <p className="text-sm text-gray-700">
-              Select a prompt category to manage.
-            </p>
+    <section className="flex flex-col gap-3 mt-4">
+      <PageHeader
+        title="AI Prompts"
+        description="Manage every AI prompt configuration used across the platform — versioned and organized by key."
+        renderJSX={
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showUsage ? "default" : "outline"}
+              className="gap-1.5"
+              onClick={() => setShowUsage((prev) => !prev)}
+            >
+              <Activity size={16} />
+              Usage Analytics
+            </Button>
+            <RecycleBinDialog
+              onRestored={() => {
+                invalidate();
+              }}
+            />
+            <CreatePromptDialog
+              onCreated={(id) => {
+                invalidate();
+                router.push(`/admin/prompts/${id}`);
+              }}
+            />
           </div>
-        </div>
-      </div>
+        }
+        className="rounded-xl border border-primary/15 p-3 sm:p-3 shadow-[0_1px_10px_rgba(0,142,211,0.10)]"
+      />
 
-      {/* Main Content Area */}
-      <div className="w-full rounded-3xl bg-white p-6 shadow-md">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6">
-          Available Prompt Categories
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {promptRoutes.map((route, index) => (
-            <Link key={index} href={route.href} className="w-full">
-              <div className="flex flex-col items-center justify-center p-6 bg-gray-100 rounded-lg border-2 border-gray-200 hover:shadow-lg transition-all cursor-pointer h-full">
-                <p className="text-lg font-medium text-career-blue-500 hover:text-blue transition-all text-center">
-                  {route.name}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
+      <PromptsTable onEdit={openEditor} />
+
+      {showUsage && <UsageAnalyticsSection />}
+    </section>
   );
 };
 
-export default Page;
+export default PromptsPage;
