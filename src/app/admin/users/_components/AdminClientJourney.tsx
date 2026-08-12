@@ -290,7 +290,7 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
             <Milestone size={20} />
           </span>
           <div>
-            <h3 className="text-xl font-semibold text-career-black-200 md:text-2xl">Client Journey</h3>
+            <h3 className="text-xl font-semibold text-career-black-200 md:text-2xl">Customer Journey</h3>
             <p className="text-xs text-career-gray-200">
               {isClientJourneyLoading ? "Loading progress…" : `${doneCount} of ${totalCount} steps complete`}
             </p>

@@ -11,6 +11,7 @@ import AdminUsersJobSites from "../_components/AdminUsersJobSites";
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
+import AdminClientJourney from "../../../admin/users/_components/AdminClientJourney";
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -96,6 +97,9 @@ function UserDetailsContent({ userId }: { userId: string }) {
                 <div className="w-full shrink-0 lg:w-[340px]">
                     <TriggerApplicationAction/>
                 </div>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+                <AdminClientJourney userId={currentUserId}/>
             </motion.div>
             <motion.div variants={itemVariants}>
                 <ClientDocument userId={currentUserId} />
