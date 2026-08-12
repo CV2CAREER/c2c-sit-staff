@@ -15,6 +15,7 @@
     "sync:pricing:mongo": "tsx scripts/sync-pricing-from-mongo.ts",
     "sync:cr-options:mongo": "tsx scripts/sync-cr-options-from-mongo.ts",
     "sync:admin-ai:mongo": "tsx scripts/sync-admin-ai-from-mongo.ts",
+    "fix:seek-sub-start-date": "tsx scripts/fix-seek-sub-start-date-format.ts",
     "check-all": "npm run audit && npm run build",
     "prepare": "node scripts/setup-hooks.js"
   },

@@ -31,6 +31,7 @@ import {
   getSlackIdOrName,
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
+import { calculateCampaignFields } from '../utils/campaign-calculator';
 import { Op, Sequelize } from 'sequelize';
 
 const logger = getServiceLogger('campaign-service');
@@ -2223,6 +2224,37 @@ export const submitJobMatchRequest = async (
 /**
  * Get campaign clients list with filters
  */
+/**
+ * Recomputes SeekSubEndDate / CampaignEnd / SeekSubToExpireDays / SeekSubExpired
+ * from the stored SeekSubStartDate + SeekSubDurDays + GraceDuration, live at read
+ * time, so the countdown reflects "today" without ever mutating the stored
+ * SeekSubDurDays (which stays fixed as the plan's total duration).
+ */
+const enrichCampaignFields = (client: any) => {
+  const cred = client.seekExternalCredentials ?? {};
+
+  const computed = calculateCampaignFields({
+    SeekSubStartDate: client.SeekSubStartDate,
+    createdAt: client.createdAt,
+    SeekSubDurDays: cred.SeekSubDurDays,
+    GraceDuration: cred.GraceDuration,
+  });
+
+  return {
+    ...client,
+    // Falls back to createdAt when SeekSubStartDate was never set (legacy rows)
+    SeekSubStartDate: computed.SeekSubStartDate ?? client.SeekSubStartDate,
+    seekExternalCredentials: {
+      ...cred,
+      SeekSubEndDate: computed.SeekSubEndDate ?? cred.SeekSubEndDate,
+      CampaignEnd: computed.CampaignEnd ?? cred.CampaignEnd,
+      SeekSubRemainingDays: computed.SeekSubRemainingDays,
+      SeekSubToExpireDays: computed.SeekSubToExpireDays,
+      SeekSubExpired: computed.SeekSubExpired,
+    },
+  };
+};
+
 export const getCampaignClients = async (
   active: string = 'true',
   searchQuery?: string
@@ -2319,7 +2351,7 @@ export const getCampaignClients = async (
   }
 
   const campaignsWithAggregators = campaigns.map((client) => ({
-    ...client,
+    ...enrichCampaignFields(client),
     aggregators: client.clientId
       ? (aggregatorsByUserId.get(client.clientId) ?? [])
       : [],
@@ -2383,7 +2415,7 @@ export const getCampaignClientById = async (clientId: string) => {
   }
 
   return {
-    ...clientData,
+    ...enrichCampaignFields(clientData),
     ...applicationCounts,
     aggregators,
   };
