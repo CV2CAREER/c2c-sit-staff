@@ -183,6 +183,20 @@ export const tableColumns: GridColDef[] = [
   ...campaignTableKeys.map((key) => {
     const headerName = handleTableHeader(key);
 
+    // Custom renderer for SeekSubDurDays — shows subscription days remaining
+    // (counts down from the plan's total duration) rather than the fixed total.
+    if (key === 'SeekSubDurDays') {
+      return {
+        field: key,
+        headerName,
+        width: 150,
+        renderCell: (params: any) => {
+          const remaining = params.row?.SeekSubRemainingDays;
+          return <span>{remaining ?? 'N/A'} days</span>;
+        },
+      };
+    }
+
     // Custom renderer for SeekSubToExpireDays
     if (key === 'SeekSubToExpireDays') {
       return {
