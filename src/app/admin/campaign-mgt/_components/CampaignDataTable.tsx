@@ -285,7 +285,9 @@ const queryClient = useQueryClient();
         SeekSubStartDate: client.SeekSubStartDate ?? null,
         SeekSubEndDate: cred.SeekSubEndDate ?? null,
         SeekSubDurDays: cred.SeekSubDurDays ?? null,
-        SeekSubToExpireDays: cred.SeekSubDurDays ?? null,
+        SeekSubRemainingDays: cred.SeekSubRemainingDays ?? null,
+        SeekSubToExpireDays: cred.SeekSubToExpireDays ?? null,
+        SeekSubExpired: cred.SeekSubExpired ?? null,
         GraceDuration: cred.GraceDuration ?? null,
         CampaignEnd: cred.CampaignEnd ?? null,
 
