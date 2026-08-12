@@ -149,7 +149,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               <HiOutlineFolder size={20} />
             </span>
             <h3 className="text-xl md:text-2xl !font-medium font-sharp-grotesk text-career-black-200 capitalize">
-              Client Documents
+              Customer Documents
             </h3>
           </div>
           <div className="flex items-center bg-career-gray-300 w-full bigLaptop:w-[31rem] h-12 rounded-[2.5rem] px-4 py-3">
