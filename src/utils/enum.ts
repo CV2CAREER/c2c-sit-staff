@@ -417,3 +417,35 @@ export enum JobsiteCredentialRejectionReason {
   EMAIL_REJECTED_BY_JOBSITE = "Email rejected by jobsite",
   EMAIL_ALREADY_IN_USE = "Email already in use",
 }
+
+// Client Journey — the 7-phase client-facing progress model that replaces
+// the old flat `Progress` enum above. `Progress`/`progress` on User is kept
+// for backfilling legacy accounts only; new writes use ClientJourneyStep.
+export enum ClientJourneyPhase {
+  GETTING_STARTED = "getting-started",
+  WELCOME = "welcome",
+  TOOLKIT = "toolkit",
+  FINAL_CHECKS = "final-checks",
+  CAMPAIGN_LIVE = "campaign-live",
+  CAMPAIGN_REVIEW = "campaign-review",
+  WHATS_NEXT = "whats-next",
+}
+
+export enum ClientJourneyStepStatus {
+  DONE = "done",
+  SKIPPED = "skipped",
+}
+
+// Who performed the update that completed/reopened a step — "system" covers
+// automatic backend triggers (payment webhook, doc approval, etc.) where no
+// real actor is available to attribute the change to.
+export enum ClientJourneyActorType {
+  CLIENT = "client",
+  SYSTEM = "system",
+  ADMIN = "admin",
+}
+
+export enum ClientJourneySource {
+  AUTOMATIC = "automatic",
+  MANUAL = "manual",
+}

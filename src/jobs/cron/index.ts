@@ -12,6 +12,7 @@ import { createSubscriptionExpiryReminderJob } from './subscription-expiry-remin
 import { createPlacPipelineOpsReportJob } from './placementPipelineOpsReport.job';
 import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
 import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
+import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -46,7 +47,7 @@ export function startAllCronJobs() {
 
   // Reporting jobs are production-only: they post pipeline/client reports to
   // Slack and must not run against non-prod databases (e.g. staging/local).
-  if (DATABASE_NAME === 'c2c_prod') {
+  if (DATABASE_NAME === 'prod-pool') {
     jobInstances.push(
       // Cron job: runs every Saturday at 12:10 AM WAT (Africa/Lagos timezone).
       {
@@ -62,6 +63,11 @@ export function startAllCronJobs() {
       {
         name: 'Client Without Application Activity',
         task: createUnsatisfiedClientsJob(),
+      },
+      // Cron job: runs every Monday at 8:30 AM WAT (Africa/Lagos timezone)
+      {
+        name: 'AI Vetting Learning Report Job',
+        task: createAiVettingLearningReportJob(),
       }
     );
   } else {

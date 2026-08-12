@@ -8,6 +8,7 @@ import { Profile } from "@/models/v1/profile.model";
 import { getTextExtractor } from "office-text-extractor";
 import { fileTypeFromBuffer } from "file-type";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
 import {
@@ -150,28 +151,37 @@ export class AdminDocumentService {
     /**
     * Get active prompt configuration (with in-memory caching)
     */
-    private static promptCache: { data: any; timestamp: number } | null = null;
+    private static promptCache: {
+        data: any;
+        vcsId: string | null;
+        promptId: string | null;
+        version: string | null;
+        timestamp: number;
+    } | null = null;
     static async getActivePrompt(
         type: "keywords" | "roleTitles",
         increment: boolean,
         resumeText: string,
         existing?: string
-    ): Promise<string> {
+    ): Promise<{ prompt: string; vcsId: string | null; promptId: string | null; version: string | null }> {
         // Cache prompts for 5 minutes
         if (!this.promptCache || Date.now() - this.promptCache.timestamp > 5 * 60 * 1000) {
             try {
                 const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
-                const foundVCS = await VCS.findOne({ 
-                    where: { 
+                const foundVCS = await VCS.findOne({
+                    where: {
                         active: true,
                         key: 'upload_role_titles_prompt'
-                    } 
+                    }
                 });
                 if (foundVCS) {
                     const foundPrompt = await VCSPrompt.findByPk(foundVCS.activePromptId);
                     if (foundPrompt) {
                         this.promptCache = {
                             data: this.splitPromptIntoSections(foundPrompt.prompt),
+                            vcsId: foundVCS.id,
+                            promptId: foundPrompt.id,
+                            version: foundPrompt.version,
                             timestamp: Date.now()
                         };
                     }
@@ -196,8 +206,13 @@ export class AdminDocumentService {
 
         basePrompt = basePrompt.replace(/\{\{.*?\}\}/g, "");
         const existingContent = existing ? `\nPreviously generated ${type}: ${existing}` : "";
-        
-        return `${basePrompt}\n\n${resumeText}${existingContent}`;
+
+        return {
+            prompt: `${basePrompt}\n\n${resumeText}${existingContent}`,
+            vcsId: this.promptCache?.vcsId ?? null,
+            promptId: this.promptCache?.promptId ?? null,
+            version: this.promptCache?.version ?? null,
+        };
     }
 
     /**
@@ -419,8 +434,35 @@ export class AdminDocumentService {
             }
 
             // Get prompt and generate content with AI
-            const prompt = await this.getActivePrompt(type, increment, resumeText, existingContent);
-            const aiResponse = await queryDigitalOceanAI(prompt);
+            const { prompt, vcsId, promptId, version } = await this.getActivePrompt(type, increment, resumeText, existingContent);
+
+            const startedAt = Date.now();
+            let aiResponse: string;
+            try {
+                aiResponse = await queryDigitalOceanAI(prompt);
+                VcsPromptUsageService.record({
+                    key: 'upload_role_titles_prompt',
+                    vcsId,
+                    promptId,
+                    version,
+                    promptLength: prompt.length,
+                    responseLength: aiResponse.length,
+                    durationMs: Date.now() - startedAt,
+                    success: true,
+                });
+            } catch (error: any) {
+                VcsPromptUsageService.record({
+                    key: 'upload_role_titles_prompt',
+                    vcsId,
+                    promptId,
+                    version,
+                    promptLength: prompt.length,
+                    durationMs: Date.now() - startedAt,
+                    success: false,
+                    errorMessage: error?.message,
+                });
+                throw error;
+            }
 
             // Parse generated items
             const generatedItems = aiResponse
@@ -584,7 +626,7 @@ export class AdminDocumentService {
         cvText: string,
         jobContent: string,
         jobLink?: string,
-    ): Promise<string> {
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cover_letter_generation_prompt' },
@@ -593,7 +635,7 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("Cover letter prompt is not configured", 500);
         }
 
@@ -602,9 +644,11 @@ export class AdminDocumentService {
             ? `${jobContent}\n${jobLink}`
             : jobContent;
 
-        return promptRow.prompt
+        const prompt = promptRow.prompt
             .replace(/\{\{CV_TEXT\}\}/g, cvText)
             .replace(/\{\{JOB_CONTEXT\}\}/g, jobContext);
+
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -634,11 +678,37 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
-        const coverLetter = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
 
-        logger.info(`[GenerateCoverLetter] Successfully generated cover letter for user ${targetUserId}`);
-        return coverLetter;
+        const startedAt = Date.now();
+        try {
+            const coverLetter = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'cover_letter_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: coverLetter.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+
+            logger.info(`[GenerateCoverLetter] Successfully generated cover letter for user ${targetUserId}`);
+            return coverLetter;
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'cover_letter_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
     }
 
     /**
@@ -703,6 +773,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         logger.info(`[SaveCoverLetter] Saved cover letter upload ${upload.id} for user ${targetUserId}`);
@@ -714,7 +785,9 @@ export class AdminDocumentService {
      * `role_title_generation_prompt` VCS entry, substituting the {{CV_TEXT}}
      * placeholder.
      */
-    private static async getRoleTitlePrompt(cvText: string): Promise<string> {
+    private static async getRoleTitlePrompt(
+        cvText: string,
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'role_title_generation_prompt' },
@@ -723,11 +796,12 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("Role title prompt is not configured", 500);
         }
 
-        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -755,8 +829,35 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getRoleTitlePrompt(resumeText);
-        const aiResponse = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getRoleTitlePrompt(resumeText);
+
+        const startedAt = Date.now();
+        let aiResponse: string;
+        try {
+            aiResponse = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'role_title_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: aiResponse.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'role_title_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
 
         const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
         const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
@@ -783,7 +884,9 @@ export class AdminDocumentService {
      * Builds the CV Variant prompt from the `cv_variant_generation_prompt`
      * VCS entry, substituting the {{CV_TEXT}} placeholder.
      */
-    private static async getCvVariantPrompt(cvText: string): Promise<string> {
+    private static async getCvVariantPrompt(
+        cvText: string,
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cv_variant_generation_prompt' },
@@ -792,11 +895,12 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -825,8 +929,35 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getCvVariantPrompt(resumeText);
-        const aiResponse = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText);
+
+        const startedAt = Date.now();
+        let aiResponse: string;
+        try {
+            aiResponse = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'cv_variant_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: aiResponse.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'cv_variant_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
 
         const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
         const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
@@ -915,6 +1046,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         // Advance the client's onboarding progress bar to the
@@ -989,6 +1121,7 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
+            isActive: true,
         });
 
         logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);

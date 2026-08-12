@@ -21,26 +21,36 @@ const logger = getServiceLogger('pipeline-leaderboard-job');
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+// Africa/Lagos has no DST — it's fixed UTC+1 year-round — so "yesterday" is
+// computed directly against that offset rather than via getDate()/setDate(),
+// which operate in the server process's local timezone (UTC on most hosts).
+// The cron itself fires at 00:00 WAT (= 23:00 UTC the day before), so at
+// that instant the UTC calendar hasn't rolled over yet; server-local date
+// math silently picks one day further back than intended, which is exactly
+// why this job returns the wrong day's data when it fires at midnight but
+// not when triggered later the same WAT day.
 function getYesterdayRange(): { start: Date; end: Date } {
-  const now = new Date();
+  const lagosToday = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date()); // 'YYYY-MM-DD', in WAT wall-clock terms
 
-  // Yesterday 12:00:00.000 AM
-  const start = new Date(now);
-  start.setDate(start.getDate() - 1);
-  start.setHours(0, 0, 0, 0);
+  const todayUTC = new Date(`${lagosToday}T00:00:00Z`);
+  todayUTC.setUTCDate(todayUTC.getUTCDate() - 1);
+  const yesterdayYMD = todayUTC.toISOString().slice(0, 10);
 
-  // Yesterday 11:59:59.999 PM
-  const end = new Date(now);
-  end.setDate(end.getDate() - 1);
-  end.setHours(23, 59, 59, 999);
+  const start = new Date(`${yesterdayYMD}T00:00:00.000+01:00`);
+  const end = new Date(`${yesterdayYMD}T23:59:59.999+01:00`);
 
   return { start, end };
 }
 
-function getYesterdayLabel(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toLocaleDateString('en-GB', {
+// Derived from the same `start` used for the query range, so the label
+// shown on Slack can never disagree with the data actually fetched.
+function getYesterdayLabel(start: Date): string {
+  return start.toLocaleDateString('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -726,7 +736,7 @@ export async function runPipelineLeaderboardJob() {
   );
 
   const body = [
-    `:trophy: *Pipeline Performance Leaderboard — ${getYesterdayLabel()}*`,
+    `:trophy: *Pipeline Performance Leaderboard — ${getYesterdayLabel(start)}*`,
     '',
     discoverySection,
     vettingSection,

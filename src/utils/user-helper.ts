@@ -4,14 +4,15 @@ import { Op } from "sequelize";
 import ErrorHandler from "./errorHandler";
 import { ServiceHistory } from "../types/userdocument.types";
 import { getServiceLogger } from "./createLogger";
+import { fieldEncryption } from "./field-encryption";
 
 const logger = getServiceLogger("user-helper");
 
 export const hopeUserExists = async (email: string) => {
-  const user = await User.findOne({ where: { email } });
-
+  const userId = await fieldEncryption.findUserByEmail(email);
+  if (!userId) throw new ErrorHandler("No record of this account", 404);
+  const user = await User.findByPk(userId);
   if (!user) throw new ErrorHandler("No record of this account", 404);
-
   return user;
 };
 

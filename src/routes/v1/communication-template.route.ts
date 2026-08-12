@@ -19,11 +19,11 @@ communicationTemplateRouterV1.use(
 );
 
 communicationTemplateRouterV1.get("/", getCommunicationTemplates);
-communicationTemplateRouterV1.post("/", createCommunicationTemplate);
-communicationTemplateRouterV1.patch("/", patchCommunicationTemplate);
-communicationTemplateRouterV1.delete("/", deleteCommunicationTemplate);
-communicationTemplateRouterV1.post("/notify-missing-info", notifyMissingInfo);
-communicationTemplateRouterV1.post("/notify-missing-info-whatsapp", notifyMissingInfo);
+communicationTemplateRouterV1.post("/", authorizeRoles("admin"), createCommunicationTemplate);
+communicationTemplateRouterV1.patch("/", authorizeRoles("admin"), patchCommunicationTemplate);
+communicationTemplateRouterV1.delete("/", authorizeRoles("admin"), deleteCommunicationTemplate);
+communicationTemplateRouterV1.post("/notify-missing-info", authorizeRoles("admin"), notifyMissingInfo);
+communicationTemplateRouterV1.post("/notify-missing-info-whatsapp", authorizeRoles("admin"), notifyMissingInfo);
 
 export default communicationTemplateRouterV1;
 

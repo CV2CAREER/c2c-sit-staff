@@ -17,6 +17,7 @@ import {
   ROLE_TITLE_HEADERS,
   type RoleTitleRow,
 } from "../../utils/roleTitleCsv";
+import { xlsxBufferToCsv } from "../../utils/roleTitleXlsx";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { SlackService } from "../slack.service";
@@ -178,7 +179,7 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
 
 /** Allowed extensions per category — mirrors the staff UI. */
 const ALLOWED_EXTENSIONS: Record<ClientSupportDocumentCategory, string[]> = {
-  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: ["csv"],
+  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: ["csv", "xlsx"],
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: [
     "png",
     "jpg",
@@ -207,10 +208,51 @@ export interface UploadSupportDocumentsInput {
 const extensionOf = (filename: string) =>
   path.extname(filename).replace(/^\./, "").toLowerCase();
 
+interface RoleTitleExtractionResult {
+  rows: RoleTitleRow[];
+  rowCount: number;
+  extractionMethod: "csv" | "xlsx";
+}
+
+/**
+ * Dispatches Role Title Recommendations content validation by file type.
+ * Both are deterministic — XLSX is converted to CSV text first, then run
+ * through the same header/value rules as a real CSV upload.
+ */
+const extractRoleTitles = async (
+  buffer: Buffer,
+  extension: string,
+  originalFilename: string,
+): Promise<RoleTitleExtractionResult> => {
+  if (extension === "xlsx") {
+    const { errors, rowCount, rows } = validateRoleTitleCsv(
+      xlsxBufferToCsv(buffer),
+    );
+    if (errors.length) {
+      throw new ErrorHandler(
+        `${originalFilename} was rejected. ${errors.join(" ")}`,
+        400,
+      );
+    }
+    return { rows, rowCount, extractionMethod: "xlsx" };
+  }
+
+  const { errors, rowCount, rows } = validateRoleTitleCsv(
+    buffer.toString("utf8"),
+  );
+  if (errors.length) {
+    throw new ErrorHandler(
+      `${originalFilename} was rejected. ${errors.join(" ")}`,
+      400,
+    );
+  }
+  return { rows, rowCount, extractionMethod: "csv" };
+};
+
 /**
  * Uploads each file to Firebase Storage under the client's folder and records
- * it against the client. Role Title CSVs are content-validated first; a file
- * that fails validation is rejected and never reaches storage.
+ * it against the client. Role Title files are content-validated/extracted
+ * first; a file that fails validation is rejected and never reaches storage.
  */
 export const uploadClientSupportDocuments = async ({
   clientId,
@@ -248,18 +290,14 @@ export const uploadClientSupportDocuments = async ({
     if (
       file.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
     ) {
-      const { errors, rowCount, rows } = validateRoleTitleCsv(
-        buffer.toString("utf8"),
+      const { rows, rowCount, extractionMethod } = await extractRoleTitles(
+        buffer,
+        extension,
+        file.originalFilename,
       );
 
-      if (errors.length) {
-        throw new ErrorHandler(
-          `${file.originalFilename} was rejected. ${errors.join(" ")}`,
-          400,
-        );
-      }
-
       metadata.rowCount = rowCount;
+      metadata.extractionMethod = extractionMethod;
       roleTitles = rows;
     }
 
@@ -279,6 +317,7 @@ export const uploadClientSupportDocuments = async ({
       size: uploadResult.size,
       metadata,
       roleTitles,
+      isActive: true,
       uploadedBy,
       uploadedAt: new Date(),
       updatedBy: uploadedBy,
@@ -291,6 +330,8 @@ export const uploadClientSupportDocuments = async ({
     created.push(record);
   }
 
+  // Documents are active immediately, so the client is notified right away
+  // instead of waiting on a separate admin activation step.
   notifyUpload(client, created, uploadedBy);
 
   return created;
@@ -429,6 +470,45 @@ export const getClientSupportDocument = async (
   if (!document || document.isDeleted) {
     throw new ErrorHandler("Document not found", 404);
   }
+
+  return document;
+};
+
+/**
+ * Activates a support document. New uploads are created active already;
+ * this only matters for legacy rows created inactive under the old gated
+ * flow, and fires the client notification (email + Slack) for those.
+ */
+export const activateClientSupportDocument = async (
+  id: string,
+  activatedBy?: string,
+): Promise<ClientSupportDocument> => {
+  const document = await ClientSupportDocument.findByPk(id);
+
+  if (!document || document.isDeleted) {
+    throw new ErrorHandler("Document not found", 404);
+  }
+
+  if (document.isActive) {
+    logger.info(`Client support document ${id} was already active`);
+    return document;
+  }
+
+  await document.update({ isActive: true, updatedBy: activatedBy });
+
+  const client = await User.findByPk(document.clientId, {
+    attributes: ["id", "email", "firstName", "lastName"],
+  });
+
+  if (client) {
+    notifyUpload(client, [document], activatedBy);
+  } else {
+    logger.warn(
+      `Activated client support document ${id} but client ${document.clientId} was not found — skipped client notification`,
+    );
+  }
+
+  logger.info(`Activated client support document ${id}`);
 
   return document;
 };

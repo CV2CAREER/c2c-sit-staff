@@ -10,10 +10,11 @@ import {
 } from "../../controllers/v1/aggregator.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const aggregatorRouterV1 = Router();
 
-aggregatorRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
+aggregatorRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin"));
 
 // Aggregator Endpoints
 aggregatorRouterV1.get("/", getAggregators);

@@ -8,6 +8,7 @@ import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { PaymentStatus, ReferrerStatus, RevenueStatus, SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
 import ErrorHandler from "@/utils/errorHandler";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { getFrontendUrl, getFullName, updateReferrerStats } from "@/utils/helpers";
 import { EMAIL_QUEUE } from "@/jobs/background/emailWorker";
 import { getQueue } from "@/config/bullMQ";
@@ -105,17 +106,26 @@ export class ReferralService {
 
       // Fetch isAmbassador + role + referrer names in one batch query
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
-      const referrerUsers = await User.findAll({
-        where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
-        raw: true,
+      const referrerEmailToId = new Map<string, string>();
+      for (const refEmail of referrerEmails) {
+        const rid = await fieldEncryption.findUserByEmail(refEmail);
+        if (rid) referrerEmailToId.set(refEmail, rid);
+      }
+      const referrerUserIds = [...referrerEmailToId.values()];
+      const referrerUsers = referrerUserIds.length
+        ? await User.findAll({ where: { id: { [Op.in]: referrerUserIds } }, attributes: ['id', 'isAmbassador', 'role', 'firstName', 'lastName'] })
+        : [];
+      const referrerUserById = new Map(referrerUsers.map((u: any) => [u.id, u]));
+      const ambassadorMap = new Map<string, boolean>();
+      const partnerMap = new Map<string, boolean>();
+      const referrerNameMap = new Map<string, string>();
+      referrerEmailToId.forEach((rid, refEmail) => {
+        const u = referrerUserById.get(rid);
+        if (!u) return;
+        ambassadorMap.set(refEmail, u.isAmbassador);
+        partnerMap.set(refEmail, u.role === 'partner');
+        referrerNameMap.set(refEmail, u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : refEmail);
       });
-      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
-      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
-      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
-        u.email,
-        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
-      ]));
 
       const mapped = rows.map((ref: any) => {
         const isClient = ref.user?.role === 'client' || ref.user?.paymentStatus === PaymentStatus.PAID || ref.user?.isUserSubscribed === true;
@@ -190,17 +200,26 @@ export class ReferralService {
       });
 
       const referrerEmails = [...new Set(rows.map((ref: any) => ref.referrer).filter(Boolean))];
-      const referrerUsers = await User.findAll({
-        where: { email: { [Op.in]: referrerEmails } },
-        attributes: ['email', 'isAmbassador', 'role', 'firstName', 'lastName'],
-        raw: true,
+      const referrerEmailToId = new Map<string, string>();
+      for (const refEmail of referrerEmails) {
+        const rid = await fieldEncryption.findUserByEmail(refEmail);
+        if (rid) referrerEmailToId.set(refEmail, rid);
+      }
+      const referrerUserIds = [...referrerEmailToId.values()];
+      const referrerUsers = referrerUserIds.length
+        ? await User.findAll({ where: { id: { [Op.in]: referrerUserIds } }, attributes: ['id', 'isAmbassador', 'role', 'firstName', 'lastName'] })
+        : [];
+      const referrerUserById = new Map(referrerUsers.map((u: any) => [u.id, u]));
+      const ambassadorMap = new Map<string, boolean>();
+      const partnerMap = new Map<string, boolean>();
+      const referrerNameMap = new Map<string, string>();
+      referrerEmailToId.forEach((rid, refEmail) => {
+        const u = referrerUserById.get(rid);
+        if (!u) return;
+        ambassadorMap.set(refEmail, u.isAmbassador);
+        partnerMap.set(refEmail, u.role === 'partner');
+        referrerNameMap.set(refEmail, u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : refEmail);
       });
-      const ambassadorMap = new Map(referrerUsers.map((u: any) => [u.email, u.isAmbassador]));
-      const partnerMap = new Map(referrerUsers.map((u: any) => [u.email, u.role === 'partner']));
-      const referrerNameMap = new Map(referrerUsers.map((u: any) => [
-        u.email,
-        u.firstName ? `${u.firstName} ${u.lastName || ''}`.trim() : u.email,
-      ]));
 
       const mapped = rows.map((ref: any) => ({
         ...ref,
@@ -252,7 +271,8 @@ export class ReferralService {
       let oldExpiresAt: Date | null = null;
       if ((referral as any).type === "GRP") {
         try {
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
 
           if (req.user) {
@@ -301,7 +321,8 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
@@ -603,7 +624,8 @@ export class ReferralService {
       setImmediate(async () => {
         try {
           const referredUser = await User.findByPk(referral.userId);
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const frontendUrl = getFrontendUrl();
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
@@ -705,7 +727,8 @@ export class ReferralService {
 
       // JIR-057: Audit entry — GRP decline
       if ((referral as any).type === "GRP" && req.user) {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer }, attributes: ["id", "uniqueId"] });
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["id", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["id", "uniqueId"] });
         AuditLogService.log({
           userId: (req.user as any).id,
@@ -734,7 +757,8 @@ export class ReferralService {
         try {
           const user = await User.findByPk(referral.userId);
           const frontendUrl = getFrontendUrl();
-          const referrerUser = await User.findOne({ where: { email: referral.referrer } });
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId) : null;
           const refereeName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName || ""}`.trim() : referral.referrer ?? "";
 
@@ -1122,18 +1146,16 @@ export class ReferralService {
     }
 
     // Check if email already exists as registered user
-    const existingEmailUser = await User.findOne({ 
-      where: { email: referralData.email.toLowerCase() } 
-    });
+    const existingEmailUserId = await fieldEncryption.findUserByEmail(referralData.email.toLowerCase());
+    const existingEmailUser = existingEmailUserId ? await User.findByPk(existingEmailUserId) : null;
     if (existingEmailUser) {
       throw new ErrorHandler(`User with email ${referralData.email} is already registered`, 400);
     }
 
     // Check if phone number already exists as registered user
     if (referralData.phoneNumber) {
-      const existingPhoneUser = await User.findOne({ 
-        where: { phoneNumber: referralData.phoneNumber } 
-      });
+      const existingPhoneUserId = await fieldEncryption.findUserByPhone(referralData.phoneNumber);
+      const existingPhoneUser = existingPhoneUserId ? await User.findByPk(existingPhoneUserId) : null;
       if (existingPhoneUser) {
         throw new ErrorHandler(`User with phone number ${referralData.phoneNumber} is already registered`, 400);
       }
@@ -1480,7 +1502,8 @@ Skipped: ${failedEmails.length}`,
 
     setImmediate(async () => {
       try {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email", "uniqueId"] });
+        const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email", "uniqueId"] }) : null;
         const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
         const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
         const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
@@ -1557,14 +1580,15 @@ Skipped: ${failedEmails.length}`,
       updatedBy: actor,
     });
 
-    setImmediate(async () => {
-      try {
-        const referrerUser = await User.findOne({ where: { email: referral.referrer ?? "" }, attributes: ["firstName", "lastName", "email"] });
-        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
-        const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
-        const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
+      setImmediate(async () => {
+        try {
+          const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email"] }) : null;
+          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+          const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
+          const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 
-        await SlackService.notify({
+          await SlackService.notify({
           location,
           host,
           node: SlackNode.FINANCE,

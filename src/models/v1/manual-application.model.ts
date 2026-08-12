@@ -89,6 +89,16 @@ export class ManualApplication extends Model {
   @Column(DataType.STRING(700))
   Country!: string;
 
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Salary?: string;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.TEXT)
+  Skills?: string;
+
   @ForeignKey(() => User)
   @AllowNull(true)
   @Column(DataType.STRING)
@@ -173,6 +183,26 @@ export class ManualApplication extends Model {
   @AllowNull(true)
   @Column(DataType.DATE)
   ReturnedDate?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_score?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_reason?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  ai_status?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  ai_classified_at?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  ai_prompt_version?: string | null;
 
   @CreatedAt
   createdAt!: Date;
