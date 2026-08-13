@@ -17,6 +17,7 @@ import {
   BeforeSave,
   AfterCreate,
   BeforeUpdate,
+  AfterUpdate,
   AfterFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
@@ -529,6 +530,18 @@ export class User extends Model {
         options.transaction,
       );
     }
+  }
+
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: User) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_phoneNumber) instance.setDataValue('phoneNumber', pii._pii_phoneNumber);
+    if (pii._pii_whatsappNumber) instance.setDataValue('whatsappNumber', pii._pii_whatsappNumber);
+    if (pii._pii_bankName) instance.setDataValue('bankName', pii._pii_bankName);
+    if (pii._pii_bsbCode) instance.setDataValue('bsbCode', pii._pii_bsbCode);
+    if (pii._pii_bankAccountNo) instance.setDataValue('bankAccountNo', pii._pii_bankAccountNo);
+    if (pii._pii_bankAccountName) instance.setDataValue('bankAccountName', pii._pii_bankAccountName);
   }
 
   @AfterFind
