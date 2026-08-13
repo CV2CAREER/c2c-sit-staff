@@ -108,6 +108,17 @@ export class ClientSupportDocument extends Model {
   @Column(DataType.BOOLEAN)
   clientConfirmed!: boolean;
 
+  /**
+   * Created active — the client is notified and the document counts as
+   * shared as soon as staff upload it. activateClientSupportDocument is
+   * kept only to let an admin flip on any pre-existing rows that were
+   * created inactive under the old gated flow.
+   */
+  @AllowNull(false)
+  @Default(true)
+  @Column(DataType.BOOLEAN)
+  isActive!: boolean;
+
   /** Staff user id that uploaded the file. */
   @AllowNull(true)
   @Column(DataType.STRING)

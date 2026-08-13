@@ -34,6 +34,8 @@ export class MissingInfoRequestStaffService {
       channel: "email" | "whatsapp";
     },
     user: any,
+    host?: string,
+    protocol?: string,
   ) {
     const template = await MissingInfoTemplate.findByPk(data.templateId, {
       include: [{ model: MissingInfoTemplateField, as: "fields" }],
@@ -144,6 +146,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — ${client.firstName} ${client.lastName || ""} was sent "${template.name}" via ${data.channel === "whatsapp" ? "WhatsApp" : "Email"}.`,
             `Please confirm delivery and follow up if unopened after 48h.`,
@@ -345,7 +349,7 @@ export class MissingInfoRequestStaffService {
     };
   }
 
-  static async bulkSendReminder(requestIds: string[], user: any) {
+  static async bulkSendReminder(requestIds: string[], user: any, host?: string, protocol?: string) {
     if (!requestIds || requestIds.length === 0) {
       throw new ErrorHandler("No request IDs provided", 400);
     }
@@ -440,6 +444,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — Reminder sent to ${clientSummaries.join(", ")}.`,
             `${totalProcessed} clients, ${totalProcessed} templates. Please confirm delivery.`,

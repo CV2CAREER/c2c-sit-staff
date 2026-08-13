@@ -305,7 +305,7 @@ export const activateCoralPlan = async (
   const frontendUrl = getFrontendUrl();
   const subEndDate = newPlan.expiresAt
     ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
-    : "30 days from today";
+    : "14 days from today";
 
   setImmediate(async () => {
     try {

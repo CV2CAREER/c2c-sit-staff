@@ -1,4 +1,13 @@
-import { NODE_ENV, SLACK_USERS_TOKEN } from '../config/env';
+import {
+  IAT_FRONTEND_URL,
+  LOCAL_FRONTEND_URL,
+  NODE_ENV,
+  PROD_FRONTEND_URL,
+  RAT_FRONTEND_URL,
+  SIT_FRONTEND_URL,
+  SLACK_USERS_TOKEN,
+  UAT_FRONTEND_URL,
+} from '../config/env';
 import { getConnectedRedis } from '../config/redis';
 import { getSlackClient } from '../config/slack';
 import { StandardSlackNotification } from '../types/slack.types';
@@ -8,6 +17,26 @@ import { isRedisUsable } from './helpers';
 import axios from 'axios';
 
 const logger = getServiceLogger('slack-helpers');
+
+/**
+ * Resolve the LOC host for notifications that do not pass an explicit request
+ * host. Maps the currently running NODE_ENV to the matching frontend URL so
+ * pre-prod deployments never leak a bare "localhost" into Slack.
+ */
+const getDefaultHost = (): string => {
+  const envHostMap: Record<string, string | undefined> = {
+    rat: RAT_FRONTEND_URL,
+    iat: IAT_FRONTEND_URL,
+    sit: SIT_FRONTEND_URL,
+    uat: UAT_FRONTEND_URL,
+    prod: PROD_FRONTEND_URL,
+    production: PROD_FRONTEND_URL,
+    development: LOCAL_FRONTEND_URL,
+    local: LOCAL_FRONTEND_URL,
+  };
+  const env = (NODE_ENV || '').toLowerCase();
+  return envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
+};
 
 export const getEnvironmentFromHost = (host?: string): SlackLocation => {
   const currentHost = host || process.env.NEXTAUTH_URL || '';
@@ -114,7 +143,7 @@ export const formatStandardNotification = (
 ): string => {
   // Get protocol and host
   const protocol = params.protocol || 'https';
-  const host = params.host || process.env.NEXTAUTH_URL || 'localhost';
+  const host = params.host || process.env.NEXTAUTH_URL || getDefaultHost();
 
   // Clean up host value
   const cleanHost = host.replace(/^https?:\/\//, '');
