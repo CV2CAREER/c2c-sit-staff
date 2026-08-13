@@ -350,10 +350,10 @@ const ReferralComponent = () => {
   }, [referralsListDomain.data, referralsListDomain.isError]);
 
   const filteredReferrals = users.filter((u) => {
+    if (activeTab === "PRP") return u.isPartner === true;
     if (u.type) return u.type === activeTab;
     if (activeTab === "GRP") return u.isAmbassador === true;
-    if (activeTab === "CRP") return u.isAmbassador === false || u.isAmbassador === null;
-    if (activeTab === "PRP") return u.isPartner === true;
+    if (activeTab === "CRP") return !u.isPartner && (u.isAmbassador === false || u.isAmbassador === null);
     return false;
   });
 

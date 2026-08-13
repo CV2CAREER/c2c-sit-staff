@@ -133,14 +133,19 @@ export default function DocumentTableActions({
   });
 
   const activateUploadAction = useMutation({
-    mutationFn: (uploadId: string) => {
+    mutationFn: (target: { id: string; recordType: string }) => {
       toast.loading("Activating document...");
-      return axiosInstance.patch(`${SERVER_URI}/api/v1/uploads/${uploadId}/activate`);
+      const url =
+        target.recordType === "supportDocument"
+          ? `${SERVER_URI}/api/v1/admin/client-support-documents/${target.id}/activate`
+          : `${SERVER_URI}/api/v1/uploads/${target.id}/activate`;
+      return axiosInstance.patch(url);
     },
     onSuccess: () => {
       toast.dismiss();
       toast.success("Document activated");
       queryClient.invalidateQueries({ queryKey: ["admin-user-documents", document_.userId] });
+      queryClient.invalidateQueries({ queryKey: ["client-support-documents"] });
     },
     onError: (error: any) => {
       toast.dismiss();
@@ -210,9 +215,16 @@ export default function DocumentTableActions({
                   </DropdownMenuItem>
                 );
               case "activate":
-                // Only admin-generated, not-yet-active uploads offer this —
+                // Only admin-generated, not-yet-active documents offer this —
                 // client uploads and already-active documents don't need it.
-                if (document_.source !== "admin" || document_.isActive) return null;
+                // Covers both Upload rows and ClientSupportDocument rows
+                // (isActive must be a real boolean on either).
+                if (
+                  typeof document_.isActive !== "boolean" ||
+                  document_.source !== "admin" ||
+                  document_.isActive
+                )
+                  return null;
                 return (
                   <DropdownMenuItem
                     onClick={() => setActiveDialog("activate")}
@@ -293,7 +305,10 @@ export default function DocumentTableActions({
             <Button
               className="bg-[#0D9F6E] hover:bg-[#0b8a5f]"
               onClick={() => {
-                activateUploadAction.mutate(document_.id);
+                activateUploadAction.mutate({
+                  id: document_.id,
+                  recordType: document_.recordType,
+                });
                 setActiveDialog(null);
               }}
             >

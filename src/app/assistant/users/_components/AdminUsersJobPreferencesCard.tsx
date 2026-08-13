@@ -291,16 +291,10 @@ const AdminUsersJobPreferencesCard = ({
                   field.displayValue?.map?.((val: any) => (
                     <Chip
                       key={val}
-                      value={
-                        typeof val === "object"
-                          ? `${val.name} (${val.id})`
-                          : val?.length >= 28
-                            ? val.substring(0, 27) + "..."
-                            : val
-                      }
+                      value={displayChipValue(val)}
                       variant="ghost"
                       size="sm"
-                      className="!text-xs text-[#797979] !font-normal !capitalize"
+                      className="!whitespace-normal !break-words max-w-full !text-xs text-[#797979] !font-normal !capitalize"
                     />
                   ))
                 ) : Array.isArray(
@@ -310,20 +304,30 @@ const AdminUsersJobPreferencesCard = ({
                     editedFormData[
                       field.key as keyof AdminPreferencesType
                     ] as []
-                  )?.map((val: any) => (
-                    <div key={val} className="bg-[#E7E7E9] rounded -ml-2 p-1">
-                      <Chip
-                        value={displayChipValue(val)}
-                        variant="ghost"
-                        size="sm"
-                        className="rounded !text-xs bg-[#D1D1D5] p-1 px-2 text-[#797979] !font-normal !capitalize"
-                      />
-                    </div>
-                  ))
-                ) : (
-                  displayChipValue(
-                    editedFormData[field.key as keyof AdminPreferencesType],
+                  ).length > 0 ? (
+                    (
+                      editedFormData[
+                        field.key as keyof AdminPreferencesType
+                      ] as []
+                    ).map((val: any) => (
+                      <div key={val} className="min-w-0 max-w-full bg-[#E7E7E9] rounded p-1">
+                        <Chip
+                          value={displayChipValue(val)}
+                          variant="ghost"
+                          size="sm"
+                          className="!whitespace-normal !break-words max-w-full rounded !text-xs bg-[#D1D1D5] p-1 px-2 text-[#797979] !font-normal !capitalize"
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-xs text-[#797979]">N/A</span>
                   )
+                ) : (
+                  <span className="block max-w-full break-words">
+                    {displayChipValue(
+                      editedFormData[field.key as keyof AdminPreferencesType],
+                    )}
+                  </span>
                 )}
               </SubSection>
             ))}
@@ -332,12 +336,12 @@ const AdminUsersJobPreferencesCard = ({
 
         {/* Questions section not editable just display since its personal and only editable by client */}
         {activePreferences?.questions?.length > 0 && (
-          <div>
+          <div className="min-w-0 max-w-full break-words">
             <h3 className="font-medium text-2xl">Questions</h3>
             {activePreferences?.questions.map((question: any, index: number) => (
-              <div key={index} className="-ml-2 p-1">
-                <p>{question?.question}</p>
-                <p>{question?.answer}</p>
+              <div key={index} className="p-1">
+                <p className="break-words">{question?.question}</p>
+                <p className="break-words">{question?.answer}</p>
               </div>
             ))}
           </div>
@@ -388,14 +392,36 @@ const AdminUsersJobPreferencesCard = ({
 
 export default AdminUsersJobPreferencesCard;
 
-const displayChipValue = (val: any) => {
-  if (typeof val === "object") {
-    return `${val.name} (${val.id})`;
-  } else if (typeof val === "boolean") {
-    return val === true ? "Yes" : "No";
-  } else if (typeof val === "number") {
-    return val;
-  } else if (typeof val === "string") {
-    return val?.length >= 28 ? val.substring(0, 27) + "..." : val;
+// Some legacy preference rows store objects as JSON-encoded strings
+// (e.g. industriesInclude/Exclude) instead of real objects — parse those
+// back out before formatting so the raw JSON never reaches the screen.
+const parseIfJsonObject = (val: any) => {
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        return val;
+      }
+    }
   }
+  return val;
+};
+
+const displayChipValue = (val: any) => {
+  const parsed = parseIfJsonObject(val);
+
+  if (parsed === null || parsed === undefined || parsed === "") {
+    return "N/A";
+  } else if (typeof parsed === "object" && !Array.isArray(parsed)) {
+    return parsed.name || "N/A";
+  } else if (typeof parsed === "boolean") {
+    return parsed === true ? "Yes" : "No";
+  } else if (typeof parsed === "number") {
+    return parsed;
+  } else if (typeof parsed === "string") {
+    return parsed.length >= 28 ? parsed.substring(0, 27) + "..." : parsed;
+  }
+  return "N/A";
 };

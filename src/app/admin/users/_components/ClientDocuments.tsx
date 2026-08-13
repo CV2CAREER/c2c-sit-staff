@@ -149,7 +149,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               <HiOutlineFolder size={20} />
             </span>
             <h3 className="text-xl md:text-2xl !font-medium font-sharp-grotesk text-career-black-200 capitalize">
-              Client Documents
+              Customer Documents
             </h3>
           </div>
           <div className="flex items-center bg-career-gray-300 w-full bigLaptop:w-[31rem] h-12 rounded-[2.5rem] px-4 py-3">
@@ -162,7 +162,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="filter-tabs-scroll mt-6 flex items-center gap-2 overflow-x-auto pb-2">
           {DOCUMENT_TYPE_TABS.map((tab) => {
             const count =
               tab.value === "all"
@@ -176,9 +176,9 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 key={tab.value}
                 type="button"
                 onClick={() => setActiveTypeTab(tab.value)}
-                className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors duration-200 ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors duration-200 ${
                   isActive
-                    ? "border-primary bg-primary/10 text-primary"
+                    ? "border-primary bg-primary text-white shadow-sm"
                     : "border-career-gray-300 bg-white text-career-gray-200 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
                 }`}
               >
@@ -187,7 +187,7 @@ const ClientDocument = ({ userId }: { userId: string }) => {
                 <span
                   className={`ml-0.5 rounded-full px-1.5 text-11 font-semibold ${
                     isActive
-                      ? "bg-primary/20 text-primary"
+                      ? "bg-white/25 text-white"
                       : "bg-career-gray-300 text-career-gray-200"
                   }`}
                 >

@@ -85,6 +85,7 @@ export type CampaignMgtQueriedDataType = {
   GraceDuration: number | null;
   CampaignEnd: any;
   Capitalized: string | any;
+  SeekSubRemainingDays: number | null;
   SeekSubToExpireDays: string | any;
   SeekSubExpired: string | any;
   Country: string | any;
