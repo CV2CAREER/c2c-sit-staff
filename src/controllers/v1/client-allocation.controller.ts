@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import { getSequelize } from "../../utils/sequelize";
+import { User } from "../../models/v1/user.model";
+import { Op } from "sequelize";
 
 const logger = getServiceLogger("client-allocation-controller");
 
@@ -26,20 +28,18 @@ async function getActivePCs() {
     
     // Only get users with 'assistant' role (Placement Controllers)
     // You can add more roles here if needed, like 'pc', 'placement_controller'
-    const sql = `
-      SELECT id, "firstName", "lastName", email, role
-      FROM users
-      WHERE role IN ('assistant', 'pc', 'placement_controller')
-        AND "isActive" = true
-      ORDER BY "firstName", "lastName"
-    `;
-    
-    const [results] = await sequelize.query(sql);
+    const results = await User.findAll({
+      where: {
+        role: { [Op.in]: ["assistant", "pc", "placement_controller"] },
+        isActive: true,
+      },
+      order: [["firstName", "ASC"], ["lastName", "ASC"]],
+    });
     logger.info(`Found ${results.length} active Placement Controllers`);
     
-    return (results as any[]).map((user: any) => ({
+    return results.map((user: any) => ({
       name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      email: user.email || '',
+      email: (user as any).email || '',
       role: user.role,
       id: user.id
     })).filter((pc: any) => pc.name && pc.name.trim() !== '');

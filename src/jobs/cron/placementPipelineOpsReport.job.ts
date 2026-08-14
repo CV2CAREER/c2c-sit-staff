@@ -104,20 +104,11 @@ interface SubmissionStats {
 async function fetchAllActiveClients(): Promise<ClientRow[]> {
   const credentials = await Credentials.findAll({
     where: { Active: true, deletedAt: null },
-    attributes: [
-      'clientId',
-      'AssignedPCName',
-      'AssignedPCEmail',
-      'AssignedVetName',
-      'AssignedVetEmail',
-      'AssignedCompletedName',
-      'AssignedCompletedEmail',
-    ],
     include: [
       {
         model: User,
         as: 'client',
-        attributes: ['id', 'firstName', 'lastName', 'email'],
+        attributes: ['id', 'firstName', 'lastName'],
         required: false,
       },
     ],

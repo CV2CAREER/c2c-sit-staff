@@ -92,7 +92,13 @@ export class MissingInfoRequest extends Model {
   @Column(DataType.ENUM(...MISSING_INFO_REQUEST_CHANNELS))
   channel!: MissingInfoRequestChannel;
 
-  personalMessage!: string;
+  @Column(DataType.VIRTUAL(DataType.TEXT))
+  get personalMessage(): string | null {
+    return this.getDataValue("personalMessage") as string | null;
+  }
+  set personalMessage(value: string | null) {
+    this.setDataValue("personalMessage", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.TEXT)

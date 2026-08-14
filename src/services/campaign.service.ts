@@ -764,7 +764,6 @@ export const addToClientSampleQueue = async (
   if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ['seekEmail'],
     });
 
     if (!cred) {
@@ -2276,6 +2275,7 @@ export const getCampaignClients = async (
   // Working PostgreSQL JSONB search implementation
   if (searchQuery) {
     const searchTerm = `%${searchQuery}%`;
+    const seekEmailMatchedIds = await fieldEncryption.findCredentialsBySeekEmailPartial(searchQuery);
     whereClause = {
       ...whereClause,
       [Op.or]: [
@@ -2304,8 +2304,8 @@ export const getCampaignClients = async (
           Op.like,
           searchTerm.toLowerCase()
         ),
-        // Also search top level fields
-        { seekEmail: { [Op.iLike]: searchTerm } },
+        // Match encrypted seekEmail via decrypt-side partial search
+        ...(seekEmailMatchedIds.length ? [{ id: { [Op.in]: seekEmailMatchedIds } }] : []),
       ],
     };
   }
@@ -3204,7 +3204,7 @@ export const getClientApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['Timestamp', 'DESC']],
@@ -3285,7 +3285,7 @@ export const getClientManualApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['createdAt', 'DESC']],

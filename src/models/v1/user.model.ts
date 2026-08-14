@@ -82,9 +82,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
   @AllowNull(false)
   @Column(DataType.STRING)
@@ -116,13 +120,21 @@ export class User extends Model {
   @Column(DataType.ENUM(...Object.values(CustomerClass)))
   customerClass!: CustomerClass;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  phoneNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get phoneNumber(): string | undefined {
+    return this.getDataValue("phoneNumber") as string | undefined;
+  }
+  set phoneNumber(value: string | undefined) {
+    this.setDataValue("phoneNumber", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  whatsappNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get whatsappNumber(): string | undefined {
+    return this.getDataValue("whatsappNumber") as string | undefined;
+  }
+  set whatsappNumber(value: string | undefined) {
+    this.setDataValue("whatsappNumber", value);
+  }
 
   // Stored as JSONB for flexibility (previously Mixed)
   @AllowNull(true)
@@ -315,21 +327,37 @@ export class User extends Model {
   @Column(DataType.TEXT)
   accessToken?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankName(): string | undefined {
+    return this.getDataValue("bankName") as string | undefined;
+  }
+  set bankName(value: string | undefined) {
+    this.setDataValue("bankName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bsbCode?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bsbCode(): string | undefined {
+    return this.getDataValue("bsbCode") as string | undefined;
+  }
+  set bsbCode(value: string | undefined) {
+    this.setDataValue("bsbCode", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountNo?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountNo(): string | undefined {
+    return this.getDataValue("bankAccountNo") as string | undefined;
+  }
+  set bankAccountNo(value: string | undefined) {
+    this.setDataValue("bankAccountNo", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountName(): string | undefined {
+    return this.getDataValue("bankAccountName") as string | undefined;
+  }
+  set bankAccountName(value: string | undefined) {
+    this.setDataValue("bankAccountName", value);
+  }
 
   @AllowNull(false)
   @Default(SampleDispatchedStatus.PENDING)

@@ -260,7 +260,7 @@ export const uploadClientSupportDocuments = async ({
   files,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "email", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -399,7 +399,7 @@ export const saveAiRoleTitleRecommendations = async (
   }
 
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "email", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -497,7 +497,7 @@ export const activateClientSupportDocument = async (
   await document.update({ isActive: true, updatedBy: activatedBy });
 
   const client = await User.findByPk(document.clientId, {
-    attributes: ["id", "email", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName"],
   });
 
   if (client) {

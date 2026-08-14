@@ -354,7 +354,7 @@ export const getUsersFullNameController = catchAsyncError(
 
     const users = await db.users.findMany({
       where: { deletedAt: null },
-      attributes: ["id", "firstName", "middleName", "lastName", "email"],
+      attributes: ["id", "firstName", "middleName", "lastName"],
       order: [["createdAt", "DESC"]],
       offset: skip,
       limit,
