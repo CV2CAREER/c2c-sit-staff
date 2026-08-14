@@ -13,6 +13,7 @@ import { createPlacPipelineOpsReportJob } from './placementPipelineOpsReport.job
 import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
 import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
+import { createBlogPublishJob } from './blog-publish.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -34,6 +35,7 @@ export function startAllCronJobs() {
     },
     { name: 'Daily Summary Job', task: createDailySummaryJob() },
     { name: 'Bot Health Job', task: createBotHealthJob() },
+    { name: 'Blog Publish Job', task: createBlogPublishJob() },
     { name: 'Subscription Check Job', task: createSubscriptionCheckJob() },
     {
       name: 'Support Session Cleanup Job',
