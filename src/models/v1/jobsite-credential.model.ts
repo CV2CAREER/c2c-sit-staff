@@ -168,6 +168,7 @@ export class JobsiteCredential extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
         if (!decrypted) return;

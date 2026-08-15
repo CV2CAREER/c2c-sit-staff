@@ -292,6 +292,7 @@ export class Credentials extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
         if (pw !== null) instance.setDataValue('seekPassword', pw);

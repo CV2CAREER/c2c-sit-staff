@@ -366,6 +366,7 @@ export class Profile extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
         if (!decrypted) return;

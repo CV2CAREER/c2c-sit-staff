@@ -87,6 +87,7 @@ export class MissingInfoResponse extends Model {
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(
       list.map(async (instance) => {
+        if (!instance?.id) return;
         try {
           const decrypted = await fieldEncryption.getDecryptedMissingResponseFieldValue(instance.id);
           if (decrypted !== null) {
