@@ -84,7 +84,7 @@ clientJourneyRouterV1.post(
   "/client/:clientId/attest",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   attestClientJourneyStep,
 );
 

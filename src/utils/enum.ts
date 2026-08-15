@@ -428,7 +428,7 @@ export enum ClientJourneyPhase {
   FINAL_CHECKS = "final-checks",
   CAMPAIGN_LIVE = "campaign-live",
   CAMPAIGN_REVIEW = "campaign-review",
-  WHATS_NEXT = "whats-next",
+  CAMPAIGN_ENDED = "campaign-ended",
 }
 
 export enum ClientJourneyStepStatus {

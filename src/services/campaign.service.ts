@@ -2246,7 +2246,7 @@ const enrichCampaignFields = (client: any) => {
     SeekSubStartDate: computed.SeekSubStartDate ?? client.SeekSubStartDate,
     seekExternalCredentials: {
       ...cred,
-      SeekSubEndDate: computed.SeekSubEndDate ?? cred.SeekSubEndDate,
+      SeekSubEndDate: cred.SeekSubEndDate,
       CampaignEnd: computed.CampaignEnd ?? cred.CampaignEnd,
       SeekSubRemainingDays: computed.SeekSubRemainingDays,
       SeekSubToExpireDays: computed.SeekSubToExpireDays,
