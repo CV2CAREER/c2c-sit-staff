@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
@@ -8,6 +8,16 @@ import AppModal from "@/components/modals/AppModal";
 import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import toast from "react-hot-toast";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PRECHECK_DEBOUNCE_MS = 400;
+
+interface PrecheckEmailResult {
+  exists: boolean;
+  existingUserId?: string;
+  existingRole?: string;
+  existingName?: string;
+}
 
 const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
   guest:      { label: "Guest",      color: "bg-slate-100 text-slate-700 border-slate-300" },
@@ -65,17 +75,81 @@ const inputClass =
   "w-full px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none text-sm";
 const labelClass = "block text-sm font-medium text-gray-700 mb-1";
 
+const computeFieldErrors = (form: FormData): Partial<FormData> => {
+  const errs: Partial<FormData> = {};
+  if (!form.firstName.trim()) errs.firstName = "First name is required";
+  if (!form.lastName.trim()) errs.lastName = "Last name is required";
+  const trimmedEmail = form.email.trim();
+  if (!trimmedEmail) errs.email = "Email is required";
+  else if (!EMAIL_REGEX.test(trimmedEmail)) errs.email = "Enter a valid email address";
+  if (form.password && form.password.length < 8)
+    errs.password = "Password must be at least 8 characters";
+  if (form.password && form.password !== form.confirmPassword)
+    errs.confirmPassword = "Passwords do not match";
+  return errs;
+};
+
 const AddUserBtn = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [emailConflict, setEmailConflict] = useState<string | null>(null);
+  const [precheckPending, setPrecheckPending] = useState(false);
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const fieldErrors = useMemo(() => computeFieldErrors(form), [form]);
+  const isFormValid = Object.keys(fieldErrors).length === 0 && !emailConflict;
+
+  useEffect(() => {
+    const trimmed = form.email.trim();
+    if (!trimmed || !EMAIL_REGEX.test(trimmed)) {
+      setEmailConflict(null);
+      setPrecheckPending(false);
+      return;
+    }
+    setPrecheckPending(true);
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await axiosInstance.post<{ data: PrecheckEmailResult }>(
+          endpoints.ADMIN_USERS_PRECHECK_EMAIL,
+          { email: trimmed },
+          { signal: controller.signal },
+        );
+        const result = data?.data;
+        if (result?.exists) {
+          const roleLabel = result.existingRole
+            ? ROLE_CONFIG[result.existingRole]?.label ?? result.existingRole
+            : "existing user";
+          const name = result.existingName?.trim();
+          setEmailConflict(
+            name
+              ? `This email already belongs to ${roleLabel} ${name}.`
+              : `This email is already registered to an ${roleLabel} account.`,
+          );
+        } else {
+          setEmailConflict(null);
+        }
+      } catch (err: any) {
+        if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
+          setEmailConflict(null);
+        }
+      } finally {
+        setPrecheckPending(false);
+      }
+    }, EMAIL_PRECHECK_DEBOUNCE_MS);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [form.email]);
 
   const createUserMutation = useMutation({
     mutationFn: async (data: Omit<FormData, "confirmPassword">) => {
@@ -119,27 +193,16 @@ const AddUserBtn = () => {
     setStep(1);
     setForm(EMPTY_FORM);
     setErrors({});
+    setEmailConflict(null);
+    setPrecheckPending(false);
     setCreatedUserId(null);
     setOtp("");
     setOtpError("");
   };
 
-  const validate = (): boolean => {
-    const errs: Partial<FormData> = {};
-    if (!form.firstName.trim()) errs.firstName = "First name is required";
-    if (!form.lastName.trim()) errs.lastName = "Last name is required";
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      errs.email = "Valid email is required";
-    if (form.password && form.password.length < 8)
-      errs.password = "Password must be at least 8 characters";
-    if (form.password && form.password !== form.confirmPassword)
-      errs.confirmPassword = "Passwords do not match";
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
   const handleStep1Submit = async () => {
-    if (!validate()) return;
+    setErrors(fieldErrors);
+    if (!isFormValid || precheckPending) return;
     const toastId = toast.loading("Creating user...");
     try {
       const result = await createUserMutation.mutateAsync({
@@ -156,7 +219,15 @@ const AddUserBtn = () => {
         password: form.password,
       });
       const userId = result?.data?.created?.[0]?.userId;
-      if (!userId) throw new Error("User created but ID not returned");
+      const skipped = result?.data?.skipped?.[0];
+      if (!userId) {
+        if (skipped?.reason) {
+          setEmailConflict(skipped.reason);
+          toast.error(skipped.reason, { id: toastId });
+          return;
+        }
+        throw new Error("User created but ID not returned");
+      }
       setCreatedUserId(userId);
       toast.success("User created successfully", { id: toastId });
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
@@ -210,20 +281,34 @@ const AddUserBtn = () => {
     key: keyof FormData,
     label: string,
     type = "text",
-    placeholder = ""
-  ) => (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <input
-        type={type}
-        className={`${inputClass} ${errors[key] ? "border-red-400" : ""}`}
-        value={form[key]}
-        placeholder={placeholder}
-        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-      />
-      {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
-    </div>
-  );
+    placeholder = "",
+    hint?: string | null,
+  ) => {
+    const errorText = errors[key] || (key === "email" ? emailConflict : null);
+    const showHint = !errorText && hint;
+    return (
+      <div>
+        <label className={labelClass}>{label}</label>
+        <input
+          type={type}
+          className={`${inputClass} ${errorText ? "border-red-400" : ""}`}
+          value={form[key]}
+          placeholder={placeholder}
+          onChange={(e) => {
+            const value = e.target.value;
+            setForm((f) => ({ ...f, [key]: value }));
+            if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
+          }}
+          onBlur={() => {
+            const nextErr = computeFieldErrors(form)[key];
+            if (nextErr) setErrors((prev) => ({ ...prev, [key]: nextErr }));
+          }}
+        />
+        {errorText && <p className="text-xs text-red-500 mt-1">{errorText}</p>}
+        {showHint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      </div>
+    );
+  };
 
   const passwordField = (
     key: "password" | "confirmPassword",
@@ -240,7 +325,18 @@ const AddUserBtn = () => {
           className={`${inputClass} pr-10 ${errors[key] ? "border-red-400" : ""}`}
           value={form[key]}
           placeholder={placeholder}
-          onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+          onChange={(e) => {
+            const value = e.target.value;
+            setForm((f) => ({ ...f, [key]: value }));
+            if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
+            if (key === "password" && errors.confirmPassword) {
+              setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+            }
+          }}
+          onBlur={() => {
+            const nextErr = computeFieldErrors(form)[key];
+            if (nextErr) setErrors((prev) => ({ ...prev, [key]: nextErr }));
+          }}
         />
         <button
           type="button"
@@ -312,7 +408,13 @@ const AddUserBtn = () => {
               {field("middleName", "Middle Name", "text", "Optional")}
             </div>
             {field("lastName", "Last Name *", "text", "Doe")}
-            {field("email", "Email *", "email", "john@example.com")}
+            {field(
+              "email",
+              "Email *",
+              "email",
+              "john@example.com",
+              precheckPending ? "Checking availability…" : null,
+            )}
 
             <div>
               <label className={labelClass}>Gender</label>
@@ -373,7 +475,14 @@ const AddUserBtn = () => {
               <Button variant="outline" onClick={resetAndClose} disabled={createUserMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleStep1Submit} disabled={createUserMutation.isPending}>
+              <Button
+                onClick={handleStep1Submit}
+                disabled={
+                  createUserMutation.isPending ||
+                  precheckPending ||
+                  !isFormValid
+                }
+              >
                 {createUserMutation.isPending ? "Creating..." : "Create User"}
               </Button>
             </div>
