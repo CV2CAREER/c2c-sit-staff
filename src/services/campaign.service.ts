@@ -2318,11 +2318,14 @@ export const getCampaignClients = async (
     };
   }
 
-  const campaigns = await Credentials.findAll({
+  // Not raw: true — hydrated instances are required so the model's
+  // @AfterFind hook (decryptSensitiveFields) can decrypt AssignedPCEmail/
+  // AssignedPCName/etc. back onto the instance before we serialize below.
+  const campaignInstances = await Credentials.findAll({
     where: whereClause,
     order: [['createdAt', 'DESC']],
-    raw: true,
   });
+  const campaigns = campaignInstances.map((c) => c.get({ plain: true }));
 
   // Fetch tour counts for all clients in a single query
   const tourCounts = campaigns.length
@@ -2388,11 +2391,16 @@ export const getCampaignClientById = async (clientId: string) => {
     throw new Error('Client ID is required');
   }
 
-  const clientData = await Credentials.findByPk(clientId, { raw: true });
+  // Not raw: true — hydrated instance required so the model's @AfterFind
+  // hook (decryptSensitiveFields) can decrypt AssignedPCEmail/AssignedPCName/
+  // etc. back onto the instance before we serialize below.
+  const clientInstance = await Credentials.findByPk(clientId);
 
-  if (!clientData) {
+  if (!clientInstance) {
     throw new Error('Client not found');
   }
+
+  const clientData = clientInstance.get({ plain: true });
 
   // Fetch associated user and profile for application statistics
   const user = await User.findOne({ where: { id: clientId } });
