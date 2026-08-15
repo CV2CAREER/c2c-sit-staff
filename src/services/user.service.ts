@@ -278,7 +278,7 @@ export const getClients = async (query: {
         foreignKey: 'clientId',
         required: true,
         attributes: [
-          'id', 'seekEmail', 'seekPassword', 'SeekAnswerPriority'
+          'id', 'SeekAnswerPriority'
         ]
       },
       {
@@ -605,7 +605,7 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName", "email"],
+    attributes: ["firstName", "lastName"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],

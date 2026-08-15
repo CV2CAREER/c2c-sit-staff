@@ -275,17 +275,25 @@ export class Profile extends Model {
   @Column(DataType.BOOLEAN)
   isApproved?: boolean;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  socialSecurityNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get socialSecurityNumber(): string | undefined {
+    return this.getDataValue("socialSecurityNumber") as string | undefined;
+  }
+  set socialSecurityNumber(value: string | undefined) {
+    this.setDataValue("socialSecurityNumber", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.BOOLEAN)
   veteran?: boolean;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  taxIdentificationNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get taxIdentificationNumber(): string | undefined {
+    return this.getDataValue("taxIdentificationNumber") as string | undefined;
+  }
+  set taxIdentificationNumber(value: string | undefined) {
+    this.setDataValue("taxIdentificationNumber", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.STRING)
@@ -295,9 +303,13 @@ export class Profile extends Model {
   @Column(DataType.STRING)
   disabilityStatus?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  dateOfBirth?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get dateOfBirth(): string | undefined {
+    return this.getDataValue("dateOfBirth") as string | undefined;
+  }
+  set dateOfBirth(value: string | undefined) {
+    this.setDataValue("dateOfBirth", value);
+  }
 
   // Questions stored as JSONB array
   @AllowNull(true)
@@ -354,6 +366,7 @@ export class Profile extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedProfile(instance.id);
         if (!decrypted) return;

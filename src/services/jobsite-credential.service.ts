@@ -46,7 +46,7 @@ export async function submitJobsiteCredential(
     }
 
     const client = await User.findByPk(clientId, {
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     if (!client) {
@@ -150,7 +150,7 @@ export async function addJobsiteCredentialManually(
     }
 
     const client = await User.findByPk(clientId, {
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     if (!client) {
@@ -211,7 +211,7 @@ export async function acceptJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -308,7 +308,7 @@ export async function unapproveJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -405,7 +405,7 @@ export async function sendTestEmail(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -523,7 +523,7 @@ export async function approveJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -661,7 +661,7 @@ export async function rejectJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -957,7 +957,6 @@ export async function getMyJobsiteCredential(
     // (and audited) exclusively through revealJobsiteCredentialPassword.
     const credential = await JobsiteCredential.findOne({
       where: { clientId },
-      attributes: { exclude: ["generatedPassword"] },
       order: [["createdAt", "DESC"]],
     });
 
@@ -979,7 +978,6 @@ async function attachSpc<T extends { clientId: string }>(
 ): Promise<T & { spcName: string | null; spcEmail: string | null }> {
   const assignment = await Credentials.findOne({
     where: { clientId: credential.clientId },
-    attributes: ["AssignedCompletedName", "AssignedCompletedEmail"],
   });
 
   return {
@@ -998,7 +996,6 @@ export async function getClientJobsiteCredential(
     // audited action, not a side effect of loading this page.
     const credential = await JobsiteCredential.findOne({
       where: { clientId },
-      attributes: { exclude: ["generatedPassword"] },
       order: [["createdAt", "DESC"]],
     });
 
@@ -1023,7 +1020,7 @@ export async function getAllJobsiteCredentials(): Promise<
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],

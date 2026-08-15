@@ -764,7 +764,6 @@ export const addToClientSampleQueue = async (
   if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ['seekEmail'],
     });
 
     if (!cred) {
@@ -1211,8 +1210,16 @@ export const saveManualApplication = async (
 
     Skills:
       Array.isArray(jobData.skills) && jobData.skills.length > 0
-        ? jobData.skills.join(', ')
-        : jobData.skills || 'N/A',
+        ? jobData.skills.map((s: any) => String(s)).join(', ')
+        : jobData.skills && typeof jobData.skills === 'object'
+          ? Object.values(jobData.skills)
+              .flat()
+              .filter((s: any) => s != null)
+              .map((s: any) => String(s))
+              .join(', ')
+          : typeof jobData.skills === 'string'
+            ? jobData.skills
+            : 'N/A',
 
     Status: 'UNATTENDED',
 
@@ -2276,6 +2283,7 @@ export const getCampaignClients = async (
   // Working PostgreSQL JSONB search implementation
   if (searchQuery) {
     const searchTerm = `%${searchQuery}%`;
+    const seekEmailMatchedIds = await fieldEncryption.findCredentialsBySeekEmailPartial(searchQuery);
     whereClause = {
       ...whereClause,
       [Op.or]: [
@@ -2304,8 +2312,8 @@ export const getCampaignClients = async (
           Op.like,
           searchTerm.toLowerCase()
         ),
-        // Also search top level fields
-        { seekEmail: { [Op.iLike]: searchTerm } },
+        // Match encrypted seekEmail via decrypt-side partial search
+        ...(seekEmailMatchedIds.length ? [{ id: { [Op.in]: seekEmailMatchedIds } }] : []),
       ],
     };
   }
@@ -3204,7 +3212,7 @@ export const getClientApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['Timestamp', 'DESC']],
@@ -3285,7 +3293,7 @@ export const getClientManualApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['createdAt', 'DESC']],

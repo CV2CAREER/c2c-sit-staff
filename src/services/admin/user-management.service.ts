@@ -840,7 +840,7 @@ class UserManagementService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass', 'phoneNumber']
+          attributes: ['id', 'firstName', 'lastName', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -910,7 +910,7 @@ class UserManagementService {
     logger.info(`Retrieving progress for user ID: ${userId}`);
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'firstName', 'lastName', 'email', 'progress', 'role', 'updatedAt']
+      attributes: ['id', 'firstName', 'lastName', 'progress', 'role', 'updatedAt']
     });
     if (!user) {
       throw new ErrorHandler("User not found.", 404);

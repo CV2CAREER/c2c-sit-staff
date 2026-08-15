@@ -224,7 +224,7 @@ export class MissingInfoRequestStaffService {
     const { rows, count } = await MissingInfoRequest.findAndCountAll({
       where,
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
         { model: MissingInfoTemplate, attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
@@ -292,7 +292,7 @@ export class MissingInfoRequestStaffService {
   static async getRequestResponses(requestId: string) {
     const request = await MissingInfoRequest.findByPk(requestId, {
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
         { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
       ],
     });
@@ -357,7 +357,7 @@ export class MissingInfoRequestStaffService {
     const requests = await MissingInfoRequest.findAll({
       where: { id: requestIds },
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
         { model: MissingInfoTemplate, as: "template", attributes: ["id", "name"] },
       ],
     });

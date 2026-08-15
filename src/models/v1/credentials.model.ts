@@ -52,13 +52,21 @@ export class Credentials extends Model {
     }
   }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(64))
-  seekEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get seekEmail(): string | undefined {
+    return this.getDataValue("seekEmail") as string | undefined;
+  }
+  set seekEmail(value: string | undefined) {
+    this.setDataValue("seekEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(64))
-  seekPassword?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get seekPassword(): string | undefined {
+    return this.getDataValue("seekPassword") as string | undefined;
+  }
+  set seekPassword(value: string | undefined) {
+    this.setDataValue("seekPassword", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.STRING(32))
@@ -121,29 +129,53 @@ export class Credentials extends Model {
   @Column(DataType.DATE)
   deletedAt?: Date;
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedPCName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedPCName(): string | undefined {
+    return this.getDataValue("AssignedPCName") as string | undefined;
+  }
+  set AssignedPCName(value: string | undefined) {
+    this.setDataValue("AssignedPCName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedPCEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedPCEmail(): string | undefined {
+    return this.getDataValue("AssignedPCEmail") as string | undefined;
+  }
+  set AssignedPCEmail(value: string | undefined) {
+    this.setDataValue("AssignedPCEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedVetName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedVetName(): string | undefined {
+    return this.getDataValue("AssignedVetName") as string | undefined;
+  }
+  set AssignedVetName(value: string | undefined) {
+    this.setDataValue("AssignedVetName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedVetEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedVetEmail(): string | undefined {
+    return this.getDataValue("AssignedVetEmail") as string | undefined;
+  }
+  set AssignedVetEmail(value: string | undefined) {
+    this.setDataValue("AssignedVetEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedCompletedName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedCompletedName(): string | undefined {
+    return this.getDataValue("AssignedCompletedName") as string | undefined;
+  }
+  set AssignedCompletedName(value: string | undefined) {
+    this.setDataValue("AssignedCompletedName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedCompletedEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedCompletedEmail(): string | undefined {
+    return this.getDataValue("AssignedCompletedEmail") as string | undefined;
+  }
+  set AssignedCompletedEmail(value: string | undefined) {
+    this.setDataValue("AssignedCompletedEmail", value);
+  }
 
   @AllowNull(true)
   @Default('FLIGHT')
@@ -260,6 +292,7 @@ export class Credentials extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
         if (pw !== null) instance.setDataValue('seekPassword', pw);

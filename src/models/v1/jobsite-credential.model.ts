@@ -44,13 +44,21 @@ export class JobsiteCredential extends Model {
 
   // The client-supplied application email. Never the client's real
   // mailbox password — that is never requested or stored.
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  generatedPassword?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get generatedPassword(): string | undefined {
+    return this.getDataValue("generatedPassword") as string | undefined;
+  }
+  set generatedPassword(value: string | undefined) {
+    this.setDataValue("generatedPassword", value);
+  }
 
   @AllowNull(false)
   @Default(JobsiteCredentialStatus.PENDING)
@@ -160,6 +168,7 @@ export class JobsiteCredential extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
         if (!decrypted) return;

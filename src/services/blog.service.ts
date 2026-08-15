@@ -14,6 +14,40 @@ import { generateUniqueFilename, uploadBase64ToStorage } from "../utils/fileUplo
 
 const logger = getServiceLogger("blog-service");
 
+const slugify = (value: string): string => {
+  return (
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "post"
+  );
+};
+
+const generateUniqueSlug = async (
+  title: string,
+  excludeId?: string,
+): Promise<string> => {
+  const base = slugify(title);
+  let candidate = base;
+  let i = 2;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const where: any = { slug: candidate };
+    if (excludeId) {
+      where.id = { [Op.ne]: excludeId };
+    }
+    const existing = await Blog.findOne({ where });
+    if (!existing) {
+      return candidate;
+    }
+    candidate = `${base}-${i}`;
+    i += 1;
+  }
+};
+
 const parseDate = (value: unknown): Date | null => {
   if (!value) {
     return null;
@@ -206,14 +240,6 @@ export class BlogService {
         throw new Error("Blog post not found");
       }
 
-      setImmediate(async () => {
-        try {
-          await Blog.increment("viewCount", { where: { id } });
-        } catch (err) {
-          logger.error(`Failed to increment view count: ${err}`);
-        }
-      });
-
       return toLegacyBlogPost(post);
     } catch (error: any) {
       logger.error(`Failed to get blog post: ${error.message}`);
@@ -345,6 +371,10 @@ export class BlogService {
     try {
       const payload = toCreatePayload(data);
 
+      if (!payload.slug) {
+        payload.slug = await generateUniqueSlug(payload.title || "untitled");
+      }
+
       if (
         payload.featuredImage &&
         typeof payload.featuredImage === "string" &&
@@ -409,6 +439,13 @@ New Blog Post Created
       }
 
       const payload = toUpdatePayload(updates, post);
+
+      if (!payload.slug) {
+        payload.slug = await generateUniqueSlug(
+          (payload.title as string) || "untitled",
+          id,
+        );
+      }
 
       if (
         payload.featuredImage &&

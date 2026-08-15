@@ -5,6 +5,7 @@ import { BCRYPT_SALT_ROUNDS, CLIENT_APP_DOMAIN } from "../../config/env";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
 import OTPToken from "../../models/v1/otpToken.model";
 import { User } from "../../models/v1/user.model";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { sendNewOTPEmail } from "../../services/email.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -373,7 +374,6 @@ class AdminUserApplicationService {
         "id",
         "firstName",
         "lastName",
-        "email",
         "role",
         "country",
         "isActive",
@@ -411,15 +411,17 @@ class AdminUserApplicationService {
     const sequelize = getSequelize();
     const existingRows = await sequelize.query<{ email: string }>(
       `
-        SELECT LOWER(email) AS email
+        SELECT LOWER(pgp_sym_decrypt("emailEncrypted", :key)) AS email
         FROM users
-        WHERE LOWER(email) IN (:emails)
+        WHERE "emailEncrypted" IS NOT NULL
+          AND LOWER(pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
           AND "deletedAt" IS NULL;
       `,
       {
         type: QueryTypes.SELECT,
         replacements: {
-          emails: users.map((user) => user.email),
+          key: fieldEncryption.getKey(),
+          emails: users.map((user) => user.email.toLowerCase()),
         },
       },
     );
