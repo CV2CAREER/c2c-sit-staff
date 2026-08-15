@@ -1210,8 +1210,16 @@ export const saveManualApplication = async (
 
     Skills:
       Array.isArray(jobData.skills) && jobData.skills.length > 0
-        ? jobData.skills.join(', ')
-        : jobData.skills || 'N/A',
+        ? jobData.skills.map((s: any) => String(s)).join(', ')
+        : jobData.skills && typeof jobData.skills === 'object'
+          ? Object.values(jobData.skills)
+              .flat()
+              .filter((s: any) => s != null)
+              .map((s: any) => String(s))
+              .join(', ')
+          : typeof jobData.skills === 'string'
+            ? jobData.skills
+            : 'N/A',
 
     Status: 'UNATTENDED',
 

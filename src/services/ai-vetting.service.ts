@@ -20,21 +20,22 @@ const safeList = (arr: string[] | undefined | null): string =>
   arr && arr.length > 0 ? arr.join(", ") : "Not specified";
 
 const buildClientProfile = (profile: Profile): string => {
-  return [
-    `- Target Titles: ${safeList(profile.titles)}`,
-    `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
-    `- Target Keywords: ${safeList(profile.keywords)}`,
-    `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
-    `- Target Locations: ${safeList(profile.locations)}`,
-    `- Target Cities: ${safeList(profile.city)}`,
-    `- Target States: ${safeList(profile.state)}`,
-    `- Target Country: ${profile.country || "Not specified"}`,
-    `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
-    `- Target Industries: ${safeList(profile.industriesInclude)}`,
-    `- Excluded Industries: ${safeList(profile.industriesExclude)}`,
-    `- Target Job Types: ${safeList(profile.jobTypes)}`,
-  ].join("\n");
-};
+    return [
+      `- Target Titles: ${safeList(profile.titles)}`,
+      `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
+      `- Target Keywords: ${safeList(profile.keywords)}`,
+      `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
+      `- Target Locations: ${safeList(profile.locations)}`,
+      `- Target Cities: ${safeList(profile.city)}`,
+      `- Target States: ${safeList(profile.state)}`,
+      `- Target Country: ${profile.country || "Not specified"}`,
+      `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
+      `- Target Industries: ${safeList(profile.industriesInclude)}`,
+      `- Excluded Industries: ${safeList(profile.industriesExclude)}`,
+      `- Target Job Types: ${safeList(profile.jobTypes)}`,
+      `- Work Rights: ${safeList(profile.workingRight)}`,
+    ].join("\n");
+  };
 
 const buildJobDetails = (job: ManualApplication): string => {
   return [
