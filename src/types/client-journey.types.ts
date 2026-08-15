@@ -5,7 +5,7 @@ export type ClientJourneyPhaseKey =
   | "final-checks"
   | "campaign-live"
   | "campaign-review"
-  | "whats-next";
+  | "campaign-ended";
 
 export type ClientJourneyActorType = "client" | "system" | "admin";
 export type ClientJourneySource = "automatic" | "manual";
