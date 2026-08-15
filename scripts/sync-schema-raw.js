@@ -41,7 +41,7 @@ const TABLES = {
     { name: 'serviceHistory',      type: 'JSONB',          nullable: '' },
     { name: 'isApplicationStarted',type: 'BOOLEAN',        nullable: 'NOT NULL', default: 'DEFAULT false' },
     { name: 'resetTokenVerified',  type: 'BOOLEAN',        nullable: 'NOT NULL', default: 'DEFAULT false' },
-    { name: 'applicationStatus',   type: 'VARCHAR(255)',   nullable: 'NOT NULL', default: "DEFAULT 'Commenced'" },
+    { name: 'applicationStatus',   type: 'VARCHAR(255)',   nullable: 'NOT NULL', default: "DEFAULT 'Not Started'" },
     { name: 'paymentStatus',       type: 'VARCHAR(255)',   nullable: 'NOT NULL', default: "DEFAULT 'Unpaid'" },
     { name: 'totalAmountPaid',     type: 'DECIMAL(10,2)',  nullable: 'NOT NULL', default: 'DEFAULT 0' },
     { name: 'prepSessionStatus',   type: 'INTEGER',        nullable: 'NOT NULL', default: 'DEFAULT 0' },
