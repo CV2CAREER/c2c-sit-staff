@@ -15,6 +15,7 @@ export enum CustomerClass {
 }
 
 export enum ApplicationStatus {
+  NOT_STARTED = "Not Started",
   COMMENCED = "Commenced",
   HOLD = "Hold",
   EXPIRED = "Expired",
