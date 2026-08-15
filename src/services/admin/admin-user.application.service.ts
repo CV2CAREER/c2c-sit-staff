@@ -153,6 +153,13 @@ interface BulkAddUsersResponse {
   generatedAt: string;
 }
 
+interface PrecheckEmailResponse {
+  exists: boolean;
+  existingUserId?: string;
+  existingRole?: string;
+  existingName?: string;
+}
+
 const logger = getServiceLogger("admin-user-service");
 
 const DEFAULT_PAGE = 1;
@@ -701,6 +708,32 @@ class AdminUserApplicationService {
         skipped: skipped.length,
       },
       generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async precheckEmail(rawEmail: string): Promise<PrecheckEmailResponse> {
+    const email = normalizeEmail(rawEmail);
+    if (!email || !EMAIL_REGEX.test(email)) {
+      throw new ErrorHandler("A valid email is required.", 400);
+    }
+
+    const existing = await User.findOne({
+      where: { email: { [Op.iLike]: email }, deletedAt: null },
+      attributes: ["id", "role", "firstName", "lastName"],
+    });
+
+    if (!existing) return { exists: false };
+
+    const name = [existing.firstName, existing.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    return {
+      exists: true,
+      existingUserId: existing.id,
+      existingRole: existing.role,
+      existingName: name || undefined,
     };
   }
 
