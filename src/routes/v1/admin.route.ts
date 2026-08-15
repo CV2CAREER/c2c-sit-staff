@@ -15,6 +15,7 @@ import {
   downloadAdminUsersExport,
   postAdminUsersExport,
   postAdminUsers,
+  postAdminPrecheckEmail,
   patchAdminUserPersona,
   postAdminSendUserOtp,
   postAdminVerifyUserOtp,
@@ -611,6 +612,13 @@ adminRouterV1.post(
   isUserAuthenticated,
   writeAccess,
   postAdminUsers,
+);
+adminRouterV1.post(
+  "/users/precheck-email",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postAdminPrecheckEmail,
 );
 adminRouterV1.patch(
   "/users/persona",
