@@ -153,6 +153,7 @@ export const ADMIN_PROMOTION = '/api/v1/admin/promos';
 export const ADMIN_PROMOTION_WITH_ID = (id: string) =>
   `/api/v1/admin/promos?id=${id}`;
 
+export const ADMIN_USERS_PRECHECK_EMAIL = '/api/v1/admin/users/precheck-email';
 export const ADMIN_SEND_USER_OTP = (userId: string) =>
   `/api/v1/admin/users/${userId}/send-otp`;
 export const ADMIN_VERIFY_USER_OTP = (userId: string) =>
