@@ -827,6 +827,16 @@ export const patchAdminUserPersona = catchAsyncError(
   },
 );
 
+export const postAdminPrecheckEmail = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+    const email = typeof req.body?.email === "string" ? req.body.email : "";
+    if (!email.trim()) throw new ErrorHandler("email is required.", 400);
+    const payload = await adminUserApplicationService.precheckEmail(email);
+    res.apiSuccess(payload, "Email precheck completed");
+  },
+);
+
 export const postAdminSendUserOtp = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAdmin(req);
