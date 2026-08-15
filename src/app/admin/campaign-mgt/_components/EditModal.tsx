@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { SetStateAction } from 'react';
+import React, { SetStateAction, useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -34,6 +34,7 @@ import toast from 'react-hot-toast';
 import { validateHeaderName } from 'http';
 import { VACell } from './AssignVA';
 import { PencilLine } from 'lucide-react';
+import { useAdminMutations } from '@/hooks/api/admin.api';
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
@@ -128,10 +129,20 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   editClientAction,
 }) => {
   const queryClient = useQueryClient();
+  const { assignVaMutation } = useAdminMutations();
 
   const countries = countryList()
     .getData()
     .map((country) => ({ ...country, value: country.label }));
+
+  // Placement Controller selections are staged here (not saved) until Update
+  // is clicked — VACell reports changes up via onSelectionChange instead of
+  // calling the assignment API itself. `undefined` means "untouched this
+  // session", so onSubmit's diff only sends a request for slots the user
+  // actually changed, distinguishing that from an explicit unassign (null).
+  const [dpcEmail, setDpcEmail] = useState<string | null | undefined>(undefined);
+  const [vpcEmail, setVpcEmail] = useState<string | null | undefined>(undefined);
+  const [spcEmail, setSpcEmail] = useState<string | null | undefined>(undefined);
 
   // Helper: read a field from the client object, falling back to seekExternalCredentials
   // JSONB for fields that are stored there (First_Name, Plan, Country, etc.)
@@ -187,8 +198,28 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
     },
   });
 
+  // Placement Controller slots staged via VACell's onSelectionChange — only
+  // included if the user actually touched that dropdown this session
+  // (undefined = untouched, so it's left out of the request entirely).
+  const pcChanges: { variant: 'DPC' | 'VPC' | 'SPC'; label: string; email: string | null }[] = [
+    ...(dpcEmail !== undefined ? [{ variant: 'DPC' as const, label: 'DPC', email: dpcEmail }] : []),
+    ...(vpcEmail !== undefined ? [{ variant: 'VPC' as const, label: 'VPC', email: vpcEmail }] : []),
+    ...(spcEmail !== undefined ? [{ variant: 'SPC' as const, label: 'SPC', email: spcEmail }] : []),
+  ];
+
+  const savePcChanges = async () => {
+    for (const change of pcChanges) {
+      await assignVaMutation.mutateAsync({
+        credId: String(client.id),
+        vaEmail: change.email,
+        variant: change.variant,
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ['admin-fetch-campaign-clients'] });
+  };
+
   // Submit handler
-  const onSubmit = (values: CampaignFormValues) => {
+  const onSubmit = async (values: CampaignFormValues) => {
     // Build a diff: only fields whose value changed relative to the original client data
     const updatedData = Object.entries(values).reduce(
       (acc: Partial<z.infer<typeof formSchema>>, [key, value]) => {
@@ -214,36 +245,57 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       {} as Partial<z.infer<typeof formSchema>>
     );
 
-    // If there are no changes, return early
-    if (Object.keys(updatedData).length === 0) {
+    // If there are no changes anywhere — neither form fields nor PC
+    // assignments — return early.
+    if (Object.keys(updatedData).length === 0 && pcChanges.length === 0) {
       toast('No changes detected.');
       setDialog(null);
-    } else {
-      toast.loading('Updating client...');
+      return;
+    }
 
-      editClientAction().mutate(
-        {
-          clientId: client.id,
-          data: {
-            ...updatedData,
-          },
-        },
-        {
-          onSuccess: () => {
-            toast.dismiss();
-            toast.success('Client has been updated successfully');
-            setDialog(null);
+    toast.loading('Updating client...');
 
-            // Refresh campaign clients table
-            queryClient.invalidateQueries({
-              queryKey: ['admin-fetch-campaign-clients'],
-            });
+    try {
+      if (pcChanges.length > 0) {
+        await savePcChanges();
+      }
+
+      if (Object.keys(updatedData).length > 0) {
+        editClientAction().mutate(
+          {
+            clientId: client.id,
+            data: {
+              ...updatedData,
+            },
           },
-          onError: (err) => {
-            toast.dismiss();
-            toast.error(err.message || 'Failed to update client');
-          },
-        }
+          {
+            onSuccess: () => {
+              toast.dismiss();
+              toast.success('Client has been updated successfully');
+              setDialog(null);
+
+              // Refresh campaign clients table
+              queryClient.invalidateQueries({
+                queryKey: ['admin-fetch-campaign-clients'],
+              });
+            },
+            onError: (err) => {
+              toast.dismiss();
+              toast.error(err.message || 'Failed to update client');
+            },
+          }
+        );
+      } else {
+        // Only PC assignments changed — savePcChanges already invalidated
+        // the table query, so just report success and close.
+        toast.dismiss();
+        toast.success('Client has been updated successfully');
+        setDialog(null);
+      }
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(
+        err?.response?.data?.message ?? err?.message ?? 'Failed to update client'
       );
     }
   };
@@ -730,15 +782,15 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
               <SectionLabel>Placement Controllers</SectionLabel>
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Discovery Placement Controller</label>
-                <VACell data={client} variant="DPC" />
+                <VACell data={client} variant="DPC" onSelectionChange={setDpcEmail} />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Vetting Placement Controller</label>
-                <VACell data={client} variant="VPC" />
+                <VACell data={client} variant="VPC" onSelectionChange={setVpcEmail} />
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Submission Placement Controller</label>
-                <VACell data={client} variant="SPC" />
+                <VACell data={client} variant="SPC" onSelectionChange={setSpcEmail} />
               </div>
             </form>
           </Form>
