@@ -24,12 +24,12 @@ const adminDocumentRouterV1 = Router();
 adminDocumentRouterV1.use(
   checkBlacklistedTokens,
   isUserAuthenticated,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "assistant"),
 );
 
 adminDocumentRouterV1.get("/get-signed-url", getDocumentSignedUrlController);
 adminDocumentRouterV1.post("/upload", uploadAdminDocumentsController);
-adminDocumentRouterV1.delete("/upload", deleteAdminDocumentUploadController);
+adminDocumentRouterV1.delete("/upload", authorizeRoles("admin"), deleteAdminDocumentUploadController);
 adminDocumentRouterV1.post(
   "/validate-and-upload-url",
   validateAndUploadUrlController,

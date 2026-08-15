@@ -105,11 +105,39 @@ export interface CvVariantAdditionalSection {
   items: CvVariantTextRun[];
 }
 
-export interface CvVariantResult {
+export interface CvVariantDesign {
+  accent_color: string;
+  font_family: "sans" | "serif";
+  density: "compact" | "standard" | "spacious";
+  /**
+   * Drives which structural PDF/DOCX layout renders (see htmlDocumentGenerator.ts):
+   * "modern" = two-column, "classic" = centered single-column with restrained
+   * color, "contemporary" = single-column with a tinted banner header. Unlike
+   * the other three tokens this isn't optional after sanitization — every CV
+   * variant save gets one of the three real layouts, never the undated
+   * single-column fallback other callers (e.g. Interview Pack) get by
+   * omitting `design` entirely.
+   */
+  style_variant: "modern" | "classic" | "contemporary";
+}
+
+/**
+ * The prompt driving this (a VCS-managed row, editable via Admin > Prompts)
+ * can change its output shape at any time — a rewritten prompt, a model
+ * having an off day, or a differently-tuned agent can all return field names
+ * that don't match the shape below. Treating that as a hard failure just
+ * loses the whole generation. So this is a *hint* at the shape we ask the AI
+ * for and render specially when present — not a contract the AI's response
+ * is validated against. `Record<string, unknown>` lets anything else through
+ * so the frontend's generic renderer (cvVariantFormat.ts) can still turn it
+ * into a readable document.
+ */
+export type CvVariantResult = Record<string, unknown> & Partial<{
   client_name: string;
   style_variant: "modern" | "classic" | "contemporary";
   style_reasoning: string;
   top_level_flags: string[];
+  design: CvVariantDesign;
   header: CvVariantHeader;
   summary: { runs: CvVariantTextRun[] };
   skills: CvVariantTextRun[];
@@ -117,6 +145,44 @@ export interface CvVariantResult {
   education: CvVariantEducation[];
   certifications: CvVariantCertification[];
   additional_sections: CvVariantAdditionalSection[];
+}>;
+
+const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
+  accent_color: "#0D9F6E",
+  font_family: "sans",
+  density: "standard",
+  style_variant: "classic",
+};
+
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const STYLE_VARIANTS = new Set(["modern", "classic", "contemporary"]);
+
+/**
+ * The AI is asked to pick design tokens (accent color / font pairing /
+ * density / style_variant) per the schema, but its output is untrusted input
+ * like any other field — fall back to the current house-style default for
+ * anything missing or malformed rather than rejecting the whole variant over
+ * it. `styleVariantHint` covers `style_variant` living at the top level of
+ * CvVariantResult rather than nested in `design` — whichever is present and
+ * valid wins.
+ */
+function sanitizeCvVariantDesign(design: unknown, styleVariantHint?: unknown): CvVariantDesign {
+  const candidate = (design ?? {}) as Partial<CvVariantDesign>;
+  const accent_color = HEX_COLOR_PATTERN.test(candidate.accent_color ?? "")
+    ? (candidate.accent_color as string)
+    : DEFAULT_CV_VARIANT_DESIGN.accent_color;
+  const font_family = candidate.font_family === "serif" ? "serif" : "sans";
+  const density =
+    candidate.density === "compact" || candidate.density === "spacious"
+      ? candidate.density
+      : "standard";
+  const style_variant = STYLE_VARIANTS.has(candidate.style_variant ?? "")
+    ? (candidate.style_variant as CvVariantDesign["style_variant"])
+    : STYLE_VARIANTS.has(styleVariantHint as string)
+      ? (styleVariantHint as CvVariantDesign["style_variant"])
+      : DEFAULT_CV_VARIANT_DESIGN.style_variant;
+
+  return { accent_color, font_family, density, style_variant };
 }
 
 export class AdminDocumentService {
@@ -962,6 +1028,7 @@ export class AdminDocumentService {
         const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
         const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+            logger.error(`[GenerateCvVariant] No JSON found in AI response for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
             throw new ErrorHandler("AI response did not contain valid JSON", 500);
         }
 
@@ -969,12 +1036,25 @@ export class AdminDocumentService {
         try {
             result = JSON.parse(jsonMatch[0]);
         } catch {
+            logger.error(`[GenerateCvVariant] Failed to parse AI JSON for user ${targetUserId}. Matched JSON (first 2000 chars): ${jsonMatch[0].slice(0, 2000)}`);
             throw new ErrorHandler("Failed to parse AI-generated CV variant", 500);
         }
 
-        if (!result.header || !Array.isArray(result.experience)) {
-            throw new ErrorHandler("AI response is missing required CV variant fields", 500);
+        if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
+            logger.error(`[GenerateCvVariant] AI returned an empty/non-object response for user ${targetUserId}. Raw response (first 3000 chars): ${aiResponse.slice(0, 3000)}`);
+            throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
+
+        if (!result.header || !Array.isArray(result.experience)) {
+            // The prompt's schema is a hint, not a contract — the AI (or a
+            // reworked prompt) can return a differently-shaped object. Don't
+            // fail the whole generation over it; log the drift for
+            // visibility and let the frontend's generic renderer handle
+            // whatever shape actually came back.
+            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId}. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
+        }
+
+        result.design = sanitizeCvVariantDesign(result.design, result.style_variant);
 
         logger.info(`[GenerateCvVariant] Generated a "${result.style_variant}" variant for user ${targetUserId}`);
         return result;
@@ -992,12 +1072,15 @@ export class AdminDocumentService {
         resumeUploadId: string,
         cvVariantHtml: string,
         format: "pdf" | "docx",
+        design?: Partial<CvVariantDesign>,
     ): Promise<{ upload: Upload; clientName: string }> {
         logger.info(`[SaveCvVariant] User ${targetUserId}, format ${format}`);
 
         if (!cvVariantHtml?.trim()) {
             throw new ErrorHandler("CV variant content is required", 400);
         }
+
+        const resolvedDesign = sanitizeCvVariantDesign(design);
 
         // Confirm the resume belongs to this user before attaching the
         // generated variant to their account.
@@ -1019,8 +1102,8 @@ export class AdminDocumentService {
 
         const isPdf = format === "pdf";
         const buffer = isPdf
-            ? await htmlToPdfBuffer(cvVariantHtml)
-            : await htmlToDocxBuffer(cvVariantHtml);
+            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
+            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
 
         const mimeType = isPdf
             ? "application/pdf"
