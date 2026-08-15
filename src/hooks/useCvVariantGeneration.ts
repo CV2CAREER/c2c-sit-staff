@@ -49,11 +49,28 @@ export type CvVariantAdditionalSection = {
   items: CvVariantTextRun[];
 };
 
-export type CvVariantResult = {
+export type CvVariantDesign = {
+  accent_color: string;
+  font_family: "sans" | "serif";
+  density: "compact" | "standard" | "spacious";
+  /** Which structural PDF/DOCX layout renders — see htmlDocumentGenerator.ts on the backend. Always present on a generated result (the backend defaults it), so no separate `style_variant` plumbing is needed when passing `design` through to save. */
+  style_variant: CvVariantStyle;
+};
+
+/**
+ * The AI prompt behind this (edited via Admin > Prompts, and known to drift
+ * — see cvVariantFormat.ts) can return a differently-shaped object at any
+ * time, so this is a *hint* at the fields we render specially, not a
+ * contract on what the API returns. `Record<string, unknown>` lets any other
+ * shape through so the generic renderer can still turn it into a readable
+ * document instead of the app breaking on a missing field.
+ */
+export type CvVariantResult = Record<string, unknown> & Partial<{
   client_name: string;
   style_variant: CvVariantStyle;
   style_reasoning: string;
   top_level_flags: string[];
+  design: CvVariantDesign;
   header: CvVariantHeader;
   summary: { runs: CvVariantTextRun[] };
   skills: CvVariantTextRun[];
@@ -61,7 +78,7 @@ export type CvVariantResult = {
   education: CvVariantEducation[];
   certifications: CvVariantCertification[];
   additional_sections: CvVariantAdditionalSection[];
-};
+}>;
 
 export type SaveCvVariantFormat = "pdf" | "docx";
 
@@ -75,6 +92,7 @@ type SaveCvVariantPayload = {
   resumeUploadId: string;
   cvVariant: string;
   format: SaveCvVariantFormat;
+  design?: CvVariantDesign;
 };
 
 type CvVariantDocument = {

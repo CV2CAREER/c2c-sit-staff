@@ -86,12 +86,17 @@ export default function GenerateCvVariantButton({
   const handleGenerate = async () => {
     try {
       const data = await generateCvVariant({ userId, resumeUploadId });
-      if (!data?.header) {
+      if (!data || Object.keys(data).length === 0) {
         toast.error("No CV variant was returned");
         return;
       }
+      const html = flattenCvVariantToHtml(data);
+      if (!html.trim()) {
+        toast.error("The AI response couldn't be turned into a CV — try generating again");
+        return;
+      }
       setResult(data);
-      setEditedHtml(flattenCvVariantToHtml(data));
+      setEditedHtml(html);
       setIsReviewOpen(true);
       toast.success("CV variant generated");
     } catch (error: any) {
@@ -103,7 +108,13 @@ export default function GenerateCvVariantButton({
 
   const handleSave = async (format: SaveCvVariantFormat) => {
     try {
-      const data = await saveCvVariant({ userId, resumeUploadId, cvVariant: editedHtml, format });
+      const data = await saveCvVariant({
+        userId,
+        resumeUploadId,
+        cvVariant: editedHtml,
+        format,
+        design: result?.design,
+      });
       const document_ = data?.upload?.document;
       if (!document_?.publicId) {
         toast.error("CV variant saved, but no download reference was returned");
@@ -210,8 +221,8 @@ export default function GenerateCvVariantButton({
 
       {/* Review + edit modal */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>CV Variant</DialogTitle>
             <DialogDescription>
               {result?.client_name
@@ -220,38 +231,53 @@ export default function GenerateCvVariantButton({
             </DialogDescription>
           </DialogHeader>
 
-          {result && (
-            <div className="flex flex-wrap items-center gap-2 text-13">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold capitalize ${
-                  STYLE_BADGE_CLASSES[result.style_variant] ?? "bg-slate-200 text-slate-700"
-                }`}
-              >
-                <HiOutlineColorSwatch />
-                {result.style_variant}
-              </span>
-              {result.style_reasoning && (
-                <span className="text-career-gray-200">{result.style_reasoning}</span>
-              )}
-            </div>
-          )}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+            {result && (
+              <div className="flex flex-wrap items-center gap-2 text-13">
+                {result.style_variant && (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold capitalize ${
+                      STYLE_BADGE_CLASSES[result.style_variant] ?? "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    <HiOutlineColorSwatch />
+                    {result.style_variant}
+                  </span>
+                )}
+                {result.style_reasoning && (
+                  <span className="text-career-gray-200">{result.style_reasoning}</span>
+                )}
+                {result.design && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-career-gray-300 px-2.5 py-1">
+                    <span
+                      className="h-3 w-3 rounded-full border border-black/10"
+                      style={{ backgroundColor: result.design.accent_color }}
+                    />
+                    <span className="capitalize text-career-gray-200">
+                      {result.design.font_family} · {result.design.density}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
 
-          {flags.length > 0 && (
-            <div className="max-h-32 overflow-auto rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-              <p className="font-semibold">Flags — review before saving</p>
-              <ul className="mt-1 list-disc pl-5">
-                {flags.map((item, index) => (
-                  <li key={index}>
-                    <span className="font-medium">{item.source}:</span> {item.flag}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {flags.length > 0 && (
+              <div className="max-h-32 overflow-auto rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-semibold">Flags — review before saving</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {flags.map((item, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{item.source}:</span> {item.flag}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
+            <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               variant="outline"
               disabled={isSaving}
