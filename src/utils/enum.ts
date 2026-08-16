@@ -15,6 +15,7 @@ export enum CustomerClass {
 }
 
 export enum ApplicationStatus {
+  NOT_STARTED = "Not Started",
   COMMENCED = "Commenced",
   HOLD = "Hold",
   EXPIRED = "Expired",
@@ -428,7 +429,7 @@ export enum ClientJourneyPhase {
   FINAL_CHECKS = "final-checks",
   CAMPAIGN_LIVE = "campaign-live",
   CAMPAIGN_REVIEW = "campaign-review",
-  WHATS_NEXT = "whats-next",
+  CAMPAIGN_ENDED = "campaign-ended",
 }
 
 export enum ClientJourneyStepStatus {

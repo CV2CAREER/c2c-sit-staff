@@ -103,20 +103,11 @@ function hasValidName(value: string | null | undefined): boolean {
 async function fetchAllActiveClients(): Promise<ClientInfo[]> {
   const credentials = await Credentials.findAll({
     where: { Active: true, deletedAt: null, capitalized: 'FLIGHT' },
-    attributes: [
-      'clientId',
-      'AssignedPCName',
-      'AssignedPCEmail',
-      'AssignedVetName',
-      'AssignedVetEmail',
-      'AssignedCompletedName',
-      'AssignedCompletedEmail',
-    ],
     include: [
       {
         model: User,
         as: 'client',
-        attributes: ['id', 'firstName', 'lastName', 'email'],
+        attributes: ['id', 'firstName', 'lastName'],
         required: false,
       },
     ],

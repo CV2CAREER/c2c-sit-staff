@@ -13,29 +13,30 @@ CLIENT PROFILE:
 JOB DETAILS:
 {{JOB_DETAILS}}
 
-LOCATION MATCHING RULES:
-- If the job Location or Country mentions Remote, Hybrid, WFH, Work From Home, or similar, treat it as a remote/hybrid role and match it against any Remote entry in the client's Target Locations or Cities.
-- A job located in the client's Target Country should NOT be rejected for location simply because the city is not listed or differs from Target Cities; only reject for location when the country itself is outside the client's targets.
-- If the client targets both specific cities AND Remote, a remote role matches regardless of the city/state.
-- Only say a criterion is missing/not provided when the JOB DETAILS value is literally N/A, Not specified, or empty. If the field has a value, use it.
+EVALUATION PARAMETERS (evaluate each): Role, Location, Salary, Work Rights, Industry.
 
-SALARY MATCHING:
-- Salary is a SOFT criterion and must NEVER alone cause an LQA.
-- A job paying AT OR ABOVE the client's minimum salary is acceptable regardless of how high it goes. Exceeding the client's maximum is a POSITIVE, not a downgrade.
-- Only mention salary as a concern when the job pays CLEARLY BELOW the client's minimum, and even then rate it at most MQA.
-- If the client's salary range or the job's salary is Not specified, do not penalise for it.
+KEY RULES:
+- Hard contradiction => immediate LQA. Examples: job role explicitly contradicts target role; job country is outside client's target countries; job requires a work right the client does NOT have; job explicitly lists an industry that the client excludes.
+- Uncertainty/insufficient info => treat as verification-needed (soft negative) and count as MQA-level concern.
+- Scoring boundary:
+  - HQA: strong/acceptable on nearly all parameters (5/5 or only minor soft issues).
+  - MQA: 3-4/5 parameters OK or any combination with soft/uncertain issues.
+  - LQA: any hard contradiction OR 3 or more parameter failures (hard or soft).
+- Salary is a SOFT criterion: salary below client's minimum should be flagged at most MQA and must NEVER alone cause LQA. Salary at or above minimum is acceptable; exceeding client's max is positive.
+- Skills are NEUTRAL if missing; only use skills to downgrade if job explicitly lists excluded/contradictory skills.
+- Location rules:
+  - Treat listings mentioning Remote/Hybrid/WFH as remote and match against client's Remote targets.
+  - Do NOT reject for location if country matches even if city differs.
+  - If client targets specific cities AND Remote, a remote listing matches regardless of city/state.
+- Only mark a JOB DETAILS field as missing when its value is exactly N/A, Not specified, or empty.
 
-SKILLS MATCHING:
-- Compare the job's Skills/Tech against the client's Target Keywords (and avoid Excluded Keywords).
-- Missing skills are EXPECTED — most job listings do not state skills. A job with no Skills/Tech must NOT be downgraded or used as a reason for LQA; treat it as neutral.
-- Only use skills as a NEGATIVE factor when the job explicitly lists skills that are excluded or clearly contradict the client's targets.
-
-Respond with JSON only. Do not include markdown formatting or code blocks.
-{ "score": "HQA", "reason": "Brief one-line reason for the classification" }
+RESPONSE FORMAT:
+Respond with JSON only, exact object keys: { "score": "<HQA|MQA|LQA>", "reason": "<single concise reason>" }
+- The reason must name the specific parameter(s) and indicate whether it's a "contradiction" (hard) or "verification needed" / "soft". Example: "Work Rights: contradiction - client lacks required right" or "Location: verification needed - remote vs city not explicit".
 
 HQA = Strong match on all or nearly all criteria
-MQA = Genuine but imperfect fit — one criterion is off, borderline, or unclear
-LQA = Poor fit on one or more criteria`;
+MQA = Genuine but imperfect fit — one or more soft/uncertain issues or 3-4/5 acceptable
+LQA = Poor fit — any hard contradiction OR ≥3 failures`;
 
 export const seedAiVettingPrompt = async (): Promise<void> => {
   const forceUpdate = process.env.SEED_AI_VETTING_PROMPT_FORCE === "true";
@@ -49,7 +50,7 @@ export const seedAiVettingPrompt = async (): Promise<void> => {
 
   const promptRow = await VCSPrompt.create({
     prompt: AI_VETTING_PROMPT,
-    version: "1.4",
+    version: "1.5",
     active: true,
   });
 

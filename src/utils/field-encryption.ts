@@ -8,6 +8,10 @@ function db() {
 }
 
 export const fieldEncryption = {
+  getKey(): string {
+    return KEY;
+  },
+
   async encrypt(value: string): Promise<string> {
     const [result] = await db().query(
       `SELECT pgp_sym_encrypt(:value, :key) AS encrypted`,
@@ -149,6 +153,37 @@ export const fieldEncryption = {
        WHERE c."seekEmailEncrypted" IS NOT NULL
          AND LOWER(pgp_sym_decrypt(c."seekEmailEncrypted", :key)) IN (:emails)`,
       { replacements: { key: KEY, emails: emails.map((e) => e.toLowerCase()) }, type: QueryTypes.SELECT }
+    );
+    return rows as any[];
+  },
+
+  async findCredentialsBySeekEmailPartial(search: string): Promise<string[]> {
+    const rows = await db().query(
+      `SELECT c.id FROM credentials c
+       WHERE c."seekEmailEncrypted" IS NOT NULL
+         AND LOWER(pgp_sym_decrypt(c."seekEmailEncrypted", :key)) LIKE :pattern`,
+      { replacements: { key: KEY, pattern: `%${search.toLowerCase()}%` }, type: QueryTypes.SELECT }
+    );
+    return (rows as any[]).map((r: any) => r.id);
+  },
+
+  async findCredentialsByAssignedEmail(email: string): Promise<any[]> {
+    const rows = await db().query(
+      `SELECT c.id, c."clientId", c."currentCity", c."onboardingDate", c."referrer",
+              c."capitalized", c."Active", c."SeekAnswerPriority", c."SeekAggregator",
+              c."SeekSubStartDate", c."blacklisted",
+              pgp_sym_decrypt(c."seekEmailEncrypted", :key) AS "seekEmail",
+              pgp_sym_decrypt(c."AssignedPCNameEncrypted", :key) AS "AssignedPCName",
+              pgp_sym_decrypt(c."AssignedPCEmailEncrypted", :key) AS "AssignedPCEmail",
+              pgp_sym_decrypt(c."AssignedVetNameEncrypted", :key) AS "AssignedVetName",
+              pgp_sym_decrypt(c."AssignedVetEmailEncrypted", :key) AS "AssignedVetEmail",
+              pgp_sym_decrypt(c."AssignedCompletedNameEncrypted", :key) AS "AssignedCompletedName",
+              pgp_sym_decrypt(c."AssignedCompletedEmailEncrypted", :key) AS "AssignedCompletedEmail"
+       FROM credentials c
+       WHERE LOWER(pgp_sym_decrypt(c."AssignedPCEmailEncrypted", :key)) = :email
+          OR LOWER(pgp_sym_decrypt(c."AssignedVetEmailEncrypted", :key)) = :email
+          OR LOWER(pgp_sym_decrypt(c."AssignedCompletedEmailEncrypted", :key)) = :email`,
+      { replacements: { key: KEY, email: email.toLowerCase() }, type: QueryTypes.SELECT }
     );
     return rows as any[];
   },

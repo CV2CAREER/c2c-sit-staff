@@ -25,7 +25,7 @@ const getQueueKey = (queue: string, environment: string) => {
 export const getUsers = catchAsyncError(async (req: Request, res: Response) => {
   const credentials = await db.credentials.findMany({
     where: { deletedAt: null },
-    attributes: ["seekEmail", "clientId"],
+    attributes: ["clientId"],
   });
 
   const customerIds = credentials
@@ -138,7 +138,7 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
       where: {
         id: { [Op.in]: uniqueClientIds },
       },
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     const credentialByEmail = new Map(
@@ -191,11 +191,16 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
     const results: any[] = [];
 
     for (const item of processData) {
-      const cred = await db.credentials.findUnique({
-        where: {
-          [Op.or]: [{ id: item.client_id }, { seekEmail: item.email }],
-        },
+      let cred = await db.credentials.findUnique({
+        where: { id: item.client_id },
       });
+
+      if (!cred && item.email) {
+        const matched = await fieldEncryption.findCredentialsBySeekEmail([item.email]);
+        if (matched.length) {
+          cred = await db.credentials.findUnique({ where: { id: matched[0].id } });
+        }
+      }
 
       if (!cred) continue;
 
@@ -333,14 +338,14 @@ export const getLoadBalancer = catchAsyncError(async (req: Request, res: Respons
         const client = JSON.parse(data);
         const cred = await db.credentials.findUnique({
           where: { id: client.id },
-          attributes: ["clientId", "seekEmail"],
+          attributes: ["clientId"],
         });
 
         if (!cred) continue;
 
         const user = await db.users.findUnique({
           where: { id: cred.clientId },
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
         });
 
         if (!user) continue;

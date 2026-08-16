@@ -92,7 +92,13 @@ export class MissingInfoRequest extends Model {
   @Column(DataType.ENUM(...MISSING_INFO_REQUEST_CHANNELS))
   channel!: MissingInfoRequestChannel;
 
-  personalMessage!: string;
+  @Column(DataType.VIRTUAL(DataType.TEXT))
+  get personalMessage(): string | null {
+    return this.getDataValue("personalMessage") as string | null;
+  }
+  set personalMessage(value: string | null) {
+    this.setDataValue("personalMessage", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.TEXT)
@@ -163,6 +169,7 @@ export class MissingInfoRequest extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedMissingRequestPersonalMessage(instance.id);
         if (decrypted !== null) {

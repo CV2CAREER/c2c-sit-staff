@@ -52,7 +52,7 @@ export const getCoachSessionsData = async (coachId: string, bypassCache = false)
       {
         model: User,
         as: 'client',
-        attributes: ['id', 'firstName', 'lastName', 'email'],
+        attributes: ['id', 'firstName', 'lastName'],
         required: false
       }
     ],
@@ -211,7 +211,7 @@ export const getSessionById = async (coachId: string, sessionId: string) => {
       {
         model: User,
         as: 'client',
-        attributes: ['id', 'firstName', 'lastName', 'email'],
+        attributes: ['id', 'firstName', 'lastName'],
         required: false
       }
     ]

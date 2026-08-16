@@ -41,9 +41,13 @@ export class MissingInfoResponse extends Model {
   @Column(DataType.STRING)
   fieldLabel!: string | null;
 
-  @AllowNull(true)
-  @Column(DataType.TEXT)
-  fieldValue!: string | null;
+  @Column(DataType.VIRTUAL(DataType.TEXT))
+  get fieldValue(): string | null {
+    return this.getDataValue("fieldValue") as string | null;
+  }
+  set fieldValue(value: string | null) {
+    this.setDataValue("fieldValue", value);
+  }
 
   @BeforeSave
   static captureAndClearPlaintext(instance: MissingInfoResponse) {
@@ -83,6 +87,7 @@ export class MissingInfoResponse extends Model {
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(
       list.map(async (instance) => {
+        if (!instance?.id) return;
         try {
           const decrypted = await fieldEncryption.getDecryptedMissingResponseFieldValue(instance.id);
           if (decrypted !== null) {

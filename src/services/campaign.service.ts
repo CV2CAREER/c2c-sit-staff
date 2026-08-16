@@ -764,7 +764,6 @@ export const addToClientSampleQueue = async (
   if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ['seekEmail'],
     });
 
     if (!cred) {
@@ -1211,8 +1210,16 @@ export const saveManualApplication = async (
 
     Skills:
       Array.isArray(jobData.skills) && jobData.skills.length > 0
-        ? jobData.skills.join(', ')
-        : jobData.skills || 'N/A',
+        ? jobData.skills.map((s: any) => String(s)).join(', ')
+        : jobData.skills && typeof jobData.skills === 'object'
+          ? Object.values(jobData.skills)
+              .flat()
+              .filter((s: any) => s != null)
+              .map((s: any) => String(s))
+              .join(', ')
+          : typeof jobData.skills === 'string'
+            ? jobData.skills
+            : 'N/A',
 
     Status: 'UNATTENDED',
 
@@ -2246,7 +2253,7 @@ const enrichCampaignFields = (client: any) => {
     SeekSubStartDate: computed.SeekSubStartDate ?? client.SeekSubStartDate,
     seekExternalCredentials: {
       ...cred,
-      SeekSubEndDate: computed.SeekSubEndDate ?? cred.SeekSubEndDate,
+      SeekSubEndDate: cred.SeekSubEndDate,
       CampaignEnd: computed.CampaignEnd ?? cred.CampaignEnd,
       SeekSubRemainingDays: computed.SeekSubRemainingDays,
       SeekSubToExpireDays: computed.SeekSubToExpireDays,
@@ -2276,6 +2283,7 @@ export const getCampaignClients = async (
   // Working PostgreSQL JSONB search implementation
   if (searchQuery) {
     const searchTerm = `%${searchQuery}%`;
+    const seekEmailMatchedIds = await fieldEncryption.findCredentialsBySeekEmailPartial(searchQuery);
     whereClause = {
       ...whereClause,
       [Op.or]: [
@@ -2304,17 +2312,20 @@ export const getCampaignClients = async (
           Op.like,
           searchTerm.toLowerCase()
         ),
-        // Also search top level fields
-        { seekEmail: { [Op.iLike]: searchTerm } },
+        // Match encrypted seekEmail via decrypt-side partial search
+        ...(seekEmailMatchedIds.length ? [{ id: { [Op.in]: seekEmailMatchedIds } }] : []),
       ],
     };
   }
 
-  const campaigns = await Credentials.findAll({
+  // Not raw: true — hydrated instances are required so the model's
+  // @AfterFind hook (decryptSensitiveFields) can decrypt AssignedPCEmail/
+  // AssignedPCName/etc. back onto the instance before we serialize below.
+  const campaignInstances = await Credentials.findAll({
     where: whereClause,
     order: [['createdAt', 'DESC']],
-    raw: true,
   });
+  const campaigns = campaignInstances.map((c) => c.get({ plain: true }));
 
   // Fetch tour counts for all clients in a single query
   const tourCounts = campaigns.length
@@ -2380,11 +2391,16 @@ export const getCampaignClientById = async (clientId: string) => {
     throw new Error('Client ID is required');
   }
 
-  const clientData = await Credentials.findByPk(clientId, { raw: true });
+  // Not raw: true — hydrated instance required so the model's @AfterFind
+  // hook (decryptSensitiveFields) can decrypt AssignedPCEmail/AssignedPCName/
+  // etc. back onto the instance before we serialize below.
+  const clientInstance = await Credentials.findByPk(clientId);
 
-  if (!clientData) {
+  if (!clientInstance) {
     throw new Error('Client not found');
   }
+
+  const clientData = clientInstance.get({ plain: true });
 
   // Fetch associated user and profile for application statistics
   const user = await User.findOne({ where: { id: clientId } });
@@ -3204,7 +3220,7 @@ export const getClientApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['Timestamp', 'DESC']],
@@ -3285,7 +3301,7 @@ export const getClientManualApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['createdAt', 'DESC']],

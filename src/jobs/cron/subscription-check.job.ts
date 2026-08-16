@@ -55,7 +55,7 @@ export function createSubscriptionCheckJob() {
           },
           isEmailVerified: true
         },
-        attributes: ['id', 'email', 'firstName']
+        attributes: ['id', 'firstName']
       });
 
       if (usersToUnsubscribe.length === 0) {

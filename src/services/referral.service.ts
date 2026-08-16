@@ -94,7 +94,7 @@ export class ReferralService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'businessName']
+            attributes: ['id', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'businessName']
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -190,7 +190,7 @@ export class ReferralService {
       const { count, rows } = await Referrer.findAndCountAll({
         where: whereClause,
         include: [
-          { model: User, as: 'user', attributes: ['id', 'email', 'firstName', 'lastName'] }
+          { model: User, as: 'user', attributes: ['id', 'firstName', 'lastName'] }
         ],
         limit: pageSize,
         offset: (page - 1) * pageSize,
@@ -864,7 +864,7 @@ export class ReferralService {
       // Referrer field stores EMAIL not user ID
       const referrals = await Referrer.findAll({
         where: { referrer: user.email },
-        include: [{ model: User, as: 'user', attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed'] }],
+        include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed'] }],
         order: [['createdAt', 'DESC']]
       });
 
@@ -912,7 +912,7 @@ export class ReferralService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'paymentStatus', 'isUserSubscribed', 'createdAt'],
+            attributes: ['id', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'createdAt'],
           },
         ],
         order: [['createdAt', 'DESC']],
@@ -980,7 +980,7 @@ export class ReferralService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'isDeleted', 'deletedAt', 'createdAt', 'plan'],
+            attributes: ['id', 'firstName', 'lastName', 'role', 'paymentStatus', 'isUserSubscribed', 'isDeleted', 'deletedAt', 'createdAt', 'plan'],
           },
         ],
         order: [['createdAt', 'DESC']],
@@ -1277,7 +1277,7 @@ Phone: ${referralData.phoneNumber}`,
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'isUserSubscribed', 'email', 'firstName', 'lastName', 'plan'],
+          attributes: ['id', 'isUserSubscribed', 'firstName', 'lastName', 'plan'],
         },
       ],
     });
@@ -1503,8 +1503,8 @@ Skipped: ${failedEmails.length}`,
     setImmediate(async () => {
       try {
         const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
-        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email", "uniqueId"] }) : null;
-        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "uniqueId"] }) : null;
+        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName"] });
         const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
         const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 
@@ -1583,8 +1583,8 @@ Skipped: ${failedEmails.length}`,
       setImmediate(async () => {
         try {
           const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
-          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email"] }) : null;
-          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName"] }) : null;
+          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName"] });
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 

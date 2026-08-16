@@ -17,6 +17,7 @@ import {
   BeforeSave,
   AfterCreate,
   BeforeUpdate,
+  AfterUpdate,
   AfterFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
@@ -81,9 +82,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
   @AllowNull(false)
   @Column(DataType.STRING)
@@ -115,13 +120,21 @@ export class User extends Model {
   @Column(DataType.ENUM(...Object.values(CustomerClass)))
   customerClass!: CustomerClass;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  phoneNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get phoneNumber(): string | undefined {
+    return this.getDataValue("phoneNumber") as string | undefined;
+  }
+  set phoneNumber(value: string | undefined) {
+    this.setDataValue("phoneNumber", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  whatsappNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get whatsappNumber(): string | undefined {
+    return this.getDataValue("whatsappNumber") as string | undefined;
+  }
+  set whatsappNumber(value: string | undefined) {
+    this.setDataValue("whatsappNumber", value);
+  }
 
   // Stored as JSONB for flexibility (previously Mixed)
   @AllowNull(true)
@@ -188,7 +201,7 @@ export class User extends Model {
   resetTokenVerified!: boolean;
 
   @AllowNull(false)
-  @Default(ApplicationStatus.HOLD)
+  @Default(ApplicationStatus.NOT_STARTED)
   @Column(DataType.ENUM(...Object.values(ApplicationStatus)))
   applicationStatus!: ApplicationStatus;
 
@@ -314,21 +327,37 @@ export class User extends Model {
   @Column(DataType.TEXT)
   accessToken?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankName(): string | undefined {
+    return this.getDataValue("bankName") as string | undefined;
+  }
+  set bankName(value: string | undefined) {
+    this.setDataValue("bankName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bsbCode?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bsbCode(): string | undefined {
+    return this.getDataValue("bsbCode") as string | undefined;
+  }
+  set bsbCode(value: string | undefined) {
+    this.setDataValue("bsbCode", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountNo?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountNo(): string | undefined {
+    return this.getDataValue("bankAccountNo") as string | undefined;
+  }
+  set bankAccountNo(value: string | undefined) {
+    this.setDataValue("bankAccountNo", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountName(): string | undefined {
+    return this.getDataValue("bankAccountName") as string | undefined;
+  }
+  set bankAccountName(value: string | undefined) {
+    this.setDataValue("bankAccountName", value);
+  }
 
   @AllowNull(false)
   @Default(SampleDispatchedStatus.PENDING)
@@ -536,11 +565,24 @@ export class User extends Model {
     }
   }
 
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: User) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_phoneNumber) instance.setDataValue('phoneNumber', pii._pii_phoneNumber);
+    if (pii._pii_whatsappNumber) instance.setDataValue('whatsappNumber', pii._pii_whatsappNumber);
+    if (pii._pii_bankName) instance.setDataValue('bankName', pii._pii_bankName);
+    if (pii._pii_bsbCode) instance.setDataValue('bsbCode', pii._pii_bsbCode);
+    if (pii._pii_bankAccountNo) instance.setDataValue('bankAccountNo', pii._pii_bankAccountNo);
+    if (pii._pii_bankAccountName) instance.setDataValue('bankAccountName', pii._pii_bankAccountName);
+  }
+
   @AfterFind
   static async decryptSensitiveFields(instances: User[] | User | null) {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
         if (decrypted?.email) instance.setDataValue('email', decrypted.email);
