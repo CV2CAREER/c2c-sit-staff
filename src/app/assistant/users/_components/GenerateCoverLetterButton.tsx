@@ -169,22 +169,24 @@ export default function GenerateCoverLetterButton({
       </Dialog>
 
       <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Generated Cover Letter</DialogTitle>
             <DialogDescription>
               Review and edit the AI-generated cover letter, then save it.
             </DialogDescription>
           </DialogHeader>
 
-          <Textarea
-            value={coverLetter}
-            onChange={(e) => setCoverLetter(e.target.value)}
-            rows={16}
-            className="font-mono text-sm"
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Textarea
+              value={coverLetter}
+              onChange={(e) => setCoverLetter(e.target.value)}
+              rows={16}
+              className="font-mono text-sm"
+            />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               variant="outline"
               disabled={isSaving}

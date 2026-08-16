@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   ClipboardCheck,
   Flag,
   type LucideIcon,
@@ -197,7 +198,7 @@ const PHASE_ICON: Record<ClientJourneyPhaseKey, LucideIcon> = {
   "final-checks": ClipboardCheck,
   "campaign-live": Radio,
   "campaign-review": BarChart3,
-  "whats-next": Flag,
+  "campaign-ended": Flag,
 };
 
 const STEP_ROW_ACCENT: Record<string, string> = {
@@ -231,6 +232,7 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   };
 
   const [expandedPhase, setExpandedPhase] = useState<ClientJourneyPhaseKey | null>(null);
+  const [stepsOpen, setStepsOpen] = useState(true);
   const [pendingStepKey, setPendingStepKey] = useState<string | null>(null);
   const [reopenTarget, setReopenTarget] = useState<{ stepKey: string; label: string } | null>(null);
 
@@ -255,7 +257,11 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
     }
   }, [currentPhaseKey, expandedPhase]);
 
-  const activePhase = phases.find((phase) => phase.key === expandedPhase) ?? phases[0];
+  useEffect(() => {
+    setStepsOpen(true);
+  }, [expandedPhase]);
+
+  const activePhase = phases.find((phase) => phase.key === expandedPhase) ?? null;
 
   const handleAttest = (stepKey: string) => {
     setPendingStepKey(stepKey);
@@ -369,92 +375,119 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="border-t border-gray-100 pt-4"
                 >
-                  <div className="mb-3 flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-career-black-200">{activePhase.label}</h4>
-                    {activePhase.key === currentPhaseKey && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-career-blue-800/10 px-2.5 py-0.5 text-[10.5px] font-bold text-career-blue-800">
-                        <Sparkles size={11} />
-                        Current phase
-                      </span>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStepsOpen((prev) => !prev)}
+                    aria-expanded={stepsOpen}
+                    className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg text-left transition-colors hover:text-career-blue-800"
+                  >
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-career-black-200">{activePhase.label}</h4>
+                      {activePhase.key === currentPhaseKey && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-career-blue-800/10 px-2.5 py-0.5 text-[10.5px] font-bold text-career-blue-800">
+                          <Sparkles size={11} />
+                          Current phase
+                        </span>
+                      )}
+                    </div>
+                    <motion.span
+                      animate={{ rotate: stepsOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="shrink-0 text-gray-400"
+                    >
+                      <ChevronDown size={16} />
+                    </motion.span>
+                  </button>
 
-                  <div className="flex flex-col gap-2">
-                    {activePhase.steps.map((step) => {
-                      const isPending =
-                        pendingStepKey === step.stepKey && (isAttesting || isReopening);
+                  <AnimatePresence initial={false}>
+                    {stepsOpen && (
+                      <motion.div
+                        key="steps"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="overflow-hidden"
+                      >
+                    <div className="flex flex-col gap-2">
+                      {activePhase.steps.map((step) => {
+                        const isPending =
+                          pendingStepKey === step.stepKey && (isAttesting || isReopening);
 
-                      return (
-                        <div
-                          key={step.stepKey}
-                          className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 transition-colors ${STEP_ROW_ACCENT[step.state]}`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            {step.state === "done" ? (
-                              <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
-                            ) : (
-                              <span
-                                className={`h-2 w-2 shrink-0 rounded-full ${
-                                  step.state === "current" ? "bg-career-blue-800" : "bg-gray-300"
-                                }`}
-                              />
-                            )}
-                            <span className="text-sm font-medium text-career-black-200">{step.label}</span>
-                          </div>
+                        return (
+                          <div
+                            key={step.stepKey}
+                            className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 transition-colors ${STEP_ROW_ACCENT[step.state]}`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              {step.state === "done" ? (
+                                <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
+                              ) : (
+                                <span
+                                  className={`h-2 w-2 shrink-0 rounded-full ${
+                                    step.state === "current" ? "bg-career-blue-800" : "bg-gray-300"
+                                  }`}
+                                />
+                              )}
+                              <span className="text-sm font-medium text-career-black-200">{step.label}</span>
+                            </div>
 
-                          <div className="flex items-center gap-2">
-                            {step.state === "done" && step.completion ? (
-                              <>
-                                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                                  {step.completion.actorType} · {formatCompletedAt(step.completion.completedAt)}
-                                </span>
-                                {isAdmin && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setReopenTarget({ stepKey: step.stepKey, label: step.label })
-                                    }
+                            <div className="flex items-center gap-2">
+                              {step.state === "done" && step.completion ? (
+                                <>
+                                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                    {step.completion.actorType} · {formatCompletedAt(step.completion.completedAt)}
+                                  </span>
+                                  {isAdmin && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setReopenTarget({ stepKey: step.stepKey, label: step.label })
+                                      }
+                                      disabled={isPending}
+                                      title="Reopen — undo this completion"
+                                      className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+                                    >
+                                      <RotateCcw size={14} />
+                                    </button>
+                                  )}
+                                </>
+                              ) : step.stepKey === "document_accepted" ? (
+                                isAdmin ? (
+                                  <DocumentAcceptAction userId={userId} onAccepted={handleDocumentAccepted} />
+                                ) : (
+                                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                                    Needs admin review
+                                  </span>
+                                )
+                              ) : NO_AUTO_TRIGGER_STEP_KEYS.has(step.stepKey) ? (
+                                isAdmin ? (
+                                  <Button
+                                    size="sm"
+                                    className="bg-career-blue-800 text-white shadow-sm hover:bg-career-blue-500"
+                                    onClick={() => handleAttest(step.stepKey)}
                                     disabled={isPending}
-                                    title="Reopen — undo this completion"
-                                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                                   >
-                                    <RotateCcw size={14} />
-                                  </button>
-                                )}
-                              </>
-                            ) : step.stepKey === "document_accepted" ? (
-                              isAdmin ? (
-                                <DocumentAcceptAction userId={userId} onAccepted={handleDocumentAccepted} />
+                                    {isPending ? "Attesting…" : "Attest"}
+                                  </Button>
+                                ) : (
+                                  <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                                    Needs admin attestation
+                                  </span>
+                                )
                               ) : (
-                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                                  Needs admin review
+                                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                                  Awaiting
                                 </span>
-                              )
-                            ) : NO_AUTO_TRIGGER_STEP_KEYS.has(step.stepKey) ? (
-                              isAdmin ? (
-                                <Button
-                                  size="sm"
-                                  className="bg-career-blue-800 text-white shadow-sm hover:bg-career-blue-500"
-                                  onClick={() => handleAttest(step.stepKey)}
-                                  disabled={isPending}
-                                >
-                                  {isPending ? "Attesting…" : "Attest"}
-                                </Button>
-                              ) : (
-                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                                  Needs admin attestation
-                                </span>
-                              )
-                            ) : (
-                              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                Awaiting
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )}
             </AnimatePresence>
