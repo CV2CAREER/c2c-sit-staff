@@ -7,6 +7,7 @@ import {
   updateJobsite,
   deleteJobsite,
 } from "../../controllers/v1/jobsite.controller";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const jobsiteRouterV1 = Router();
 
@@ -17,13 +18,13 @@ jobsiteRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 jobsiteRouterV1.get("/", getJobsite);
 
 // POST /jobsite  → create or upsert a jobsite link on user's profile
-jobsiteRouterV1.post("/", upsertJobsite);
+jobsiteRouterV1.post("/", authorizeRoles("admin"), upsertJobsite);
 
 // PUT  /jobsite  → update fields on an existing jobsite link
-jobsiteRouterV1.put("/", updateJobsite);
+jobsiteRouterV1.put("/", authorizeRoles("admin"), updateJobsite);
 
 // DELETE /jobsite?userId=...&aggId=...     → remove one jobsite
 // DELETE /jobsite?userId=...&aggIds=a,b,c  → remove multiple jobsites
-jobsiteRouterV1.delete("/", deleteJobsite);
+jobsiteRouterV1.delete("/", authorizeRoles("admin"), deleteJobsite);
 
 export default jobsiteRouterV1;

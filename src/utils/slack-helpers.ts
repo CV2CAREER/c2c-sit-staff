@@ -1,4 +1,13 @@
-import { NODE_ENV, SLACK_USERS_TOKEN } from '../config/env';
+import {
+  IAT_FRONTEND_URL,
+  LOCAL_FRONTEND_URL,
+  NODE_ENV,
+  PROD_FRONTEND_URL,
+  RAT_FRONTEND_URL,
+  SIT_FRONTEND_URL,
+  SLACK_USERS_TOKEN,
+  UAT_FRONTEND_URL,
+} from '../config/env';
 import { getConnectedRedis } from '../config/redis';
 import { getSlackClient } from '../config/slack';
 import { StandardSlackNotification } from '../types/slack.types';
@@ -8,6 +17,26 @@ import { isRedisUsable } from './helpers';
 import axios from 'axios';
 
 const logger = getServiceLogger('slack-helpers');
+
+/**
+ * Resolve the LOC host for notifications that do not pass an explicit request
+ * host. Maps the currently running NODE_ENV to the matching frontend URL so
+ * pre-prod deployments never leak a bare "localhost" into Slack.
+ */
+const getDefaultHost = (): string => {
+  const envHostMap: Record<string, string | undefined> = {
+    rat: RAT_FRONTEND_URL,
+    iat: IAT_FRONTEND_URL,
+    sit: SIT_FRONTEND_URL,
+    uat: UAT_FRONTEND_URL,
+    prod: PROD_FRONTEND_URL,
+    production: PROD_FRONTEND_URL,
+    development: LOCAL_FRONTEND_URL,
+    local: LOCAL_FRONTEND_URL,
+  };
+  const env = (NODE_ENV || '').toLowerCase();
+  return envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
+};
 
 export const getEnvironmentFromHost = (host?: string): SlackLocation => {
   const currentHost = host || process.env.NEXTAUTH_URL || '';
@@ -57,23 +86,21 @@ export const sendStandardSlackNotification = async (
       channel = params.channel ?? SlackChannel.TOWN_CRIER;
     }
 
-    // Only tag teammates in true production — local/rat/iat/sit/uat notifications
-    // go out silently so they don't get mistaken for real production alerts.
+    // Add mentions if teammate mentions are requested — only tag real people in production,
+    // so local/pre-production runs never ping anyone on Slack.
     let mentions;
-    if (isProductionEnv) {
-      if (params.teamMentions === 'CSM') {
-        const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
-        mentions =
-          (csmSlackMentions ?? []).length > 0
-            ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
-            : '';
-      } else if (params.teamMentions === 'DEVOPS') {
-        const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
-        mentions =
-          (devopsSlackMentions ?? []).length > 0
-            ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
-            : '';
-      }
+    if (NODE_ENV === 'prod' && params.teamMentions === 'CSM') {
+      const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
+      mentions =
+        (csmSlackMentions ?? []).length > 0
+          ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
+          : '';
+    } else if (NODE_ENV === 'prod' && params.teamMentions === 'DEVOPS') {
+      const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
+      mentions =
+        (devopsSlackMentions ?? []).length > 0
+          ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
+          : '';
     }
 
     const finalMessage = mentions
@@ -116,7 +143,7 @@ export const formatStandardNotification = (
 ): string => {
   // Get protocol and host
   const protocol = params.protocol || 'https';
-  const host = params.host || process.env.NEXTAUTH_URL || 'localhost';
+  const host = params.host || process.env.NEXTAUTH_URL || getDefaultHost();
 
   // Clean up host value
   const cleanHost = host.replace(/^https?:\/\//, '');

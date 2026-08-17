@@ -2,6 +2,7 @@ import { User } from "../../models/v1/user.model";
 import { Credentials } from "../../models/v1/credentials.model";
 import { Application } from "../../models/v1/application.model";
 import { Op } from "sequelize";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 /**
  * Service to fetch clients assigned to the current assistant.
@@ -16,13 +17,10 @@ export class ClientsAssignedService {
    * @param assistantId - ID of the authenticated staff user
    */
   static async getAssignedClients(assistantId: string) {
-    // First get the assistant's email from their user record
-    const assistant = await User.findByPk(assistantId, {
-      attributes: ['id', 'email'],
-      raw: true
-    });
+    // Resolve the assistant's email from the encrypted column
+    const assistantEmail = await fieldEncryption.getUserEmail(assistantId);
 
-    if (!assistant || !assistant.email) {
+    if (!assistantEmail) {
       return {
         clients: [],
         clientDetails: [],
@@ -32,26 +30,8 @@ export class ClientsAssignedService {
       };
     }
 
-    // Query all Credentials where the assistant's email matches any assigned field
-    const credentials = await Credentials.findAll({
-      where: {
-        [Op.or]: [
-          { AssignedPCEmail: assistant.email },
-          { AssignedVetEmail: assistant.email },
-          { AssignedCompletedEmail: assistant.email }
-        ],
-        isDeleted: false
-      },
-      attributes: [
-        'id', 'clientId', 'seekEmail', 'currentCity', 'onboardingDate', 
-        'referrer', 'AssignedPCName', 'AssignedPCEmail', 
-        'AssignedVetName', 'AssignedVetEmail',
-        'AssignedCompletedName', 'AssignedCompletedEmail',
-        'capitalized', 'Active', 'SeekAnswerPriority', 
-        'SeekAggregator', 'SeekSubStartDate', 'blacklisted'
-      ],
-      raw: true
-    });
+    // Query credentials where the assistant's email matches any decrypted assigned field
+    const credentials = await fieldEncryption.findCredentialsByAssignedEmail(assistantEmail);
 
     // Group credentials by clientId and determine assignment types
     const credentialsMap = new Map<string, {
@@ -64,13 +44,13 @@ export class ClientsAssignedService {
 
       const types: string[] = [];
       
-      if (cred.AssignedPCEmail === assistant.email) {
+      if (cred.AssignedPCEmail === assistantEmail) {
         types.push('DPC');
       }
-      if (cred.AssignedVetEmail === assistant.email) {
+      if (cred.AssignedVetEmail === assistantEmail) {
         types.push('VPC');
       }
-      if (cred.AssignedCompletedEmail === assistant.email) {
+      if (cred.AssignedCompletedEmail === assistantEmail) {
         types.push('SPC');
       }
 
@@ -112,9 +92,8 @@ export class ClientsAssignedService {
         },
         deletedAt: null
       },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'uniqueId', 'applicationStatus', 'progress', 'createdAt'],
+      attributes: ['id', 'firstName', 'lastName', 'uniqueId', 'applicationStatus', 'progress', 'createdAt'],
       order: [['firstName', 'ASC']],
-      raw: true
     });
 
     const clientUserIds = clients.map(c => c.id);

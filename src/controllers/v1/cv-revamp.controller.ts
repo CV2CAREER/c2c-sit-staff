@@ -20,7 +20,7 @@ export const getCvRevamps = async (req: Request, res: Response) => {
       where: filter,
       include: [
         { model: Upload, as: 'upload', attributes: ['fileName', 'url'] },
-        { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email'] }
+        { model: User, as: 'user', attributes: ['firstName', 'lastName'] }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -42,7 +42,7 @@ export const getCvRevampById = async (req: Request, res: Response) => {
     const revamp = await CvRevamp.findByPk(id, {
       include: [
         { model: Upload, as: 'upload', attributes: ['fileName', 'url'] },
-        { model: User, as: 'user', attributes: ['firstName', 'lastName', 'email'] }
+        { model: User, as: 'user', attributes: ['firstName', 'lastName'] }
       ]
     });
 

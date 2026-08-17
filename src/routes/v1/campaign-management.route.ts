@@ -57,6 +57,7 @@ campaignManagementRouterV1.post('/preferences/notify', notifyPreferenceUpdate);
 campaignManagementRouterV1.post('/credentials/dispatch', dispatchCredentials);
 campaignManagementRouterV1.post(
   '/credentials/generate-password',
+  authorizeRoles('admin'),
   generatePassword
 );
 
@@ -106,22 +107,29 @@ campaignManagementRouterV1.post('/jobs/save/manual', saveJobManually);
 campaignManagementRouterV1.post('/jobs/match', submitJobMatch);
 
 // VA Assignment
-campaignManagementRouterV1.post('/va/assign', assignVA);
+campaignManagementRouterV1.post('/va/assign', authorizeRoles('admin'), assignVA);
 
 // Campaign Client Management
 campaignManagementRouterV1.get('/clients', listCampaignClients);
 campaignManagementRouterV1.get('/clients/:clientId', getCampaignClient);
-campaignManagementRouterV1.post('/clients', createCampaignClientController);
+campaignManagementRouterV1.post(
+  '/clients',
+  authorizeRoles('admin'),
+  createCampaignClientController
+);
 campaignManagementRouterV1.patch(
   '/clients/:id',
+  authorizeRoles('admin'),
   updateCampaignClientController
 );
 campaignManagementRouterV1.delete(
   '/clients/:id',
+  authorizeRoles('admin'),
   deleteCampaignClientController
 );
 campaignManagementRouterV1.delete(
   '/clients/bulk',
+  authorizeRoles('admin'),
   deleteCampaignClientsBulkController
 );
 campaignManagementRouterV1.patch(
@@ -153,14 +161,17 @@ campaignManagementRouterV1.post(
 );
 campaignManagementRouterV1.patch(
   '/clients/:id/soft-delete',
+  authorizeRoles('admin'),
   softDeleteCampaignClientController
 );
 campaignManagementRouterV1.patch(
   '/clients/:id/restore',
+  authorizeRoles('admin'),
   restoreCampaignClientController
 );
 campaignManagementRouterV1.delete(
   '/clients/:id/permanent',
+  authorizeRoles('admin'),
   permanentDeleteCampaignClientController
 );
 

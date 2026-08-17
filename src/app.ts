@@ -31,7 +31,6 @@ import resourcesRouterV1 from "./routes/v1/resources.route";
 import unsubscribedUserRouterV1 from "./routes/v1/unsubscribed-user.route";
 import referralRouterV1 from "./routes/v1/referral.route";
 import promotionRouterV1 from "./routes/v1/promotion.route";
-import blogRouterV1 from "./routes/v1/blog.route";
 import trainingTrackerRouterV1 from "./routes/v1/training-tracker.route";
 import salesOperationRouterV1 from "./routes/v1/sales-operation.route";
 import crTrackingRouterV1 from "./routes/v1/cr-tracking.route";
@@ -67,6 +66,7 @@ import placementRouterV1 from "./routes/v1/placement.route";
 import coachRouterV1 from "./routes/v1/coach.route"
 import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route"
 import jobsiteCredentialRouterV1 from "./routes/v1/jobsite-credential.route"
+import clientJourneyRouterV1 from "./routes/v1/client-journey.route"
 
 export const app = express();
 
@@ -204,7 +204,6 @@ app.use("/api/v1/resources", resourcesRouterV1);
 app.use("/api/v1/unsubscribed-users", unsubscribedUserRouterV1);
 app.use("/api/v1/referrals", referralRouterV1);
 app.use("/api/v1/promotions", promotionRouterV1);
-app.use("/api/v1/blog", blogRouterV1);
 app.use("/api/v1/training-tracker", trainingTrackerRouterV1);
 app.use("/api/v1/sales-operation", salesOperationRouterV1);
 app.use("/api/v1/cr-tracking/eot", crEOTRouterV1);
@@ -239,6 +238,7 @@ app.use("/api/v1/schedules", scheduleRouterV1);
 app.use("/api/v1/availabilities", availabilityRouterV1);
 app.use("/api/v1/client-availabilities", clientAvailabilityRouterV1);
 app.use("/api/v1/jobsite-credentials", jobsiteCredentialRouterV1);
+app.use("/api/v1/client-journey", clientJourneyRouterV1);
 app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation

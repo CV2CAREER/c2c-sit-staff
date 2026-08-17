@@ -8,6 +8,7 @@ import { Profile } from "@/models/v1/profile.model";
 import { getTextExtractor } from "office-text-extractor";
 import { fileTypeFromBuffer } from "file-type";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
 import {
@@ -104,11 +105,39 @@ export interface CvVariantAdditionalSection {
   items: CvVariantTextRun[];
 }
 
-export interface CvVariantResult {
+export interface CvVariantDesign {
+  accent_color: string;
+  font_family: "sans" | "serif";
+  density: "compact" | "standard" | "spacious";
+  /**
+   * Drives which structural PDF/DOCX layout renders (see htmlDocumentGenerator.ts):
+   * "modern" = two-column, "classic" = centered single-column with restrained
+   * color, "contemporary" = single-column with a tinted banner header. Unlike
+   * the other three tokens this isn't optional after sanitization — every CV
+   * variant save gets one of the three real layouts, never the undated
+   * single-column fallback other callers (e.g. Interview Pack) get by
+   * omitting `design` entirely.
+   */
+  style_variant: "modern" | "classic" | "contemporary";
+}
+
+/**
+ * The prompt driving this (a VCS-managed row, editable via Admin > Prompts)
+ * can change its output shape at any time — a rewritten prompt, a model
+ * having an off day, or a differently-tuned agent can all return field names
+ * that don't match the shape below. Treating that as a hard failure just
+ * loses the whole generation. So this is a *hint* at the shape we ask the AI
+ * for and render specially when present — not a contract the AI's response
+ * is validated against. `Record<string, unknown>` lets anything else through
+ * so the frontend's generic renderer (cvVariantFormat.ts) can still turn it
+ * into a readable document.
+ */
+export type CvVariantResult = Record<string, unknown> & Partial<{
   client_name: string;
   style_variant: "modern" | "classic" | "contemporary";
   style_reasoning: string;
   top_level_flags: string[];
+  design: CvVariantDesign;
   header: CvVariantHeader;
   summary: { runs: CvVariantTextRun[] };
   skills: CvVariantTextRun[];
@@ -116,6 +145,44 @@ export interface CvVariantResult {
   education: CvVariantEducation[];
   certifications: CvVariantCertification[];
   additional_sections: CvVariantAdditionalSection[];
+}>;
+
+const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
+  accent_color: "#0D9F6E",
+  font_family: "sans",
+  density: "standard",
+  style_variant: "classic",
+};
+
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const STYLE_VARIANTS = new Set(["modern", "classic", "contemporary"]);
+
+/**
+ * The AI is asked to pick design tokens (accent color / font pairing /
+ * density / style_variant) per the schema, but its output is untrusted input
+ * like any other field — fall back to the current house-style default for
+ * anything missing or malformed rather than rejecting the whole variant over
+ * it. `styleVariantHint` covers `style_variant` living at the top level of
+ * CvVariantResult rather than nested in `design` — whichever is present and
+ * valid wins.
+ */
+function sanitizeCvVariantDesign(design: unknown, styleVariantHint?: unknown): CvVariantDesign {
+  const candidate = (design ?? {}) as Partial<CvVariantDesign>;
+  const accent_color = HEX_COLOR_PATTERN.test(candidate.accent_color ?? "")
+    ? (candidate.accent_color as string)
+    : DEFAULT_CV_VARIANT_DESIGN.accent_color;
+  const font_family = candidate.font_family === "serif" ? "serif" : "sans";
+  const density =
+    candidate.density === "compact" || candidate.density === "spacious"
+      ? candidate.density
+      : "standard";
+  const style_variant = STYLE_VARIANTS.has(candidate.style_variant ?? "")
+    ? (candidate.style_variant as CvVariantDesign["style_variant"])
+    : STYLE_VARIANTS.has(styleVariantHint as string)
+      ? (styleVariantHint as CvVariantDesign["style_variant"])
+      : DEFAULT_CV_VARIANT_DESIGN.style_variant;
+
+  return { accent_color, font_family, density, style_variant };
 }
 
 export class AdminDocumentService {
@@ -150,28 +217,37 @@ export class AdminDocumentService {
     /**
     * Get active prompt configuration (with in-memory caching)
     */
-    private static promptCache: { data: any; timestamp: number } | null = null;
+    private static promptCache: {
+        data: any;
+        vcsId: string | null;
+        promptId: string | null;
+        version: string | null;
+        timestamp: number;
+    } | null = null;
     static async getActivePrompt(
         type: "keywords" | "roleTitles",
         increment: boolean,
         resumeText: string,
         existing?: string
-    ): Promise<string> {
+    ): Promise<{ prompt: string; vcsId: string | null; promptId: string | null; version: string | null }> {
         // Cache prompts for 5 minutes
         if (!this.promptCache || Date.now() - this.promptCache.timestamp > 5 * 60 * 1000) {
             try {
                 const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
-                const foundVCS = await VCS.findOne({ 
-                    where: { 
+                const foundVCS = await VCS.findOne({
+                    where: {
                         active: true,
                         key: 'upload_role_titles_prompt'
-                    } 
+                    }
                 });
                 if (foundVCS) {
                     const foundPrompt = await VCSPrompt.findByPk(foundVCS.activePromptId);
                     if (foundPrompt) {
                         this.promptCache = {
                             data: this.splitPromptIntoSections(foundPrompt.prompt),
+                            vcsId: foundVCS.id,
+                            promptId: foundPrompt.id,
+                            version: foundPrompt.version,
                             timestamp: Date.now()
                         };
                     }
@@ -196,8 +272,13 @@ export class AdminDocumentService {
 
         basePrompt = basePrompt.replace(/\{\{.*?\}\}/g, "");
         const existingContent = existing ? `\nPreviously generated ${type}: ${existing}` : "";
-        
-        return `${basePrompt}\n\n${resumeText}${existingContent}`;
+
+        return {
+            prompt: `${basePrompt}\n\n${resumeText}${existingContent}`,
+            vcsId: this.promptCache?.vcsId ?? null,
+            promptId: this.promptCache?.promptId ?? null,
+            version: this.promptCache?.version ?? null,
+        };
     }
 
     /**
@@ -419,8 +500,35 @@ export class AdminDocumentService {
             }
 
             // Get prompt and generate content with AI
-            const prompt = await this.getActivePrompt(type, increment, resumeText, existingContent);
-            const aiResponse = await queryDigitalOceanAI(prompt);
+            const { prompt, vcsId, promptId, version } = await this.getActivePrompt(type, increment, resumeText, existingContent);
+
+            const startedAt = Date.now();
+            let aiResponse: string;
+            try {
+                aiResponse = await queryDigitalOceanAI(prompt);
+                VcsPromptUsageService.record({
+                    key: 'upload_role_titles_prompt',
+                    vcsId,
+                    promptId,
+                    version,
+                    promptLength: prompt.length,
+                    responseLength: aiResponse.length,
+                    durationMs: Date.now() - startedAt,
+                    success: true,
+                });
+            } catch (error: any) {
+                VcsPromptUsageService.record({
+                    key: 'upload_role_titles_prompt',
+                    vcsId,
+                    promptId,
+                    version,
+                    promptLength: prompt.length,
+                    durationMs: Date.now() - startedAt,
+                    success: false,
+                    errorMessage: error?.message,
+                });
+                throw error;
+            }
 
             // Parse generated items
             const generatedItems = aiResponse
@@ -584,7 +692,7 @@ export class AdminDocumentService {
         cvText: string,
         jobContent: string,
         jobLink?: string,
-    ): Promise<string> {
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cover_letter_generation_prompt' },
@@ -593,7 +701,7 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("Cover letter prompt is not configured", 500);
         }
 
@@ -602,9 +710,11 @@ export class AdminDocumentService {
             ? `${jobContent}\n${jobLink}`
             : jobContent;
 
-        return promptRow.prompt
+        const prompt = promptRow.prompt
             .replace(/\{\{CV_TEXT\}\}/g, cvText)
             .replace(/\{\{JOB_CONTEXT\}\}/g, jobContext);
+
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -634,11 +744,37 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
-        const coverLetter = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
 
-        logger.info(`[GenerateCoverLetter] Successfully generated cover letter for user ${targetUserId}`);
-        return coverLetter;
+        const startedAt = Date.now();
+        try {
+            const coverLetter = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'cover_letter_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: coverLetter.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+
+            logger.info(`[GenerateCoverLetter] Successfully generated cover letter for user ${targetUserId}`);
+            return coverLetter;
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'cover_letter_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
     }
 
     /**
@@ -715,7 +851,9 @@ export class AdminDocumentService {
      * `role_title_generation_prompt` VCS entry, substituting the {{CV_TEXT}}
      * placeholder.
      */
-    private static async getRoleTitlePrompt(cvText: string): Promise<string> {
+    private static async getRoleTitlePrompt(
+        cvText: string,
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'role_title_generation_prompt' },
@@ -724,11 +862,12 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("Role title prompt is not configured", 500);
         }
 
-        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -756,8 +895,35 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getRoleTitlePrompt(resumeText);
-        const aiResponse = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getRoleTitlePrompt(resumeText);
+
+        const startedAt = Date.now();
+        let aiResponse: string;
+        try {
+            aiResponse = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'role_title_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: aiResponse.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'role_title_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
 
         const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
         const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
@@ -784,7 +950,9 @@ export class AdminDocumentService {
      * Builds the CV Variant prompt from the `cv_variant_generation_prompt`
      * VCS entry, substituting the {{CV_TEXT}} placeholder.
      */
-    private static async getCvVariantPrompt(cvText: string): Promise<string> {
+    private static async getCvVariantPrompt(
+        cvText: string,
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cv_variant_generation_prompt' },
@@ -793,11 +961,12 @@ export class AdminDocumentService {
             ? await VCSPrompt.findByPk(foundVCS.activePromptId)
             : null;
 
-        if (!promptRow) {
+        if (!promptRow || !foundVCS) {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        return promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
@@ -826,12 +995,40 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const prompt = await this.getCvVariantPrompt(resumeText);
-        const aiResponse = await queryDigitalOceanAI(prompt);
+        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText);
+
+        const startedAt = Date.now();
+        let aiResponse: string;
+        try {
+            aiResponse = await queryDigitalOceanAI(prompt);
+            VcsPromptUsageService.record({
+                key: 'cv_variant_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                responseLength: aiResponse.length,
+                durationMs: Date.now() - startedAt,
+                success: true,
+            });
+        } catch (error: any) {
+            VcsPromptUsageService.record({
+                key: 'cv_variant_generation_prompt',
+                vcsId,
+                promptId,
+                version,
+                promptLength: prompt.length,
+                durationMs: Date.now() - startedAt,
+                success: false,
+                errorMessage: error?.message,
+            });
+            throw error;
+        }
 
         const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
         const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
+            logger.error(`[GenerateCvVariant] No JSON found in AI response for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
             throw new ErrorHandler("AI response did not contain valid JSON", 500);
         }
 
@@ -839,12 +1036,25 @@ export class AdminDocumentService {
         try {
             result = JSON.parse(jsonMatch[0]);
         } catch {
+            logger.error(`[GenerateCvVariant] Failed to parse AI JSON for user ${targetUserId}. Matched JSON (first 2000 chars): ${jsonMatch[0].slice(0, 2000)}`);
             throw new ErrorHandler("Failed to parse AI-generated CV variant", 500);
         }
 
-        if (!result.header || !Array.isArray(result.experience)) {
-            throw new ErrorHandler("AI response is missing required CV variant fields", 500);
+        if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
+            logger.error(`[GenerateCvVariant] AI returned an empty/non-object response for user ${targetUserId}. Raw response (first 3000 chars): ${aiResponse.slice(0, 3000)}`);
+            throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
+
+        if (!result.header || !Array.isArray(result.experience)) {
+            // The prompt's schema is a hint, not a contract — the AI (or a
+            // reworked prompt) can return a differently-shaped object. Don't
+            // fail the whole generation over it; log the drift for
+            // visibility and let the frontend's generic renderer handle
+            // whatever shape actually came back.
+            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId}. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
+        }
+
+        result.design = sanitizeCvVariantDesign(result.design, result.style_variant);
 
         logger.info(`[GenerateCvVariant] Generated a "${result.style_variant}" variant for user ${targetUserId}`);
         return result;
@@ -862,12 +1072,15 @@ export class AdminDocumentService {
         resumeUploadId: string,
         cvVariantHtml: string,
         format: "pdf" | "docx",
+        design?: Partial<CvVariantDesign>,
     ): Promise<{ upload: Upload; clientName: string }> {
         logger.info(`[SaveCvVariant] User ${targetUserId}, format ${format}`);
 
         if (!cvVariantHtml?.trim()) {
             throw new ErrorHandler("CV variant content is required", 400);
         }
+
+        const resolvedDesign = sanitizeCvVariantDesign(design);
 
         // Confirm the resume belongs to this user before attaching the
         // generated variant to their account.
@@ -889,8 +1102,8 @@ export class AdminDocumentService {
 
         const isPdf = format === "pdf";
         const buffer = isPdf
-            ? await htmlToPdfBuffer(cvVariantHtml)
-            : await htmlToDocxBuffer(cvVariantHtml);
+            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
+            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
 
         const mimeType = isPdf
             ? "application/pdf"

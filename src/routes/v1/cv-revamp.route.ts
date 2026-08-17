@@ -26,12 +26,12 @@ cvRevampRouterV1.get("/", getCvRevamps);
 cvRevampRouterV1.get("/:id", getCvRevampById);
 
 // POST /api/v1/admin/cv-revamp - Create new revamp
-cvRevampRouterV1.post("/", createCvRevamp);
+cvRevampRouterV1.post("/", authorizeRoles("admin"), createCvRevamp);
 
 // PATCH /api/v1/admin/cv-revamp - Update revamp status (approve/decline)
-cvRevampRouterV1.patch("/", updateCvRevampStatus);
+cvRevampRouterV1.patch("/", authorizeRoles("admin"), updateCvRevampStatus);
 
 // DELETE /api/v1/admin/cv-revamp/:id - Delete revamp
-cvRevampRouterV1.delete("/:id", deleteCvRevamp);
+cvRevampRouterV1.delete("/:id", authorizeRoles("admin"), deleteCvRevamp);
 
 export default cvRevampRouterV1;

@@ -1,5 +1,6 @@
 import { User } from "../models/v1/user.model";
 import ErrorHandler from "../utils/errorHandler";
+import { fieldEncryption } from "../utils/field-encryption";
 
 // Overload #1 — When shouldExist is true, return type is User
 export async function checkUserExistence(
@@ -20,9 +21,10 @@ export async function checkUserExistence(
   let user;
 
   user = email
-    ? await User.findOne({
-        where: { email },
-      })
+    ? await (async () => {
+        const userIdByEmail = await fieldEncryption.findUserByEmail(email);
+        return userIdByEmail ? await User.findByPk(userIdByEmail) : null;
+      })()
     : userId
       ? await User.findByPk(userId)
       : null;

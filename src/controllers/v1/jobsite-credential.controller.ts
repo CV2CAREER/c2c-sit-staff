@@ -251,8 +251,8 @@ export const rejectJobsiteCredential = catchAsyncError(
       id,
       adminId,
       reason,
-      note,
       host,
+      note,
     );
 
     res.apiSuccess(credential, "Credential rejected successfully");

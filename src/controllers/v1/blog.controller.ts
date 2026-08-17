@@ -111,7 +111,7 @@ export const deleteBlogPost = catchAsyncError(async (req: Request, res: Response
 
     await BlogService.deleteBlogPost(req, id as string, req.user);
     
-    res.apiSuccess({}, "Blog post deleted successfully", 204);
+    res.apiSuccess({}, "Blog post deleted successfully");
   } catch (error: any) {
     logger.error(`Failed to delete blog post: ${error.message}`);
     return res.apiError(new ErrorHandler(error.message, 500));

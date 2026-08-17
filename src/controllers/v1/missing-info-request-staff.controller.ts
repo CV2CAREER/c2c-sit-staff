@@ -7,7 +7,9 @@ const logger = getServiceLogger("missing-info-request-staff-controller");
 
 export const sendMissingInfoRequest = catchAsyncError(async (req: any, res: Response) => {
   logger.info(`Sending missing info request — triggered by: ${req.user?.email ?? "unknown"}`);
-  const result = await MissingInfoRequestStaffService.sendRequest(req.body, req.user);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.sendRequest(req.body, req.user, host, protocol);
   return res.apiSuccess(result, "Request sent successfully", 201);
 });
 
@@ -29,16 +31,18 @@ export const getRequestStats = catchAsyncError(async (req: any, res: Response) =
   return res.apiSuccess(stats, "Stats fetched", 200);
 });
 
+export const getRequestResponses = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Fetching responses for request ${id}`);
+  const result = await MissingInfoRequestStaffService.getRequestResponses(id);
+  return res.apiSuccess(result, "Request responses fetched", 200);
+});
+
 export const bulkSendReminder = catchAsyncError(async (req: any, res: Response) => {
   const { requestIds } = req.body;
   logger.info(`Bulk reminder triggered by: ${req.user?.email ?? "unknown"}, count: ${requestIds?.length ?? 0}`);
-  const result = await MissingInfoRequestStaffService.bulkSendReminder(requestIds, req.user);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.bulkSendReminder(requestIds, req.user, host, protocol);
   return res.apiSuccess(result, "Reminders queued for delivery", 200);
-});
-
-export const getRequestResponses = catchAsyncError(async (req: any, res: Response) => {
-  const { requestId } = req.params;
-  logger.info(`Fetching responses for request ${requestId} — triggered by: ${req.user?.email ?? "unknown"}`);
-  const result = await MissingInfoRequestStaffService.getRequestResponses(requestId);
-  return res.apiSuccess(result, "Request responses fetched", 200);
 });

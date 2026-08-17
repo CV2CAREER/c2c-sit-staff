@@ -126,23 +126,23 @@ const createEmailAlias = async (
 
   logger.info(`Creating email alias for ${email} on ${isStaging ? "staging" : "production"} -> ${aliasEmail}`);
 
-  if (isStaging) {
-    await sendStandardSlackNotification({
-      node: SlackNode.MESSAGING,
-      provider: SlackProvider.SYSTEM,
-      severity: SlackSeverity.INFO,
-      trigger: "Dummy email alias generated (Stage)",
-      type: SlackEventType.SYSTEM_NOTIFICATION,
-      body: `Dummy email alias generated \`${email}\` -> \`${aliasEmail}\`.
-Immediate impact: Staging environment using dummy alias for testing.`,
-      channel: SlackChannel.CRY_WOLF
-    });
-    return {
-      data: aliasEmail,
-      message: 'Alias successfully created',
-      success: true,
-    };
-  }
+//   if (isStaging) {
+//     await sendStandardSlackNotification({
+//       node: SlackNode.MESSAGING,
+//       provider: SlackProvider.SYSTEM,
+//       severity: SlackSeverity.INFO,
+//       trigger: "Dummy email alias generated (Stage)",
+//       type: SlackEventType.SYSTEM_NOTIFICATION,
+//       body: `Dummy email alias generated \`${email}\` -> \`${aliasEmail}\`.
+// Immediate impact: Staging environment using dummy alias for testing.`,
+//       channel: SlackChannel.CRY_WOLF
+//     });
+//     return {
+//       data: aliasEmail,
+//       message: 'Alias successfully created',
+//       success: true,
+//     };
+//   }
 
   for (const adminEmail of userEmail) {
     try {
@@ -519,39 +519,39 @@ export const handleCampaignManagement = async (
       }
 
       if (!isAliasCreated || !isAliasCreated?.success) {
-        setImmediate(() => {
-          sendStandardSlackNotification({
-            node: SlackNode.APPLICATION,
-            provider: SlackProvider.SYSTEM,
-            severity: SlackSeverity.ERROR,
-            type: SlackEventType.ERROR_ALERT,
-            host: host,
-            channel: SlackChannel.CRY_WOLF,
-            teamMentions: "CSM",
-            body: `Alias email creation failed for ${Full_Name} with email ${updatedClient.email}. Use the view as user feature to login to the user account and create this using the add jobsite feature.`,
-          });
-        });
+        // setImmediate(() => {
+        //   sendStandardSlackNotification({
+        //     node: SlackNode.APPLICATION,
+        //     provider: SlackProvider.SYSTEM,
+        //     severity: SlackSeverity.ERROR,
+        //     type: SlackEventType.ERROR_ALERT,
+        //     host: host,
+        //     channel: SlackChannel.CRY_WOLF,
+        //     teamMentions: "CSM",
+        //     body: `Alias email creation failed for ${Full_Name} with email ${updatedClient.email}. Use the view as user feature to login to the user account and create this using the add jobsite feature.`,
+        //   });
+        // });
 
         throw new Error("Alias mail could not be generated. Please contact admin");
       }
 
       // Notify for successful alias creation
-      setImmediate(async () => {
-        sendStandardSlackNotification({
-          node: SlackNode.APPLICATION,
-          provider: SlackProvider.SYSTEM,
-          severity: SlackSeverity.INFO,
-          type: SlackEventType.SYSTEM_NOTIFICATION,
-          host: host,
-          channel: SlackChannel.TOWN_CRIER,
-          teamMentions: "CSM",
-          body: await generateSlackMessage("SMID-1025", {
-            Full_Name,
-            email: updatedClient.email,
-            data: isAliasCreated.data,
-          }),
-        });
-      });
+      // setImmediate(async () => {
+      //   sendStandardSlackNotification({
+      //     node: SlackNode.APPLICATION,
+      //     provider: SlackProvider.SYSTEM,
+      //     severity: SlackSeverity.INFO,
+      //     type: SlackEventType.SYSTEM_NOTIFICATION,
+      //     host: host,
+      //     channel: SlackChannel.TOWN_CRIER,
+      //     teamMentions: "CSM",
+      //     body: await generateSlackMessage("SMID-1025", {
+      //       Full_Name,
+      //       email: updatedClient.email,
+      //       data: isAliasCreated.data,
+      //     }),
+      //   });
+      // });
 
       const aliasEmail = isAliasCreated.data;
 

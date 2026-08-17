@@ -181,20 +181,11 @@ async function fetchAwaitingSubmissionCounts(
 async function fetchAllActiveClients(): Promise<ClientInfo[]> {
   const credentials = await Credentials.findAll({
     where: { Active: true, deletedAt: null },
-    attributes: [
-      'clientId',
-      'AssignedPCName',
-      'AssignedPCEmail',
-      'AssignedVetName',
-      'AssignedVetEmail',
-      'AssignedCompletedName',
-      'AssignedCompletedEmail',
-    ],
     include: [
       {
         model: User,
         as: 'client',
-        attributes: ['id', 'firstName', 'lastName', 'email'],
+        attributes: ['id', 'firstName', 'lastName'],
         required: false,
       },
     ],
@@ -479,15 +470,6 @@ function aggregateSubmission(
 async function buildPCEmailLookup(): Promise<Map<string, string>> {
   const creds = await Credentials.findAll({
     where: { Active: true, deletedAt: null },
-    attributes: [
-      'AssignedPCName',
-      'AssignedPCEmail',
-      'AssignedVetName',
-      'AssignedVetEmail',
-      'AssignedCompletedName',
-      'AssignedCompletedEmail',
-    ],
-    raw: true,
   });
 
   const lookup = new Map<string, string>();

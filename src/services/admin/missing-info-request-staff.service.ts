@@ -2,9 +2,9 @@ import crypto from "crypto";
 import { Op } from "sequelize";
 import ErrorHandler from "@/utils/errorHandler";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
+import { MissingInfoResponse } from "@/models/v1/missing-info-response.model";
 import { MissingInfoTemplate } from "@/models/v1/missing-info-template.model";
 import { MissingInfoTemplateField } from "@/models/v1/missing-info-template-field.model";
-import { MissingInfoResponse } from "@/models/v1/missing-info-response.model";
 import { User } from "@/models/v1/user.model";
 import { getServiceLogger } from "@/utils/createLogger";
 import { sendMail } from "@/config/sendGrid";
@@ -34,6 +34,8 @@ export class MissingInfoRequestStaffService {
       channel: "email" | "whatsapp";
     },
     user: any,
+    host?: string,
+    protocol?: string,
   ) {
     const template = await MissingInfoTemplate.findByPk(data.templateId, {
       include: [{ model: MissingInfoTemplateField, as: "fields" }],
@@ -144,6 +146,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — ${client.firstName} ${client.lastName || ""} was sent "${template.name}" via ${data.channel === "whatsapp" ? "WhatsApp" : "Email"}.`,
             `Please confirm delivery and follow up if unopened after 48h.`,
@@ -220,7 +224,7 @@ export class MissingInfoRequestStaffService {
     const { rows, count } = await MissingInfoRequest.findAndCountAll({
       where,
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
         { model: MissingInfoTemplate, attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
@@ -288,15 +292,8 @@ export class MissingInfoRequestStaffService {
   static async getRequestResponses(requestId: string) {
     const request = await MissingInfoRequest.findByPk(requestId, {
       include: [
-        {
-          model: User,
-          as: "targetUser",
-          attributes: ["id", "firstName", "middleName", "lastName", "email"],
-        },
-        {
-          model: MissingInfoTemplate,
-          attributes: ["id", "name"],
-        },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
       ],
     });
 
@@ -309,41 +306,50 @@ export class MissingInfoRequestStaffService {
       order: [["createdAt", "ASC"]],
     });
 
-    const fieldIds = [...new Set(responses.map((r: any) => r.fieldId))];
-    const fields = fieldIds.length
-      ? await MissingInfoTemplateField.findAll({ where: { id: fieldIds } })
-      : [];
+    const template = (request as any).template;
+    const templateFields = template?.fields || [];
 
-    const fieldMap = new Map<string, MissingInfoTemplateField>();
-    for (const f of fields) {
-      fieldMap.set(f.id, f);
+    const fieldMap = new Map<string, { fieldLabel: string; fieldType: string }>();
+    for (const f of templateFields) {
+      fieldMap.set(f.id, { fieldLabel: f.fieldLabel, fieldType: f.fieldType });
     }
 
-    const result = responses.map((r: any) => {
-      const field = fieldMap.get(r.fieldId);
+    const formattedResponses = responses.map((r: any) => {
+      const fieldInfo = fieldMap.get(r.fieldId) || { fieldLabel: r.fieldLabel || r.fieldName || "Unknown", fieldType: "text" };
       return {
         id: r.id,
         fieldId: r.fieldId,
-        fieldName: r.fieldName || field?.fieldName || null,
-        fieldLabel: r.fieldLabel || field?.fieldLabel || r.fieldId,
+        fieldName: r.fieldName,
+        fieldLabel: fieldInfo.fieldLabel,
+        fieldType: fieldInfo.fieldType,
         fieldValue: r.fieldValue,
         createdAt: r.createdAt,
       };
     });
 
     return {
-      requestId: request.id,
-      clientName: [request.targetUser?.firstName, request.targetUser?.middleName, request.targetUser?.lastName]
-        .filter(Boolean)
-        .join(" "),
-      clientEmail: request.targetUser?.email,
-      templateName: request.template?.name,
-      status: request.status,
-      responses: result,
+      request: {
+        id: request.id,
+        token: request.token,
+        status: request.status,
+        channel: request.channel,
+        personalMessage: request.personalMessage,
+        requestedAt: request.requestedAt,
+        requestedByName: request.requestedByName,
+        template: template ? { id: template.id, name: template.name, type: template.type } : null,
+        client: (request as any).targetUser
+          ? {
+              id: (request as any).targetUser.id,
+              name: `${(request as any).targetUser.firstName || ""} ${(request as any).targetUser.lastName || ""}`.trim(),
+              email: (request as any).targetUser.email,
+            }
+          : null,
+      },
+      responses: formattedResponses,
     };
   }
 
-  static async bulkSendReminder(requestIds: string[], user: any) {
+  static async bulkSendReminder(requestIds: string[], user: any, host?: string, protocol?: string) {
     if (!requestIds || requestIds.length === 0) {
       throw new ErrorHandler("No request IDs provided", 400);
     }
@@ -351,7 +357,7 @@ export class MissingInfoRequestStaffService {
     const requests = await MissingInfoRequest.findAll({
       where: { id: requestIds },
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
         { model: MissingInfoTemplate, as: "template", attributes: ["id", "name"] },
       ],
     });
@@ -438,6 +444,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — Reminder sent to ${clientSummaries.join(", ")}.`,
             `${totalProcessed} clients, ${totalProcessed} templates. Please confirm delivery.`,
