@@ -460,8 +460,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     <section className="flex flex-col gap-4">
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
         <CardContent className="flex flex-col gap-4 p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
                 <User size={14} className="text-primary" />
                 Client
@@ -478,12 +478,12 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 selectedItem={selectedUser}
                 setSelectedItem={setSelectedUser}
                 noItemsMessage="No client found"
-                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+                btnTriggerStyles="w-full justify-between"
                 // loadingMore={shouldFetchMoreUsers}
                 // setLoadingMore={setShouldFetchMoreUsers}
               />
             </div>
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+            <div className="flex flex-col gap-1.5">
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
                 <Search size={14} className="text-primary" />
                 Search
@@ -491,10 +491,10 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
               <SearchInput
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                className="h-9 w-full min-w-[200px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
+                className="h-9 w-full rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm"
               />
             </div>
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
+            <div className="flex flex-col gap-1.5">
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
                 <CalendarRange size={14} className="text-primary" />
                 Date Filter
@@ -533,13 +533,14 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+              <label className="flex shrink-0 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
                 <Checkbox checked={editMode} onClick={() => setEditMode(prev=>!prev)} />
                 <PencilLine size={16} className="text-primary" />
                 Allow Editing
               </label>
 
               <Tabs
+                className="w-fit shrink-0"
                 value={usersDataState}
                 onValueChange={(value) => {
                   const nextState = value === "active" ? "active" : "recycle";
@@ -550,17 +551,17 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                   });
                 }}
               >
-                <TabsList className="rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
+                <TabsList className="w-fit flex-nowrap rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
                   <TabsTrigger
                     value="active"
-                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                    className="shrink-0 gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
                   >
                     <Users2 size={14} />
                     Active Users
                   </TabsTrigger>
                   <TabsTrigger
                     value="recycle"
-                    className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                    className="shrink-0 gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
                   >
                     <Archive size={14} />
                     Recycle Bin

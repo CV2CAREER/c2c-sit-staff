@@ -1,2 +1,0 @@
-﻿src/app/admin/campaign-mgt/_components/ClientDataTable.tsx(474,17): error TS2353: Object literal may only specify known properties, and 'table' does not exist in type '{ id: string | number; entity: string; action: "soft-delete"; }'.
-src/components/modals/DispatchClient.tsx(55,9): error TS2353: Object literal may only specify known properties, and 'vaId' does not exist in type '{ pcId: string; userIds: string[]; }'.

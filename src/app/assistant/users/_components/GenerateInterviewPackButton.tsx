@@ -372,8 +372,8 @@ export default function GenerateInterviewPackButton({
 
       {/* Review + edit modal */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Interview Preparation Pack</DialogTitle>
             <DialogDescription>
               Review and format the combined pack below so it reads like a
@@ -381,9 +381,11 @@ export default function GenerateInterviewPackButton({
             </DialogDescription>
           </DialogHeader>
 
-          <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               variant="outline"
               disabled={isSaving}

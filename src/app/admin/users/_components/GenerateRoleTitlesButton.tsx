@@ -155,8 +155,8 @@ export default function GenerateRoleTitlesButton({
       </Dialog>
 
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[85vh] max-w-3xl flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Role Title Recommendations</DialogTitle>
             <DialogDescription>
               {result?.candidate_name
@@ -165,55 +165,57 @@ export default function GenerateRoleTitlesButton({
             </DialogDescription>
           </DialogHeader>
 
-          {result?.qa_flags && result.qa_flags.length > 0 && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-              <p className="font-semibold">QA Flags</p>
-              <ul className="mt-1 list-disc pl-5">
-                {result.qa_flags.map((flag, index) => (
-                  <li key={index}>
-                    <span className="font-medium">{flag.type}:</span> {flag.description}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+            {result?.qa_flags && result.qa_flags.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="font-semibold">QA Flags</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {result.qa_flags.map((flag, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{flag.type}:</span> {flag.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <div className="max-h-[24rem] overflow-auto rounded-md border border-career-gray-300">
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-[#D4FFFF]">
-                <tr>
-                  <th className="p-2">Role Title</th>
-                  <th className="p-2">Classification</th>
-                  <th className="p-2">Craft</th>
-                  <th className="p-2">Industry</th>
-                  <th className="p-2">Status</th>
-                  <th className="p-2">AI Resilience</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result?.roles.map((role, index) => (
-                  <tr key={index} className="border-t border-career-gray-300">
-                    <td className="p-2 font-medium">{role.role_title}</td>
-                    <td className="p-2">{role.classification}</td>
-                    <td className="p-2">{role.craft}</td>
-                    <td className="p-2">{role.industry}</td>
-                    <td className="p-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          STATUS_BADGE_CLASSES[role.status] ?? "bg-slate-200"
-                        }`}
-                      >
-                        {role.status}
-                      </span>
-                    </td>
-                    <td className="p-2">{role.ai_career_resilience_rating}</td>
+            <div className="overflow-auto rounded-md border border-career-gray-300">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-[#D4FFFF]">
+                  <tr>
+                    <th className="p-2">Role Title</th>
+                    <th className="p-2">Classification</th>
+                    <th className="p-2">Craft</th>
+                    <th className="p-2">Industry</th>
+                    <th className="p-2">Status</th>
+                    <th className="p-2">AI Resilience</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {result?.roles.map((role, index) => (
+                    <tr key={index} className="border-t border-career-gray-300">
+                      <td className="p-2 font-medium">{role.role_title}</td>
+                      <td className="p-2">{role.classification}</td>
+                      <td className="p-2">{role.craft}</td>
+                      <td className="p-2">{role.industry}</td>
+                      <td className="p-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            STATUS_BADGE_CLASSES[role.status] ?? "bg-slate-200"
+                          }`}
+                        >
+                          {role.status}
+                        </span>
+                      </td>
+                      <td className="p-2">{role.ai_career_resilience_rating}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button
               variant="outline"
               disabled={isSaving}

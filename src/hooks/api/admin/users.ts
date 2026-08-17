@@ -685,10 +685,10 @@ export const useUsersMutations = () => {
           id: 'application-action',
         });
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast.dismiss('application-action');
         invalidateAllUsersQueries();
-        toast.success('Application action completed successfully');
+        toast.success(data.message || 'Application action completed successfully');
       },
       onError: () => {
         toast.dismiss('application-action');
