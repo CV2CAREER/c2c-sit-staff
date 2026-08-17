@@ -192,19 +192,19 @@ export const fieldEncryption = {
 
   async encryptUserFields(
     userId: string,
-    email: string,
-    phoneNumber: string | null,
-    whatsappNumber: string | null,
+    email: string | null | undefined,
+    phoneNumber: string | null | undefined,
+    whatsappNumber: string | null | undefined,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { userId, key: KEY, email, phoneNumber, whatsappNumber }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { userId, key: KEY, email: email ?? null, phoneNumber: phoneNumber ?? null, whatsappNumber: whatsappNumber ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE users SET
-        "emailEncrypted" = pgp_sym_encrypt(:email, :key),
-        "emailHash" = ENCODE(DIGEST(LOWER(:email), 'sha256'), 'hex'),
-        "phoneNumberEncrypted" = CASE WHEN :phoneNumber IS NOT NULL THEN pgp_sym_encrypt(:phoneNumber, :key) ELSE NULL END,
-        "phoneNumberHash" = CASE WHEN :phoneNumber IS NOT NULL THEN ENCODE(DIGEST(:phoneNumber, 'sha256'), 'hex') ELSE NULL END,
-        "whatsappNumberEncrypted" = CASE WHEN :whatsappNumber IS NOT NULL THEN pgp_sym_encrypt(:whatsappNumber, :key) ELSE NULL END
+        "emailEncrypted" = CASE WHEN :email IS NOT NULL AND :email <> '' THEN pgp_sym_encrypt(:email, :key) ELSE "emailEncrypted" END,
+        "emailHash" = CASE WHEN :email IS NOT NULL AND :email <> '' THEN ENCODE(DIGEST(LOWER(:email), 'sha256'), 'hex') ELSE "emailHash" END,
+        "phoneNumberEncrypted" = CASE WHEN :phoneNumber IS NOT NULL THEN pgp_sym_encrypt(:phoneNumber, :key) ELSE "phoneNumberEncrypted" END,
+        "phoneNumberHash" = CASE WHEN :phoneNumber IS NOT NULL THEN ENCODE(DIGEST(:phoneNumber, 'sha256'), 'hex') ELSE "phoneNumberHash" END,
+        "whatsappNumberEncrypted" = CASE WHEN :whatsappNumber IS NOT NULL THEN pgp_sym_encrypt(:whatsappNumber, :key) ELSE "whatsappNumberEncrypted" END
       WHERE id = :userId
     `, opts);
   },
@@ -216,12 +216,12 @@ export const fieldEncryption = {
     dob: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { profileId, key: KEY, ssn, tin, dob }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { profileId, key: KEY, ssn: ssn ?? null, tin: tin ?? null, dob: dob ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE profiles SET
-        "socialSecurityNumberEncrypted" = CASE WHEN :ssn IS NOT NULL THEN pgp_sym_encrypt(:ssn, :key) ELSE NULL END,
-        "taxIdentificationNumberEncrypted" = CASE WHEN :tin IS NOT NULL THEN pgp_sym_encrypt(:tin, :key) ELSE NULL END,
-        "dateOfBirthEncrypted" = CASE WHEN :dob IS NOT NULL THEN pgp_sym_encrypt(:dob, :key) ELSE NULL END
+        "socialSecurityNumberEncrypted" = CASE WHEN :ssn IS NOT NULL THEN pgp_sym_encrypt(:ssn, :key) ELSE "socialSecurityNumberEncrypted" END,
+        "taxIdentificationNumberEncrypted" = CASE WHEN :tin IS NOT NULL THEN pgp_sym_encrypt(:tin, :key) ELSE "taxIdentificationNumberEncrypted" END,
+        "dateOfBirthEncrypted" = CASE WHEN :dob IS NOT NULL THEN pgp_sym_encrypt(:dob, :key) ELSE "dateOfBirthEncrypted" END
       WHERE id = :profileId
     `, opts);
   },
@@ -231,10 +231,10 @@ export const fieldEncryption = {
     seekPassword: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { credentialId, key: KEY, seekPassword }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { credentialId, key: KEY, seekPassword: seekPassword ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE credentials SET
-        "seekPasswordEncrypted" = CASE WHEN :seekPassword IS NOT NULL THEN pgp_sym_encrypt(:seekPassword, :key) ELSE NULL END
+        "seekPasswordEncrypted" = CASE WHEN :seekPassword IS NOT NULL THEN pgp_sym_encrypt(:seekPassword, :key) ELSE "seekPasswordEncrypted" END
       WHERE id = :credentialId
     `, opts);
   },
@@ -243,19 +243,19 @@ export const fieldEncryption = {
 
   async encryptUserBankFields(
     userId: string,
-    bankName: string | null,
-    bsbCode: string | null,
-    bankAccountNo: string | null,
-    bankAccountName: string | null,
+    bankName: string | null | undefined,
+    bsbCode: string | null | undefined,
+    bankAccountNo: string | null | undefined,
+    bankAccountName: string | null | undefined,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { userId, key: KEY, bankName, bsbCode, bankAccountNo, bankAccountName }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { userId, key: KEY, bankName: bankName ?? null, bsbCode: bsbCode ?? null, bankAccountNo: bankAccountNo ?? null, bankAccountName: bankAccountName ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE users SET
-        "bankNameEncrypted" = CASE WHEN :bankName IS NOT NULL THEN pgp_sym_encrypt(:bankName, :key) ELSE NULL END,
-        "bsbCodeEncrypted" = CASE WHEN :bsbCode IS NOT NULL THEN pgp_sym_encrypt(:bsbCode, :key) ELSE NULL END,
-        "bankAccountNoEncrypted" = CASE WHEN :bankAccountNo IS NOT NULL THEN pgp_sym_encrypt(:bankAccountNo, :key) ELSE NULL END,
-        "bankAccountNameEncrypted" = CASE WHEN :bankAccountName IS NOT NULL THEN pgp_sym_encrypt(:bankAccountName, :key) ELSE NULL END
+        "bankNameEncrypted" = CASE WHEN :bankName IS NOT NULL THEN pgp_sym_encrypt(:bankName, :key) ELSE "bankNameEncrypted" END,
+        "bsbCodeEncrypted" = CASE WHEN :bsbCode IS NOT NULL THEN pgp_sym_encrypt(:bsbCode, :key) ELSE "bsbCodeEncrypted" END,
+        "bankAccountNoEncrypted" = CASE WHEN :bankAccountNo IS NOT NULL THEN pgp_sym_encrypt(:bankAccountNo, :key) ELSE "bankAccountNoEncrypted" END,
+        "bankAccountNameEncrypted" = CASE WHEN :bankAccountName IS NOT NULL THEN pgp_sym_encrypt(:bankAccountName, :key) ELSE "bankAccountNameEncrypted" END
       WHERE id = :userId
     `, opts);
   },
@@ -274,22 +274,22 @@ export const fieldEncryption = {
     const opts = {
       replacements: {
         credentialId, key: KEY,
-        seekEmail, assignedPCName, assignedPCEmail,
-        assignedVetName, assignedVetEmail,
-        assignedCompletedName, assignedCompletedEmail,
+        seekEmail: seekEmail ?? null, assignedPCName: assignedPCName ?? null, assignedPCEmail: assignedPCEmail ?? null,
+        assignedVetName: assignedVetName ?? null, assignedVetEmail: assignedVetEmail ?? null,
+        assignedCompletedName: assignedCompletedName ?? null, assignedCompletedEmail: assignedCompletedEmail ?? null,
       },
       type: QueryTypes.UPDATE as QueryTypes,
       transaction,
     };
     await db().query(`
       UPDATE credentials SET
-        "seekEmailEncrypted" = CASE WHEN :seekEmail IS NOT NULL THEN pgp_sym_encrypt(:seekEmail, :key) ELSE NULL END,
-        "AssignedPCNameEncrypted" = CASE WHEN :assignedPCName IS NOT NULL THEN pgp_sym_encrypt(:assignedPCName, :key) ELSE NULL END,
-        "AssignedPCEmailEncrypted" = CASE WHEN :assignedPCEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedPCEmail, :key) ELSE NULL END,
-        "AssignedVetNameEncrypted" = CASE WHEN :assignedVetName IS NOT NULL THEN pgp_sym_encrypt(:assignedVetName, :key) ELSE NULL END,
-        "AssignedVetEmailEncrypted" = CASE WHEN :assignedVetEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedVetEmail, :key) ELSE NULL END,
-        "AssignedCompletedNameEncrypted" = CASE WHEN :assignedCompletedName IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedName, :key) ELSE NULL END,
-        "AssignedCompletedEmailEncrypted" = CASE WHEN :assignedCompletedEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedEmail, :key) ELSE NULL END
+        "seekEmailEncrypted" = CASE WHEN :seekEmail IS NOT NULL THEN pgp_sym_encrypt(:seekEmail, :key) ELSE "seekEmailEncrypted" END,
+        "AssignedPCNameEncrypted" = CASE WHEN :assignedPCName IS NOT NULL THEN pgp_sym_encrypt(:assignedPCName, :key) ELSE "AssignedPCNameEncrypted" END,
+        "AssignedPCEmailEncrypted" = CASE WHEN :assignedPCEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedPCEmail, :key) ELSE "AssignedPCEmailEncrypted" END,
+        "AssignedVetNameEncrypted" = CASE WHEN :assignedVetName IS NOT NULL THEN pgp_sym_encrypt(:assignedVetName, :key) ELSE "AssignedVetNameEncrypted" END,
+        "AssignedVetEmailEncrypted" = CASE WHEN :assignedVetEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedVetEmail, :key) ELSE "AssignedVetEmailEncrypted" END,
+        "AssignedCompletedNameEncrypted" = CASE WHEN :assignedCompletedName IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedName, :key) ELSE "AssignedCompletedNameEncrypted" END,
+        "AssignedCompletedEmailEncrypted" = CASE WHEN :assignedCompletedEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedEmail, :key) ELSE "AssignedCompletedEmailEncrypted" END
       WHERE id = :credentialId
     `, opts);
   },
@@ -300,12 +300,12 @@ export const fieldEncryption = {
     generatedPassword: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { credentialId, key: KEY, email, generatedPassword }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { credentialId, key: KEY, email: email ?? null, generatedPassword: generatedPassword ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE jobsite_credentials SET
-        "emailEncrypted" = CASE WHEN :email IS NOT NULL THEN pgp_sym_encrypt(:email, :key) ELSE NULL END,
-        "emailHash" = CASE WHEN :email IS NOT NULL THEN ENCODE(DIGEST(LOWER(:email), 'sha256'), 'hex') ELSE NULL END,
-        "generatedPasswordEncrypted" = CASE WHEN :generatedPassword IS NOT NULL THEN pgp_sym_encrypt(:generatedPassword, :key) ELSE NULL END
+        "emailEncrypted" = CASE WHEN :email IS NOT NULL THEN pgp_sym_encrypt(:email, :key) ELSE "emailEncrypted" END,
+        "emailHash" = CASE WHEN :email IS NOT NULL THEN ENCODE(DIGEST(LOWER(:email), 'sha256'), 'hex') ELSE "emailHash" END,
+        "generatedPasswordEncrypted" = CASE WHEN :generatedPassword IS NOT NULL THEN pgp_sym_encrypt(:generatedPassword, :key) ELSE "generatedPasswordEncrypted" END
       WHERE id = :credentialId
     `, opts);
   },
@@ -315,11 +315,11 @@ export const fieldEncryption = {
     referredEmail: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { referrerId, key: KEY, referredEmail }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { referrerId, key: KEY, referredEmail: referredEmail ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE referrers SET
-        "referredEmailEncrypted" = CASE WHEN :referredEmail IS NOT NULL THEN pgp_sym_encrypt(:referredEmail, :key) ELSE NULL END,
-        "referredEmailHash" = CASE WHEN :referredEmail IS NOT NULL THEN ENCODE(DIGEST(LOWER(:referredEmail), 'sha256'), 'hex') ELSE NULL END
+        "referredEmailEncrypted" = CASE WHEN :referredEmail IS NOT NULL THEN pgp_sym_encrypt(:referredEmail, :key) ELSE "referredEmailEncrypted" END,
+        "referredEmailHash" = CASE WHEN :referredEmail IS NOT NULL THEN ENCODE(DIGEST(LOWER(:referredEmail), 'sha256'), 'hex') ELSE "referredEmailHash" END
       WHERE id = :referrerId
     `, opts);
   },
@@ -339,10 +339,10 @@ export const fieldEncryption = {
     message: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { requestId, key: KEY, message }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { requestId, key: KEY, message: message ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE missing_info_requests SET
-        "personalMessageEncrypted" = CASE WHEN :message IS NOT NULL THEN pgp_sym_encrypt(:message, :key) ELSE NULL END
+        "personalMessageEncrypted" = CASE WHEN :message IS NOT NULL THEN pgp_sym_encrypt(:message, :key) ELSE "personalMessageEncrypted" END
       WHERE id = :requestId
     `, opts);
   },
@@ -360,10 +360,10 @@ export const fieldEncryption = {
     value: string | null,
     transaction?: Transaction,
   ): Promise<void> {
-    const opts = { replacements: { responseId, key: KEY, value }, type: QueryTypes.UPDATE as QueryTypes, transaction };
+    const opts = { replacements: { responseId, key: KEY, value: value ?? null }, type: QueryTypes.UPDATE as QueryTypes, transaction };
     await db().query(`
       UPDATE missing_info_responses SET
-        "fieldValueEncrypted" = CASE WHEN :value IS NOT NULL THEN pgp_sym_encrypt(:value, :key) ELSE NULL END
+        "fieldValueEncrypted" = CASE WHEN :value IS NOT NULL THEN pgp_sym_encrypt(:value, :key) ELSE "fieldValueEncrypted" END
       WHERE id = :responseId
     `, opts);
   },

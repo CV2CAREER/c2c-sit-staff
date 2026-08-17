@@ -21,6 +21,9 @@ import { User } from "./user.model";
 import { CredentialsTour } from "./credentials-tour.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("credentials.model");
 
 @Table({
   tableName: "credentials",
@@ -296,7 +299,9 @@ export class Credentials extends Model {
       try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
         if (pw !== null) instance.setDataValue('seekPassword', pw);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt seek password for credential ${instance.id}: ${error?.message || error}`);
+      }
       try {
         const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
         if (ext) {
@@ -308,7 +313,9 @@ export class Credentials extends Model {
           if (ext.AssignedCompletedName) instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
           if (ext.AssignedCompletedEmail) instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt extended fields for credential ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }

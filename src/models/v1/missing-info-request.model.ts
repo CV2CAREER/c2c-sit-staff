@@ -19,6 +19,9 @@ import { User } from "./user.model";
 import { MissingInfoType } from "../../types/missingInfoConfig";
 import { MissingInfoTemplate } from "./missing-info-template.model";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("missing-info-request.model");
 
 export const MISSING_INFO_REQUEST_STATUSES = [
   "pending",
@@ -175,7 +178,9 @@ export class MissingInfoRequest extends Model {
         if (decrypted !== null) {
           instance.setDataValue('personalMessage', decrypted);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt personal message for missing info request ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }
