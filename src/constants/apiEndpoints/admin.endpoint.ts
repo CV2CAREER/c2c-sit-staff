@@ -207,10 +207,8 @@ export const ADMIN_CLIENT_TOURS = (clientId: string | number) =>
 // Blog Endpoints
 export const ADMIN_BLOG = '/api/v1/admin/blog';
 export const ADMIN_BLOG_WITH_ID = (id: string) => `/api/v1/admin/blog?id=${id}`;
-export const ADMIN_BLOG_DETAILS = '/api/v1/admin/blog/id';
 export const ADMIN_BLOG_STATS = '/api/v1/admin/blog/stats';
-export const ADMIN_BLOG_EDIT_POST = (id: string) =>
-  `/api/v1/admin/blog?id=${id}`;
+export const ADMIN_BLOG_EDIT_POST = ADMIN_BLOG_WITH_ID;
 
 // Admin Prompts Endpoints (key-based VCS prompt store)
 export const ADMIN_VCS_PROMPTS = '/api/v1/admin/prompts';

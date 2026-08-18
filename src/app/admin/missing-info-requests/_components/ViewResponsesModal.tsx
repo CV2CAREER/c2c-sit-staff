@@ -40,6 +40,10 @@ function formatValue(value: string | null, fieldType: string): string {
   return value;
 }
 
+function isHttpUrl(value: string | null): value is string {
+  return !!value && (value.startsWith("http://") || value.startsWith("https://"));
+}
+
 export default function ViewResponsesModal({
   open,
   onClose,
@@ -105,7 +109,7 @@ export default function ViewResponsesModal({
                 </div>
 
                 <div className="mt-3 p-3 bg-[#F9FAFB] rounded-lg">
-                  {response.fieldType === "file" ? (
+                  {isHttpUrl(response.fieldValue) ? (
                     <a
                       href={formatValue(response.fieldValue, response.fieldType)}
                       target="_blank"
