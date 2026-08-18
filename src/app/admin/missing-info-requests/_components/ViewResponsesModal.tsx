@@ -109,7 +109,7 @@ export default function ViewResponsesModal({
                 </div>
 
                 <div className="mt-3 p-3 bg-[#F9FAFB] rounded-lg">
-                  {response.fieldType === "file" && isHttpUrl(response.fieldValue) ? (
+                  {isHttpUrl(response.fieldValue) ? (
                     <a
                       href={formatValue(response.fieldValue, response.fieldType)}
                       target="_blank"
