@@ -57,16 +57,18 @@ export const generateKeywords = catchAsyncError(
     // Generate content using service method
     const result = await AdminDocumentService.generateKeywords(userId, id, !!keywords, !!roleTitles, !!increment);
 
-    // Fire background operations (non-blocking)
-    setImmediate(async () => {
-      try {
-        await Promise.allSettled([
-          AdminDocumentService.sendGenerationNotification(req.user!, contentType)
-        ]);
-      } catch (e) {
-        logger.debug(`Background operation failed: ${e}`);
-      }
-    });
+    // Generation-complete email disabled — low value (confirms something the
+    // user already watched happen live in the UI) and was firing on every
+    // "Show more" click too, adding to onboarding email volume.
+    // setImmediate(async () => {
+    //   try {
+    //     await Promise.allSettled([
+    //       AdminDocumentService.sendGenerationNotification(req.user!, contentType)
+    //     ]);
+    //   } catch (e) {
+    //     logger.debug(`Background operation failed: ${e}`);
+    //   }
+    // });
 
     // EXACT same response format as v2 - root level fields
     return res.status(200).json({
