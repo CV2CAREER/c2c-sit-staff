@@ -293,7 +293,8 @@ export class MissingInfoRequestStaffService {
     const request = await MissingInfoRequest.findByPk(requestId, {
       include: [
         { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
-        { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "type"],
+          include: [{ model: MissingInfoTemplateField, as: "fields" }] },
       ],
     });
 
