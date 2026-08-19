@@ -224,6 +224,12 @@ export class Credentials extends Model {
 
   @BeforeSave
   static captureAndClearPlaintext(instance: Credentials) {
+    // instance.changed() must be read here, before the setDataValue calls
+    // below blank these fields — @BeforeUpdate runs after @BeforeSave, so by
+    // then these fields always look unchanged (both old and new value are
+    // null), which was silently skipping re-encryption on every unassign
+    // (setting an already-decrypted field to null never reached the DB).
+    (instance as any)._pii_changedFields = instance.changed() || [];
     (instance as any)._pii_seekEmail = instance.getDataValue('seekEmail');
     (instance as any)._pii_seekPassword = instance.getDataValue('seekPassword');
     (instance as any)._pii_AssignedPCName = instance.getDataValue('AssignedPCName');
@@ -265,9 +271,9 @@ export class Credentials extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
     const pii = instance as any;
+    const changed: string[] = pii._pii_changedFields || [];
+    if (!changed.length) return;
     if (changed.some(f => ['seekPassword'].includes(f))) {
       await fieldEncryption.encryptCredentialFields(
         instance.id,
@@ -275,7 +281,8 @@ export class Credentials extends Model {
         options.transaction,
       );
     }
-    if (changed.some(f => ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'].includes(f))) {
+    const extendedFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'];
+    if (changed.some(f => extendedFields.includes(f))) {
       await fieldEncryption.encryptCredentialExtendedFields(
         instance.id,
         pii._pii_seekEmail ?? null,
@@ -286,6 +293,7 @@ export class Credentials extends Model {
         pii._pii_AssignedCompletedName ?? null,
         pii._pii_AssignedCompletedEmail ?? null,
         options.transaction,
+        changed.filter(f => extendedFields.includes(f)),
       );
     }
   }
