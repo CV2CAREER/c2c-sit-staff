@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import { getSequelize } from "../../utils/sequelize";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { User } from "../../models/v1/user.model";
 import { Op } from "sequelize";
 
@@ -142,21 +143,26 @@ export const getClientAllocation = catchAsyncError(
     
     // Get all clients with their assigned PC
     // credentials.id is the value stored as applications.client_id
+    // AssignedPCName/AssignedPCEmail plaintext columns are always blanked on
+    // save (see Credentials.captureAndClearPlaintext) — read the live value
+    // from the encrypted columns instead, same as findCredentialsByAssignedEmail.
     const credentialsQuery = `
       SELECT
         id,
         "seekExternalCredentials"->>'Full_Name' as full_name,
-        "AssignedPCName",
-        "AssignedPCEmail"
+        pgp_sym_decrypt("AssignedPCNameEncrypted", :key) as "AssignedPCName",
+        pgp_sym_decrypt("AssignedPCEmailEncrypted", :key) as "AssignedPCEmail"
       FROM credentials
       WHERE "deletedAt" IS NULL
         AND "isDeleted" = false
         AND "seekExternalCredentials"->>'Active' = 'true'
         AND "seekExternalCredentials"->>'Full_Name' IS NOT NULL
-      ORDER BY "AssignedPCName" NULLS LAST, full_name
+      ORDER BY pgp_sym_decrypt("AssignedPCNameEncrypted", :key) NULLS LAST, full_name
     `;
-    
-    const [credentials] = await sequelize.query(credentialsQuery);
+
+    const [credentials] = await sequelize.query(credentialsQuery, {
+      replacements: { key: fieldEncryption.getKey() },
+    });
     logger.info(`Found ${credentials.length} active clients`);
     
     if (credentials.length === 0) {
