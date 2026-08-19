@@ -39,6 +39,9 @@ import {
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("user.model");
 import { Profile } from "./profile.model";
 import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
@@ -588,7 +591,9 @@ export class User extends Model {
         if (decrypted?.email) instance.setDataValue('email', decrypted.email);
         if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
         if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt contact fields for user ${instance.id}: ${error?.message || error}`);
+      }
       try {
         const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
         if (bank?.bankName) {
@@ -597,7 +602,9 @@ export class User extends Model {
           instance.setDataValue('bankAccountNo', bank.bankAccountNo);
           instance.setDataValue('bankAccountName', bank.bankAccountName);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt bank fields for user ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }
