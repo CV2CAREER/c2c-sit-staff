@@ -153,6 +153,7 @@ export const ADMIN_PROMOTION = '/api/v1/admin/promos';
 export const ADMIN_PROMOTION_WITH_ID = (id: string) =>
   `/api/v1/admin/promos?id=${id}`;
 
+export const ADMIN_USERS_PRECHECK_EMAIL = '/api/v1/admin/users/precheck-email';
 export const ADMIN_SEND_USER_OTP = (userId: string) =>
   `/api/v1/admin/users/${userId}/send-otp`;
 export const ADMIN_VERIFY_USER_OTP = (userId: string) =>
@@ -211,18 +212,30 @@ export const ADMIN_BLOG_STATS = '/api/v1/admin/blog/stats';
 export const ADMIN_BLOG_EDIT_POST = (id: string) =>
   `/api/v1/admin/blog?id=${id}`;
 
-// Admin Prompts Endpoints
-const normalizeAiModulePath = (basePath: string) =>
-  basePath.replace(/^prompts\//, '');
-export const ADMIN_PROMPTS_BASE = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}`;
-export const ADMIN_PROMPTS_SIMULATION = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/simulation`;
-export const ADMIN_PROMPTS_QUEUE = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/queue`;
-export const ADMIN_PROMPTS_VCS = (basePath: string) =>
-  `/api/v1/admin/ai/${normalizeAiModulePath(basePath)}/vcs`;
-export const ADMIN_PROMPTS_CV_STYLE = `/api/v1/admin/ai/cv-ai/style`;
+// Admin Prompts Endpoints (key-based VCS prompt store)
+export const ADMIN_VCS_PROMPTS = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPTS_DELETED = '/api/v1/admin/prompts?status=deleted';
+export const ADMIN_VCS_PROMPT_BY_ID = (id: string) =>
+  `/api/v1/admin/prompts/${id}`;
+export const ADMIN_VCS_PROMPT_RESTORE = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPT_PERMANENT = '/api/v1/admin/prompts';
+export const ADMIN_VCS_PROMPT_USAGE_SUMMARY = '/api/v1/admin/prompts/usage/summary';
+export const ADMIN_VCS_PROMPT_USAGE_LOGS = '/api/v1/admin/prompts/usage';
+export const ADMIN_VCS_PROMPT_VERSIONS = (vcsId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/versions`;
+export const ADMIN_VCS_PROMPT_DRAFT = (vcsId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/draft`;
+export const ADMIN_VCS_PROMPT_PUSH_LIVE = (vcsId: string, versionId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/versions/${versionId}/push`;
+export const ADMIN_VCS_PROMPT_RESTORE_VERSION = (vcsId: string, versionId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/versions/${versionId}/restore`;
+export const ADMIN_VCS_PROMPT_ROLLBACK = (vcsId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/rollback`;
+export const ADMIN_VCS_PROMPT_SIMULATE = (vcsId: string, versionId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/versions/${versionId}/simulate`;
+export const ADMIN_VCS_PROMPT_SIMULATIONS = (vcsId: string) =>
+  `/api/v1/admin/prompts/${vcsId}/simulations`;
+export const ADMIN_VCS_PROMPT_ALL_SIMULATIONS = '/api/v1/admin/prompts/simulations';
 
 // Admin Training Tracker Endpoints
 export const ADMIN_TRAINING_TRACKER = '/api/v1/training-tracker';

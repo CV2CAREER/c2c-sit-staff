@@ -151,6 +151,7 @@ export interface AdminQueriesOptions {
   fetchUnsubscribedUsers?: boolean;
   fetchJobsiteCredentials?: boolean;
   fetchClientJobsiteCredential?: boolean;
+  fetchClientJourney?: boolean;
   fetchSystemLogs?: boolean;
   logsPage?: number;
   logsLimit?: number;
