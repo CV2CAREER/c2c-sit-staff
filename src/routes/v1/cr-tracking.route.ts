@@ -26,16 +26,16 @@ crTrackingRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRol
 
 crTrackingRouterV1.get("/", getCRTrackingEntries);
 crTrackingRouterV1.get("/options", getCROptions);
-crTrackingRouterV1.post("/options", createCROption);
-crTrackingRouterV1.put("/options", updateCROption);
-crTrackingRouterV1.delete("/options", deleteCROption);
-crTrackingRouterV1.post("/", createCRTracking);
-crTrackingRouterV1.put("/", updateCRTracking);
-crTrackingRouterV1.delete("/", softDeleteCRTracking);
-crTrackingRouterV1.post("/restore", restoreCRTracking);
-crTrackingRouterV1.delete("/delete", permanentDeleteCRTracking);
-crTrackingRouterV1.put("/modify", modifyCRTracking);
+crTrackingRouterV1.post("/options", authorizeRoles("admin"), createCROption);
+crTrackingRouterV1.put("/options", authorizeRoles("admin"), updateCROption);
+crTrackingRouterV1.delete("/options", authorizeRoles("admin"), deleteCROption);
+crTrackingRouterV1.post("/", authorizeRoles("admin"), createCRTracking);
+crTrackingRouterV1.put("/", authorizeRoles("admin"), updateCRTracking);
+crTrackingRouterV1.delete("/", authorizeRoles("admin"), softDeleteCRTracking);
+crTrackingRouterV1.post("/restore", authorizeRoles("admin"), restoreCRTracking);
+crTrackingRouterV1.delete("/delete", authorizeRoles("admin"), permanentDeleteCRTracking);
+crTrackingRouterV1.put("/modify", authorizeRoles("admin"), modifyCRTracking);
 crTrackingRouterV1.get("/history", getCRTrackingHistory);
-crTrackingRouterV1.post("/notify-nil", notifyCRNIL);
+crTrackingRouterV1.post("/notify-nil", authorizeRoles("admin"), notifyCRNIL);
 
 export default crTrackingRouterV1;

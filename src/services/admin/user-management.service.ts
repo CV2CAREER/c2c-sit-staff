@@ -14,6 +14,7 @@ import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity }
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { Credentials } from "../../models/v1/credentials.model";
 import { setCachedUser } from "../cache/user.cache.service";
+import { markDocumentAccepted } from "../client-journey.service";
 
 export interface IJobPreferenceQuery {
   step01?: boolean;
@@ -222,6 +223,16 @@ class UserManagementService {
 
     // Slack notification
     setImmediate(async () => {
+
+      // Record the client journey completion this approval represents —
+      // document_accepted has no separate "Attest" journey action, this
+      // approval IS its trigger. Non-blocking: a failure here shouldn't
+      // undo an otherwise-successful document approval.
+      try {
+        await markDocumentAccepted(user.id, actorUserId);
+      } catch (err) {
+        logger.error(`Failed to record document_accepted journey step for user ${user.id}: ${err}`);
+      }
 
       // Audit trail
       await AuditTrail.create({
@@ -829,7 +840,7 @@ class UserManagementService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass', 'phoneNumber']
+          attributes: ['id', 'firstName', 'lastName', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -899,7 +910,7 @@ class UserManagementService {
     logger.info(`Retrieving progress for user ID: ${userId}`);
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'firstName', 'lastName', 'email', 'progress', 'role', 'updatedAt']
+      attributes: ['id', 'firstName', 'lastName', 'progress', 'role', 'updatedAt']
     });
     if (!user) {
       throw new ErrorHandler("User not found.", 404);

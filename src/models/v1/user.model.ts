@@ -14,6 +14,11 @@ import {
   HasOne,
   HasMany,
   BeforeCreate,
+  BeforeSave,
+  AfterCreate,
+  BeforeUpdate,
+  AfterUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import {
@@ -33,6 +38,7 @@ import {
   ProfilePicture,
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { Profile } from "./profile.model";
 import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
@@ -42,6 +48,7 @@ import { Location } from "./location.model";
 import { Aggregator } from "./aggregator.model";
 import { Credentials } from "./credentials.model";
 import { Plan } from "./plan.model";
+import { ClientJourneyStep } from "./client-journey-step.model";
 
 @Table({
   tableName: "users",
@@ -75,10 +82,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(false)
-  @Unique
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
   @AllowNull(false)
   @Column(DataType.STRING)
@@ -110,13 +120,21 @@ export class User extends Model {
   @Column(DataType.ENUM(...Object.values(CustomerClass)))
   customerClass!: CustomerClass;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  phoneNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get phoneNumber(): string | undefined {
+    return this.getDataValue("phoneNumber") as string | undefined;
+  }
+  set phoneNumber(value: string | undefined) {
+    this.setDataValue("phoneNumber", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  whatsappNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get whatsappNumber(): string | undefined {
+    return this.getDataValue("whatsappNumber") as string | undefined;
+  }
+  set whatsappNumber(value: string | undefined) {
+    this.setDataValue("whatsappNumber", value);
+  }
 
   // Stored as JSONB for flexibility (previously Mixed)
   @AllowNull(true)
@@ -183,7 +201,7 @@ export class User extends Model {
   resetTokenVerified!: boolean;
 
   @AllowNull(false)
-  @Default(ApplicationStatus.COMMENCED)
+  @Default(ApplicationStatus.NOT_STARTED)
   @Column(DataType.ENUM(...Object.values(ApplicationStatus)))
   applicationStatus!: ApplicationStatus;
 
@@ -309,21 +327,37 @@ export class User extends Model {
   @Column(DataType.TEXT)
   accessToken?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankName(): string | undefined {
+    return this.getDataValue("bankName") as string | undefined;
+  }
+  set bankName(value: string | undefined) {
+    this.setDataValue("bankName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bsbCode?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bsbCode(): string | undefined {
+    return this.getDataValue("bsbCode") as string | undefined;
+  }
+  set bsbCode(value: string | undefined) {
+    this.setDataValue("bsbCode", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountNo?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountNo(): string | undefined {
+    return this.getDataValue("bankAccountNo") as string | undefined;
+  }
+  set bankAccountNo(value: string | undefined) {
+    this.setDataValue("bankAccountNo", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountName(): string | undefined {
+    return this.getDataValue("bankAccountName") as string | undefined;
+  }
+  set bankAccountName(value: string | undefined) {
+    this.setDataValue("bankAccountName", value);
+  }
 
   @AllowNull(false)
   @Default(SampleDispatchedStatus.PENDING)
@@ -418,6 +452,10 @@ export class User extends Model {
   // Aggregator relationship
   @HasMany(() => Aggregator, "userId")
   aggregators?: Aggregator[];
+  
+  // Client journey step-completion relationship
+  @HasMany(() => ClientJourneyStep, "userId")
+  journeySteps?: ClientJourneyStep[];
 
   // Credentials relationship
   @HasOne(() => Credentials, "clientId")
@@ -461,5 +499,105 @@ export class User extends Model {
     }
     const padded = nextNum.toString().padStart(3, '0');
     instance.id = today + padded;
+  }
+
+  @BeforeSave
+  static captureAndClearPlaintext(instance: User) {
+    (instance as any)._pii_email = instance.getDataValue('email');
+    (instance as any)._pii_phoneNumber = instance.getDataValue('phoneNumber');
+    (instance as any)._pii_whatsappNumber = instance.getDataValue('whatsappNumber');
+    (instance as any)._pii_bankName = instance.getDataValue('bankName');
+    (instance as any)._pii_bsbCode = instance.getDataValue('bsbCode');
+    (instance as any)._pii_bankAccountNo = instance.getDataValue('bankAccountNo');
+    (instance as any)._pii_bankAccountName = instance.getDataValue('bankAccountName');
+    instance.setDataValue('email', null);
+    instance.setDataValue('phoneNumber', null);
+    instance.setDataValue('whatsappNumber', null);
+    instance.setDataValue('bankName', null);
+    instance.setDataValue('bsbCode', null);
+    instance.setDataValue('bankAccountNo', null);
+    instance.setDataValue('bankAccountName', null);
+  }
+
+  @AfterCreate
+  static async encryptSensitiveFieldsOnCreate(instance: User, options: any) {
+    const pii = instance as any;
+    await fieldEncryption.encryptUserFields(
+      instance.id,
+      pii._pii_email,
+      pii._pii_phoneNumber ?? null,
+      pii._pii_whatsappNumber ?? null,
+      options.transaction,
+    );
+    await fieldEncryption.encryptUserBankFields(
+      instance.id,
+      pii._pii_bankName ?? null,
+      pii._pii_bsbCode ?? null,
+      pii._pii_bankAccountNo ?? null,
+      pii._pii_bankAccountName ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptSensitiveFieldsOnUpdate(instance: User, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    const pii = instance as any;
+    if (changed.some(f => ['email', 'phoneNumber', 'whatsappNumber'].includes(f))) {
+      await fieldEncryption.encryptUserFields(
+        instance.id,
+        pii._pii_email,
+        pii._pii_phoneNumber ?? null,
+        pii._pii_whatsappNumber ?? null,
+        options.transaction,
+      );
+    }
+    if (changed.some(f => ['bankName', 'bsbCode', 'bankAccountNo', 'bankAccountName'].includes(f))) {
+      await fieldEncryption.encryptUserBankFields(
+        instance.id,
+        pii._pii_bankName ?? null,
+        pii._pii_bsbCode ?? null,
+        pii._pii_bankAccountNo ?? null,
+        pii._pii_bankAccountName ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: User) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_phoneNumber) instance.setDataValue('phoneNumber', pii._pii_phoneNumber);
+    if (pii._pii_whatsappNumber) instance.setDataValue('whatsappNumber', pii._pii_whatsappNumber);
+    if (pii._pii_bankName) instance.setDataValue('bankName', pii._pii_bankName);
+    if (pii._pii_bsbCode) instance.setDataValue('bsbCode', pii._pii_bsbCode);
+    if (pii._pii_bankAccountNo) instance.setDataValue('bankAccountNo', pii._pii_bankAccountNo);
+    if (pii._pii_bankAccountName) instance.setDataValue('bankAccountName', pii._pii_bankAccountName);
+  }
+
+  @AfterFind
+  static async decryptSensitiveFields(instances: User[] | User | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
+      try {
+        const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
+        if (decrypted?.email) instance.setDataValue('email', decrypted.email);
+        if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
+        if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
+      } catch {}
+      try {
+        const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
+        if (bank?.bankName) {
+          instance.setDataValue('bankName', bank.bankName);
+          instance.setDataValue('bsbCode', bank.bsbCode);
+          instance.setDataValue('bankAccountNo', bank.bankAccountNo);
+          instance.setDataValue('bankAccountName', bank.bankAccountName);
+        }
+      } catch {}
+    }));
   }
 }

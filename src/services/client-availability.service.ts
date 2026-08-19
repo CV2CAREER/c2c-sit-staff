@@ -43,7 +43,7 @@ export async function declineClientAvailability(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -134,7 +134,7 @@ export async function getAllClientAvailabilities(): Promise<any[]> {
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -161,7 +161,7 @@ export async function acceptClientAvailability(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -175,7 +175,7 @@ export async function acceptClientAvailability(
     }
 
     const coach = await User.findByPk(coachId, {
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     if (!coach) {
@@ -254,7 +254,7 @@ export async function proposeRescheduleToClient(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -364,13 +364,13 @@ export async function rescheduleSession(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: false,
         },
         {
           model: User,
           as: "coach",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: false,
         },
       ],

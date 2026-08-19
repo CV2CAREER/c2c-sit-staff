@@ -19,6 +19,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const staffOnly = authorizeRoles("admin", "assistant");
+const adminOnly = authorizeRoles("admin");
 
 const jobsiteCredentialRouterV1 = Router();
 
@@ -129,6 +130,7 @@ jobsiteCredentialRouterV1.post(
   "/",
   checkBlacklistedTokens,
   isUserAuthenticated,
+  adminOnly,
   submitJobsiteCredential,
 );
 
@@ -169,7 +171,7 @@ jobsiteCredentialRouterV1.post(
   "/manual",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   addJobsiteCredentialManually,
 );
 
@@ -212,7 +214,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/edit",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   editJobsiteCredential,
 );
 
@@ -246,7 +248,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/accept",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   acceptJobsiteCredential,
 );
 
@@ -279,7 +281,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/test-email",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   sendTestEmail,
 );
 
@@ -313,7 +315,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/approve",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   approveJobsiteCredential,
 );
 
@@ -346,7 +348,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/unapprove",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   unapproveJobsiteCredential,
 );
 
@@ -398,7 +400,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/reject",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   rejectJobsiteCredential,
 );
 
@@ -430,7 +432,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/reveal-password",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   revealJobsiteCredentialPassword,
 );
 
@@ -469,7 +471,7 @@ jobsiteCredentialRouterV1.post(
   "/import-csv",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  staffOnly,
+  adminOnly,
   importJobsiteCredentialsCsv,
 );
 

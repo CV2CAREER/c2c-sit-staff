@@ -57,7 +57,7 @@ export class VaChatService {
       logger.info(`VA Chat: Loading client context for userId: ${userId}`);
 
       const client = await User.findByPk(userId, {
-        attributes: ["id", "firstName", "lastName", "email"],
+        attributes: ["id", "firstName", "lastName"],
         raw: true,
       });
 
@@ -68,7 +68,7 @@ export class VaChatService {
 
         const credentials = await Credentials.findOne({
           where: { clientId: userId, isDeleted: false },
-          attributes: ["seekEmail", "currentCity", "SeekAggregator", "onboardingDate"],
+          attributes: ["currentCity", "SeekAggregator", "onboardingDate"],
           raw: true,
         });
 

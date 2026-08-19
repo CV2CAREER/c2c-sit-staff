@@ -12,6 +12,6 @@ const crEOTRouterV1 = Router();
 crEOTRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 
 crEOTRouterV1.get("/", getEOTOptions);
-crEOTRouterV1.post("/", authorizeRoles('admin', 'assistance'), createEOTRequest);
+crEOTRouterV1.post("/", authorizeRoles('admin'), createEOTRequest);
 
 export default crEOTRouterV1;

@@ -65,6 +65,8 @@ import { CommunicationTemplate } from '../models/v1/communication-template.model
 import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
+import { VCSPromptUsageLog } from '../models/v1/vcs-prompt-usage-log.model';
+import { VCSPromptSimulationRun } from '../models/v1/vcs-prompt-simulation.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
 import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
@@ -76,6 +78,8 @@ import { EmailTemplate } from "../models/v1/email-template.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 
 export const modelList = [
   User,
@@ -148,6 +152,8 @@ export const modelList = [
   CvRevamp,
   VCSPrompt,
   VCS,
+  VCSPromptUsageLog,
+  VCSPromptSimulationRun,
   MissingInfoRequest,
   MissingInfoTemplate,
   MissingInfoTemplateField,
@@ -158,4 +164,6 @@ export const modelList = [
   InterviewPackProcess,
   TourCount,
   CredentialsTour,
+  ClientJourneyStep,
+  AiVettingComparison,
 ];

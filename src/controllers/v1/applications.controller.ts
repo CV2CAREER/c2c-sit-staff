@@ -4,7 +4,7 @@ import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { User } from "../../models/v1/user.model";
-import { Progress, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
+import { ApplicationStatus, Progress, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
 import { sendApplicationActionUserEmail, sendApplicationActionAdminEmail } from "../../services/email.service";
 import { SlackService } from "../../services/slack.service";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
@@ -141,12 +141,15 @@ export const postApplicationEmail = catchAsyncError(
       }
 
       let progress: Progress;
+      let applicationStatus: ApplicationStatus;
       let label: string;
       if (type === "ADMIN-APPLICATION-START") {
         progress = Progress.APPLICATION_COMMENCED;
+        applicationStatus = ApplicationStatus.COMMENCED;
         label = "started";
       } else if (type === "ADMIN-APPLICATION-END") {
         progress = Progress.APPLICATION_EXPIRED;
+        applicationStatus = ApplicationStatus.HOLD;
         label = "ended";
       } else {
         logger.warn(`[ApplicationEmail] Unknown type: ${type}`);
@@ -159,7 +162,7 @@ export const postApplicationEmail = catchAsyncError(
         return res.apiError(new ErrorHandler(`User not found`, 404));
       }
 
-      await user.update({ progress });
+      await user.update({ progress, applicationStatus });
 
       const clientName = `${user.firstName} ${user.lastName}`;
       const actor = req.user as User;
@@ -200,7 +203,7 @@ export const postApplicationEmail = catchAsyncError(
             provider: SlackProvider.SYSTEM,
             severity: SlackSeverity.INFO,
             type: SlackEventType.ADMIN_ACTION,
-            body: `Application *${action === "start" ? "commenced" : "expired"}* for client *${clientName}* (${user.email}).`,
+            body: `Application *${action === "start" ? "commenced" : "ended"}* for client *${clientName}* (${user.email}).`,
             channel: SlackChannel.TOWN_CRIER,
             teamMentions: "CSM",
             trigger: triggeredBy,

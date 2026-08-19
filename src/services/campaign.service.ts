@@ -10,9 +10,14 @@ import { Application } from '../models/v1/application.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { fieldEncryption } from '../utils/field-encryption';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
+import { classifyJob } from './ai-vetting.service';
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
+import { aiVettingConfigApplicationService } from './admin/ai-vetting-config.application.service';
 import {
+  ApplicationStatus,
   SlackChannel,
   SlackEventType,
   SlackLocation,
@@ -26,8 +31,8 @@ import {
   getSlackIdOrName,
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
+import { calculateCampaignFields } from '../utils/campaign-calculator';
 import { Op, Sequelize } from 'sequelize';
-import { Logger } from 'winston';
 
 const logger = getServiceLogger('campaign-service');
 
@@ -759,7 +764,6 @@ export const addToClientSampleQueue = async (
   if (!finalInput && clientId && aggregator) {
     const cred = await Credentials.findOne({
       where: { id: clientId },
-      attributes: ['seekEmail'],
     });
 
     if (!cred) {
@@ -1202,6 +1206,21 @@ export const saveManualApplication = async (
 
     Country: jobData.country || 'N/A',
 
+    Salary: jobData.salary || 'N/A',
+
+    Skills:
+      Array.isArray(jobData.skills) && jobData.skills.length > 0
+        ? jobData.skills.map((s: any) => String(s)).join(', ')
+        : jobData.skills && typeof jobData.skills === 'object'
+          ? Object.values(jobData.skills)
+              .flat()
+              .filter((s: any) => s != null)
+              .map((s: any) => String(s))
+              .join(', ')
+          : typeof jobData.skills === 'string'
+            ? jobData.skills
+            : 'N/A',
+
     Status: 'UNATTENDED',
 
     // Discovery details
@@ -1266,6 +1285,146 @@ export const saveManualApplication = async (
       });
     } catch (err) {
       logger.error(`❌ Slack notification failed: ${err}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      const config = await aiVettingConfigApplicationService.getConfig();
+      if (!config.enabled) return;
+
+      const profile = await Profile.findOne({
+        where: { userId: manualApplication.client_id, isActive: true },
+      });
+      if (!profile) {
+        logger.warn(`No active profile found for client ${manualApplication.client_id} — skipping AI vetting`);
+        return;
+      }
+
+      const result = await classifyJob(manualApplication, profile);
+
+      const updateFields: any = {
+        ai_status: result.status,
+      };
+
+      if (result.status === 'classified') {
+        updateFields.ai_score = result.score;
+        updateFields.ai_reason = result.reason;
+        updateFields.ai_classified_at = new Date();
+        updateFields.ai_prompt_version = result.promptVersion;
+      } else {
+        updateFields.ai_reason = result.reason;
+      }
+
+      await manualApplication.update(updateFields);
+      logger.info(`AI vetting complete for job ${manualApplication.id}: ${result.status === 'classified' ? result.score : 'FAILED'}`);
+
+      if (result.status !== 'classified') return;
+
+      const pipeline = await resolvePipelineNames(manualApplication.client_id);
+      const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
+
+      // MQA → SPC approval alert during the learning month.
+      if (result.score === 'MQA' && config.learningMonth && config.mqaLiveFromDayOne) {
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — MQA`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* AI MQA`,
+              `• *Status:* Awaiting SPC Approval`,
+              `${pipeline.spcName} please approve within 30 min.`,
+            ].join('\n'),
+          });
+        }
+      }
+
+      // Post-learning rollout: HQA auto-vets and routes to submission.
+      if (result.score === 'HQA' && config.hqaAutoSubmit) {
+        await manualApplication.update({
+          Status: 'VETTED',
+          QualityScore: 'HQA',
+          VettedBy: 'AI Vetting Agent',
+          VettedDate: new Date(),
+        });
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — HQA (Auto-Submit)`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* HQA`,
+              `• *Status:* Vetted (AI)`,
+              `${pipeline.spcName} please submit.`,
+            ].join('\n'),
+          });
+        }
+      }
+
+      // Post-learning rollout: LQA auto-skips and routes back to discovery.
+      if (result.score === 'LQA' && config.lqaAutoSkip) {
+        await manualApplication.update({
+          Status: 'SKIPPED',
+          QualityScore: 'LQA',
+          StatusReason: 'AI vetted — LQA (auto-skip)',
+          VettedBy: 'AI Vetting Agent',
+          VettedDate: new Date(),
+        });
+        if (pipeline.creds) {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(host || ''),
+            host: host || '',
+            node: SlackNode.HUMAN_RESOURCE,
+            provider: SlackProvider.HUBSTAFF,
+            severity: SlackSeverity.INFO,
+            trigger: 'AI Vetting Agent',
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.JOB_PIPELINE,
+            body: [
+              `🤖 AI VETTED — LQA (Auto-Skip)`,
+              `• *SPC:* ${pipeline.spcName}`,
+              `• *VPC:* ${pipeline.vpcName}`,
+              `• *DPC:* ${pipeline.dpcName}`,
+              `• *Client:* ${pipeline.clientFullName}`,
+              `• *Job:* ${jobLink}`,
+              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
+              `• *Reason:* ${result.reason}`,
+              `• *Quality:* LQA`,
+              `• *Status:* Skipped (AI)`,
+              `${pipeline.dpcName} please find another job for ${pipeline.clientFullName}.`,
+            ].join('\n'),
+          });
+        }
+      }
+    } catch (err) {
+      logger.error(`AI vetting failed for job ${manualApplication.id}: ${err}`);
     }
   });
 
@@ -1592,6 +1751,12 @@ export const updateJobApplicationStatus = async (
     if (statusReason) {
       updateData.StatusReason = resolveReason(statusReason);
     }
+
+    // First submission for this client — move them off the default HOLD
+    // status now that an application is actually underway.
+    if (userObj && userObj.applicationStatus === ApplicationStatus.HOLD) {
+      await userObj.update({ applicationStatus: ApplicationStatus.COMMENCED });
+    }
   } else if (statusUpper === 'EXPIRED') {
     const resolvedReason = resolveReason(statusReason);
     if (resolvedReason) {
@@ -1612,6 +1777,10 @@ export const updateJobApplicationStatus = async (
   }
 
   await application.update(updateData);
+
+  if (statusUpper === 'VETTED') {
+    logAiVettingComparison(application, fullName, currentDate);
+  }
 
   if (statusUpper === 'SUBMITTED' || statusUpper === 'SUBMITTTED') {
     const submitReason = statusReason ? resolveReason(statusReason) : '';
@@ -1745,6 +1914,86 @@ export const updateJobApplicationStatus = async (
 };
 
 /**
+ * Resolves the Slack names for a client's SPC / VPC / DPC plus the client's
+ * full name. Returns `creds: null` when no credentials row exists so callers
+ * can skip Slack notifications that require the assignment.
+ */
+const resolvePipelineNames = async (clientId?: string) => {
+  if (!clientId) {
+    return {
+      creds: null,
+      spcName: 'N/A',
+      vpcName: 'N/A',
+      dpcName: 'N/A',
+      clientFullName: 'N/A',
+    };
+  }
+
+  const creds = await Credentials.findOne({
+    where: { clientId, isDeleted: false },
+  });
+
+  if (!creds) {
+    return {
+      creds: null,
+      spcName: 'N/A',
+      vpcName: 'N/A',
+      dpcName: 'N/A',
+      clientFullName: 'N/A',
+    };
+  }
+
+  const [spcName, vpcName, dpcName] = await Promise.all([
+    getSlackIdOrName(creds?.AssignedCompletedEmail, creds?.AssignedCompletedName),
+    getSlackIdOrName(creds?.AssignedVetEmail, creds?.AssignedVetName),
+    getSlackIdOrName(creds?.AssignedPCEmail, creds?.AssignedPCName),
+  ]);
+
+  const userObj = await User.findOne({ where: { id: creds.clientId } });
+  const clientFullName = userObj
+    ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim()
+    : 'N/A';
+
+  return { creds, spcName, vpcName, dpcName, clientFullName };
+};
+
+/**
+ * Non-blocking: logs an AI Score vs human VPC call comparison row when a job
+ * was AI-classified and is then vetted by a human. Never throws to the caller.
+ */
+const logAiVettingComparison = (
+  application: ManualApplication,
+  humanVettedBy: string,
+  humanVettedAt: Date
+) => {
+  if (!application.ai_score || application.ai_status !== 'classified') {
+    return;
+  }
+
+  setImmediate(async () => {
+    try {
+      await AiVettingComparison.create({
+        manualApplicationId: application.id,
+        ai_score: application.ai_score,
+        ai_reason: application.ai_reason,
+        human_score: application.QualityScore || null,
+        human_vetted_by: humanVettedBy || null,
+        human_vetted_at: humanVettedAt,
+        agreement: application.ai_score === application.QualityScore,
+        classified_at: application.ai_classified_at,
+      });
+      logger.info(
+        `Logged AI vs human comparison for job ${application.id}: AI=${application.ai_score} / Human=${application.QualityScore}`
+      );
+    } catch (err: any) {
+      logger.error(
+        `Failed to log AI vetting comparison for job ${application.id}: ${err.message}`
+      );
+    }
+  });
+};
+
+/**
  * Assign or Unassign VA (PC / Vet / Completed) to client profile
  * variant can be: 'PC' (default), 'Vet', 'Completed'
  */
@@ -1806,7 +2055,7 @@ export const assignVAToClient = async (
     logger.warn('User not found');
   }
 
-  const fullName = `${user?.firstName} ${user?.middleName} ${user?.lastName}`;
+  const fullName = formatClientName(user);
 
   if (isUnassign) {
     logger.info(`Unassigning ${fields.displayLabel} for credId=${credId}`);
@@ -1815,9 +2064,8 @@ export const assignVAToClient = async (
     let tagName = `Previously assigned ${fields.displayLabel}`;
 
     if (currentEmail) {
-      const targetUser = await User.findOne({
-        where: { email: currentEmail },
-      });
+      const targetUserId = currentEmail ? await fieldEncryption.findUserByEmail(currentEmail) : null;
+      const targetUser = targetUserId ? await User.findByPk(targetUserId) : null;
 
       if (targetUser) {
         const slackId = await getSlackIdByEmail(currentEmail);
@@ -1874,7 +2122,8 @@ export const assignVAToClient = async (
   }
 
   // --- Assignment ---
-  const targetVa = await User.findOne({ where: { email: vaEmail } });
+  const targetVaId = await fieldEncryption.findUserByEmail(vaEmail);
+  const targetVa = targetVaId ? await User.findByPk(targetVaId) : null;
   if (!targetVa) {
     logger.warn(`${fields.displayLabel} not found for email=${vaEmail}`);
     throw new Error(`${fields.displayLabel} not found`);
@@ -1982,6 +2231,37 @@ export const submitJobMatchRequest = async (
 /**
  * Get campaign clients list with filters
  */
+/**
+ * Recomputes SeekSubEndDate / CampaignEnd / SeekSubToExpireDays / SeekSubExpired
+ * from the stored SeekSubStartDate + SeekSubDurDays + GraceDuration, live at read
+ * time, so the countdown reflects "today" without ever mutating the stored
+ * SeekSubDurDays (which stays fixed as the plan's total duration).
+ */
+const enrichCampaignFields = (client: any) => {
+  const cred = client.seekExternalCredentials ?? {};
+
+  const computed = calculateCampaignFields({
+    SeekSubStartDate: client.SeekSubStartDate,
+    createdAt: client.createdAt,
+    SeekSubDurDays: cred.SeekSubDurDays,
+    GraceDuration: cred.GraceDuration,
+  });
+
+  return {
+    ...client,
+    // Falls back to createdAt when SeekSubStartDate was never set (legacy rows)
+    SeekSubStartDate: computed.SeekSubStartDate ?? client.SeekSubStartDate,
+    seekExternalCredentials: {
+      ...cred,
+      SeekSubEndDate: cred.SeekSubEndDate,
+      CampaignEnd: computed.CampaignEnd ?? cred.CampaignEnd,
+      SeekSubRemainingDays: computed.SeekSubRemainingDays,
+      SeekSubToExpireDays: computed.SeekSubToExpireDays,
+      SeekSubExpired: computed.SeekSubExpired,
+    },
+  };
+};
+
 export const getCampaignClients = async (
   active: string = 'true',
   searchQuery?: string
@@ -2003,6 +2283,7 @@ export const getCampaignClients = async (
   // Working PostgreSQL JSONB search implementation
   if (searchQuery) {
     const searchTerm = `%${searchQuery}%`;
+    const seekEmailMatchedIds = await fieldEncryption.findCredentialsBySeekEmailPartial(searchQuery);
     whereClause = {
       ...whereClause,
       [Op.or]: [
@@ -2031,17 +2312,20 @@ export const getCampaignClients = async (
           Op.like,
           searchTerm.toLowerCase()
         ),
-        // Also search top level fields
-        { seekEmail: { [Op.iLike]: searchTerm } },
+        // Match encrypted seekEmail via decrypt-side partial search
+        ...(seekEmailMatchedIds.length ? [{ id: { [Op.in]: seekEmailMatchedIds } }] : []),
       ],
     };
   }
 
-  const campaigns = await Credentials.findAll({
+  // Not raw: true — hydrated instances are required so the model's
+  // @AfterFind hook (decryptSensitiveFields) can decrypt AssignedPCEmail/
+  // AssignedPCName/etc. back onto the instance before we serialize below.
+  const campaignInstances = await Credentials.findAll({
     where: whereClause,
     order: [['createdAt', 'DESC']],
-    raw: true,
   });
+  const campaigns = campaignInstances.map((c) => c.get({ plain: true }));
 
   // Fetch tour counts for all clients in a single query
   const tourCounts = campaigns.length
@@ -2078,7 +2362,7 @@ export const getCampaignClients = async (
   }
 
   const campaignsWithAggregators = campaigns.map((client) => ({
-    ...client,
+    ...enrichCampaignFields(client),
     aggregators: client.clientId
       ? (aggregatorsByUserId.get(client.clientId) ?? [])
       : [],
@@ -2107,11 +2391,16 @@ export const getCampaignClientById = async (clientId: string) => {
     throw new Error('Client ID is required');
   }
 
-  const clientData = await Credentials.findByPk(clientId, { raw: true });
+  // Not raw: true — hydrated instance required so the model's @AfterFind
+  // hook (decryptSensitiveFields) can decrypt AssignedPCEmail/AssignedPCName/
+  // etc. back onto the instance before we serialize below.
+  const clientInstance = await Credentials.findByPk(clientId);
 
-  if (!clientData) {
+  if (!clientInstance) {
     throw new Error('Client not found');
   }
+
+  const clientData = clientInstance.get({ plain: true });
 
   // Fetch associated user and profile for application statistics
   const user = await User.findOne({ where: { id: clientId } });
@@ -2142,7 +2431,7 @@ export const getCampaignClientById = async (clientId: string) => {
   }
 
   return {
-    ...clientData,
+    ...enrichCampaignFields(clientData),
     ...applicationCounts,
     aggregators,
   };
@@ -2931,7 +3220,7 @@ export const getClientApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['Timestamp', 'DESC']],
@@ -3012,7 +3301,7 @@ export const getClientManualApplicationsByClientId = async (
       {
         model: User,
         as: 'user',
-        attributes: ['id', 'email', 'firstName', 'lastName'],
+        attributes: ['id', 'firstName', 'lastName'],
       },
     ],
     order: [['createdAt', 'DESC']],

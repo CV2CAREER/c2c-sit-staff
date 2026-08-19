@@ -102,9 +102,9 @@ export class TrainingTrackerService {
       const trackers = await TrainingTracker.findAll({
         where: whereClause,
         include: [
-          { association: "user", attributes: ["id", "email", "firstName", "lastName"] },
+          { association: "user", attributes: ["id", "firstName", "lastName"] },
           { association: "session", attributes: ["id", "sessionNumber", "name"] },
-          { association: "pc", attributes: ["id", "email", "firstName", "lastName"] }
+          { association: "pc", attributes: ["id", "firstName", "lastName"] }
         ],
         order: [["createdAt", "DESC"]],
         raw: false
@@ -125,9 +125,9 @@ export class TrainingTrackerService {
     try {
       const tracker = await TrainingTracker.findByPk(id, {
         include: [
-          { association: "user", attributes: ["id", "email", "firstName", "lastName"] },
+          { association: "user", attributes: ["id", "firstName", "lastName"] },
           { association: "session", attributes: ["id", "sessionNumber", "name"] },
-          { association: "pc", attributes: ["id", "email", "firstName", "lastName"] }
+          { association: "pc", attributes: ["id", "firstName", "lastName"] }
         ]
       });
 
@@ -385,9 +385,9 @@ export class TrainingTrackerService {
       const trackers = await TrainingTracker.findAll({
         where: whereClause,
         include: [
-          { association: "user", attributes: ["email", "firstName", "lastName"] },
+          { association: "user", attributes: ["firstName", "lastName"] },
           { association: "session", attributes: ["id", "sessionNumber", "name"] },
-          { association: "pc", attributes: ["email", "firstName", "lastName"] }
+          { association: "pc", attributes: ["firstName", "lastName"] }
         ],
         order: [["createdAt", "DESC"]],
         raw: true,

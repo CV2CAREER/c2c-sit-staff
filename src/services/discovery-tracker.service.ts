@@ -102,7 +102,7 @@ export const listManualApplications = async (params: {
       {
         model: User,
         as: "user",
-        attributes: ["id", "email", "firstName", "lastName"],
+        attributes: ["id", "firstName", "lastName"],
       },
     ],
     order: [["createdAt", "DESC"]],

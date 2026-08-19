@@ -10,10 +10,15 @@ import {
   BelongsTo,
   CreatedAt,
   UpdatedAt,
+  BeforeSave,
+  AfterCreate,
+  BeforeUpdate,
+  AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
 import { MissingInfoType } from "../../types/missingInfoConfig";
 import { MissingInfoTemplate } from "./missing-info-template.model";
+import { fieldEncryption } from "../../utils/field-encryption";
 
 export const MISSING_INFO_REQUEST_STATUSES = [
   "pending",
@@ -87,9 +92,13 @@ export class MissingInfoRequest extends Model {
   @Column(DataType.ENUM(...MISSING_INFO_REQUEST_CHANNELS))
   channel!: MissingInfoRequestChannel;
 
-  @AllowNull(true)
-  @Column(DataType.TEXT)
-  personalMessage!: string;
+  @Column(DataType.VIRTUAL(DataType.TEXT))
+  get personalMessage(): string | null {
+    return this.getDataValue("personalMessage") as string | null;
+  }
+  set personalMessage(value: string | null) {
+    this.setDataValue("personalMessage", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.TEXT)
@@ -126,4 +135,47 @@ export class MissingInfoRequest extends Model {
 
   @UpdatedAt
   updatedAt!: Date;
+
+  @BeforeSave
+  static captureAndClearPlaintext(instance: MissingInfoRequest) {
+    (instance as any)._pii_personalMessage = instance.getDataValue('personalMessage');
+    instance.setDataValue('personalMessage', null);
+  }
+
+  @AfterCreate
+  static async encryptPersonalMessageOnCreate(instance: MissingInfoRequest, options: any) {
+    await fieldEncryption.encryptMissingRequestPersonalMessage(
+      instance.id,
+      (instance as any)._pii_personalMessage ?? null,
+      options.transaction,
+    );
+  }
+
+  @BeforeUpdate
+  static async encryptPersonalMessageOnUpdate(instance: MissingInfoRequest, options: any) {
+    const changed = instance.changed();
+    if (!changed) return;
+    if (changed.some(f => ['personalMessage'].includes(f))) {
+      await fieldEncryption.encryptMissingRequestPersonalMessage(
+        instance.id,
+        (instance as any)._pii_personalMessage ?? null,
+        options.transaction,
+      );
+    }
+  }
+
+  @AfterFind
+  static async decryptPersonalMessage(instances: MissingInfoRequest[] | MissingInfoRequest | null) {
+    if (!instances) return;
+    const list = Array.isArray(instances) ? instances : [instances];
+    await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
+      try {
+        const decrypted = await fieldEncryption.getDecryptedMissingRequestPersonalMessage(instance.id);
+        if (decrypted !== null) {
+          instance.setDataValue('personalMessage', decrypted);
+        }
+      } catch {}
+    }));
+  }
 }

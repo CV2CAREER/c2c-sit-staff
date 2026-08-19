@@ -30,12 +30,12 @@ documentRouterV1.get("/user/:userId/type/:type", getUserDocumentsByTypeControlle
 documentRouterV1.get("/:documentId", getDocumentByIdController);
 
 // Update document
-documentRouterV1.patch("/:documentId", updateDocumentController);
+documentRouterV1.patch("/:documentId", authorizeRoles("admin"), updateDocumentController);
 
 // Update document status
-documentRouterV1.patch("/:documentId/status", updateDocumentStatusController);
+documentRouterV1.patch("/:documentId/status", authorizeRoles("admin"), updateDocumentStatusController);
 
 // Delete document (soft delete)
-documentRouterV1.delete("/:documentId", deleteDocumentController);
+documentRouterV1.delete("/:documentId", authorizeRoles("admin"), deleteDocumentController);
 
 export default documentRouterV1;

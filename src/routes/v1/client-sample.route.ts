@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as clientSampleController from "../../controllers/v1/client-sample.controller";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const clientSampleRouterV1 = Router();
 
@@ -16,12 +17,12 @@ clientSampleRouterV1.get("/users", clientSampleController.getUsers);
 clientSampleRouterV1.get("/table", clientSampleController.getTable);
 
 // 3. Run Client Sample / Retry Client Sample
-clientSampleRouterV1.post("/table", clientSampleController.runSample);
+clientSampleRouterV1.post("/table", authorizeRoles("admin"), clientSampleController.runSample);
 
 // 4. Remove from Queue
-clientSampleRouterV1.delete("/table", clientSampleController.removeFromQueue);
+clientSampleRouterV1.delete("/table", authorizeRoles("admin"), clientSampleController.removeFromQueue);
 
 // 5. Get Load Balancer
-clientSampleRouterV1.get("/loadBalancer", clientSampleController.getLoadBalancer);
+clientSampleRouterV1.get("/loadBalancer", authorizeRoles("admin"), clientSampleController.getLoadBalancer);
 
 export default clientSampleRouterV1;

@@ -9,6 +9,7 @@ import {
   saveAiRoleTitleRecommendationsController,
   uploadClientSupportDocumentsController,
 } from "../../controllers/v1/client-support-document.controller";
+import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const clientSupportDocumentRouterV1 = Router();
 
@@ -16,10 +17,11 @@ clientSupportDocumentRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 
 // Multipart upload — fields: roleTitleRecommendations, supportImages,
 // supportSpreadsheets (plus clientId).
-clientSupportDocumentRouterV1.post("/", uploadClientSupportDocumentsController);
+clientSupportDocumentRouterV1.post("/", authorizeRoles("admin"), uploadClientSupportDocumentsController);
 
 clientSupportDocumentRouterV1.post(
   "/role-titles/save",
+  authorizeRoles("admin"),
   saveAiRoleTitleRecommendationsController,
 );
 
@@ -40,6 +42,7 @@ clientSupportDocumentRouterV1.patch(
 
 clientSupportDocumentRouterV1.delete(
   "/:id",
+  authorizeRoles("admin"),
   deleteClientSupportDocumentController,
 );
 

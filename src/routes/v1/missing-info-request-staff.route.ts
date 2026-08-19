@@ -7,8 +7,8 @@ import {
   sendMissingInfoRequest,
   getOutstandingRequests,
   getRequestStats,
-  bulkSendReminder,
   getRequestResponses,
+  bulkSendReminder,
 } from "@/controllers/v1/missing-info-request-staff.controller";
 
 const missingInfoRequestStaffRouter = Router();
@@ -20,10 +20,10 @@ missingInfoRequestStaffRouter.use(
   dbMiddleware,
 );
 
-missingInfoRequestStaffRouter.post("/send", sendMissingInfoRequest);
+missingInfoRequestStaffRouter.post("/send", authorizeRoles("admin"), sendMissingInfoRequest);
 missingInfoRequestStaffRouter.get("/outstanding", getOutstandingRequests);
 missingInfoRequestStaffRouter.get("/stats", getRequestStats);
-missingInfoRequestStaffRouter.post("/bulk-reminder", bulkSendReminder);
-missingInfoRequestStaffRouter.get("/:requestId/responses", getRequestResponses);
+missingInfoRequestStaffRouter.get("/:id/responses", getRequestResponses);
+missingInfoRequestStaffRouter.post("/bulk-reminder", authorizeRoles("admin"), bulkSendReminder);
 
 export default missingInfoRequestStaffRouter;

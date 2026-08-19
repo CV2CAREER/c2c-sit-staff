@@ -24,6 +24,7 @@ import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
 import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag } from "./email.service";
 import { AuditLogService } from "./admin/audit-log.service";
+import { fieldEncryption } from "../utils/field-encryption";
 
 const logger = getServiceLogger("admin-plan-service");
 
@@ -54,6 +55,9 @@ export const updateUserPlanByFeature = async (
   if (!user) {
     throw new ErrorHandler("User not found", 404);
   }
+
+  const userEmail = await fieldEncryption.getUserEmail(userId);
+  const userFullName = getFullName(user);
 
   const feature = await Feature.findByPk(featureId);
   if (!feature) {
@@ -151,13 +155,17 @@ export const updateUserPlanByFeature = async (
     // Handle campaign management (non-blocking)
     setImmediate(async () => {
       try {
+        if (!userEmail) {
+          logger.warn(`[UpdateUserPlanByFeature] Skipping campaign management for user ${userId}: no resolvable email`);
+          return;
+        }
         await handleCampaignManagement(
           host,
           {
             firstName: user.firstName,
             middleName: user.middleName,
             lastName: user.lastName || "",
-            email: user.email,
+            email: userEmail,
             uniqueId: user.uniqueId || "",
             country: user.country,
             id: user.id,
@@ -174,14 +182,18 @@ export const updateUserPlanByFeature = async (
     // Send all notifications (non-blocking)
     setImmediate(async () => {
       try {
-        const fullName = getFullName(user);
+        if (!userEmail) {
+          logger.warn(`[UpdateUserPlanByFeature] Skipping post-payment notifications for user ${userId}: no resolvable email`);
+          return;
+        }
+        const fullName = userFullName;
         const frontendUrl = getFrontendUrl();
 
         // Send emails
         await Promise.all([
           // User payment notification
           sendMail({
-            email: user.email,
+            email: userEmail,
             subject: `${feature.title} Service Activated Successfully`,
             templateName: "service-subscription-user.ejs",
             templateData: {
@@ -198,7 +210,7 @@ export const updateUserPlanByFeature = async (
             templateName: "service-subscription-admin.ejs",
             templateData: {
               name: fullName,
-              email: user.email,
+              email: userEmail,
               plan: feature.title,
               link: `${frontendUrl}/admin-dashboard/users/${user.id}`,
               frontendUrl,
@@ -260,6 +272,9 @@ export const activateCoralPlan = async (
   if (!user) throw new ErrorHandler("User not found", 404);
   if (!user.isAmbassador) throw new ErrorHandler("User is not an ambassador", 400);
 
+  const userEmail = await fieldEncryption.getUserEmail(userId);
+  const userFullName = `${user.firstName} ${user.lastName || ""}`.trim();
+
   const activePlan = await Plan.findOne({ where: { userId, hasExpired: false } });
   if (activePlan) throw new ErrorHandler("Ambassador already has an active plan", 400);
 
@@ -309,13 +324,17 @@ export const activateCoralPlan = async (
 
   setImmediate(async () => {
     try {
+      if (!userEmail) {
+        logger.warn(`[ActivateCoralPlan] Skipping coral active email for user ${userId}: no resolvable email`);
+        return;
+      }
       await sendCoralActiveEmail({
-        email: user.email,
+        email: userEmail,
         name: user.firstName,
         subEndDate,
         frontendUrl,
       });
-      logger.info(`[ActivateCoralPlan] Coral active email sent to ${user.email}`);
+      logger.info(`[ActivateCoralPlan] Coral active email sent to ${userEmail}`);
     } catch (err: any) {
       logger.error(`[ActivateCoralPlan] Email failed: ${err.message}`);
     }
@@ -324,9 +343,13 @@ export const activateCoralPlan = async (
   // JIR-070: SG-INT-CORAL-ACTIVE — internal email to team + RC follow-up
   setImmediate(async () => {
     try {
+      if (!userEmail) {
+        logger.warn(`[ActivateCoralPlan] Skipping internal referral email for user ${userId}: no resolvable email`);
+        return;
+      }
       await sendInternalReferralEmail({
-        referrerName: `${user.firstName} ${user.lastName || ""}`.trim(),
-        referrerEmail: user.email,
+        referrerName: userFullName,
+        referrerEmail: userEmail,
         referrerId: (user as any).uniqueId ?? undefined,
         refereeName: "",
         refereeEmail: "",
@@ -340,7 +363,7 @@ export const activateCoralPlan = async (
       });
       await sendRCFollowUpTag({
         host,
-        fullName: `${user.firstName} ${user.lastName || ""}`.trim(),
+        fullName: userFullName,
         customerId: (user as any).uniqueId ?? null,
         templateId: "SG-CORAL-ACTIVE",
       });
@@ -352,13 +375,17 @@ export const activateCoralPlan = async (
 
   setImmediate(async () => {
     try {
+      if (!userEmail) {
+        logger.warn(`[ActivateCoralPlan] Skipping campaign management for user ${userId}: no resolvable email`);
+        return;
+      }
       await handleCampaignManagement(
         host,
         {
           firstName: user.firstName,
           middleName: user.middleName,
           lastName: user.lastName || "",
-          email: user.email,
+          email: userEmail,
           uniqueId: user.uniqueId || "",
           country: user.country,
           id: user.id,
@@ -383,7 +410,7 @@ export const activateCoralPlan = async (
         trigger: "Ambassador Coral Plan Activated",
         type: SlackEventType.ADMIN_ACTION,
         channel: SlackChannel.TOWN_CRIER,
-        body: `Ambassador *${user.firstName} ${user.lastName}* (${user.email}) has been granted a *14-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
+        body: `Ambassador *${userFullName}* (${userEmail}) has been granted a *14-day Coral plan* by admin.\nPlan ID: ${newPlan.id} | Expires: ${subEndDate}`,
       });
     } catch (err: any) {
       logger.error(`[ActivateCoralPlan] Slack notification failed: ${err.message}`);
@@ -397,13 +424,13 @@ export const activateCoralPlan = async (
       userRole: adminUser.role || "admin",
       method: "POST",
       url: `/v1/admin/users/${userId}/activate-coral`,
-      description: `Coral plan activated for ambassador ${user.email}`,
+      description: `Coral plan activated for ambassador ${userEmail}`,
       dataEntry: {
         action: "CORAL_ACTIVATED",
         actor: `${adminUser.firstName || ""} ${adminUser.lastName || ""}`.trim() || "Admin",
         signup_as: "Ambassador",
         ambassador_id: (user as any).uniqueId ?? userId,
-        ambassador_email: user.email,
+        ambassador_email: userEmail,
         registered: user.createdAt,
         activated: new Date().toISOString(),
         sub_start: newPlan.createdAt ?? new Date().toISOString(),
@@ -458,7 +485,7 @@ export const deactivateCoralPlan = async (
   setImmediate(async () => {
     try {
       const campaignRow = await Credentials.findOne({
-        where: { [Op.or]: [{ seekEmail: user.email }, { clientId: userId }] },
+        where: { clientId: userId },
         paranoid: false,
       });
       if (campaignRow) {
@@ -476,7 +503,7 @@ export const deactivateCoralPlan = async (
             SeekSubDurDays: 0,
           },
         });
-        logger.info(`[DeactivateCoralPlan] Campaign Mgt row marked inactive for ${user.email}`);
+        logger.info(`[DeactivateCoralPlan] Campaign Mgt row marked inactive for ${userId}`);
       }
     } catch (err: any) {
       logger.error(`[DeactivateCoralPlan] Campaign Mgt update failed: ${err.message}`);

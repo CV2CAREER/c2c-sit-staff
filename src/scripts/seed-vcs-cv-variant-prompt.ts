@@ -18,6 +18,12 @@ Choose exactly one style_variant based on the client's actual field — decide f
 - "classic"      — engineering, trades, mining, industrial, manual/technical
 - "contemporary" — care, education, client-facing/community roles
 
+DESIGN TOKEN SELECTION
+Alongside style_variant, choose a \`design\` object — this drives the actual accent color, font pairing, and spacing density used when rendering the final PDF/DOCX. Decide fresh each time based on the client's field and style_variant, don't default to a previous client's choice.
+- accent_color: a 6-digit hex color (e.g. "#0D9F6E") used for headings, rules, and skill pills. Pick something professional and readable — avoid neon or pastel-so-light-it's-illegible tones. Vary it meaningfully across style_variants (e.g. a cooler, corporate tone for "modern"; a more restrained, traditional tone for "classic"; a warmer, approachable tone for "contemporary") rather than reusing the same color every time.
+- font_family: "sans" or "serif". Prefer "sans" for modern/tech/corporate; "serif" reads more traditional and suits classic/engineering or credential-led profiles; use judgment either way.
+- density: "compact" | "standard" | "spacious". Use "compact" for candidates with dense, lengthy experience that needs to fit tightly; "spacious" for thinner CVs that benefit from more breathing room; otherwise "standard".
+
 CONTENT RULES
 - Every piece of output content gets an \`is_new\` boolean:
     false = traces to something the client actually wrote in a supplied document, even if merged from multiple sources, reworded for flow, or grammar-tidied.
@@ -41,6 +47,12 @@ Return ONLY this JSON object, nothing else:
   "style_variant": "modern | classic | contemporary",
   "style_reasoning": "string — one line, why this variant",
   "top_level_flags": ["string", "..."],
+
+  "design": {
+    "accent_color": "string — 6-digit hex, e.g. #0D9F6E",
+    "font_family": "sans | serif",
+    "density": "compact | standard | spacious"
+  },
 
   "header": {
     "name": "string",
