@@ -2558,6 +2558,14 @@ export const landOrLaunchCampaign = async (
       Active: false,
       SeekAnswerPriority: false,
       SeekAggregator: false,
+      // Auto-unassign DPC/VPC/SPC on landing so no staff keeps responsibility
+      // for an inactive client.
+      AssignedPCName: null,
+      AssignedPCEmail: null,
+      AssignedVetName: null,
+      AssignedVetEmail: null,
+      AssignedCompletedName: null,
+      AssignedCompletedEmail: null,
     });
     message = 'Campaign landed successfully!';
     newStatus = 'HOLD';
