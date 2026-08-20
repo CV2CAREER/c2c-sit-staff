@@ -313,13 +313,17 @@ export class Credentials extends Model {
       try {
         const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
         if (ext) {
-          if (ext.seekEmail) instance.setDataValue('seekEmail', ext.seekEmail);
-          if (ext.AssignedPCName) instance.setDataValue('AssignedPCName', ext.AssignedPCName);
-          if (ext.AssignedPCEmail) instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
-          if (ext.AssignedVetName) instance.setDataValue('AssignedVetName', ext.AssignedVetName);
-          if (ext.AssignedVetEmail) instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
-          if (ext.AssignedCompletedName) instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
-          if (ext.AssignedCompletedEmail) instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+          // Always overwrite with the decrypted value (or null) — never leave the
+          // stale plaintext column as the dataValue. Otherwise a plaintext column
+          // populated outside the model hooks would surface in the UI even after
+          // the encrypted assignment was cleared.
+          instance.setDataValue('seekEmail', ext.seekEmail);
+          instance.setDataValue('AssignedPCName', ext.AssignedPCName);
+          instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
+          instance.setDataValue('AssignedVetName', ext.AssignedVetName);
+          instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
+          instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
+          instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
         }
       } catch (error: any) {
         logger.warn(`Failed to decrypt extended fields for credential ${instance.id}: ${error?.message || error}`);

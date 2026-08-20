@@ -494,6 +494,14 @@ export const deactivateCoralPlan = async (
           capitalized: "HOLD",
           SeekAnswerPriority: false,
           SeekAggregator: false,
+          // Auto-unassign DPC/VPC/SPC on plan deactivation so no staff keeps
+          // responsibility for a client whose subscription has ended.
+          AssignedPCName: null,
+          AssignedPCEmail: null,
+          AssignedVetName: null,
+          AssignedVetEmail: null,
+          AssignedCompletedName: null,
+          AssignedCompletedEmail: null,
           seekExternalCredentials: {
             ...(campaignRow.seekExternalCredentials as object),
             Active: false,
