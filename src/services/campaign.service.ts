@@ -2821,11 +2821,13 @@ export const updateCampaignClient = async (
     directUpdates['updatedBy'] = requestorName;
   }
 
-  // Apply the update
+  // Apply the update. No `fields` restriction: the model's @BeforeSave hook
+  // (captureAndClearPlaintext) nulls the plaintext PII columns on every save, and
+  // restricting to only the submitted fields silently dropped those nulls from the
+  // UPDATE — leaving stale plaintext in the DB that then surfaced on reads. Without
+  // the restriction, any edit also persists the plaintext clearing.
   if (Object.keys(directUpdates).length > 0) {
-    await userInfo.update(directUpdates as any, {
-      fields: Object.keys(directUpdates),
-    });
+    await userInfo.update(directUpdates as any);
   }
 
   // When SeekSubStartDate changes, find the user's plan via Credentials.clientId,
