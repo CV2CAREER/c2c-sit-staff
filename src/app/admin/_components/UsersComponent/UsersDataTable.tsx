@@ -29,7 +29,7 @@ import { useMutateData } from "@/hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { ADMIN_USER_PLAN_UPGRADE, ADMIN_USER_PROGRESS_MILESTONE } from "@/constants/apiEndpoints/admin.endpoint";
 import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
-import { moveTo, StyledDataGridPro } from "@/utils/table";
+import { moveTo, StyledDataGridPro, usersGridSx } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,6 +38,7 @@ import { FaSearch } from "react-icons/fa";
 import SearchInput from "@/components/ui/search";
 import { CvDataPointsManager } from "./CvDataPoints/CvDataPointsManager";
 import DispatchClient from "@/components/modals/DispatchClient";
+import ChangePlanModal from "@/components/modals/ChangePlanModal";
 import { Combobox } from "@/components/ui/combobox";
 import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import toast from "react-hot-toast";
@@ -95,6 +96,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState<boolean>(false);
+  const [isChangePlanModalOpen, setIsChangePlanModalOpen] = useState<boolean>(false);
+  const [changePlanUser, setChangePlanUser] = useState<any | null>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [tableData, setTableData] = useState<readonly UsersTableColType[]>([]);
   const [progressBeingHandled, setProgressBeingHandled] = useState<{
@@ -368,7 +371,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 showToolbar={true}
                 rows={tableData}
                 getRowId={(row) => row.id}
-                rowHeight={38}
+                rowHeight={46}
+                columnHeaderHeight={44}
                 rowReordering
                 disableRowSelectionOnClick
                 onRowClick={handleRowClick}
@@ -382,6 +386,10 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                     async (value: any, currentProgress: any, user: any) => {
                       await handleProgressOverride(value, currentProgress, user);
                     },
+                    (user: any) => {
+                      setChangePlanUser(user);
+                      setIsChangePlanModalOpen(true);
+                    },
                   )
                 }
                 onColumnOrderChange={(e) => {
@@ -393,16 +401,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 pagination
                 pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}
-                sx={{
-                  border: "1px solid #f1f5f9",
-                  borderRadius: "12px",
-                  "& .MuiDataGrid-columnHeaders": {
-                    backgroundColor: "rgba(0, 142, 211, 0.08)",
-                  },
-                  "& .MuiDataGrid-row:hover": {
-                    backgroundColor: "rgba(0, 142, 211, 0.06)",
-                  },
-                }}
+                sx={usersGridSx}
               />
             </div>
           );
@@ -579,6 +578,20 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
       <DispatchClient
         visibility={isDispatchModalOpen}
         togggleVisibility={setIsDispatchModalOpen}
+      />
+
+      <ChangePlanModal
+        visibility={isChangePlanModalOpen}
+        toggleVisibility={(open) => {
+          setIsChangePlanModalOpen(open);
+          if (!open) setChangePlanUser(null);
+        }}
+        user={changePlanUser}
+        planOptions={orderedPlans.map((p: any) => ({ id: p.id, title: p.title }))}
+        onSuccess={() => {
+          allUsers.refetch();
+          queryClient.invalidateQueries({ queryKey: ["admin-user-plan-summary"] });
+        }}
       />
 
       {/* Plan confirmation modal */}

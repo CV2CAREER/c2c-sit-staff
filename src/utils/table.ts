@@ -180,6 +180,78 @@ export const StyledDataGridPro = styled(DataGridPro)(() => ({
   },
 }));
 
+/**
+ * Polished sx overrides for the admin/assistant Users table — scoped to this
+ * table only (not the shared StyledDataGridPro base, which many other tables
+ * across the app also use). Crisp uppercase header labels, subtle zebra
+ * striping, a brand-tinted hover/selected state, and a shadow separator on
+ * pinned columns so they read as "frozen" against the horizontally
+ * scrolling rest of the row.
+ */
+export const usersGridSx = {
+  border: "1px solid #eef1f5",
+  borderRadius: "12px",
+  backgroundColor: "#fff",
+  boxShadow: "none",
+  "& .MuiDataGrid-columnHeaders": {
+    backgroundColor: "#f8fafc",
+    borderBottom: "1px solid #e7ebf0",
+  },
+  "& .MuiDataGrid-columnHeaderTitle": {
+    fontSize: "11px",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    color: "#64748b",
+  },
+  "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-columnSeparator": {
+    color: "#e7ebf0",
+  },
+  "& .MuiDataGrid-cell": {
+    borderBottom: "1px solid #f1f5f9",
+    fontSize: "13px",
+    color: "#334155",
+    display: "flex",
+    alignItems: "center",
+  },
+  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-row": {
+    transition: "background-color 120ms ease",
+  },
+  "& .MuiDataGrid-row:nth-of-type(even)": {
+    backgroundColor: "#fafbfc",
+  },
+  "& .MuiDataGrid-row:hover": {
+    backgroundColor: "rgba(0, 142, 211, 0.06)",
+  },
+  "& .MuiDataGrid-row.Mui-selected": {
+    backgroundColor: "rgba(0, 142, 211, 0.10)",
+  },
+  "& .MuiDataGrid-row.Mui-selected:hover": {
+    backgroundColor: "rgba(0, 142, 211, 0.14)",
+  },
+  "& .MuiDataGrid-cell--pinnedLeft:last-of-type, & .MuiDataGrid-columnHeader--pinnedLeft:last-of-type": {
+    boxShadow: "2px 0 4px -2px rgba(15, 23, 42, 0.12)",
+  },
+  "& .MuiDataGrid-footerContainer": {
+    borderTop: "1px solid #e7ebf0",
+    backgroundColor: "#f8fafc",
+  },
+  "& .MuiDataGrid-virtualScroller": {
+    scrollbarWidth: "thin",
+  },
+  "& .MuiDataGrid-toolbarContainer": {
+    padding: "10px 12px",
+    borderBottom: "1px solid #eef1f5",
+    gap: "8px",
+  },
+} as const;
+
 export const applyHeaderClassName = (
   columns: GridColDef<any>[],
   className = "bg-[#80D7FF]"
