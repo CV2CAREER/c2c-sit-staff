@@ -49,7 +49,7 @@ import {
   putCampaignSheet,
 } from "../../controllers/v1/campaign-sheets.controller";
 import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
-import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController } from "../../controllers/v1/admin-plan.controller";
+import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController, getUserPlanSummaryController, extendUserPlanController } from "../../controllers/v1/admin-plan.controller";
 import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
@@ -648,6 +648,20 @@ adminRouterV1.patch(
   isUserAuthenticated,
   writeAccess,
   updateUserPlanByFeatureController,
+);
+adminRouterV1.get(
+  "/users/:userId/plan",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getUserPlanSummaryController,
+);
+adminRouterV1.patch(
+  "/users/:userId/plan/extend",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  extendUserPlanController,
 );
 adminRouterV1.post(
   "/users/:userId/activate-coral",

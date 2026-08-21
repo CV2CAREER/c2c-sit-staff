@@ -348,6 +348,80 @@ export const sendCoralActiveEmail = async (
   });
 };
 
+interface PlanChangedEmailOptions {
+  name: string;
+  email: string;
+  previousPlan: string;
+  planTo: string;
+  subEndDate: string;
+  frontendUrl: string;
+}
+
+export const sendPlanChangedEmail = async (
+  options: PlanChangedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your plan has been updated — CVtoCAREER`,
+    templateName: "plan-changed.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface PlanChangedAdminEmailOptions {
+  email: string;
+  customerId: string;
+  signupAs: string;
+  planFrom: string;
+  planTo: string;
+  subEndFrom: string;
+  subEndTo: string;
+  why: string;
+  adminName: string;
+  timestamp: string;
+  clientTold: string;
+}
+
+export const sendPlanChangedAdminEmail = async (
+  options: PlanChangedAdminEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Plan Change Notification — ${options.customerId}`,
+    templateName: "plan-changed-admin.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
+interface PlanExtendedEmailOptions {
+  name: string;
+  email: string;
+  planTitle: string;
+  daysAdded: number;
+  newExpiresAt: string;
+  frontendUrl: string;
+}
+
+export const sendPlanExtendedEmail = async (
+  options: PlanExtendedEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your plan has been extended — CVtoCAREER`,
+    templateName: "plan-extended.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
 interface ApplicationActionAdminEmailOptions {
   name: string;
   email: string;

@@ -29,6 +29,7 @@ import {
   Progress,
   RevenueStatus,
   Role,
+  SignUpAs,
   SampleDispatchedStatus,
   SocialPlatform,
 } from "../../utils/enum";
@@ -308,6 +309,12 @@ export class User extends Model {
   @Default(Role.GUEST)
   @Column(DataType.ENUM(...Object.values(Role)))
   role!: Role;
+
+  // What the user actually picked in the "Sign up as" field at registration —
+  // unlike `role`, this is never remapped afterwards (e.g. ambassador stays Ambassador here).
+  @AllowNull(true)
+  @Column(DataType.ENUM(...Object.values(SignUpAs)))
+  signUpAs?: SignUpAs;
 
   @AllowNull(false)
   @Default(false)

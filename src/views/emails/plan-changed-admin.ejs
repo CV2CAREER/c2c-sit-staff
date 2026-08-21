@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #333;
+        width: 100%;
+        background-color: #f4f4f5;
+        line-height: 1.6;
+      }
+
+      .header {
+        background: linear-gradient(90deg, #004174 0%, #00568f 100%);
+        width: 100%;
+        padding: 28px 16px;
+        text-align: center;
+      }
+
+      .header img {
+        width: 149px;
+        height: 32px;
+      }
+
+      .content {
+        padding: 32px 24px;
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+      }
+
+      .title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 16px;
+      }
+
+      .details-box {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+      }
+
+      .details-box h3 {
+        color: #004174;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #004174;
+        padding-bottom: 10px;
+        font-size: 15px;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 14px;
+      }
+
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-weight: 600;
+        color: #6c757d;
+      }
+
+      .detail-value {
+        color: #004174;
+        font-weight: 500;
+        text-align: right;
+      }
+
+      .next-steps {
+        margin-top: 24px;
+      }
+
+      .next-steps h3 {
+        font-size: 15px;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .next-steps ol {
+        padding-left: 20px;
+        font-size: 14px;
+      }
+
+      .next-steps li {
+        margin-bottom: 8px;
+      }
+
+      .footer {
+        padding: 16px 32px;
+        background-color: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <img
+        src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+        alt="CVtoCAREER"
+      />
+    </div>
+
+    <div class="content">
+      <h1 class="title">Plan Change Notification</h1>
+      <p>Dear Team,</p>
+      <p style="margin-top: 8px; margin-bottom: 8px">
+        An admin has changed a client's plan in the CVtoCAREER system.
+      </p>
+
+      <div class="details-box">
+        <h3>📋 Plan Change Details</h3>
+        <div class="detail-row">
+          <span class="detail-label">Customer ID</span>
+          <span class="detail-value"><%= customerId %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Sign Up As</span>
+          <span class="detail-value"><%= signupAs %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Plan</span>
+          <span class="detail-value"><%= planFrom %> &rarr; <%= planTo %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Sub end date</span>
+          <span class="detail-value"><%= subEndFrom %> &rarr; <%= subEndTo %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Why</span>
+          <span class="detail-value"><%= why %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Changed by</span>
+          <span class="detail-value"><%= adminName %> &middot; <%= timestamp %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Client told</span>
+          <span class="detail-value"><%= clientTold %></span>
+        </div>
+      </div>
+
+      <div class="next-steps">
+        <h3>Recommended Next Steps</h3>
+        <ol>
+          <li>Read the "why". That is the whole point of it being written down.</li>
+          <li>Check the entitlement. If client profiles or CV uplift changed, the queue may need attention.</li>
+          <li>Aggregators. Confirm the job boards match the new plan.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p style="margin: 0; font-size: 12px; color: #9ca3af">
+        &copy; <%= currentYear %> CVtoCAREER PTY LTD. All rights reserved.
+      </p>
+    </div>
+  </body>
+</html>
