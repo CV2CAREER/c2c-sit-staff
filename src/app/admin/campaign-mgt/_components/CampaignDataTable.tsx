@@ -5,6 +5,7 @@ import {
   GridRowsProp,
   GridColDef,
   GridToolbar,
+  GridRowSelectionModel,
 } from "@mui/x-data-grid-pro";
 import { CampaignTableColType } from "@/types/admin";
 import {
@@ -28,6 +29,14 @@ import LoadingSpinner from "@/components/reusable/LoadingSpinner";
 import { aggregatorsList } from "./constant";
 import { MasterSheetDropDownModal } from "./CampaignFillDown";
 import CustomModal from "@/components/CustomModal/CustomModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQueryClient } from '@tanstack/react-query'
 import { TableInformationEnum } from "@/types/enum";
 import { useCampaignQueries, useCampaignMutations } from "@/hooks/api/admin/campaign";
@@ -48,6 +57,7 @@ import {
   Archive,
   LayoutGrid,
   Settings2,
+  Trash2,
 } from "lucide-react";
 
 export type Pred = {
@@ -152,6 +162,12 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
     page: 0,
     pageSize: 20,
   });
+  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({
+    type: "include",
+    ids: new Set(),
+  });
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState<boolean>(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState<boolean>(false);
 const queryClient = useQueryClient();
   const adminQueriesOptions = React.useMemo(() => ({
     fetchUsersFullName: true,
@@ -181,6 +197,8 @@ const queryClient = useQueryClient();
     updateCampaignSheetBulkMutation,
     reverseUserIdMutation,
     flightCampaignMutation,
+    bulkSoftDeleteCampaignMutation,
+    bulkPermanentDeleteCampaignMutation,
   } = useAdminMutations();
   const { toggleFlightStatusMutation } = useCampaignMutations();
 
@@ -367,6 +385,39 @@ const queryClient = useQueryClient();
     );
   };
 
+  const selectedIds = React.useMemo(
+    () => Array.from(rowSelectionModel.ids),
+    [rowSelectionModel],
+  );
+
+  const clearSelection = () => setRowSelectionModel({ type: "include", ids: new Set() });
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    const isRecycleBin = clientDataState === "recycle";
+    const mutation = isRecycleBin ? bulkPermanentDeleteCampaignMutation : bulkSoftDeleteCampaignMutation;
+
+    try {
+      const result = await mutation.mutateAsync({ ids: selectedIds });
+      const affectedCount = result.data?.affectedCount ?? selectedIds.length;
+
+      toast.success(
+        isRecycleBin
+          ? `${affectedCount} client(s) permanently deleted`
+          : `${affectedCount} client(s) moved to recycle bin`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
+    } catch {
+      toast.error("Failed to delete clients");
+    }
+
+    clearSelection();
+    setIsBulkDeleting(false);
+    setIsBulkDeleteDialogOpen(false);
+  };
+
   const handleFillDropDown = (values: any) => {
     if (typeof values.value === 'object') {
       //@ts-ignore
@@ -533,7 +584,15 @@ const queryClient = useQueryClient();
             </label>
 
             <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
-              <Checkbox checked={isEditable} onClick={() => setIsEditable(prev => !prev)} />
+              <Checkbox
+                checked={isEditable}
+                onClick={() =>
+                  setIsEditable((prev) => {
+                    if (prev) clearSelection();
+                    return !prev;
+                  })
+                }
+              />
               <PencilLine size={16} className="text-primary" />
               Allow Editing
             </label>
@@ -569,7 +628,10 @@ const queryClient = useQueryClient();
 
           <Tabs
             value={clientDataState}
-            onValueChange={(value) => setClientDataState(value as "active" | "recycle" | "all")}
+            onValueChange={(value) => {
+              setClientDataState(value as "active" | "recycle" | "all");
+              clearSelection();
+            }}
           >
             <TabsList className="rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
               <TabsTrigger
@@ -609,7 +671,7 @@ const queryClient = useQueryClient();
           </div>
           {
             isEditable &&
-            <div className="flex flex-row flex-wrap gap-3 w-full md:w-auto">
+            <div className="flex flex-row flex-wrap items-center gap-3 w-full md:w-auto">
               <Button
                 variant="outline"
                 className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
@@ -629,6 +691,24 @@ const queryClient = useQueryClient();
                 <Button className="gap-2" onClick={() => saveMultipleData()}>
                   <Save size={16} /> Save Data
                 </Button>
+              }
+              {
+                selectedIds.length > 0 &&
+                <>
+                  <span className="text-xs font-semibold text-gray-500">
+                    {selectedIds.length} selected
+                  </span>
+                  <Button
+                    variant="outline"
+                    className="gap-2 border-red-200 text-red-600 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  >
+                    <Trash2 size={16} />
+                    {clientDataState === "recycle"
+                      ? `Delete Permanently (${selectedIds.length})`
+                      : `Move to Recycle (${selectedIds.length})`}
+                  </Button>
+                </>
               }
             </div>
           }
@@ -653,6 +733,8 @@ const queryClient = useQueryClient();
               columns={memoizedColumns}
               columnBufferPx={5}
               checkboxSelection={isEditable}
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={setRowSelectionModel}
               pagination
               paginationMode="client"
               pageSizeOptions={[10, 20, 50, 100]}
@@ -678,6 +760,42 @@ const queryClient = useQueryClient();
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={(open) => !isBulkDeleting && setIsBulkDeleteDialogOpen(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              {clientDataState === "recycle"
+                ? `${selectedIds.length} client(s) will be deleted permanently from our server! This action cannot be undone.`
+                : `${selectedIds.length} client(s) will be moved to the Recycle bin.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              disabled={isBulkDeleting}
+              onClick={() => setIsBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isBulkDeleting}
+              onClick={handleBulkDelete}
+            >
+              {isBulkDeleting
+                ? "Deleting..."
+                : clientDataState === "recycle"
+                  ? "Permanently Delete"
+                  : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Campaign Table Fill Down Modal */}
       <CustomModal toggleVisibility={setFillDownIsOpen} visibility={fillDownIsOpen}>

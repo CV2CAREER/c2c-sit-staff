@@ -120,6 +120,9 @@ export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
   '/api/v1/admin/client-support-documents';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT = (clientId: string) =>
   `/api/v1/admin/client-support-documents/client/${clientId}`;
+export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BULK_DELETE =
+  '/api/v1/admin/client-support-documents/bulk';
+export const ADMIN_UPLOADS_BULK_DELETE = '/api/v1/uploads/bulk';
 export const ADMIN_SAVE_ROLE_TITLE_RECOMMENDATIONS =
   '/api/v1/admin/client-support-documents/role-titles/save';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENT_ACTIVATE = (id: string) =>

@@ -12,6 +12,7 @@ import {
   GridToolbarContainer,
   GridToolbarQuickFilter,
   GRID_CHECKBOX_SELECTION_COL_DEF,
+  GridRowSelectionModel,
 } from "@mui/x-data-grid-pro";
 import { UsersTableColType } from "@/types/admin"
 import {
@@ -28,7 +29,7 @@ import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { useMutateData } from "@/hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { ADMIN_USER_PLAN_UPGRADE, ADMIN_USER_PROGRESS_MILESTONE } from "@/constants/apiEndpoints/admin.endpoint";
-import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
+import { useGetAllUsers, useBulkSoftDeleteUsers, useBulkPurgeUsers } from "@/app/admin/users/hooks/users-all";
 import { moveTo, StyledDataGridPro, usersGridSx } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,15 @@ import CustomModal from "@/components/CustomModal/CustomModal";
 import { IDateFilter } from "@/types/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PencilLine, Users2, Archive, Database, SendHorizontal, X, Settings2, CalendarRange, User, Search } from "lucide-react";
+import { PencilLine, Users2, Archive, Database, SendHorizontal, X, Settings2, CalendarRange, User, Search, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import DateFilter from "@/components/reusable/DateFilter";
 
 
@@ -94,7 +103,12 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({
+    type: "include",
+    ids: new Set(),
+  });
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState<boolean>(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState<boolean>(false);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState<boolean>(false);
   const [isChangePlanModalOpen, setIsChangePlanModalOpen] = useState<boolean>(false);
   const [changePlanUser, setChangePlanUser] = useState<any | null>(null);
@@ -165,6 +179,45 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
   // Legacy query removed - all filtering now handled by useGetAllUsers
   // const { updateUserProgressMutation } = useAdminMutations();
+
+  const bulkSoftDeleteUsers = useBulkSoftDeleteUsers();
+  const bulkPurgeUsers = useBulkPurgeUsers();
+
+  const selectedIds = React.useMemo(
+    () => Array.from(rowSelectionModel.ids),
+    [rowSelectionModel],
+  );
+
+  const clearSelection = () => setRowSelectionModel({ type: "include", ids: new Set() });
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    const mutation = usersDataState === "active" ? bulkSoftDeleteUsers : bulkPurgeUsers;
+
+    try {
+      const result = await mutation.mutateAsync({ userIds: selectedIds.map(String) });
+      const { deletedCount, failedCount } = result.data;
+
+      if (deletedCount > 0) {
+        toast.success(
+          usersDataState === "active"
+            ? `${deletedCount} user(s) moved to recycle bin`
+            : `${deletedCount} user(s) permanently deleted`,
+        );
+      }
+      if (failedCount > 0) {
+        toast.error(`Failed to delete ${failedCount} user(s)`);
+      }
+    } catch {
+      toast.error("Failed to delete users");
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["users-all"] });
+    clearSelection();
+    setIsBulkDeleting(false);
+    setIsBulkDeleteDialogOpen(false);
+  };
 
   const rows: GridRowsProp<UsersTableColType> = React.useMemo(() => {
     // Use new endpoint data - map id to uniqueId for Customer Id column display
@@ -376,6 +429,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 rowReordering
                 disableRowSelectionOnClick
                 onRowClick={handleRowClick}
+                rowSelectionModel={rowSelectionModel}
+                onRowSelectionModelChange={setRowSelectionModel}
                 rowBufferPx={100}
                 columns={
                   modifyTableActionsColAndRows(
@@ -521,7 +576,15 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
 
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex shrink-0 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
-                <Checkbox checked={editMode} onClick={() => setEditMode(prev=>!prev)} />
+                <Checkbox
+                  checked={editMode}
+                  onClick={() =>
+                    setEditMode((prev) => {
+                      if (prev) clearSelection();
+                      return !prev;
+                    })
+                  }
+                />
                 <PencilLine size={16} className="text-primary" />
                 Allow Editing
               </label>
@@ -536,6 +599,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                   ...userType,
                   usersDataState: nextState,
                 });
+                clearSelection();
               }}
             >
               <TabsList className="w-fit flex-nowrap rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
@@ -570,11 +634,65 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
               </span>
             )}
           </div>
+
+          {tableName === "USERS" && editMode && selectedIds.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-gray-500">
+                {selectedIds.length} selected
+              </span>
+              <Button
+                variant="outline"
+                className="gap-2 border-red-200 text-red-600 transition-colors hover:border-red-400 hover:bg-red-50 hover:text-red-600"
+                onClick={() => setIsBulkDeleteDialogOpen(true)}
+              >
+                <Trash2 size={16} />
+                {usersDataState === "active"
+                  ? `Move to Recycle (${selectedIds.length})`
+                  : `Delete Permanently (${selectedIds.length})`}
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-4">
           {renderTable()}
         </CardContent>
       </Card>
+      <Dialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={(open) => !isBulkDeleting && setIsBulkDeleteDialogOpen(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              {usersDataState === "active"
+                ? `${selectedIds.length} user(s) will be moved to the Recycle bin.`
+                : `${selectedIds.length} user(s) will be deleted permanently from our server! This action cannot be undone.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              disabled={isBulkDeleting}
+              onClick={() => setIsBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isBulkDeleting}
+              onClick={handleBulkDelete}
+            >
+              {isBulkDeleting
+                ? "Deleting..."
+                : usersDataState === "active"
+                  ? "Confirm"
+                  : "Permanently Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DispatchClient
         visibility={isDispatchModalOpen}
         togggleVisibility={setIsDispatchModalOpen}
