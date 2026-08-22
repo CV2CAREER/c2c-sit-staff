@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
-import { activateUpload, getAllUploads, updateUpload } from "../../services/upload.service";
+import ErrorHandler from "../../utils/errorHandler";
+import { activateUpload, deleteUpload, deleteUploadsBulk, getAllUploads, updateUpload } from "../../services/upload.service";
 
 const logger = getServiceLogger("upload-controller");
 
@@ -64,5 +65,41 @@ export const activateUploadDocument = catchAsyncError(
       },
       "Upload document activated successfully",
     );
+  },
+);
+
+/**
+ * Delete an upload document
+ */
+export const deleteUploadDocument = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { uploadId } = req.params;
+
+    logger.info(`Processing request to delete upload document ID: ${uploadId}`);
+
+    await deleteUpload(uploadId);
+
+    logger.info(`Upload document ${uploadId} deleted successfully`);
+
+    res.apiSuccess({}, "Upload document deleted successfully");
+  },
+);
+
+/**
+ * Bulk delete upload documents
+ */
+export const deleteUploadDocumentsBulk = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new ErrorHandler("ids must be a non-empty array", 400);
+    }
+
+    logger.info(`Processing bulk delete request for ${ids.length} upload document(s)`);
+
+    const result = await deleteUploadsBulk(ids);
+
+    res.apiSuccess(result, "Upload documents deleted successfully");
   },
 );

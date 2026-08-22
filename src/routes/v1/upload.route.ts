@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   activateUploadDocument,
+  deleteUploadDocument,
+  deleteUploadDocumentsBulk,
   getAllUploadDocuments,
   updateUploadDocument
 } from "../../controllers/v1/upload.controller";
@@ -35,6 +37,22 @@ uploadRouterV1.patch(
  */
 uploadRouterV1.patch(
   "/:uploadId/activate", activateUploadDocument,
+);
+
+/**
+ * Bulk delete upload documents - must be registered before /:uploadId
+ * DELETE /api/v1/uploads/bulk
+ */
+uploadRouterV1.delete(
+  "/bulk", authorizeRoles("admin"), deleteUploadDocumentsBulk,
+);
+
+/**
+ * Delete an upload document
+ * DELETE /api/v1/uploads/:uploadId
+ */
+uploadRouterV1.delete(
+  "/:uploadId", authorizeRoles("admin"), deleteUploadDocument,
 );
 
 // Admin document operations
