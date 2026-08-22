@@ -79,12 +79,12 @@ function DraggableFieldCard({ field, index, isSelected, onSelect, onMoveField }:
           </span>
         </div>
         <span className="text-[10px] text-[#9CA3AF] font-semibold tracking-wider uppercase shrink-0">
-          {field.isRefereeBlock ? `REFERRER × ${REFEREE_DEFAULT_FIELDS.length}` : FIELD_TYPE_LABELS[field.fieldType] || field.fieldType}
+          {field.isRefereeBlock ? `REFEREE × ${REFEREE_DEFAULT_FIELDS.length}` : FIELD_TYPE_LABELS[field.fieldType] || field.fieldType}
         </span>
       </div>
       <div className="mt-1.5 bg-[#F9FAFB] rounded-md px-2.5 py-2 text-[12px] text-[#9CA3AF] ml-6">
         {field.isRefereeBlock
-          ? `${REFEREE_DEFAULT_FIELDS.length} sub-fields per referee section`
+          ? `Expands to ${REFEREE_DEFAULT_FIELDS.length} referee fields on the client form`
           : field.helpText || (field.fieldType === "file" ? "Choose file · max 10MB" : field.fieldType === "date" ? "Date picker" : "Placeholder")}
       </div>
     </div>
