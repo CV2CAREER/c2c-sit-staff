@@ -30,6 +30,7 @@ async function syncColumns() {
     await addColumn("personalMessage", "TEXT");
     await addColumn("jobApplicationId", "STRING");
     await addColumn("fulfilledAt", "DATE");
+    await addColumn("reusedFromRequestId", "STRING");
 
     logger.info("Sync complete");
     await sequelize.close();

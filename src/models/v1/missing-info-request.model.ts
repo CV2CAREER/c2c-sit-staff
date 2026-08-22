@@ -28,6 +28,9 @@ export const MISSING_INFO_REQUEST_STATUSES = [
   "viewed",
   "in_progress",
   "submitted",
+  "cancelled",
+  "declined",
+  "failed",
   "expired",
 ] as const;
 export type MissingInfoRequestStatus = (typeof MISSING_INFO_REQUEST_STATUSES)[number];
@@ -132,6 +135,10 @@ export class MissingInfoRequest extends Model {
   @AllowNull(true)
   @Column(DataType.DATE)
   fulfilledAt!: Date;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reusedFromRequestId!: string | null;
 
   @CreatedAt
   createdAt!: Date;

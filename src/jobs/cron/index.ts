@@ -14,6 +14,7 @@ import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
 import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 import { createBlogPublishJob } from './blog-publish.job';
+import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -44,6 +45,10 @@ export function startAllCronJobs() {
     {
       name: 'Subscription Expiry Reminder Job',
       task: createSubscriptionExpiryReminderJob(),
+    },
+    {
+      name: 'Missing Info Expiry Job',
+      task: createMissingInfoExpiryJob(),
     },
   ];
 
