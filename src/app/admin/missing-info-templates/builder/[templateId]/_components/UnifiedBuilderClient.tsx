@@ -70,6 +70,21 @@ function createNewField(fieldType: string): FreeFormField {
   };
 }
 
+// The free-form builder treats a referee block as ONE field card that expands
+// to its sub-fields on the client form. When a stored referee template is
+// loaded, its expanded block rows must be collapsed back to that single card —
+// otherwise switching to free-form renders one "REFERRER × N" card per
+// sub-field.
+function collapseRefereeFields(templateFields: any[]): FreeFormField[] {
+  const hasReferee = templateFields.some((f: any) => f.isRefereeBlock);
+  if (!hasReferee) return templateFields.map(buildFormField);
+  const blockField = createNewField("referee_block");
+  const nonBlock = templateFields
+    .filter((f: any) => !f.isRefereeBlock)
+    .map(buildFormField);
+  return [blockField, ...nonBlock];
+}
+
 function fieldsToApi(fields: FreeFormField[], blockTemplate?: FieldToggleRow[]): any[] {
   const refereeTemplate = (blockTemplate && blockTemplate.length > 0)
     ? blockTemplate
@@ -111,7 +126,17 @@ function buildInitialFields(refereeCount: number, existingFields?: any[]): Field
       (f: any) => f.isRefereeBlock && f.refereeBlockIndex === 1,
     );
     if (blockFields.length > 0) {
-      return blockFields.map((f: any) => ({
+      // Dedupe by fieldName — corrupt/historically-duplicated rows must never
+      // render as repeated copies of the same block field.
+      const seen = new Set<string>();
+      const unique: any[] = [];
+      for (const f of blockFields) {
+        const key = f.fieldName || f.fieldLabel;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(f);
+      }
+      return unique.map((f: any) => ({
         fieldName: f.fieldName,
         fieldLabel: f.fieldLabel,
         fieldType: f.fieldType,
@@ -127,7 +152,11 @@ function buildInitialFields(refereeCount: number, existingFields?: any[]): Field
   }));
 }
 
-function buildFieldsArray(refereeCount: number, blockTemplate: FieldToggleRow[]): any[] {
+function buildFieldsArray(
+  refereeCount: number,
+  blockTemplate: FieldToggleRow[],
+  extraFields: FreeFormField[] = [],
+): any[] {
   const fields: any[] = [];
   for (let blockIndex = 1; blockIndex <= refereeCount; blockIndex++) {
     blockTemplate.forEach((field, sortOrder) => {
@@ -144,6 +173,24 @@ function buildFieldsArray(refereeCount: number, blockTemplate: FieldToggleRow[])
       });
     });
   }
+  // Preserve any free-form (non-block) fields so they aren't lost when
+  // editing a hybrid template from the referee builder.
+  extraFields.forEach((f, i) => {
+    fields.push({
+      fieldName: f.fieldName,
+      fieldLabel: f.fieldLabel,
+      fieldType: f.fieldType,
+      isRequired: f.isRequired,
+      isVisible: f.isVisible,
+      helpText: f.helpText,
+      options: f.options,
+      isRepeatable: f.isRepeatable,
+      validation: f.validation,
+      sortOrder: refereeCount * blockTemplate.length + i,
+      isRefereeBlock: false,
+      refereeBlockIndex: null,
+    });
+  });
   return fields;
 }
 
@@ -184,10 +231,17 @@ export default function UnifiedBuilderClient() {
       setCategory(template.category || "references");
       if (!loaded) {
         if (!forcedType) {
-          setBuilderType((template.type as BuilderType) || "free_form");
+          const hasRefereeFields = (template.fields || []).some(
+            (f: any) => f.isRefereeBlock,
+          );
+          const effectiveType =
+            template.type === "referee_block" || hasRefereeFields
+              ? "referee_block"
+              : "free_form";
+          setBuilderType(effectiveType);
         }
         if (template.fields && template.fields.length > 0) {
-          setFields(template.fields.map(buildFormField));
+          setFields(collapseRefereeFields(template.fields));
         }
       }
       const maxBlockIndex = template.fields
@@ -199,13 +253,21 @@ export default function UnifiedBuilderClient() {
     }
   }, [template, loaded, forcedType]);
 
+  const nonBlockFields = useMemo(
+    () => fields.filter((f) => !f.isRefereeBlock),
+    [fields],
+  );
+
   const previewTemplate = useMemo(() => {
     if (!template) return null;
     if (builderType === "free_form") {
       return { ...template, fields: fieldsToApi(fields, blockTemplate) };
     }
-    return { ...template, fields: buildFieldsArray(refereeCount, blockTemplate) };
-  }, [template, builderType, fields, refereeCount, blockTemplate]);
+    return {
+      ...template,
+      fields: buildFieldsArray(refereeCount, blockTemplate, nonBlockFields),
+    };
+  }, [template, builderType, fields, refereeCount, blockTemplate, nonBlockFields]);
 
   const handleTypeChange = (newType: string) => {
     setBuilderType(newType as BuilderType);
@@ -260,7 +322,7 @@ export default function UnifiedBuilderClient() {
     try {
       const apiFields = builderType === "free_form"
         ? fieldsToApi(fields, blockTemplate)
-        : buildFieldsArray(refereeCount, blockTemplate);
+        : buildFieldsArray(refereeCount, blockTemplate, nonBlockFields);
       await actions.updateTemplate({
         name: templateName.trim(),
         category,
@@ -284,7 +346,7 @@ export default function UnifiedBuilderClient() {
     try {
       const apiFields = builderType === "free_form"
         ? fieldsToApi(fields, blockTemplate)
-        : buildFieldsArray(refereeCount, blockTemplate);
+        : buildFieldsArray(refereeCount, blockTemplate, nonBlockFields);
       await actions.updateTemplate({
         name: templateName.trim(),
         category,

@@ -1,6 +1,7 @@
 "use client"
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { motion, type Variants } from "framer-motion";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 import AdminUserHeader from "../_components/AdminUserHeader";
 import { AdminUserDetailProvider, useAdminUserDetailContext } from "../context/userDetailContext";
@@ -12,6 +13,8 @@ import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
 import AdminClientJourney from "../../../admin/users/_components/AdminClientJourney";
+import AdminMissingInfoRequests from "../../../admin/users/_components/AdminMissingInfoRequests";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -31,11 +34,39 @@ const itemVariants: Variants = {
     },
 };
 
+const DEFAULT_TAB = "documents";
+
+const TAB_TRIGGER_CLASS =
+    "relative whitespace-nowrap rounded-lg px-4 py-2 text-[13px] font-medium text-[#475569] transition-colors hover:text-[#10365A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B96D6]/40 data-[state=active]:bg-[#0B96D6] data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm";
+
+const TAB_DEFS = [
+    { value: "documents", label: "Documents" },
+    { value: "jobsite-credential", label: "Jobsite Credential" },
+    { value: "missing-info", label: "Missing Info" },
+    { value: "job-preferences", label: "Job Preferences" },
+    { value: "preference-history", label: "Preference History" },
+    { value: "referral-history", label: "Referral History" },
+];
+
 // Inner component that has access to context
 function UserDetailsContent({ userId }: { userId: string }) {
     const { setUser } = useAdminUserDetailContext();
     const [isUserId, setIsUserId] = useState<string | null>(null);
     const currentUserId = isUserId || userId;
+
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const activeTab = searchParams.get("tab") || DEFAULT_TAB;
+
+    const setActiveTab = (value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value === DEFAULT_TAB) {
+            params.delete("tab");
+        } else {
+            params.set("tab", value);
+        }
+        router.replace(`?${params.toString()}`, { scroll: false });
+    };
 
     const {
         userDetailDomain: userData,
@@ -90,34 +121,44 @@ function UserDetailsContent({ userId }: { userId: string }) {
             animate="show"
             className="flex flex-col gap-6 mt-6 w-full pb-4"
         >
-            <motion.div variants={itemVariants} className="flex flex-col lg:flex-row gap-4 items-stretch">
-                <div className="min-w-0 flex-1">
-                    <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
-                </div>
-                <div className="w-full shrink-0 lg:w-[340px]">
-                    <TriggerApplicationAction/>
-                </div>
+            <motion.div variants={itemVariants}>
+                <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+                <TriggerApplicationAction/>
             </motion.div>
             <motion.div variants={itemVariants}>
                 <AdminClientJourney userId={currentUserId}/>
             </motion.div>
             <motion.div variants={itemVariants}>
-                <ClientDocument userId={currentUserId} />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-                <AdminUsersJobSites userId={currentUserId}/>
-            </motion.div>
-            <motion.div variants={itemVariants}>
                 <AdminProfileInfo userId={currentUserId}/>
             </motion.div>
             <motion.div variants={itemVariants}>
-                <AdminUsersJobPreferences userId={currentUserId}/>
-            </motion.div>
-            <motion.div variants={itemVariants}>
-                <AdminUserJobPreferenceHistory userId={currentUserId} />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-                <AdminUsersReferralHistory userId={currentUserId} />
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="flex h-auto w-full flex-wrap items-center gap-1.5 rounded-xl bg-[#F1F5F9] p-1.5 text-muted-foreground">
+                        {TAB_DEFS.map((t) => (
+                            <TabsTrigger key={t.value} value={t.value} className={TAB_TRIGGER_CLASS}>{t.label}</TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <TabsContent value="documents">
+                        <ClientDocument userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="jobsite-credential">
+                        <AdminUsersJobSites userId={currentUserId}/>
+                    </TabsContent>
+                    <TabsContent value="missing-info">
+                        <AdminMissingInfoRequests userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="job-preferences">
+                        <AdminUsersJobPreferences userId={currentUserId}/>
+                    </TabsContent>
+                    <TabsContent value="preference-history">
+                        <AdminUserJobPreferenceHistory userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="referral-history">
+                        <AdminUsersReferralHistory userId={currentUserId} />
+                    </TabsContent>
+                </Tabs>
             </motion.div>
         </motion.main>
     );
@@ -129,7 +170,9 @@ export default function Page(props: { params: ClientPageParams }) {
 
     return (
         <AdminUserDetailProvider>
-            <UserDetailsContent userId={userId} />
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-500">Loading client profile…</div>}>
+                <UserDetailsContent userId={userId} />
+            </Suspense>
         </AdminUserDetailProvider>
     );
 }

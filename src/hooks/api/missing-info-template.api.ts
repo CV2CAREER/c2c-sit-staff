@@ -230,6 +230,8 @@ export type RequestResponse = {
   fieldName: string | null;
   fieldLabel: string;
   fieldType: string;
+  isRefereeBlock: boolean;
+  refereeBlockIndex: number | null;
   fieldValue: string | null;
   createdAt: string;
 };
@@ -255,6 +257,28 @@ export type RequestResponsesData = {
     } | null;
   };
   responses: RequestResponse[];
+};
+
+export type ClientMissingInfoRequest = {
+  id: string;
+  token: string | null;
+  missingInfoType: string;
+  templateId: string | null;
+  templateName: string | null;
+  templateCategory: string | null;
+  templateType: string | null;
+  status: string;
+  channel: string;
+  requestedById: string;
+  requestedByName: string | null;
+  requestedAt: string;
+  createdAt: string;
+  fulfilledAt: string | null;
+  ageDays: number;
+  reminderCount: number;
+  lastReminderAt: string | null;
+  reusedFromRequestId: string | null;
+  responseCount: number;
 };
 
 export function useSendRequest() {
@@ -353,5 +377,129 @@ export function useRequestResponses(requestId: string) {
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
+  };
+}
+
+export function useClientMissingInfoRequests(targetUserId: string) {
+  const query = useFetchData<ClientMissingInfoRequest[]>({
+    method: "GET",
+    url: endpoints.MISSING_INFO_REQUESTS_STAFF_CLIENT(targetUserId),
+    queryKey: ["missing-info-client-requests", targetUserId],
+    enabled: !!targetUserId,
+    forceRefresh: true,
+  });
+
+  return {
+    data: query.data?.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
+
+export function useCancelRequest() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(
+        endpoints.MISSING_INFO_REQUESTS_STAFF_CANCEL(requestId),
+      );
+      return response.data.data;
+    },
+    onSuccess: async (_, requestId) => {
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-client-requests"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-outstanding"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-responses", requestId] });
+    },
+  });
+
+  return {
+    cancelRequest: mutation.mutateAsync,
+    isCancelling: mutation.isPending,
+  };
+}
+
+export function useDeclineRequest() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(
+        endpoints.MISSING_INFO_REQUESTS_STAFF_DECLINE(requestId),
+      );
+      return response.data.data;
+    },
+    onSuccess: async (_, requestId) => {
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-client-requests"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-outstanding"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-responses", requestId] });
+    },
+  });
+
+  return {
+    declineRequest: mutation.mutateAsync,
+    isDeclining: mutation.isPending,
+  };
+}
+
+export function useReuseRequest() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({ requestId, clientId }: { requestId: string; clientId: string }) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(
+        endpoints.MISSING_INFO_REQUESTS_STAFF_REUSE(requestId),
+        { clientId },
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-client-requests"] });
+    },
+  });
+
+  return {
+    reuseRequest: mutation.mutateAsync,
+    isReusing: mutation.isPending,
+  };
+}
+
+export function useLogCopyAudit() {
+  const mutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(
+        endpoints.MISSING_INFO_REQUESTS_STAFF_COPY_AUDIT(requestId),
+      );
+      return response.data.data;
+    },
+  });
+
+  return {
+    logCopyAudit: mutation.mutateAsync,
+    isLogging: mutation.isPending,
+  };
+}
+
+export function useSingleReminder() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(
+        endpoints.MISSING_INFO_REQUESTS_STAFF_REMINDER(requestId),
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-client-requests"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-outstanding"] });
+    },
+  });
+
+  return {
+    sendSingleReminder: mutation.mutateAsync,
+    isSending: mutation.isPending,
   };
 }
