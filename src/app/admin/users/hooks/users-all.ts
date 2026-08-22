@@ -306,6 +306,42 @@ export const useSoftDeleteUser = () => {
 };
 
 /**
+ * Bulk soft delete users (move to recycle bin)
+ * Sends a single consolidated Slack notification server-side instead of one per user.
+ * Endpoint: DELETE /v1/user-management/users/bulk
+ */
+export const useBulkSoftDeleteUsers = () => {
+  return useMutateData<
+    { deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] },
+    { userIds: string[] }
+  >({
+    method: "DELETE",
+    url: "/api/v1/user-management/users/bulk",
+    mutationKey: ["bulk-soft-delete-users"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+/**
+ * Bulk permanently purge deleted users
+ * Sends a single consolidated Slack notification server-side instead of one per user.
+ * Endpoint: DELETE /v1/user-management/users/bulk/purge
+ */
+export const useBulkPurgeUsers = () => {
+  return useMutateData<
+    { deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] },
+    { userIds: string[] }
+  >({
+    method: "DELETE",
+    url: "/api/v1/user-management/users/bulk/purge",
+    mutationKey: ["bulk-purge-users"],
+    onSuccess: () => {},
+    onError: () => {},
+  });
+};
+
+/**
  * Restore soft deleted user
  * Endpoint: POST /v1/user-management/users/{userId}/restore
  */
