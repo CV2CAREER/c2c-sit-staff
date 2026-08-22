@@ -540,3 +540,29 @@ export const deleteClientSupportDocument = async (
 
   logger.info(`Deleted client support document ${id}`);
 };
+
+/**
+ * Bulk soft-delete client support documents, removing each underlying
+ * object from storage on a best-effort basis. Continues past per-document
+ * failures instead of aborting the whole batch.
+ */
+export const deleteClientSupportDocumentsBulk = async (
+  ids: string[],
+  deletedBy?: string,
+): Promise<{ deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] }> => {
+  const failures: { id: string; reason: string }[] = [];
+  let deletedCount = 0;
+
+  for (const id of ids) {
+    try {
+      await deleteClientSupportDocument(id, deletedBy);
+      deletedCount++;
+    } catch (error: any) {
+      failures.push({ id, reason: error?.message || "Failed to delete document" });
+    }
+  }
+
+  logger.info(`Bulk deleted ${deletedCount} client support document(s)`);
+
+  return { deletedCount, failedCount: failures.length, failures };
+};

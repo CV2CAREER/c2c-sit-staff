@@ -28,6 +28,7 @@ import {
   UpdateCampaignClientPayload,
   deleteCampaignClient,
   deleteCampaignClientsBulk,
+  softDeleteCampaignClientsBulk,
   softDeleteCampaignClient,
   restoreCampaignClient,
   permanentDeleteCampaignClient,
@@ -589,19 +590,58 @@ export const deleteCampaignClientController = catchAsyncError(
 );
 
 /**
- * Bulk delete campaign clients
- * DELETE /api/v1/campaigns/clients/bulk
+ * Bulk soft delete campaign clients (move to recycle bin)
+ * PATCH /api/v1/campaigns/clients/bulk/soft-delete
  */
-export const deleteCampaignClientsBulkController = catchAsyncError(
+export const softDeleteCampaignClientsBulkController = catchAsyncError(
   async (req: Request, res: Response) => {
-    logger.info('Processing bulk delete campaign clients request');
     const { ids } = req.body;
 
-    const result = await deleteCampaignClientsBulk(ids);
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error('ids must be a non-empty array');
+    }
+
+    const requestorName =
+      `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() ||
+      (req as any).user?.email;
+    const host = (req.headers.host || req.headers.origin || 'localhost') as string;
+
+    logger.info(`Processing bulk soft delete request for ${ids.length} campaign client(s)`);
+
+    const result = await softDeleteCampaignClientsBulk(ids, requestorName, host);
 
     res.status(200).json({
       success: true,
-      message: 'Campaign clients deleted successfully',
+      message: 'Campaign clients moved to recycle bin successfully',
+      data: result,
+    });
+  }
+);
+
+/**
+ * Bulk permanently delete campaign clients
+ * DELETE /api/v1/campaigns/clients/bulk/permanent
+ */
+export const deleteCampaignClientsBulkController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error('ids must be a non-empty array');
+    }
+
+    const requestorName =
+      `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() ||
+      (req as any).user?.email;
+    const host = (req.headers.host || req.headers.origin || 'localhost') as string;
+
+    logger.info(`Processing bulk PERMANENT delete request for ${ids.length} campaign client(s)`);
+
+    const result = await deleteCampaignClientsBulk(ids, requestorName, host);
+
+    res.status(200).json({
+      success: true,
+      message: 'Campaign clients permanently deleted successfully',
       data: result,
     });
   }
@@ -615,8 +655,12 @@ export const softDeleteCampaignClientController = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info('Processing soft delete campaign client request');
     const { id } = req.params;
+    const requestorName =
+      `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() ||
+      (req as any).user?.email;
+    const host = (req.headers.host || req.headers.origin || 'localhost') as string;
 
-    const result = await softDeleteCampaignClient(id);
+    const result = await softDeleteCampaignClient(id, requestorName, host);
 
     res.status(200).json({
       success: true,
@@ -634,8 +678,12 @@ export const restoreCampaignClientController = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info('Processing restore campaign client request');
     const { id } = req.params;
+    const requestorName =
+      `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() ||
+      (req as any).user?.email;
+    const host = (req.headers.host || req.headers.origin || 'localhost') as string;
 
-    const result = await restoreCampaignClient(id);
+    const result = await restoreCampaignClient(id, requestorName, host);
 
     res.status(200).json({
       success: true,
@@ -653,8 +701,12 @@ export const permanentDeleteCampaignClientController = catchAsyncError(
   async (req: Request, res: Response) => {
     logger.info('Processing PERMANENT delete campaign client request');
     const { id } = req.params;
+    const requestorName =
+      `${(req as any).user?.firstName || ''} ${(req as any).user?.lastName || ''}`.trim() ||
+      (req as any).user?.email;
+    const host = (req.headers.host || req.headers.origin || 'localhost') as string;
 
-    const result = await permanentDeleteCampaignClient(id);
+    const result = await permanentDeleteCampaignClient(id, requestorName, host);
 
     res.status(200).json({
       success: true,

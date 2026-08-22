@@ -3,6 +3,9 @@ import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { User } from "../../models/v1/user.model";
 import { Upload } from "../../models/v1/upload.model";
+import { JobsiteCredential } from "../../models/v1/jobsite-credential.model";
+import { JobsiteCredentialAudit } from "../../models/v1/jobsite-credential-audit.model";
+import { Message } from "../../models/v1/message.model";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
 import { Feature } from "../../models/v1/feature.model";
 import { Profile } from "../../models/v1/profile.model";
@@ -502,6 +505,39 @@ class UserManagementService {
    }
 
    /**
+    * Deletes rows in tables with a live (uncascaded) FK to users.id that would
+    * otherwise block a hard user delete. Extend this as new FK violations turn
+    * up — each purge only needs to clear the tables the deleted user actually
+    * has rows in, but there are ~39 tables referencing users.id in total, so
+    * more of these can surface over time.
+    *
+    * Currently handles:
+    *   jobsite_credential_audits.jobsiteCredentialId -> jobsite_credentials.id
+    *   jobsite_credentials.clientId -> users.id
+    *   jobsite_credential_audits.actorId -> users.id (this user acting as staff
+    *     on someone else's credential — audit rows are non-nullable, so they
+    *     have to be deleted rather than reassigned)
+    *   messages.userId -> users.id
+    * @param userId ID of user being permanently deleted
+    */
+   private async deletePurgeBlockingDependents(userId: string) {
+     const ownCredentials = await JobsiteCredential.findAll({
+       where: { clientId: userId },
+       paranoid: false,
+       attributes: ["id"],
+     });
+     const ownCredentialIds = ownCredentials.map((c) => c.id);
+
+     if (ownCredentialIds.length > 0) {
+       await JobsiteCredentialAudit.destroy({ where: { jobsiteCredentialId: ownCredentialIds } });
+     }
+     await JobsiteCredentialAudit.destroy({ where: { actorId: userId } });
+     await JobsiteCredential.destroy({ where: { clientId: userId }, force: true });
+
+     await Message.destroy({ where: { userId }, force: true });
+   }
+
+   /**
     * Permanently delete user account (irreversible)
     * @param userId ID of user to permanently delete
     * @param actorUserId ID of admin performing purge
@@ -528,7 +564,10 @@ class UserManagementService {
         where: { userId: userId },
         force: true
       });
-      
+
+      // Delete dependent rows in other tables to resolve FK constraints
+      await this.deletePurgeBlockingDependents(userId);
+
       // Now delete the user permanently
       await user.destroy({ force: true });
 
@@ -569,6 +608,196 @@ class UserManagementService {
      });
 
      return { success: true, message: "User permanently deleted successfully" };
+   }
+
+   /**
+    * Bulk soft delete users (move to recycle bin).
+    * Sends a single consolidated Slack notification instead of one per user
+    * to avoid flooding the channel on large batches.
+    * @param userIds IDs of users to delete
+    * @param actorUserId ID of admin performing the bulk delete
+    * @param actorEmail Email of admin performing the bulk delete
+    * @param host Host from request object
+    */
+   async bulkDeleteUsers(userIds: string[], actorUserId: string, actorEmail?: string, host?: string) {
+     if (!Array.isArray(userIds) || userIds.length === 0) {
+       throw new ErrorHandler("userIds must be a non-empty array.", 400);
+     }
+
+     const uniqueIds = Array.from(new Set(userIds));
+     const users = await User.findAll({ where: { id: uniqueIds } });
+
+     const adminIdsInBatch = users.filter((u) => u.role === Role.ADMIN).map((u) => u.id);
+     if (adminIdsInBatch.length > 0) {
+       const remainingAdminCount = await User.count({
+         where: { role: Role.ADMIN, isDeleted: false, id: { [Op.notIn]: adminIdsInBatch } }
+       });
+       if (remainingAdminCount < 1) {
+         throw new ErrorHandler("Cannot delete all admin users. At least one admin must remain.", 400);
+       }
+     }
+
+     const deletedUsers: { id: string; email: string; firstName: string; lastName: string }[] = [];
+     const failures: { id: string; reason: string }[] = [];
+
+     for (const id of uniqueIds) {
+       if (id === actorUserId) {
+         failures.push({ id, reason: "Cannot delete your own account" });
+         continue;
+       }
+
+       const user = users.find((u) => u.id === id);
+       if (!user) {
+         failures.push({ id, reason: "User not found" });
+         continue;
+       }
+
+       const beforeState = user.toJSON();
+       user.isDeleted = true;
+       user.deletedAt = new Date();
+       user.deletedBy = actorEmail || actorUserId;
+       await user.save();
+
+       await AuditTrail.create({
+         action: "USER_DELETE",
+         actorUserId,
+         actorEmail: actorEmail || null,
+         targetType: "User",
+         targetKey: user.id,
+         before: beforeState,
+         after: user.toJSON(),
+         metadata: { mode: "soft-delete", bulk: true }
+       });
+
+       deletedUsers.push({ id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName });
+     }
+
+     if (deletedUsers.length > 0) {
+       setImmediate(async () => {
+         try {
+           const slackHost = host || 'localhost';
+           const environment = getEnvironmentFromHost(slackHost);
+           const preview = deletedUsers.slice(0, 10).map((u) => `• ${u.firstName} ${u.lastName} (${u.email})`).join("\n");
+           const more = deletedUsers.length > 10 ? `\n...and ${deletedUsers.length - 10} more` : "";
+
+           await SlackService.notify({
+             location: environment,
+             host: slackHost,
+             node: SlackNode.USER_MANAGEMENT,
+             provider: SlackProvider.SYSTEM,
+             severity: SlackSeverity.INFO,
+             trigger: `${deletedUsers.length} Users Deleted (Bulk)`,
+             type: SlackEventType.USER_TRIGGERED,
+             channel: SlackChannel.TOWN_CRIER,
+             teamMentions: "CSM",
+             body: `${deletedUsers.length} user(s) have been deleted (moved to recycle bin).\n\n${preview}${more}\n\n🗑️ Deleted by: ${actorEmail || actorUserId}`
+           });
+           logger.info(`✅ Bulk deleted ${deletedUsers.length} user(s) by admin ${actorEmail || actorUserId}`);
+         } catch (err) {
+           logger.error(`❌ Slack notification failed for bulk delete: ${err}`);
+         }
+       });
+     }
+
+     return {
+       success: true,
+       deletedCount: deletedUsers.length,
+       failedCount: failures.length,
+       failures,
+       message: `${deletedUsers.length} user(s) deleted successfully`
+     };
+   }
+
+   /**
+    * Bulk permanently delete users (irreversible).
+    * Sends a single consolidated Slack notification instead of one per user.
+    * @param userIds IDs of users to permanently delete
+    * @param actorUserId ID of admin performing the bulk purge
+    * @param actorEmail Email of admin performing the bulk purge
+    * @param host Host from request object
+    */
+   async bulkPurgeUsers(userIds: string[], actorUserId: string, actorEmail?: string, host?: string) {
+     if (!Array.isArray(userIds) || userIds.length === 0) {
+       throw new ErrorHandler("userIds must be a non-empty array.", 400);
+     }
+
+     const uniqueIds = Array.from(new Set(userIds));
+     const users = await User.findAll({ where: { id: uniqueIds }, paranoid: false });
+
+     const purgedUsers: { id: string; email: string; firstName: string; lastName: string }[] = [];
+     const failures: { id: string; reason: string }[] = [];
+
+     for (const id of uniqueIds) {
+       const user = users.find((u) => u.id === id);
+       if (!user) {
+         failures.push({ id, reason: "User not found" });
+         continue;
+       }
+       if (!user.isDeleted) {
+         failures.push({ id, reason: "User must be soft deleted before permanent deletion" });
+         continue;
+       }
+
+       try {
+         const beforeState = user.toJSON();
+         const { email, firstName, lastName } = user;
+
+         await Upload.destroy({ where: { userId: id }, force: true });
+         await this.deletePurgeBlockingDependents(id);
+         await user.destroy({ force: true });
+
+         await AuditTrail.create({
+           action: "USER_PURGE",
+           actorUserId,
+           actorEmail: actorEmail || null,
+           targetType: "User",
+           targetKey: id,
+           before: beforeState,
+           after: { purged: true },
+           metadata: { mode: "permanent-delete", bulk: true }
+         });
+
+         purgedUsers.push({ id, email, firstName, lastName });
+       } catch (err: any) {
+         logger.error(`❌ Failed to permanently delete user ${id}: ${err?.message || err}`);
+         failures.push({ id, reason: err?.message || "Failed to permanently delete user" });
+       }
+     }
+
+     if (purgedUsers.length > 0) {
+       setImmediate(async () => {
+         try {
+           const slackHost = host || 'localhost';
+           const environment = getEnvironmentFromHost(slackHost);
+           const preview = purgedUsers.slice(0, 10).map((u) => `• ${u.firstName} ${u.lastName} (${u.email})`).join("\n");
+           const more = purgedUsers.length > 10 ? `\n...and ${purgedUsers.length - 10} more` : "";
+
+           await SlackService.notify({
+             location: environment,
+             host: slackHost,
+             node: SlackNode.USER_MANAGEMENT,
+             provider: SlackProvider.SYSTEM,
+             severity: SlackSeverity.CRITICAL,
+             trigger: `${purgedUsers.length} Users Permanently Deleted (Bulk)`,
+             type: SlackEventType.USER_TRIGGERED,
+             channel: SlackChannel.TOWN_CRIER,
+             teamMentions: "CSM",
+             body: `${purgedUsers.length} user account(s) have been PERMANENTLY DELETED.\n\n${preview}${more}\n\n⚠️ Purged by: ${actorEmail || actorUserId}\nThis action cannot be undone.`
+           });
+           logger.info(`✅ Bulk purged ${purgedUsers.length} user(s) by admin ${actorEmail || actorUserId}`);
+         } catch (err) {
+           logger.error(`❌ Slack notification failed for bulk purge: ${err}`);
+         }
+       });
+     }
+
+     return {
+       success: true,
+       deletedCount: purgedUsers.length,
+       failedCount: failures.length,
+       failures,
+       message: `${purgedUsers.length} user(s) permanently deleted successfully`
+     };
    }
 
   /**
