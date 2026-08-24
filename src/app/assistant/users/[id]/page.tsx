@@ -8,7 +8,9 @@ import { AdminUserDetailProvider, useAdminUserDetailContext } from "../context/u
 import TriggerApplicationAction from "../_components/ApplicationAction";
 import ClientDocument from "../_components/ClientDocuments";
 import AdminProfileInfo from "../_components/AdminUsersProfileInfo";
-import AdminUsersJobSites from "../_components/AdminUsersJobSites";
+// AdminUsersJobSites: unused now, see comment where it was rendered below.
+// import AdminUsersJobSites from "../_components/AdminUsersJobSites";
+import AdminUserJobsiteCredential from "../_components/AdminUserJobsiteCredential";
 import AdminUsersJobPreferences from "../_components/AdminUsersJobPreferences";
 import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreferenceHistory";
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
@@ -144,7 +146,11 @@ function UserDetailsContent({ userId }: { userId: string }) {
                         <ClientDocument userId={currentUserId} />
                     </TabsContent>
                     <TabsContent value="jobsite-credential">
-                        <AdminUsersJobSites userId={currentUserId}/>
+                        {/* AdminUsersJobSites replaced — its "Generated
+                            Email" column was rendering NaN@cvtocareer.com
+                            on every row; AdminUserJobsiteCredential is the
+                            working implementation staff have access to. */}
+                        <AdminUserJobsiteCredential userId={currentUserId}/>
                     </TabsContent>
                     <TabsContent value="missing-info">
                         <AdminMissingInfoRequests userId={currentUserId} />
