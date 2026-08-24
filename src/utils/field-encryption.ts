@@ -137,9 +137,9 @@ export const fieldEncryption = {
     await runWithConcurrency(chunks, DECRYPT_MAX_CONCURRENCY, async (chunk) => {
       const rows: any[] = await db().query(
         `SELECT id,
-                CASE WHEN "emailEncrypted" IS NOT NULL THEN pgp_sym_decrypt("emailEncrypted", :key) END AS email,
-                CASE WHEN "phoneNumberEncrypted" IS NOT NULL THEN pgp_sym_decrypt("phoneNumberEncrypted", :key) END AS "phoneNumber",
-                CASE WHEN "whatsappNumberEncrypted" IS NOT NULL THEN pgp_sym_decrypt("whatsappNumberEncrypted", :key) END AS "whatsappNumber"
+                safe_pgp_sym_decrypt("emailEncrypted", :key) AS email,
+                safe_pgp_sym_decrypt("phoneNumberEncrypted", :key) AS "phoneNumber",
+                safe_pgp_sym_decrypt("whatsappNumberEncrypted", :key) AS "whatsappNumber"
            FROM users WHERE id IN (:ids)`,
         { replacements: { ids: chunk, key: KEY }, type: QueryTypes.SELECT }
       );
@@ -155,10 +155,10 @@ export const fieldEncryption = {
     await runWithConcurrency(chunks, DECRYPT_MAX_CONCURRENCY, async (chunk) => {
       const rows: any[] = await db().query(
         `SELECT id,
-                CASE WHEN "bankNameEncrypted" IS NOT NULL THEN pgp_sym_decrypt("bankNameEncrypted", :key) END AS "bankName",
-                CASE WHEN "bsbCodeEncrypted" IS NOT NULL THEN pgp_sym_decrypt("bsbCodeEncrypted", :key) END AS "bsbCode",
-                CASE WHEN "bankAccountNoEncrypted" IS NOT NULL THEN pgp_sym_decrypt("bankAccountNoEncrypted", :key) END AS "bankAccountNo",
-                CASE WHEN "bankAccountNameEncrypted" IS NOT NULL THEN pgp_sym_decrypt("bankAccountNameEncrypted", :key) END AS "bankAccountName"
+                safe_pgp_sym_decrypt("bankNameEncrypted", :key) AS "bankName",
+                safe_pgp_sym_decrypt("bsbCodeEncrypted", :key) AS "bsbCode",
+                safe_pgp_sym_decrypt("bankAccountNoEncrypted", :key) AS "bankAccountNo",
+                safe_pgp_sym_decrypt("bankAccountNameEncrypted", :key) AS "bankAccountName"
            FROM users WHERE id IN (:ids)`,
         { replacements: { ids: chunk, key: KEY }, type: QueryTypes.SELECT }
       );
