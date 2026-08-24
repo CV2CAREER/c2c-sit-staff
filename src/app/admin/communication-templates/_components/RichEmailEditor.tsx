@@ -34,7 +34,95 @@ type Mode = "visual" | "code";
 const DOCTYPE = "<!doctype html>";
 const FALLBACK_DOC = "<!doctype html><html><body></body></html>";
 
-const serialize = (doc: Document) => `${DOCTYPE}\n${doc.documentElement.outerHTML}`;
+// Matches a simple EJS output tag like `<%= name %>` or `<%= user.firstName %>`
+// — deliberately narrow (not `<% %>` scriptlets or `<%- %>` unescaped output)
+// since this is the only shape the "insert variable" chips ever produce.
+// Anchored at the start (not global) — wrapEjsTagsAsChips below tests it at
+// a specific scan position, not across the whole string.
+const EJS_VAR_TAG_AT_START = /^<%=\s*([a-zA-Z_$][\w.]*)\s*%>/;
+const EJS_VAR_TAG_WHOLE = /^<%=\s*([a-zA-Z_$][\w.]*)\s*%>$/;
+const EJS_VAR_CHIP_ATTR = "data-ejs-var";
+
+/**
+ * A raw `<%= name %>` text node cannot survive a round trip through the
+ * iframe: the browser's HTML serializer escapes `<`/`>` in text nodes on the
+ * way out (turning it into `&lt;%= name %&gt;`, which EJS no longer
+ * recognizes as its tag syntax — this was the actual bug behind variables
+ * rendering as literal text in sent emails). Representing each variable as
+ * a real, non-editable element instead means there's no text-node escaping
+ * to survive — the chip's outerHTML round-trips intact either way.
+ */
+const chipHtml = (name: string) =>
+  `<span class="ejs-var" contenteditable="false" ${EJS_VAR_CHIP_ATTR}="${name}" style="display:inline-block;padding:1px 6px;margin:0 1px;border-radius:10px;background:#EFF6FF;color:#1D4ED8;font-family:monospace;font-size:0.85em;user-select:all;">${name}</span>`;
+
+/**
+ * Raw body (as stored/loaded) -> safe-to-parse-as-HTML doc for the iframe.
+ *
+ * Only wraps a `<%= name %>` that sits in actual text content. One that's
+ * already inside an HTML attribute value (e.g. `href="<%= frontendUrl %>"`)
+ * is left completely untouched — attribute values never had the escaping
+ * problem chips exist to solve (only text-node serialization escapes `<`),
+ * so wrapping one there would insert a `<span>` literally inside a quoted
+ * attribute string and corrupt the tag. A blind string-replace can't tell
+ * the two apart (EJS's `<...>` delimiters look like a tag to a naive regex
+ * either way), so this walks the string character-by-character tracking
+ * whether it's currently inside a real HTML tag, and inside a quoted
+ * attribute value within that tag.
+ */
+const wrapEjsTagsAsChips = (html: string): string => {
+  let out = "";
+  let i = 0;
+  let inTag = false;
+  let quoteChar: string | null = null;
+
+  while (i < html.length) {
+    const ch = html[i];
+
+    if (inTag) {
+      if (quoteChar) {
+        if (ch === quoteChar) quoteChar = null;
+      } else if (ch === '"' || ch === "'") {
+        quoteChar = ch;
+      } else if (ch === ">") {
+        inTag = false;
+      }
+      out += ch;
+      i++;
+      continue;
+    }
+
+    // Not inside a tag. A real HTML tag starts with `<` followed by a
+    // letter, `/`, `!`, or `?` — anything else starting with `<` (in
+    // practice, only an EJS tag) is left for the variable check below.
+    if (ch === "<" && /[a-zA-Z/!?]/.test(html[i + 1] ?? "")) {
+      inTag = true;
+      out += ch;
+      i++;
+      continue;
+    }
+
+    const variableMatch = EJS_VAR_TAG_AT_START.exec(html.slice(i));
+    if (variableMatch) {
+      out += chipHtml(variableMatch[1]);
+      i += variableMatch[0].length;
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  return out;
+};
+
+/** Iframe doc -> raw body (as stored) — inverse of wrapEjsTagsAsChips, run on the serialized string, not the live DOM, so the chips stay intact for continued editing. */
+const unwrapEjsChips = (html: string) =>
+  html.replace(
+    new RegExp(`<span class="ejs-var"[^>]*${EJS_VAR_CHIP_ATTR}="([^"]*)"[^>]*>[\\s\\S]*?</span>`, "g"),
+    (_match, name) => `<%= ${name} %>`,
+  );
+
+const serialize = (doc: Document) => `${DOCTYPE}\n${unwrapEjsChips(doc.documentElement.outerHTML)}`;
 
 /**
  * Edits the actual HTML document a template will be sent as — not a stripped-down
@@ -51,7 +139,7 @@ export const RichEmailEditor = forwardRef<RichEmailEditorHandle, RichEmailEditor
   function RichEmailEditor({ value, onChange, minHeight = 360 }, ref) {
     const [mode, setMode] = useState<Mode>("visual");
     const [mountKey, setMountKey] = useState(0);
-    const [srcDoc, setSrcDoc] = useState(() => value || FALLBACK_DOC);
+    const [srcDoc, setSrcDoc] = useState(() => wrapEjsTagsAsChips(value || FALLBACK_DOC));
     const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const valueRef = useRef(value);
@@ -64,7 +152,7 @@ export const RichEmailEditor = forwardRef<RichEmailEditorHandle, RichEmailEditor
 
     const resyncFromValue = (nextValue: string) => {
       lastEmittedRef.current = nextValue;
-      setSrcDoc(nextValue || FALLBACK_DOC);
+      setSrcDoc(wrapEjsTagsAsChips(nextValue || FALLBACK_DOC));
       setMountKey((k) => k + 1);
     };
 
@@ -113,7 +201,15 @@ export const RichEmailEditor = forwardRef<RichEmailEditorHandle, RichEmailEditor
     useImperativeHandle(ref, () => ({
       insertText: (text: string) => {
         if (mode === "visual") {
-          exec("insertText", text);
+          // A variable placeholder becomes a real (non-editable) chip element
+          // instead of raw text — see the module-level comment on chipHtml
+          // for why plain text can't survive the round trip intact.
+          const variableMatch = text.match(EJS_VAR_TAG_WHOLE);
+          if (variableMatch) {
+            exec("insertHTML", chipHtml(variableMatch[1]));
+          } else {
+            exec("insertText", text);
+          }
           return;
         }
         const textarea = textareaRef.current;
