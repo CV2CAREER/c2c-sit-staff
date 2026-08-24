@@ -1,163 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: "Poppins", Arial, sans-serif; color: #474747; width: 100%; background-color: #f4f4f5; line-height: 1.6; }
-      .content { padding: 32px 20px; max-width: 600px; margin: 0 auto; }
-      .title { font-size: 22px; font-weight: 500; line-height: 32px; color: #474747; margin-bottom: 20px; }
-      .body-content p { margin-bottom: 16px; }
-      .badge { display: inline-block; background-color: #e6f7f1; color: #0f9d6c; font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 8px; margin-bottom: 16px; }
-      .detail-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-      .detail-table td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid #e5e7eb; }
-      .detail-label { color: #6b7280; font-weight: 500; width: 40%; }
-      .detail-value { color: #1f2937; font-weight: 500; width: 60%; }
-      .detail-alt { background-color: #fafbfc; }
-      .btn { display: inline-block; margin-top: 16px; padding: 14px 28px; background-color: #004174; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; }
-    </style>
   </head>
-  <body>
-    <!-- Header -->
-    <div style="background-color: #004174; padding: 28px 32px; text-align: center">
-      <img
-        src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
-        alt="CVtoCAREER Logo"
-        style="display: block; margin: 0 auto 16px auto; width: 149px; height: 32px"
-      />
-    </div>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f4f5;
+      color: #474747;
+      line-height: 1.6;
+    "
+  >
+    <div style="max-width: 600px; margin: 0 auto; background: #fff">
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Delivery Confirmation
+        </h1>
+      </div>
 
-    <!-- Content -->
-    <div class="content">
-      <span class="badge">&#9679; Delivered</span>
+      <!-- Body -->
+      <div style="padding: 32px 28px">
+        <span
+          style="
+            display: inline-block;
+            background-color: #e6f7f1;
+            color: #0f9d6c;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+          >&#9679; Delivered</span
+        >
 
-      <h1 class="title">Delivery Confirmation</h1>
-
-      <div class="body-content">
-        <p>
+        <p style="margin: 0 0 16px">
           A missing information request was delivered to
           <strong><%= clientName %></strong>.
         </p>
 
-        <table class="detail-table">
+        <table
+          style="width: 100%; border-collapse: collapse; margin: 20px 0"
+        >
           <tr>
-            <td class="detail-label detail-alt">Client</td>
-            <td class="detail-value detail-alt" align="right"><%= clientName %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+            >
+              Client
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+              align="right"
+            >
+              <%= clientName %>
+            </td>
           </tr>
           <tr>
-            <td class="detail-label">Channel</td>
-            <td class="detail-value" align="right"><%= channel %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-weight: 500;
+              "
+            >
+              Channel
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+                font-weight: 500;
+              "
+              align="right"
+            >
+              <%= channel %>
+            </td>
           </tr>
           <tr>
-            <td class="detail-label detail-alt">Template</td>
-            <td class="detail-value detail-alt" align="right"><%= templateName %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+            >
+              Template
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+              align="right"
+            >
+              <%= templateName %>
+            </td>
           </tr>
           <tr>
-            <td class="detail-label">Fields requested</td>
-            <td class="detail-value" align="right"><%= fieldCount %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-weight: 500;
+              "
+            >
+              Fields requested
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+                font-weight: 500;
+              "
+              align="right"
+            >
+              <%= fieldCount %>
+            </td>
           </tr>
           <tr>
-            <td class="detail-label detail-alt">Sent at</td>
-            <td class="detail-value detail-alt" align="right"><%= sentAt %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+            >
+              Sent at
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                border-bottom: 1px solid #e5e7eb;
+                color: #1f2937;
+                font-weight: 500;
+                background-color: #fafbfc;
+              "
+              align="right"
+            >
+              <%= sentAt %>
+            </td>
           </tr>
           <% if (sentBy) { %>
           <tr>
-            <td class="detail-label" style="border-bottom: none">Sent by</td>
-            <td class="detail-value" style="border-bottom: none" align="right"><%= sentBy %></td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                color: #6b7280;
+                font-weight: 500;
+              "
+            >
+              Sent by
+            </td>
+            <td
+              style="
+                padding: 10px 16px;
+                font-size: 14px;
+                color: #1f2937;
+                font-weight: 500;
+              "
+              align="right"
+            >
+              <%= sentBy %>
+            </td>
           </tr>
           <% } %>
         </table>
 
-        <a href="<%= requestUrl %>" class="btn">View Request</a>
+        <div style="text-align: center; margin: 24px 0">
+          <a
+            href="<%= requestUrl %>"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: 600;
+              padding: 14px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 15px;
+            "
+            >View Request</a
+          >
+        </div>
 
-        <hr style="height: 1px; background-color: #e5e7eb; border: none; margin: 24px 0" />
+        <hr
+          style="
+            height: 1px;
+            background-color: #e5e7eb;
+            border: none;
+            margin: 24px 0;
+          "
+        />
 
         <p style="font-size: 13px; color: #9ca3af; margin: 0">
           This is an automated notification from the C2C Platform.
         </p>
       </div>
-    </div>
 
-    <!-- Footer -->
-    <div
-      style="
-        padding: 24px 32px;
-        background-color: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-      "
-    >
-      <div style="margin-bottom: 20px">
-        <a
-          href="https://facebook.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
-            alt="Facebook"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://x.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
-            alt="X"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://youtube.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
-            alt="YouTube"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="mailto:support@cvtocareer.com"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
-            alt="Email"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://instagram.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
-            alt="Instagram"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://linkedin.com/company/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
-            alt="LinkedIn"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
+      <!-- Footer -->
+      <div
+        style="
+          padding: 24px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 20px">
+          <a
+            href="https://facebook.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
+              alt="Facebook"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://x.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
+              alt="X"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://youtube.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
+              alt="YouTube"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="mailto:support@cvtocareer.com"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
+              alt="Email"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://instagram.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
+              alt="Instagram"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://linkedin.com/company/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
+              alt="LinkedIn"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+        </div>
+
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
       </div>
-
-      <p style="margin: 0 0 12px; font-size: 12px; color: #9ca3af">
-        &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
-      </p>
     </div>
   </body>
 </html>

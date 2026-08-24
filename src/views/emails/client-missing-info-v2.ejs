@@ -3,42 +3,51 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: "Poppins", Arial, sans-serif; color: #474747; width: 100%; background-color: #f4f4f5; line-height: 1.6; }
-      .content { padding: 32px 20px; max-width: 600px; margin: 0 auto; }
-      .title { font-size: 22px; font-weight: 500; line-height: 32px; color: #474747; margin-bottom: 20px; }
-      .body-content p { margin-bottom: 16px; }
-      .alert-box { background-color: #fff8e1; border-left: 4px solid #f59e0b; padding: 16px 20px; border-radius: 4px; margin: 24px 0; }
-      .alert-box p { margin: 0; font-weight: 500; }
-      .btn { display: inline-block; margin-top: 24px; padding: 14px 28px; background-color: #004174; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px; }
-      .url-note { margin-top: 12px; font-size: 13px; color: #6b7280; word-break: break-all; }
-      .signature { margin-top: 32px; }
-      .contact-link { color: #004174; text-decoration: none; }
-    </style>
   </head>
-  <body>
-    <!-- Header -->
-    <div style="background-color: #004174; padding: 28px 32px; text-align: center">
-      <img
-        src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
-        alt="CVtoCAREER Logo"
-        style="display: block; margin: 0 auto 16px auto; width: 149px; height: 32px"
-      />
-    </div>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f4f4f5;
+      color: #474747;
+      line-height: 1.6;
+    "
+  >
+    <div style="max-width: 600px; margin: 0 auto; background: #fff">
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Action Required: Information Needed
+        </h1>
+      </div>
 
-    <!-- Content -->
-    <div class="content">
-      <h1 class="title">Action Required: Information Needed</h1>
+      <!-- Body -->
+      <div style="padding: 32px 28px">
+        <p style="margin: 0 0 16px">Dear <strong><%= name %></strong>,</p>
 
-      <div class="body-content">
-        <p>Dear <strong><%= name %></strong>,</p>
-
-        <p>
+        <p style="margin: 0 0 16px">
           We need some additional information to continue processing your
           application. Please review and complete the details requested below.
         </p>
@@ -49,8 +58,7 @@
             background-color: #f0fdf8;
             border-left: 4px solid #0f9d6c;
             padding: 16px 20px;
-            border-radius: 4px;
-            margin: 24px 0;
+            margin: 20px 0;
             font-style: italic;
           "
         >
@@ -58,134 +66,163 @@
         </div>
         <% } %>
 
-        <div class="alert-box">
-          <p>Template: <strong><%= templateName %></strong></p>
+        <div
+          style="
+            background-color: #f5f5f5;
+            padding: 24px;
+            text-align: center;
+            margin: 24px 0;
+          "
+        >
+          <h2 style="margin: 0; font-size: 18px; color: #333">
+            Template: <strong><%= templateName %></strong>
+          </h2>
           <% if (fieldLabels) { %>
-          <p style="margin: 6px 0 0; font-weight: 400; color: #6b7280">
+          <p style="margin: 8px 0 0; font-size: 14px; color: #6b7280">
             Fields requested: <%= fieldLabels %>
           </p>
           <% } %> <% if (refereeCount) { %>
-          <p style="margin: 6px 0 0; font-weight: 400; color: #6b7280">
+          <p style="margin: 6px 0 0; font-size: 14px; color: #6b7280">
             Referees required: <%= refereeCount %>
           </p>
           <% } %>
         </div>
 
-        <p>
+        <p style="margin: 0 0 16px">
           Please click the button below to review and complete the information.
           This link will take you directly to the secure form.
         </p>
 
-        <a href="<%= updateMissingInfoUrl %>" class="btn"
-          >Complete Information</a
-        >
+        <div style="text-align: center; margin: 24px 0">
+          <a
+            href="<%= updateMissingInfoUrl %>"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: 600;
+              padding: 14px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 15px;
+            "
+            >Complete Information</a
+          >
+        </div>
 
-        <p class="url-note">
+        <p
+          style="
+            margin: 0 0 20px;
+            font-size: 13px;
+            color: #6b7280;
+            word-break: break-all;
+            text-align: center;
+          "
+        >
           Or copy this link into your browser:<br />
           <%= updateMissingInfoUrl %>
         </p>
 
-        <p style="margin-top: 24px">
+        <hr
+          style="
+            height: 1px;
+            background-color: #e5e7eb;
+            border: none;
+            margin: 24px 0;
+          "
+        />
+
+        <p style="margin: 0 0 16px; font-size: 14px; color: #474747">
           If you have any questions or need assistance, please don't hesitate to
           reach out to our support team at
-          <a href="mailto:deliveryteam@cvtocareer.com" class="contact-link"
+          <a
+            href="mailto:deliveryteam@cvtocareer.com"
+            style="color: #008ed3; text-decoration: none"
             >deliveryteam@cvtocareer.com</a
           >.
         </p>
 
-        <div class="signature">
-          <p>Kind regards,<br />The CVtoCAREER Team</p>
+        <p style="margin: 0; font-size: 14px; color: #474747">
+          Kind regards,<br />
+          The CVtoCAREER Team
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          padding: 24px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 20px">
+          <a
+            href="https://facebook.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
+              alt="Facebook"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://x.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
+              alt="X"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://youtube.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
+              alt="YouTube"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="mailto:support@cvtocareer.com"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
+              alt="Email"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://instagram.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
+              alt="Instagram"
+              style="width: 28px; height: 28px"
+            />
+          </a>
+          <a
+            href="https://linkedin.com/company/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
+              alt="LinkedIn"
+              style="width: 28px; height: 28px"
+            />
+          </a>
         </div>
-      </div>
-    </div>
 
-    <!-- Footer -->
-    <div
-      style="
-        padding: 24px 32px;
-        background-color: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        text-align: center;
-      "
-    >
-      <div style="margin-bottom: 20px">
-        <a
-          href="https://facebook.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
-            alt="Facebook"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://x.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
-            alt="X"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://youtube.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
-            alt="YouTube"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="mailto:support@cvtocareer.com"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
-            alt="Email"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://instagram.com/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
-            alt="Instagram"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-        <a
-          href="https://linkedin.com/company/cvtocareer"
-          style="display: inline-block; margin: 0 6px; text-decoration: none"
-        >
-          <img
-            src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
-            alt="LinkedIn"
-            style="width: 28px; height: 28px; display: inline-block"
-          />
-        </a>
-      </div>
-
-      <p style="margin: 0 0 12px; font-size: 12px; color: #9ca3af">
-        &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
-      </p>
-
-      <div style="margin: 8px 0">
-        <a
-          href="mailto:deliveryteam@cvtocareer.com"
-          style="
-            color: #9ca3af;
-            text-decoration: none;
-            font-size: 11px;
-            margin: 0 8px;
-          "
-          >deliveryteam@cvtocareer.com</a
-        >
+        <p style="margin: 0; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
       </div>
     </div>
   </body>
