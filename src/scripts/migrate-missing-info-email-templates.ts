@@ -29,11 +29,11 @@ if (require.main === module) {
           continue;
         }
         const body = fs.readFileSync(filePath, "utf-8");
-        const [affectedRows] = await sequelize.query(
+        const [, metadata] = await sequelize.query(
           `UPDATE email_templates SET body = $1, "updatedAt" = NOW() WHERE key = $2`,
           { bind: [body, key] },
         );
-        const count = Array.isArray(affectedRows) ? 0 : affectedRows;
+        const count = (metadata as any)?.rowCount ?? 0;
         logger.info(`Updated "${key}" — rows affected: ${count}`);
       }
 

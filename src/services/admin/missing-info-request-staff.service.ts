@@ -819,6 +819,15 @@ export class MissingInfoRequestStaffService {
       throw new ErrorHandler("Only open requests can be reminded", 409);
     }
 
+    let fieldLabels = "";
+    if (request.templateId) {
+      const fields = await MissingInfoTemplateField.findAll({
+        where: { templateId: request.templateId, isVisible: true },
+        order: [["sortOrder", "ASC"]],
+      });
+      fieldLabels = fields.map((f: any) => f.fieldLabel).join(", ");
+    }
+
     const newCount = (request.reminderCount || 0) + 1;
     await request.update({ reminderCount: newCount, lastReminderAt: new Date() });
 
@@ -861,9 +870,9 @@ export class MissingInfoRequestStaffService {
             templateData: {
               name: (request as any).targetUser?.firstName || "there",
               templateName: templateName || "Missing Information",
-              fieldLabels: "",
+              fieldLabels,
               refereeCount: null,
-              personalMessage: null,
+              personalMessage: (request as any).personalMessage || null,
               updateMissingInfoUrl: request.missingInfoUrl,
               currentYear: new Date().getFullYear(),
             },
