@@ -74,6 +74,16 @@ export enum AcceptedRole {
   TEST = "test",
 }
 
+// Snapshot of what the user picked in the "Sign up as" field at registration —
+// kept separate from `role`, which can be resolved/remapped after signup (e.g. ambassador -> guest).
+export enum SignUpAs {
+  JOB_SEEKER = "Job_Seeker",
+  EMPLOYEE = "Employee",
+  CHANNEL_PARTNER = "Channel_Partner",
+  AMBASSADOR = "Ambassador",
+}
+
+
 export enum Gender {
   MALE = "Male",
   FEMALE = "Female",

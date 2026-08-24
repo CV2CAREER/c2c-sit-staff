@@ -15,7 +15,7 @@ export interface CampaignData {
 const DATE_FORMAT = "DD-MM-YYYY";
 
 // Parse DD-MM-YYYY → UTC Date
-function parseDate(date?: string): Date | null {
+export function parseDate(date?: string): Date | null {
   if (!date) return null;
   const [day, month, year] = date.split("-").map(Number);
   if (!day || !month || !year) return null;
@@ -31,7 +31,7 @@ function parseISODate(value?: string | Date | null): Date | null {
 }
 
 // Format UTC Date → DD-MM-YYYY
-function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   const d = String(date.getUTCDate()).padStart(2, "0");
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
   const y = date.getUTCFullYear();
@@ -39,7 +39,7 @@ function formatDate(date: Date): string {
 }
 
 // Add days UTC
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
   return result;

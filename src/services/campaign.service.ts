@@ -43,6 +43,20 @@ const formatClientName = (user?: {
 } | null): string =>
   [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ');
 
+// Derives a display name/email for a Credentials row for use in Slack notifications,
+// mirroring the same derivation landOrLaunchCampaign uses for flight status messages.
+const getCredentialContactInfo = (
+  cred: { seekEmail?: string; seekExternalCredentials?: any } | null | undefined,
+  fallbackId: string
+): { name: string; email: string } => {
+  const jsonb = cred?.seekExternalCredentials || {};
+  const name =
+    `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
+    `Client #${fallbackId}`;
+  const email = jsonb.Alias_Email || cred?.seekEmail || 'unknown';
+  return { name, email };
+};
+
 /**
  * Extract active aggregator credentials from credentials object
  */
@@ -2976,12 +2990,15 @@ export const deleteCampaignClient = async (id: string) => {
 /**
  * Soft delete campaign client (set isDeleted=true)
  */
-export const softDeleteCampaignClient = async (id: string) => {
+export const softDeleteCampaignClient = async (id: string, requestorName?: string, host?: string) => {
   logger.info(`Soft deleting campaign client: ${id}`);
 
   if (!id) {
     throw new Error('ID is required');
   }
+
+  const cred = await Credentials.findOne({ where: { id } });
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
 
   const response = await Credentials.update(
     { isDeleted: true },
@@ -2990,18 +3007,41 @@ export const softDeleteCampaignClient = async (id: string) => {
 
   logger.info(`Soft deleted campaign client: ${id}`);
 
+  setImmediate(async () => {
+    try {
+      const slackHost = host || 'localhost';
+      await SlackService.notify({
+        location: getEnvironmentFromHost(slackHost),
+        host: slackHost,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.CLARITY,
+        severity: SlackSeverity.INFO,
+        trigger: `Campaign Client Moved to Recycle Bin: ${clientName}`,
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        teamMentions: 'CSM',
+        body: `*Client:* ${clientName} (${clientEmail})\n🗑️ Moved to recycle bin by: ${requestorName || 'unknown'}`,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed for campaign client soft delete: ${err}`);
+    }
+  });
+
   return response;
 };
 
 /**
  * Restore soft deleted campaign client
  */
-export const restoreCampaignClient = async (id: string) => {
+export const restoreCampaignClient = async (id: string, requestorName?: string, host?: string) => {
   logger.info(`Restoring campaign client: ${id}`);
 
   if (!id) {
     throw new Error('ID is required');
   }
+
+  const cred = await Credentials.findOne({ where: { id }, paranoid: false });
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
 
   const response = await Credentials.update(
     { isDeleted: false },
@@ -3010,18 +3050,41 @@ export const restoreCampaignClient = async (id: string) => {
 
   logger.info(`Restored campaign client: ${id}`);
 
+  setImmediate(async () => {
+    try {
+      const slackHost = host || 'localhost';
+      await SlackService.notify({
+        location: getEnvironmentFromHost(slackHost),
+        host: slackHost,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.CLARITY,
+        severity: SlackSeverity.INFO,
+        trigger: `Campaign Client Restored: ${clientName}`,
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        teamMentions: 'CSM',
+        body: `*Client:* ${clientName} (${clientEmail})\n✅ Restored from recycle bin by: ${requestorName || 'unknown'}`,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed for campaign client restore: ${err}`);
+    }
+  });
+
   return response;
 };
 
 /**
  * Permanently delete campaign client (hard delete - cannot be restored)
  */
-export const permanentDeleteCampaignClient = async (id: string) => {
+export const permanentDeleteCampaignClient = async (id: string, requestorName?: string, host?: string) => {
   logger.info(`PERMANENTLY deleting campaign client: ${id}`);
 
   if (!id) {
     throw new Error('ID is required');
   }
+
+  const cred = await Credentials.findOne({ where: { id }, paranoid: false });
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
 
   const response = await Credentials.destroy({
     where: { id },
@@ -3030,26 +3093,125 @@ export const permanentDeleteCampaignClient = async (id: string) => {
 
   logger.info(`PERMANENTLY deleted campaign client: ${id}`);
 
+  setImmediate(async () => {
+    try {
+      const slackHost = host || 'localhost';
+      await SlackService.notify({
+        location: getEnvironmentFromHost(slackHost),
+        host: slackHost,
+        node: SlackNode.MESSAGING,
+        provider: SlackProvider.CLARITY,
+        severity: SlackSeverity.CRITICAL,
+        trigger: `Campaign Client PERMANENTLY Deleted: ${clientName}`,
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.TOWN_CRIER,
+        teamMentions: 'CSM',
+        body: `*Client:* ${clientName} (${clientEmail})\n⚠️ PERMANENTLY deleted by: ${requestorName || 'unknown'}\nThis action cannot be undone.`,
+      });
+    } catch (err) {
+      logger.error(`❌ Slack notification failed for campaign client permanent delete: ${err}`);
+    }
+  });
+
   return response;
 };
 
 /**
- * Bulk delete multiple campaign clients
+ * Bulk soft delete multiple campaign clients (move to recycle bin)
+ * Sends a single consolidated Slack notification instead of one per client.
  */
-export const deleteCampaignClientsBulk = async (ids: string[]) => {
-  logger.info(`Bulk deleting ${ids.length} campaign clients`);
+export const softDeleteCampaignClientsBulk = async (ids: string[], requestorName?: string, host?: string) => {
+  logger.info(`Bulk soft deleting ${ids.length} campaign clients`);
+
+  if (!ids || ids.length === 0) {
+    throw new Error('IDs are required for bulk soft delete');
+  }
+
+  const creds = await Credentials.findAll({ where: { id: ids } });
+  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+
+  const [affectedCount] = await Credentials.update(
+    { isDeleted: true },
+    { where: { id: ids } }
+  );
+
+  logger.info(`Bulk soft deleted ${affectedCount} campaign clients`);
+
+  if (clients.length > 0) {
+    setImmediate(async () => {
+      try {
+        const slackHost = host || 'localhost';
+        const preview = clients.slice(0, 10).map((c) => `• ${c.name} (${c.email})`).join('\n');
+        const more = clients.length > 10 ? `\n...and ${clients.length - 10} more` : '';
+
+        await SlackService.notify({
+          location: getEnvironmentFromHost(slackHost),
+          host: slackHost,
+          node: SlackNode.MESSAGING,
+          provider: SlackProvider.CLARITY,
+          severity: SlackSeverity.INFO,
+          trigger: `${clients.length} Campaign Clients Moved to Recycle Bin (Bulk)`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: 'CSM',
+          body: `${clients.length} campaign client(s) have been moved to the recycle bin.\n\n${preview}${more}\n\n🗑️ Moved by: ${requestorName || 'unknown'}`,
+        });
+      } catch (err) {
+        logger.error(`❌ Slack notification failed for bulk campaign client soft delete: ${err}`);
+      }
+    });
+  }
+
+  return { affectedCount };
+};
+
+/**
+ * Bulk permanently delete multiple campaign clients (hard delete - cannot be restored)
+ * Sends a single consolidated Slack notification instead of one per client.
+ */
+export const deleteCampaignClientsBulk = async (ids: string[], requestorName?: string, host?: string) => {
+  logger.info(`Bulk PERMANENTLY deleting ${ids.length} campaign clients`);
 
   if (!ids || ids.length === 0) {
     throw new Error('IDs are required for bulk delete');
   }
 
+  const creds = await Credentials.findAll({ where: { id: ids }, paranoid: false });
+  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+
   const response = await Credentials.destroy({
     where: { id: ids },
+    force: true,
   });
 
-  logger.info(`Deleted ${response} campaign clients`);
+  logger.info(`PERMANENTLY deleted ${response} campaign clients`);
 
-  return response;
+  if (clients.length > 0) {
+    setImmediate(async () => {
+      try {
+        const slackHost = host || 'localhost';
+        const preview = clients.slice(0, 10).map((c) => `• ${c.name} (${c.email})`).join('\n');
+        const more = clients.length > 10 ? `\n...and ${clients.length - 10} more` : '';
+
+        await SlackService.notify({
+          location: getEnvironmentFromHost(slackHost),
+          host: slackHost,
+          node: SlackNode.MESSAGING,
+          provider: SlackProvider.CLARITY,
+          severity: SlackSeverity.CRITICAL,
+          trigger: `${clients.length} Campaign Clients PERMANENTLY Deleted (Bulk)`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: 'CSM',
+          body: `${clients.length} campaign client(s) have been PERMANENTLY DELETED.\n\n${preview}${more}\n\n⚠️ Deleted by: ${requestorName || 'unknown'}\nThis action cannot be undone.`,
+        });
+      } catch (err) {
+        logger.error(`❌ Slack notification failed for bulk campaign client permanent delete: ${err}`);
+      }
+    });
+  }
+
+  return { affectedCount: response };
 };
 
 /**

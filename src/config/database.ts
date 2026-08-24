@@ -36,6 +36,8 @@ export const connectDB = async (): Promise<void> => {
         const queryInterface = newSequelize.getQueryInterface();
         const tablesBefore: string[] = await queryInterface.showAllTables();
 
+        // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
+        // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
