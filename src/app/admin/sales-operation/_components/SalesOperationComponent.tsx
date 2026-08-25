@@ -231,7 +231,6 @@ export default function SalesOperationComponent() {
         field: "editAction",
         headerName: "Edit",
         width: 80,
-        headerClassName: "bg-[#80D7FF]",
         sortable: false,
         renderCell: (params: any) => (
           <button
@@ -297,41 +296,43 @@ export default function SalesOperationComponent() {
       )}
 
       {/* Table — Show Deleted is in the actions prop (checkbox row) */}
-      <Table
-        data={data}
-        // Pass editMode + openEdit through helpers so modifyArray gets them reactively
-        helpers={{ editMode, openEdit: (row: any) => { setEditRow(row); setEditOpen(true); } }}
-        allowDelete={true}
-        allowRestore={isRecycle}
-        modifyArray={modifyArray}
-        tableName={`SALES_OPERATION_${isRecycle ? "RECYCLE" : "ACTIVE"}`}
-        editMode={editMode}
-        setEditMode={setEditMode}
-        handleDelete={(id: string) =>
-          isRecycle ? setConfirmHardDelete(id as string) : setConfirmDelete(id as string)
-        }
-        onRowClick={(params: any) => {
-          if (!isRecycle && editMode) {
-            setEditRow(params?.row);
-            setEditOpen(true);
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden p-4">
+        <Table
+          data={data}
+          // Pass editMode + openEdit through helpers so modifyArray gets them reactively
+          helpers={{ editMode, openEdit: (row: any) => { setEditRow(row); setEditOpen(true); } }}
+          allowDelete={true}
+          allowRestore={isRecycle}
+          modifyArray={modifyArray}
+          tableName={`SALES_OPERATION_${isRecycle ? "RECYCLE" : "ACTIVE"}`}
+          editMode={editMode}
+          setEditMode={setEditMode}
+          handleDelete={(id: string) =>
+            isRecycle ? setConfirmHardDelete(id as string) : setConfirmDelete(id as string)
           }
-        }}
-        cursorPointer={!isRecycle && editMode}
-        handleRestore={(id: string) => setConfirmRestore(id as string)}
-        handleDeleteMultiple={handleDeleteMultiple}
-        isLoading={isLoading}
-        actions={[
-          {
-            label: isRecycle ? "Show Active" : "Show Deleted",
-            handler: () => {
-              setIsRecycle((v) => !v);
-              setEditMode(false); // reset edit mode when switching views
+          onRowClick={(params: any) => {
+            if (!isRecycle && editMode) {
+              setEditRow(params?.row);
+              setEditOpen(true);
+            }
+          }}
+          cursorPointer={!isRecycle && editMode}
+          handleRestore={(id: string) => setConfirmRestore(id as string)}
+          handleDeleteMultiple={handleDeleteMultiple}
+          isLoading={isLoading}
+          actions={[
+            {
+              label: isRecycle ? "Show Active" : "Show Deleted",
+              handler: () => {
+                setIsRecycle((v) => !v);
+                setEditMode(false); // reset edit mode when switching views
+              },
+              isChecked: isRecycle,
             },
-            isChecked: isRecycle,
-          },
-        ]}
-        checkBoxSelection={isRecycle}
-      />
+          ]}
+          checkBoxSelection={isRecycle}
+        />
+      </div>
 
       {/* Create Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -151,32 +151,50 @@ export const moveTo = (tableName: string, field: string, target: number) => {
  * );
  */
 export const StyledDataGridPro = styled(DataGridPro)(() => ({
-  "& .MuiDataGrid-root": {
-    border: "none",
-    backgroundColor: "#fefefe",
-    boxShadow:
-      "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    borderRadius: "8px",
-  },
-  "& .MuiDataGrid-cell": {
-    borderBottom: "1px solid #f0f0f0",
-  },
+  border: "none",
+  borderRadius: "12px",
+  backgroundColor: "#ffffff",
+  boxShadow:
+    "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06)",
   "& .MuiDataGrid-columnHeaders": {
-    backgroundColor: "#fefefe",
-    color: "#333333",
-    fontWeight: "bold",
+    backgroundColor: "#F0FBFF",
+    borderBottom: "2px solid #D3FFFF",
   },
   "& .MuiDataGrid-columnHeaderTitle": {
-    fontWeight: "bold",
+    fontWeight: 600,
+    color: "#004174",
+    fontSize: "0.8125rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.03em",
+  },
+  "& .MuiDataGrid-columnSeparator": {
+    color: "transparent",
+  },
+  "& .MuiDataGrid-cell": {
+    borderBottom: "1px solid #F1F5F9",
+    fontSize: "0.875rem",
+    color: "#1D1B20",
+  },
+  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-row": {
+    transition: "background-color 0.15s ease",
   },
   "& .MuiDataGrid-row:nth-of-type(even)": {
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#FAFCFF",
   },
   "& .MuiDataGrid-row:hover": {
-    backgroundColor: "#e6f7ff",
+    backgroundColor: "#EDFFFF",
   },
-  "& .MuiDataGrid-footer": {
-    borderTop: "1px solid #e0e0e0",
+  "& .MuiDataGrid-footerContainer": {
+    borderTop: "1px solid #EEF2F6",
+    backgroundColor: "#FCFEFF",
+  },
+  "& .MuiDataGrid-toolbarContainer": {
+    padding: "10px 16px",
+    gap: "8px",
+    borderBottom: "1px solid #F1F5F9",
   },
 }));
 

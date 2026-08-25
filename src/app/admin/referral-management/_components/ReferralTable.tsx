@@ -61,13 +61,11 @@ const AdminUserReferralTable = ({ userData }: { userData: any }) => {
         field: 'Referral Status',
         headerName: 'Referral Status',
         width: 200,
-        headerClassName: 'bg-[#80D7FF]',
       },
       {
         field: 'Approve Referral',
         headerName: 'Approve Referral',
         width: 200,
-        headerClassName: 'bg-[#80D7FF]',
       }
     );
 

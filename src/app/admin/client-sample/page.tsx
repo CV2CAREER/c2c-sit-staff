@@ -67,7 +67,6 @@ export default function ClientSample() {
             {params.value}
           </Link>
         ),
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 150,
         maxWidth: 150,
@@ -75,7 +74,6 @@ export default function ClientSample() {
       {
         field: "email",
         headerName: "Email",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 200,
         maxWidth: 300,
@@ -83,7 +81,6 @@ export default function ClientSample() {
       {
         field: "jobsiteEmail",
         headerName: "Jobsite Email",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 200,
         maxWidth: 300,
@@ -91,7 +88,6 @@ export default function ClientSample() {
       {
         field: "aggregator",
         headerName: "Aggregator",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -99,7 +95,6 @@ export default function ClientSample() {
       {
         field: "bot",
         headerName: "Bot Assigned",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -107,7 +102,6 @@ export default function ClientSample() {
       {
         field: "startTime",
         headerName: "Start Time",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -115,7 +109,6 @@ export default function ClientSample() {
       {
         field: "endTime",
         headerName: "End Time",
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -124,7 +117,6 @@ export default function ClientSample() {
         field: "progress",
         headerName: "Progress",
         renderCell: (params: any) => <span>{params.value}%</span>,
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 100,
         maxWidth: 200,
@@ -143,7 +135,6 @@ export default function ClientSample() {
             {params.value}
           </span>
         ),
-        headerClassName: "bg-[#80D7FF]",
         flex: 1,
         minWidth: 100,
         maxWidth: 200,
@@ -210,7 +201,6 @@ export default function ClientSample() {
             </div>
           </div>
         ),
-        headerClassName: "bg-[#80D7FF]",
       },
     ];
   }, [tab, removeFromQueue, retry]);

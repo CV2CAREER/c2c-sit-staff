@@ -285,13 +285,13 @@ export const useSystemMutations = () => {
   return {
     toggleBotMutation: useMutateData<any, { botEnabled?: boolean; questionAnswerMode?: string }>({
       method: "PATCH",
-      url: endpoints.ADMIN_BOT_CONTROL,
+      url: endpoints.ADMIN_BOT_TOGGLE,
       mutationKey: ["admin-bot-toggle"],
       onSuccess: () => {},
       onError: () => {},
     }),
     updateAnswerModeMutation: useMutateData<any, { mode?: string; questionAnswerMode?: string }>({
-      method: "PUT",
+      method: "PATCH",
       url: endpoints.ADMIN_ANSWER_MODE,
       mutationKey: ["admin-update-answer-mode"],
       onSuccess: () => {
