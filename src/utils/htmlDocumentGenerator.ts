@@ -794,8 +794,25 @@ const renderTwoColumns = (
     let y = startY;
     doc.switchToPage(page);
 
-    groups.forEach((group) => {
-      const height = measureGroupHeight(doc, group, design, width, scale);
+    groups.forEach((group, index) => {
+      let height = measureGroupHeight(doc, group, design, width, scale);
+
+      // Same fix as drawGroupsFlowing's single-column path: an entry heading
+      // (job title, education entry, ...) landing alone at the bottom of a
+      // column, with its company/date line and first bullet pushed to the
+      // next page, reads as broken. Fold whatever immediately follows the
+      // heading (non-bullet lines, then the first bullet) into this same
+      // fit check, so the heading only breaks to a new page along with them.
+      if (group.kind === "single" && group.block.kind === "subsection") {
+        for (let j = index + 1; j < groups.length; j++) {
+          const nextGroup = groups[j];
+          if (nextGroup.kind === "skills-row") break;
+          if (nextGroup.block.kind === "subsection" || nextGroup.block.kind === "section") break;
+          height += measureGroupHeight(doc, nextGroup, design, width, scale);
+          if (nextGroup.block.type === "bullet" || nextGroup.block.type === "ordered") break;
+        }
+      }
+
       if (y + height > geometry.contentBottom) {
         page += 1;
         if (page < doc.bufferedPageRange().count) {
