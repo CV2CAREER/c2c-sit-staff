@@ -413,10 +413,11 @@ const drawGroupsFlowing = (
     doc.moveDown(0.4 * scale);
   };
 
-  groups.forEach((group) => {
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
     if (group.kind === "skills-row") {
       drawPillRowFlowing(doc, group.blocks.map(blockText), design);
-      return;
+      continue;
     }
 
     const block = group.block;
@@ -424,7 +425,7 @@ const drawGroupsFlowing = (
 
     if (!block.runs.length) {
       doc.fontSize(fontSize).text(" ");
-      return;
+      continue;
     }
 
     if (block.kind === "section") doc.moveDown(0.7 * scale);
@@ -433,15 +434,24 @@ const drawGroupsFlowing = (
 
     let extraIndent = 0;
     if (block.kind === "subsection") {
-      // The accent bar is a `rect()` fill, not a `.text()` call — it isn't
-      // subject to pdfkit's automatic page-break-and-flow, so without this
-      // check it can land on the last sliver of the current page while the
-      // heading text it belongs to auto-flows onto the next one, leaving an
-      // orphaned colored mark with no text next to it.
-      const estimatedHeight = doc.heightOfString(blockText(block), {
-        width: doc.page.width - contentLeft - doc.page.margins.right - 10,
-      });
-      if (doc.y + estimatedHeight > doc.page.height - doc.page.margins.bottom) {
+      // An entry heading (job title, education entry, ...) rendering alone at
+      // the bottom of a page — with its company/date line and first bullet
+      // pushed to the next page by pdfkit's own auto-pagination — reads as
+      // broken. Measure the heading plus whatever immediately follows it (any
+      // non-bullet lines, e.g. company/date, plus the first bullet) as one
+      // unit, and force a page break before the heading if that whole unit
+      // doesn't fit, so a heading is never left orphaned from its own content.
+      const width = doc.page.width - contentLeft - doc.page.margins.right - 10;
+      let lookaheadHeight = doc.heightOfString(blockText(block), { width });
+      for (let j = groupIndex + 1; j < groups.length; j++) {
+        const nextGroup = groups[j];
+        if (nextGroup.kind === "skills-row") break;
+        const nextBlock = nextGroup.block;
+        if (nextBlock.kind === "subsection" || nextBlock.kind === "section") break;
+        lookaheadHeight += measureBlockHeight(doc, nextBlock, design, width);
+        if (nextBlock.type === "bullet" || nextBlock.type === "ordered") break;
+      }
+      if (doc.y + lookaheadHeight > doc.page.height - doc.page.margins.bottom) {
         doc.addPage();
       }
       const barY = doc.y + 1;
@@ -516,7 +526,7 @@ const drawGroupsFlowing = (
       doc.moveDown(0.15 * scale);
       drawRule(design.accent_color, 0.75);
     }
-  });
+  }
 };
 
 // -- Explicit-position rendering (modern's two columns + the contemporary banner) --
