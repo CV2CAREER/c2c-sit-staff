@@ -49,7 +49,23 @@ const prettifyKey = (key: string): string => {
 const extractText = (value: unknown): string | undefined => {
   if (typeof value === "string") return value.trim() || undefined;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (isObject(value) && typeof value.text === "string") return extractText(value.text);
+  if (isObject(value)) {
+    if (typeof value.text === "string") return extractText(value.text);
+    // The model sometimes wraps a single scalar in its own object instead of
+    // returning it directly — e.g. a `skills` array of `{skill: "JavaScript"}`
+    // instead of plain `"JavaScript"` strings. Without this, that falls
+    // through to the generic per-field renderer, which labels the lone field
+    // with its own key name ("Skill: JavaScript") instead of a clean list.
+    // If there's exactly one key and its value is a plain scalar, treat the
+    // object as that scalar.
+    const keys = Object.keys(value);
+    if (keys.length === 1) {
+      const only = (value as Record<string, unknown>)[keys[0]];
+      if (typeof only === "string" || typeof only === "number" || typeof only === "boolean") {
+        return extractText(only);
+      }
+    }
+  }
   return undefined;
 };
 
