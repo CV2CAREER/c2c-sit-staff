@@ -49,7 +49,13 @@ const TemplateButton = ({ onClick }: { onClick: () => void }) => (
 
 const CsvInstructions = () => (
   <div className="rounded-xl border border-career-gray-200 bg-career-gray-300/50 p-4 text-13 leading-relaxed text-career-black-200">
-    <p className="font-medium">Upload a CSV with these headers</p>
+    <p className="font-medium">
+      Uploading structured data? Use a CSV with these headers
+    </p>
+    <p className="mt-1 text-12 text-career-black-200/70">
+      Or upload a PDF instead — a write-up with the recommended role titles
+      and context, shown to the client as-is (no header requirements apply).
+    </p>
     <p className="mt-2 font-mono text-12 break-words text-career-black-200/80">
       Role Title, Classification, Craft, Industry, Status, AI Career Resilience
       Rating
@@ -90,10 +96,13 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
   {
     name: "roleTitleRecommendations",
     label: "Role Title Recommendations",
-    hint: "CSV · XLSX — mandatory",
-    extensions: ["csv", "xlsx"],
+    hint: "CSV · XLSX · PDF — mandatory",
+    // CSV/XLSX carry structured rows the client reviews one by one; a PDF is
+    // a plain document (titles + write-up) the client just views/downloads —
+    // no row extraction happens for it, see client-support-document.service.ts.
+    extensions: ["csv", "xlsx", "pdf"],
     accept:
-      ".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.pdf,application/pdf",
     isNew: true,
     isSupportDocument: true,
     instructions: <CsvInstructions />,

@@ -25,7 +25,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'id',
         headerName: 'Queue SN',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         renderCell: (params: any) => <span> Queue #{params.row.id}</span>,
         minWidth: 100,
@@ -39,7 +38,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
             {params.value}
           </Link>
         ),
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 250,
         maxWidth: 300,
@@ -47,7 +45,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'email',
         headerName: 'Email',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 200,
         maxWidth: 300,
@@ -55,7 +52,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'jobsiteEmail',
         headerName: 'Jobsite Email',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 200,
         maxWidth: 300,
@@ -63,7 +59,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'aggregator',
         headerName: 'Aggregator',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -72,7 +67,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'startTime',
         headerName: 'Start Time',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -80,7 +74,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
       {
         field: 'endTime',
         headerName: 'End Time',
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 150,
         maxWidth: 250,
@@ -89,7 +82,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
         field: 'progress',
         headerName: 'Progress',
         renderCell: (params: any) => <span>{params.value}%</span>,
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 100,
         maxWidth: 200,
@@ -108,7 +100,6 @@ const [discoveryQueue, setDiscoveryQueue] = useState([]);
             {params.value}
           </span>
         ),
-        headerClassName: 'bg-[#80D7FF]',
         flex: 1,
         minWidth: 100,
         maxWidth: 200,
