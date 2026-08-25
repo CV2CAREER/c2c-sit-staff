@@ -1,0 +1,496 @@
+{
+  "australia": [
+    {
+      "label": "Global Talent Visa (subclass 858)",
+      "value": "Global Talent Visa (subclass 858)"
+    },
+    {
+      "label": "Student Visa (Subclass 500)",
+      "value": "Student Visa (Subclass 500)"
+    },
+    {
+      "label": "Employer Nomination Scheme Visa (subclass 186)",
+      "value": "Employer Nomination Scheme Visa (subclass 186)"
+    },
+    {
+      "label": "Permanent Skilled Regional Visa (subclass 191)",
+      "value": "Permanent Skilled Regional Visa (subclass 191)"
+    },
+    {
+      "label": "Regional Sponsored Migration Visa (subclass 187)",
+      "value": "Regional Sponsored Migration Visa (subclass 187)"
+    },
+    {
+      "label": "Skilled Employer Sponsored Regional Visa (subclass 494)",
+      "value": "Skilled Employer Sponsored Regional Visa (subclass 494)"
+    },
+    {
+      "label": "Skilled Independent Visa (subclass 189)",
+      "value": "Skilled Independent Visa (subclass 189)"
+    },
+    {
+      "label": "Skilled Nominated Visa (subclass 190)",
+      "value": "Skilled Nominated Visa (subclass 190)"
+    },
+    {
+      "label": "Skilled Recognized Graduate Visa (subclass 476)",
+      "value": "Skilled Recognized Graduate Visa (subclass 476)"
+    },
+    {
+      "label": "Skilled Regional Visa (subclass 887)",
+      "value": "Skilled Regional Visa (subclass 887)"
+    },
+    {
+      "label": "Skilled Regional (Provisional) Visa (subclass 489)",
+      "value": "Skilled Regional (Provisional) Visa (subclass 489)"
+    },
+    {
+      "label": "Skilled Work Regional Visa (subclass 491)",
+      "value": "Skilled Work Regional Visa (subclass 491)"
+    },
+    {
+      "label": "Temporary Activity Visa (subclass 408)",
+      "value": "Temporary Activity Visa (subclass 408)"
+    },
+    {
+      "label": "Temporary Graduate Visa (subclass 485)",
+      "value": "Temporary Graduate Visa (subclass 485)"
+    },
+    {
+      "label": "Temporary Work International Relations Visa (subclass 403)",
+      "value": "Temporary Work International Relations Visa (subclass 403)"
+    },
+    {
+      "label": "Temporary Work Visa for Short Stay Specialist (subclass 400)",
+      "value": "Temporary Work Visa for Short Stay Specialist (subclass 400)"
+    },
+    {
+      "label": "Temporary Skill Shortage Visa (subclass 482)",
+      "value": "Temporary Skill Shortage Visa (subclass 482)"
+    },
+    {
+      "label": "Australian Citizen",
+      "value": "Australian Citizen"
+    }
+  ],
+  "united kingdom": [
+    {
+      "label": "British Citizen",
+      "value": "British Citizen"
+    },
+    {
+      "label": "Irish Citizen (right to work in UK)",
+      "value": "Irish Citizen (right to work in UK)"
+    },
+    {
+      "label": "Indefinite Leave to Remain (ILR)",
+      "value": "Indefinite Leave to Remain (ILR)"
+    },
+    {
+      "label": "Settled Status (EU Settlement Scheme)",
+      "value": "Settled Status (EU Settlement Scheme)"
+    },
+    {
+      "label": "Pre-settled Status (EU Settlement Scheme)",
+      "value": "Pre-settled Status (EU Settlement Scheme)"
+    },
+    {
+      "label": "Skilled Worker Visa",
+      "value": "Skilled Worker Visa"
+    },
+    {
+      "label": "Global Talent Visa",
+      "value": "Global Talent Visa"
+    },
+    {
+      "label": "Graduate Visa",
+      "value": "Graduate Visa"
+    },
+    {
+      "label": "Youth Mobility Scheme Visa",
+      "value": "Youth Mobility Scheme Visa"
+    },
+    {
+      "label": "Spouse / Partner Visa (with work rights)",
+      "value": "Spouse / Partner Visa (with work rights)"
+    },
+    {
+      "label": "Student Visa (with work rights)",
+      "value": "Student Visa (with work rights)"
+    },
+    {
+      "label": "Other Work Visa",
+      "value": "Other Work Visa"
+    }
+  ],
+  "canada": [
+    {
+      "label": "Canadian Citizen",
+      "value": "Canadian Citizen"
+    },
+    {
+      "label": "Permanent Resident (PR)",
+      "value": "Permanent Resident (PR)"
+    },
+    {
+      "label": "Open Work Permit",
+      "value": "Open Work Permit"
+    },
+    {
+      "label": "Employer-Specific Work Permit",
+      "value": "Employer-Specific Work Permit"
+    },
+    {
+      "label": "Post-Graduation Work Permit (PGWP)",
+      "value": "Post-Graduation Work Permit (PGWP)"
+    },
+    {
+      "label": "International Mobility Program",
+      "value": "International Mobility Program"
+    },
+    {
+      "label": "Spousal Open Work Permit",
+      "value": "Spousal Open Work Permit"
+    },
+    {
+      "label": "Student Visa (with co-op / work rights)",
+      "value": "Student Visa (with co-op / work rights)"
+    },
+    {
+      "label": "Other Work Visa",
+      "value": "Other Work Visa"
+    }
+  ],
+  "new zealand": [
+    {
+      "label": "New Zealand Citizen",
+      "value": "New Zealand Citizen"
+    },
+    {
+      "label": "Australian Citizen (right to work in NZ)",
+      "value": "Australian Citizen (right to work in NZ)"
+    },
+    {
+      "label": "Permanent Resident",
+      "value": "Permanent Resident"
+    },
+    {
+      "label": "Accredited Employer Work Visa (AEWV)",
+      "value": "Accredited Employer Work Visa (AEWV)"
+    },
+    {
+      "label": "Skilled Migrant Category Visa",
+      "value": "Skilled Migrant Category Visa"
+    },
+    {
+      "label": "Post-Study Work Visa",
+      "value": "Post-Study Work Visa"
+    },
+    {
+      "label": "Working Holiday Visa",
+      "value": "Working Holiday Visa"
+    },
+    {
+      "label": "Partner / Spouse Visa (with work rights)",
+      "value": "Partner / Spouse Visa (with work rights)"
+    },
+    {
+      "label": "Other Work Visa",
+      "value": "Other Work Visa"
+    }
+  ],
+  "ireland": [
+    {
+      "label": "Irish Citizen",
+      "value": "Irish Citizen"
+    },
+    {
+      "label": "EU / EEA Citizen (right to work)",
+      "value": "EU / EEA Citizen (right to work)"
+    },
+    {
+      "label": "Stamp 4 (Long-term Residence)",
+      "value": "Stamp 4 (Long-term Residence)"
+    },
+    {
+      "label": "Critical Skills Employment Permit",
+      "value": "Critical Skills Employment Permit"
+    },
+    {
+      "label": "General Employment Permit",
+      "value": "General Employment Permit"
+    },
+    {
+      "label": "Intra-Company Transfer Permit",
+      "value": "Intra-Company Transfer Permit"
+    },
+    {
+      "label": "Graduate Permission (Stamp 1G)",
+      "value": "Graduate Permission (Stamp 1G)"
+    },
+    {
+      "label": "Dependent / Spouse Employment Permit",
+      "value": "Dependent / Spouse Employment Permit"
+    },
+    {
+      "label": "Other Work Permit",
+      "value": "Other Work Permit"
+    }
+  ],
+  "nigeria": [
+    {
+      "label": "Nigerian Citizen",
+      "value": "Nigerian Citizen"
+    },
+    {
+      "label": "Permanent Residence Permit",
+      "value": "Permanent Residence Permit"
+    },
+    {
+      "label": "CERPAC (Residence & Work Permit)",
+      "value": "CERPAC (Residence & Work Permit)"
+    },
+    {
+      "label": "Subject to Immigration Control (STIR) Work Permit",
+      "value": "Subject to Immigration Control (STIR) Work Permit"
+    },
+    {
+      "label": "Temporary Work Permit",
+      "value": "Temporary Work Permit"
+    },
+    {
+      "label": "Student Visa (with work rights)",
+      "value": "Student Visa (with work rights)"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "south africa": [
+    {
+      "label": "South African Citizen",
+      "value": "South African Citizen"
+    },
+    {
+      "label": "Permanent Residence Permit",
+      "value": "Permanent Residence Permit"
+    },
+    {
+      "label": "Critical Skills Work Visa",
+      "value": "Critical Skills Work Visa"
+    },
+    {
+      "label": "General Work Visa",
+      "value": "General Work Visa"
+    },
+    {
+      "label": "Intra-Company Transfer Work Visa",
+      "value": "Intra-Company Transfer Work Visa"
+    },
+    {
+      "label": "Corporate Visa",
+      "value": "Corporate Visa"
+    },
+    {
+      "label": "Spousal / Partner Visa (with work rights)",
+      "value": "Spousal / Partner Visa (with work rights)"
+    },
+    {
+      "label": "Study Permit (with work rights)",
+      "value": "Study Permit (with work rights)"
+    },
+    {
+      "label": "Other Work Visa",
+      "value": "Other Work Visa"
+    }
+  ],
+  "india": [
+    {
+      "label": "Indian Citizen",
+      "value": "Indian Citizen"
+    },
+    {
+      "label": "Overseas Citizen of India (OCI)",
+      "value": "Overseas Citizen of India (OCI)"
+    },
+    {
+      "label": "Person of Indian Origin (PIO)",
+      "value": "Person of Indian Origin (PIO)"
+    },
+    {
+      "label": "Employment Visa",
+      "value": "Employment Visa"
+    },
+    {
+      "label": "Business Visa (with work rights)",
+      "value": "Business Visa (with work rights)"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "philippines": [
+    {
+      "label": "Filipino Citizen",
+      "value": "Filipino Citizen"
+    },
+    {
+      "label": "Permanent Resident",
+      "value": "Permanent Resident"
+    },
+    {
+      "label": "9(g) Working Visa",
+      "value": "9(g) Working Visa"
+    },
+    {
+      "label": "Special Non-Immigrant Visa",
+      "value": "Special Non-Immigrant Visa"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "ghana": [
+    {
+      "label": "Ghanaian Citizen",
+      "value": "Ghanaian Citizen"
+    },
+    {
+      "label": "Permanent Residence Permit",
+      "value": "Permanent Residence Permit"
+    },
+    {
+      "label": "Work Permit",
+      "value": "Work Permit"
+    },
+    {
+      "label": "Quota Work Permit",
+      "value": "Quota Work Permit"
+    },
+    {
+      "label": "Student Visa (with work rights)",
+      "value": "Student Visa (with work rights)"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "kenya": [
+    {
+      "label": "Kenyan Citizen",
+      "value": "Kenyan Citizen"
+    },
+    {
+      "label": "Permanent Residence",
+      "value": "Permanent Residence"
+    },
+    {
+      "label": "Class G Work Permit",
+      "value": "Class G Work Permit"
+    },
+    {
+      "label": "Dependent Pass (with work rights)",
+      "value": "Dependent Pass (with work rights)"
+    },
+    {
+      "label": "Special Pass",
+      "value": "Special Pass"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "uganda": [
+    {
+      "label": "Ugandan Citizen",
+      "value": "Ugandan Citizen"
+    },
+    {
+      "label": "Permanent Residence",
+      "value": "Permanent Residence"
+    },
+    {
+      "label": "Work Permit (Class G)",
+      "value": "Work Permit (Class G)"
+    },
+    {
+      "label": "Dependent Pass (with work rights)",
+      "value": "Dependent Pass (with work rights)"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "zimbabwe": [
+    {
+      "label": "Zimbabwean Citizen",
+      "value": "Zimbabwean Citizen"
+    },
+    {
+      "label": "Permanent Residence",
+      "value": "Permanent Residence"
+    },
+    {
+      "label": "Temporary Employment Permit",
+      "value": "Temporary Employment Permit"
+    },
+    {
+      "label": "Work Permit",
+      "value": "Work Permit"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "cameroon": [
+    {
+      "label": "Cameroonian Citizen",
+      "value": "Cameroonian Citizen"
+    },
+    {
+      "label": "Permanent Residence",
+      "value": "Permanent Residence"
+    },
+    {
+      "label": "Work Permit",
+      "value": "Work Permit"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ],
+  "generic": [
+    {
+      "label": "Citizen / National",
+      "value": "Citizen / National"
+    },
+    {
+      "label": "Permanent Resident",
+      "value": "Permanent Resident"
+    },
+    {
+      "label": "Sponsored Work Visa",
+      "value": "Sponsored Work Visa"
+    },
+    {
+      "label": "Temporary Work Visa",
+      "value": "Temporary Work Visa"
+    },
+    {
+      "label": "Student Visa (with work rights)",
+      "value": "Student Visa (with work rights)"
+    },
+    {
+      "label": "Other",
+      "value": "Other"
+    }
+  ]
+}
