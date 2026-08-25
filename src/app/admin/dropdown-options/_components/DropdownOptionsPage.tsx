@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { FaPlus } from "react-icons/fa6";
-import { ListChecks, Trash2 } from "lucide-react";
+import { ListChecks, Search, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PageHeader from "@/components/PageHeader/PageHeader";
 import {
@@ -35,6 +36,13 @@ const findSiblings = (items: DropdownOptionRow[], id: string): DropdownOptionRow
 const countAll = (items: DropdownOptionRow[]): number =>
   items.reduce((sum, item) => sum + 1 + (item.children ? countAll(item.children) : 0), 0);
 
+const countActive = (items: DropdownOptionRow[]): number =>
+  items.reduce(
+    (sum, item) =>
+      sum + (item.isActive ? 1 : 0) + (item.children ? countActive(item.children) : 0),
+    0,
+  );
+
 export default function DropdownOptionsPage() {
   const [activeTab, setActiveTab] = useState<DropdownOptionListKey>("job_types");
   const [selectedOption, setSelectedOption] = useState<DropdownOptionRow | null>(null);
@@ -44,6 +52,11 @@ export default function DropdownOptionsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [recycleBinOpen, setRecycleBinOpen] = useState(false);
+  // Grouped categories (industries especially, ~425 rows across 19 groups)
+  // render every group's children at once otherwise — collapsed by default,
+  // a search auto-expands whichever groups actually match.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
 
   const isAdvertisers = activeTab === "advertisers";
   const allowChildren = GROUPED_LIST_KEYS.includes(activeTab);
@@ -51,9 +64,54 @@ export default function DropdownOptionsPage() {
   const { listDomain, deletedDomain, actions } = useDropdownOptions(activeTab, { recycleBinOpen });
   const items = useMemo(() => [...listDomain.items].sort((a, b) => a.sortOrder - b.sortOrder), [listDomain.items]);
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  // Filters to groups matching the search, or groups with at least one
+  // matching child (keeping only the matching children in that case) — the
+  // full tree is already in memory, so this is a cheap client-side filter,
+  // same idea as Advertisers' search but without a server round-trip.
+  const filteredItems = useMemo(() => {
+    if (!normalizedSearch) return items;
+    const matchesLabel = (row: DropdownOptionRow) => row.label.toLowerCase().includes(normalizedSearch);
+    return items.reduce<DropdownOptionRow[]>((acc, group) => {
+      if (matchesLabel(group)) {
+        acc.push(group);
+        return acc;
+      }
+      const matchingChildren = (group.children ?? []).filter(matchesLabel);
+      if (matchingChildren.length > 0) {
+        acc.push({ ...group, children: matchingChildren });
+      }
+      return acc;
+    }, []);
+  }, [items, normalizedSearch]);
+
+  const effectiveExpandedIds = normalizedSearch
+    ? new Set(filteredItems.map((g) => g.id))
+    : expandedIds;
+
+  const toggleExpand = (option: DropdownOptionRow) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(option.id)) next.delete(option.id);
+      else next.add(option.id);
+      return next;
+    });
+  };
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as DropdownOptionListKey);
+    setExpandedIds(new Set());
+    setSearchTerm("");
+  };
+
   const stats = useMemo(
     () => ({
       total: isAdvertisers ? listDomain.total : countAll(items),
+      // Only meaningful for non-paginated categories — `items` for
+      // advertisers is just the current page/search result, not the full
+      // ~3,350 rows, so an "active" count from it would be misleading.
+      active: isAdvertisers ? null : countActive(items),
       topLevel: items.length,
     }),
     [items, listDomain.total, isAdvertisers],
@@ -150,7 +208,7 @@ export default function DropdownOptionsPage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DropdownOptionListKey)}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex-wrap h-auto">
           {DROPDOWN_OPTION_LIST_KEYS.map((key) => (
             <TabsTrigger key={key} value={key}>
@@ -160,8 +218,8 @@ export default function DropdownOptionsPage() {
         </TabsList>
       </Tabs>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md">
-        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+      <div className="flex flex-wrap gap-3 sm:gap-4">
+        <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] w-56">
           <div className="relative flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white">
               <ListChecks size={16} />
@@ -173,7 +231,7 @@ export default function DropdownOptionsPage() {
           </div>
         </div>
         {allowChildren && (
-          <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+          <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] w-56">
             <div className="relative flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
                 <ListChecks size={16} />
@@ -181,6 +239,19 @@ export default function DropdownOptionsPage() {
               <div>
                 <p className="text-xl font-semibold text-gray-900 leading-none">{stats.topLevel}</p>
                 <p className="text-xs text-gray-500 mt-1">Groups</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {stats.active !== null && (
+          <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] w-56">
+            <div className="relative flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                <ListChecks size={16} />
+              </div>
+              <div>
+                <p className="text-xl font-semibold text-gray-900 leading-none">{stats.active}</p>
+                <p className="text-xs text-gray-500 mt-1">Active options</p>
               </div>
             </div>
           </div>
@@ -207,38 +278,56 @@ export default function DropdownOptionsPage() {
             <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin" />
           </div>
         ) : (
-          <div className="grid gap-2.5">
-            {items.map((option, index) => (
-              <OptionRow
-                key={option.id}
-                option={option}
-                depth={0}
-                isFirst={index === 0}
-                isLast={index === items.length - 1}
-                allowChildren={allowChildren}
-                togglingId={togglingId}
-                onMoveUp={(o) => void handleMove(o, "up")}
-                onMoveDown={(o) => void handleMove(o, "down")}
-                onToggleActive={(o) => void handleToggleActive(o)}
-                onEdit={(o) => {
-                  setSelectedOption(o);
-                  setCreateParent(null);
-                  setCreateEditOpen(true);
-                }}
-                onDelete={(o) => {
-                  setSelectedOption(o);
-                  setDeleteOpen(true);
-                }}
-                onAddChild={(parent) => {
-                  setSelectedOption(null);
-                  setCreateParent(parent);
-                  setCreateEditOpen(true);
-                }}
-              />
-            ))}
-            {items.length === 0 && (
-              <p className="text-sm text-gray-500 py-6 text-center">No options in this category yet.</p>
+          <div className="flex flex-col gap-3">
+            {allowChildren && (
+              <div className="relative max-w-sm">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={`Search ${DROPDOWN_OPTION_LIST_KEY_LABELS[activeTab].toLowerCase()}...`}
+                  className="pl-9"
+                />
+              </div>
             )}
+
+            <div className="grid gap-2.5">
+              {filteredItems.map((option, index) => (
+                <OptionRow
+                  key={option.id}
+                  option={option}
+                  depth={0}
+                  isFirst={index === 0}
+                  isLast={index === filteredItems.length - 1}
+                  allowChildren={allowChildren}
+                  togglingId={togglingId}
+                  isExpanded={effectiveExpandedIds.has(option.id)}
+                  onToggleExpand={toggleExpand}
+                  onMoveUp={(o) => void handleMove(o, "up")}
+                  onMoveDown={(o) => void handleMove(o, "down")}
+                  onToggleActive={(o) => void handleToggleActive(o)}
+                  onEdit={(o) => {
+                    setSelectedOption(o);
+                    setCreateParent(null);
+                    setCreateEditOpen(true);
+                  }}
+                  onDelete={(o) => {
+                    setSelectedOption(o);
+                    setDeleteOpen(true);
+                  }}
+                  onAddChild={(parent) => {
+                    setSelectedOption(null);
+                    setCreateParent(parent);
+                    setCreateEditOpen(true);
+                  }}
+                />
+              ))}
+              {filteredItems.length === 0 && (
+                <p className="text-sm text-gray-500 py-6 text-center">
+                  {normalizedSearch ? "No options match your search." : "No options in this category yet."}
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

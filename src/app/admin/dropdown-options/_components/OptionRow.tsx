@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { DropdownOptionRow } from "@/hooks/api/dropdown-option.api";
 
@@ -11,6 +11,8 @@ interface OptionRowProps {
   isLast: boolean;
   allowChildren: boolean;
   togglingId: string | null;
+  isExpanded: boolean;
+  onToggleExpand: (option: DropdownOptionRow) => void;
   onMoveUp: (option: DropdownOptionRow) => void;
   onMoveDown: (option: DropdownOptionRow) => void;
   onToggleActive: (option: DropdownOptionRow) => void;
@@ -26,6 +28,8 @@ export function OptionRow({
   isLast,
   allowChildren,
   togglingId,
+  isExpanded,
+  onToggleExpand,
   onMoveUp,
   onMoveDown,
   onToggleActive,
@@ -35,6 +39,7 @@ export function OptionRow({
 }: OptionRowProps) {
   const children = option.children ?? [];
   const sortedChildren = [...children].sort((a, b) => a.sortOrder - b.sortOrder);
+  const hasChildren = sortedChildren.length > 0;
 
   return (
     <div className={depth > 0 ? "border-l-2 border-gray-100 pl-4" : ""}>
@@ -58,6 +63,16 @@ export function OptionRow({
           </button>
         </div>
 
+        {hasChildren ? (
+          <button
+            title={isExpanded ? "Collapse" : "Expand"}
+            onClick={() => onToggleExpand(option)}
+            className="shrink-0 p-1 text-gray-500 hover:text-gray-800"
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        ) : null}
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="font-medium text-gray-900 truncate">{option.label}</p>
@@ -65,6 +80,9 @@ export function OptionRow({
               <span title="System option — value is protected">
                 <Lock size={12} className="text-indigo-500 shrink-0" />
               </span>
+            )}
+            {hasChildren && (
+              <span className="text-xs text-gray-400 shrink-0">({sortedChildren.length})</span>
             )}
           </div>
           <p className="text-xs text-gray-400 truncate">{option.value}</p>
@@ -102,7 +120,7 @@ export function OptionRow({
         </div>
       </div>
 
-      {sortedChildren.length > 0 && (
+      {hasChildren && isExpanded && (
         <div className="mt-2 grid gap-2 pl-3">
           {sortedChildren.map((child, index) => (
             <OptionRow
@@ -113,6 +131,8 @@ export function OptionRow({
               isLast={index === sortedChildren.length - 1}
               allowChildren={false}
               togglingId={togglingId}
+              isExpanded={false}
+              onToggleExpand={onToggleExpand}
               onMoveUp={onMoveUp}
               onMoveDown={onMoveDown}
               onToggleActive={onToggleActive}
