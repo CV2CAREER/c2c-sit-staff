@@ -29,7 +29,6 @@ const serializeVcs = (vcs: VCS, prompt: VCSPrompt | null) => ({
   active: vcs.active,
   activePromptId: vcs.activePromptId,
   prompt: prompt?.prompt ?? "",
-  aiPromptSection: prompt?.aiPromptSection ?? "",
   version: prompt?.version ?? null,
   category: vcs.category ?? null,
   model: vcs.model ?? null,
@@ -46,7 +45,6 @@ const serializeVersion = (v: VCSPrompt) => ({
   id: v.id,
   vcsId: v.vcsId ?? null,
   prompt: v.prompt,
-  aiPromptSection: v.aiPromptSection ?? "",
   version: v.version,
   status: v.status,
   createdBy: v.createdBy ?? null,
@@ -324,7 +322,7 @@ export class VcsPromptService {
   static async saveDraft(
     req: Request | undefined,
     vcsId: string,
-    data: { prompt: unknown; aiPromptSection?: unknown },
+    data: { prompt: unknown },
     actor: Actor,
   ) {
     try {
@@ -337,13 +335,11 @@ export class VcsPromptService {
       if (!nextPrompt) {
         throw new Error("Prompt text cannot be empty");
       }
-      const nextAiPromptSection = String(data.aiPromptSection ?? "").trim();
 
       let draft = await VCSPrompt.findOne({ where: { vcsId, status: "draft" } });
 
       if (draft) {
         draft.prompt = nextPrompt;
-        draft.aiPromptSection = nextAiPromptSection;
         draft.createdBy = actorLabel(actor);
         await draft.save();
       } else {
@@ -354,7 +350,6 @@ export class VcsPromptService {
         draft = await VCSPrompt.create({
           vcsId,
           prompt: nextPrompt,
-          aiPromptSection: nextAiPromptSection,
           version: nextVersion(liveVersion?.version),
           status: "draft",
           active: false,

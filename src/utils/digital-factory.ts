@@ -49,21 +49,13 @@ try {
 /**
  * Calls the Digital Ocean AI Agent using SDK (like Python code)
  */
-const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, instructionOverride?: string): Promise<string> => {
+const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise<string> => {
   logger.info(`[DigitalOcean AI] Using agent client with endpoint: ${GRADIENT_AGENT_ENDPOINT}`);
 
   // Only requested for callers that parse the response as JSON (e.g. CV
   // variant generation) — forcing this on plain-text callers (cover letter)
   // would be wrong, so it's opt-in per call rather than always-on.
   const responseFormat = jsonMode ? { response_format: { type: 'json_object' } } : {};
-
-  // The agent behind GRADIENT_AGENT_ENDPOINT has its own configured
-  // instructions (set on the DigitalOcean side), which act as its system
-  // prompt and can compete with — or entirely override — whatever we send
-  // as the user message. `instruction_override` (documented on the agent's
-  // own /openapi.json) replaces those default instructions for this one
-  // call. Opt-in per caller, same as jsonMode above.
-  const instructionOverrideParam = instructionOverride ? { instruction_override: instructionOverride } : {};
 
   try {
     const startTime = Date.now();
@@ -82,7 +74,6 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, instruct
           temperature: 0.7,
           max_tokens: 4000,
           ...responseFormat,
-          ...instructionOverrideParam,
         });
 
         const endTime = Date.now();
@@ -125,7 +116,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, instruct
 
     // METHOD 3: Fallback to direct API (final fallback)
     logger.info('[DigitalOcean AI] SDK methods failed, trying direct API...');
-    return await directApiFallback(prompt, startTime, jsonMode, instructionOverride);
+    return await directApiFallback(prompt, startTime, jsonMode);
 
   } catch (error: any) {
     logger.error(`[DigitalOcean AI] All methods failed:`, error.message);
@@ -136,7 +127,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, instruct
 /**
  * Direct API fallback (like Python's _direct_api_fallback)
  */
-const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, instructionOverride?: string): Promise<string> => {
+const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean): Promise<string> => {
   try {
     const headers = {
       'Authorization': `Bearer ${GRADIENT_AGENT_ACCESS_KEY}`,
@@ -153,7 +144,6 @@ const directApiFallback = async (prompt: string, startTime: number, jsonMode: bo
       max_tokens: 4000,
       stream: false,
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
-      ...(instructionOverride ? { instruction_override: instructionOverride } : {}),
     };
     
     // Use the full API endpoint path
@@ -223,24 +213,18 @@ const directApiFallback = async (prompt: string, startTime: number, jsonMode: bo
  * *parseable* JSON, not that its keys match any particular schema — schema
  * drift (e.g. `experience` vs `jobs`) is handled separately by each caller's
  * own normalization.
- *
- * `instructionOverride` replaces the agent's own configured instructions for
- * this call (see callDigitalOceanAgent) — opt-in per caller since the same
- * agent endpoint is shared by cover letter/interview pack/role titles, which
- * must keep whatever instructions are currently configured on the agent.
  */
 export const queryDigitalOceanAI = async (
   prompt: string,
   retryCount: number = 2,
   jsonMode: boolean = false,
-  instructionOverride?: string,
 ): Promise<string> => {
   logger.info(`[DigitalOcean AI] Processing prompt (${prompt.length} chars)`);
 
   for (let attempt = 1; attempt <= retryCount + 1; attempt++) {
     try {
       logger.info(`[DigitalOcean AI] Attempt ${attempt} of ${retryCount + 1}`);
-      const result = await callDigitalOceanAgent(prompt, jsonMode, instructionOverride);
+      const result = await callDigitalOceanAgent(prompt, jsonMode);
       
       if (!result || result.trim().length === 0) {
         throw new Error('Empty response');

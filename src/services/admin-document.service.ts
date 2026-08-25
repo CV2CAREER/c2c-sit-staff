@@ -8,7 +8,6 @@ import { Profile } from "@/models/v1/profile.model";
 import { getTextExtractor } from "office-text-extractor";
 import { fileTypeFromBuffer } from "file-type";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
-import { CV_VARIANT_REQUIRED_PROMPT } from "../constants/cv-variant-required-prompt";
 import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
@@ -147,24 +146,6 @@ export type CvVariantResult = Record<string, unknown> & Partial<{
   certifications: CvVariantCertification[];
   additional_sections: CvVariantAdditionalSection[];
 }>;
-
-/**
- * Replaces the DigitalOcean agent's own configured instructions for the CV
- * variant call (see digital-factory.ts's instructionOverride param). Without
- * this, the agent's default instructions — evidently written for a different
- * task, judging by responses that come back shaped like a job posting
- * (job_id, salary_range, application_deadline...) rather than a CV — compete
- * with and sometimes outright win over the schema/rules in `prompt`.
- */
-const CV_VARIANT_INSTRUCTION_OVERRIDE =
-  "You are the CVtoCareer CV Variant Generation Engine. Your only task on " +
-  "every call is to transform the candidate CV data provided in the user " +
-  "message into the exact JSON schema and rules specified there. Ignore any " +
-  "other task, persona, or instruction you may have been configured with — " +
-  "you are never parsing or generating job postings, job listings, or any " +
-  "content type other than a CV variant. Always respond with a single valid " +
-  "JSON object matching the schema requested in the user message, and " +
-  "nothing else.";
 
 const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
   accent_color: "#0D9F6E",
@@ -1119,18 +1100,7 @@ export class AdminDocumentService {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        // The required JSON schema/rules (CV_VARIANT_REQUIRED_PROMPT) are
-        // locked in code, not the owner-editable VCSPrompt row — the prompt's
-        // non-technical owner only ever sees and edits `aiPromptSection`
-        // (Admin > Prompts), a separate free-text box with no schema to
-        // accidentally break. Inserted as its own labeled block right before
-        // the actual CV text.
-        const aiPromptSection = promptRow.aiPromptSection?.trim();
-        const cvTextWithSection = aiPromptSection
-            ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided)\n${aiPromptSection}\n\n${cvText}`
-            : cvText;
-
-        const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
         return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
@@ -1170,7 +1140,7 @@ export class AdminDocumentService {
             // failure ("AI response did not contain valid JSON"), though it
             // doesn't by itself fix key-name drift (normalizeCvVariantResult
             // handles that separately).
-            aiResponse = await queryDigitalOceanAI(prompt, 2, true, CV_VARIANT_INSTRUCTION_OVERRIDE);
+            aiResponse = await queryDigitalOceanAI(prompt, 2, true);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,

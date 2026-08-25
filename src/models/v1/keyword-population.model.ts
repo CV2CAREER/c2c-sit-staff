@@ -42,15 +42,6 @@ export class VCSPrompt extends Model {
   @Column(DataType.TEXT)
   prompt!: string;
 
-  // Free-form text the prompt's owner can edit without touching the
-  // required schema/rules above (`prompt`) — combined with it at generation
-  // time (see AdminDocumentService.getCvVariantPrompt). Lets the owner steer
-  // tone/formatting/emphasis without risking the JSON schema our renderers
-  // depend on.
-  @AllowNull(true)
-  @Column(DataType.TEXT)
-  aiPromptSection?: string;
-
   @AllowNull(false)
   @Column(DataType.STRING)
   version!: string;
