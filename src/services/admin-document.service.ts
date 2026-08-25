@@ -1100,7 +1100,18 @@ export class AdminDocumentService {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        // aiPromptSection is the owner-editable free-text box in Admin >
+        // Prompts, kept separate from `prompt` (the required schema/rules)
+        // so the owner can steer tone/formatting without risking the JSON
+        // schema our renderers depend on. Inserted as its own labeled block
+        // right before the actual CV text, whatever the surrounding template
+        // looks like.
+        const aiPromptSection = promptRow.aiPromptSection?.trim();
+        const cvTextWithSection = aiPromptSection
+            ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided)\n${aiPromptSection}\n\n${cvText}`
+            : cvText;
+
+        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
         return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
