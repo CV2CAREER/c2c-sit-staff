@@ -7,7 +7,6 @@ export interface VcsPrompt {
   active: boolean;
   activePromptId: string;
   prompt: string;
-  aiPromptSection: string;
   version: string | null;
   category: string | null;
   model: string | null;
@@ -26,7 +25,6 @@ export interface VcsPromptVersion {
   id: string;
   vcsId: string | null;
   prompt: string;
-  aiPromptSection: string;
   version: string;
   status: VcsPromptVersionStatus;
   createdBy: string | null;
@@ -116,7 +114,7 @@ export const useVcsPromptVersions = (vcsId: string, enabled = true) => {
 
 // POST /api/v1/admin/prompts/{vcsId}/draft
 export const useSaveVcsPromptDraft = () => {
-  return useMutateData<VcsPromptVersion, { vcsId: string; prompt: string; aiPromptSection?: string }>({
+  return useMutateData<VcsPromptVersion, { vcsId: string; prompt: string }>({
     method: "POST",
     url: (data) => endpoints.ADMIN_VCS_PROMPT_DRAFT(data.vcsId),
     mutationKey: ["save-vcs-prompt-draft"],

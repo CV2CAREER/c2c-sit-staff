@@ -19,12 +19,6 @@ import {
 } from "../hooks/use-vcs-prompts";
 import { useVcsPromptSimulationRuns } from "../hooks/use-vcs-prompt-simulations";
 
-// Prompt keys whose required JSON schema/rules are locked in backend code
-// (see cv-variant-required-prompt.ts) rather than the owner-editable
-// VCSPrompt row — the prompt's non-technical owner only ever sees and edits
-// the free-form AI Prompt box below, with nothing technical to break.
-const LOCKED_SCHEMA_PROMPT_KEYS = new Set(["cv_variant_generation_prompt"]);
-
 const formatRelative = (value: string) => {
   const diffMs = Date.now() - new Date(value).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -58,11 +52,8 @@ const PromptEditView = ({
   const { mutateAsync: updateMetadata, isPending: isSavingMetadata } = useUpdateVcsPrompt();
 
   const baselinePrompt = draftVersion?.prompt ?? liveVersion?.prompt ?? vcs.prompt;
-  const baselineAiPromptSection =
-    draftVersion?.aiPromptSection ?? liveVersion?.aiPromptSection ?? vcs.aiPromptSection ?? "";
 
   const [promptText, setPromptText] = useState(baselinePrompt);
-  const [aiPromptSection, setAiPromptSection] = useState(baselineAiPromptSection);
   const [category, setCategory] = useState(vcs.category ?? "");
   const [model, setModel] = useState(vcs.model ?? "");
   const [temperature, setTemperature] = useState(
@@ -74,7 +65,6 @@ const PromptEditView = ({
 
   useEffect(() => {
     setPromptText(baselinePrompt);
-    setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
     setTemperature(
@@ -88,7 +78,6 @@ const PromptEditView = ({
 
   const isDirty =
     promptText !== baselinePrompt ||
-    aiPromptSection !== baselineAiPromptSection ||
     category !== (vcs.category ?? "") ||
     model !== (vcs.model ?? "") ||
     temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") ||
@@ -98,7 +87,6 @@ const PromptEditView = ({
 
   const handleDiscard = () => {
     setPromptText(baselinePrompt);
-    setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
     setTemperature(
@@ -109,8 +97,8 @@ const PromptEditView = ({
 
   const handleSaveDraft = async () => {
     try {
-      if (promptText !== baselinePrompt || aiPromptSection !== baselineAiPromptSection) {
-        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText, aiPromptSection });
+      if (promptText !== baselinePrompt) {
+        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText });
         const savedDraft = result.data;
         // Patch the cache directly with the fresh draft row instead of
         // waiting on the background refetch below — otherwise "Push to
@@ -276,46 +264,18 @@ const PromptEditView = ({
           </TabsList>
 
           <TabsContent value="edit" className="flex flex-1 flex-col gap-3">
-            {LOCKED_SCHEMA_PROMPT_KEYS.has(vcs.key) ? (
-              <>
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  AI Prompt
-                </label>
-                <p className="text-xs text-gray-500">
-                  This is the only thing you can change. Write instructions in plain language —
-                  tone, emphasis, formatting, anything you want the AI to do differently. It's
-                  combined automatically with the required CV formatting rules every time a CV is
-                  generated, so you don't need to worry about breaking anything.
-                </p>
-                <Textarea
-                  value={aiPromptSection}
-                  onChange={(e) => setAiPromptSection(e.target.value)}
-                  placeholder="e.g. Make the tone more formal, and put the company name and dates on the same line, separated by a comma."
-                  className="min-h-[280px] flex-1 font-mono text-sm leading-relaxed"
-                />
-
-                <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
-                  💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it —
-                  production keeps using the current live version until you do. Generate a real CV
-                  to see the effect — the Simulate tab doesn't reflect this box yet.
-                </div>
-              </>
-            ) : (
-              <>
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Prompt template
-                </label>
-                <Textarea
-                  value={promptText}
-                  onChange={(e) => setPromptText(e.target.value)}
-                  className="min-h-[340px] flex-1 font-mono text-sm leading-relaxed"
-                />
-                <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
-                  💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it —
-                  production keeps reading the current live version until you do.
-                </div>
-              </>
-            )}
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Prompt template
+            </label>
+            <Textarea
+              value={promptText}
+              onChange={(e) => setPromptText(e.target.value)}
+              className="min-h-[340px] flex-1 font-mono text-sm leading-relaxed"
+            />
+            <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
+              💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it — production
+              keeps reading the current live version until you do.
+            </div>
           </TabsContent>
 
           <TabsContent value="simulate" className="flex flex-1 flex-col">

@@ -52,7 +52,6 @@ const PromptDetailContent = ({ id }: { id: string }) => {
       id: prompt.activePromptId,
       vcsId: prompt.id,
       prompt: prompt.prompt,
-      aiPromptSection: prompt.aiPromptSection ?? "",
       version: prompt.version || "1",
       status: "live",
       createdBy: null,
