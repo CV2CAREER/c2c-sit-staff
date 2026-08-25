@@ -185,6 +185,90 @@ function sanitizeCvVariantDesign(design: unknown, styleVariantHint?: unknown): C
   return { accent_color, font_family, density, style_variant };
 }
 
+// Known aliases the model has drifted into for the experience section's key
+// name, in place of `experience`.
+const EXPERIENCE_KEY_ALIASES = [
+  "jobs",
+  "work_history",
+  "employment_history",
+  "professional_experience",
+  "work_experience",
+  "roles",
+];
+
+// Within one experience entry, known aliases for a plain descriptive
+// paragraph the model has returned instead of a `bullets` array.
+const ENTRY_SUMMARY_KEY_ALIASES = [
+  "job_description_summary",
+  "description",
+  "role_summary",
+  "responsibilities_summary",
+];
+
+/** `{skill: "JavaScript"}` -> `"JavaScript"` — same single-key-wrapper pattern the frontend's extractText unwraps, mirrored here so the admin sees a clean list even before it reaches the renderer. */
+const flattenSkillEntry = (entry: unknown): string | undefined => {
+  if (typeof entry === "string") return entry.trim() || undefined;
+  if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+    const keys = Object.keys(entry as Record<string, unknown>);
+    if (keys.length === 1) {
+      const only = (entry as Record<string, unknown>)[keys[0]];
+      if (typeof only === "string") return only.trim() || undefined;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * The CV variant prompt's JSON schema is a *hint* to the model, not an
+ * enforced contract — the underlying AI call has no response_format/schema
+ * constraint (see digital-factory.ts), so key names and shapes drift between
+ * calls even with an unchanged prompt. This canonicalizes the specific drift
+ * patterns observed in practice (experience under a different key, a single
+ * summary paragraph instead of bullets, skills wrapped in single-key
+ * objects) so the admin sees correctly-formatted content in the review step
+ * instead of the renderer's generic fallback labeling every field by its raw
+ * key name. Extend the alias lists above as new drift patterns are found —
+ * this is necessarily reactive, not exhaustive.
+ */
+function normalizeCvVariantResult(result: CvVariantResult): CvVariantResult {
+  const obj = result as Record<string, unknown>;
+
+  // 1. Experience section returned under an alias key.
+  if (!Array.isArray(obj.experience)) {
+    const aliasKey = EXPERIENCE_KEY_ALIASES.find((key) => Array.isArray(obj[key]));
+    if (aliasKey) {
+      obj.experience = obj[aliasKey];
+      delete obj[aliasKey];
+    }
+  }
+
+  // 2. Per-entry: a single summary paragraph instead of a bullets array.
+  if (Array.isArray(obj.experience)) {
+    obj.experience = (obj.experience as unknown[]).map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+      const e = entry as Record<string, unknown>;
+      if (Array.isArray(e.bullets) && e.bullets.length > 0) return e;
+
+      const summaryKey = ENTRY_SUMMARY_KEY_ALIASES.find(
+        (key) => typeof e[key] === "string" && (e[key] as string).trim(),
+      );
+      if (summaryKey) {
+        const text = (e[summaryKey] as string).trim();
+        delete e[summaryKey];
+        e.bullets = [text];
+      }
+      return e;
+    });
+  }
+
+  // 3. Skills as an array of single-key wrapper objects instead of plain strings.
+  if (Array.isArray(obj.skills)) {
+    obj.skills = (obj.skills as unknown[]).map((entry) => flattenSkillEntry(entry) ?? entry);
+  }
+
+  return obj as CvVariantResult;
+}
+
 export class AdminDocumentService {
 
 
@@ -1051,7 +1135,12 @@ export class AdminDocumentService {
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            aiResponse = await queryDigitalOceanAI(prompt);
+            // jsonMode: this response is always parsed as JSON below — asking
+            // the API to guarantee valid JSON cuts out one whole class of
+            // failure ("AI response did not contain valid JSON"), though it
+            // doesn't by itself fix key-name drift (normalizeCvVariantResult
+            // handles that separately).
+            aiResponse = await queryDigitalOceanAI(prompt, 2, true);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,
@@ -1096,13 +1185,16 @@ export class AdminDocumentService {
             throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
 
+        result = normalizeCvVariantResult(result);
+
         if (!result.header || !Array.isArray(result.experience)) {
             // The prompt's schema is a hint, not a contract — the AI (or a
-            // reworked prompt) can return a differently-shaped object. Don't
-            // fail the whole generation over it; log the drift for
-            // visibility and let the frontend's generic renderer handle
-            // whatever shape actually came back.
-            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId}. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
+            // reworked prompt) can return a differently-shaped object.
+            // normalizeCvVariantResult above already canonicalizes the known
+            // drift patterns; anything still unrecognized after that gets
+            // logged for visibility and handled by the frontend's generic
+            // renderer rather than failing the whole generation.
+            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId} even after normalization. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
         }
 
         result.design = sanitizeCvVariantDesign(result.design, result.style_variant);

@@ -49,17 +49,22 @@ try {
 /**
  * Calls the Digital Ocean AI Agent using SDK (like Python code)
  */
-const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
+const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise<string> => {
   logger.info(`[DigitalOcean AI] Using agent client with endpoint: ${GRADIENT_AGENT_ENDPOINT}`);
-  
+
+  // Only requested for callers that parse the response as JSON (e.g. CV
+  // variant generation) — forcing this on plain-text callers (cover letter)
+  // would be wrong, so it's opt-in per call rather than always-on.
+  const responseFormat = jsonMode ? { response_format: { type: 'json_object' } } : {};
+
   try {
     const startTime = Date.now();
-    
+
     // METHOD 1: Try Agent Inference first (like Python)
     if (agentClient && agentClient.agents) {
       try {
         logger.info('[DigitalOcean AI] Trying Agent Inference via SDK...');
-        
+
         const agentResponse = await agentClient.agents.chat.completions.create({
           messages: [{
             role: 'user',
@@ -68,11 +73,12 @@ const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
           model: 'llama3.3-70b-instruct',
           temperature: 0.7,
           max_tokens: 4000,
+          ...responseFormat,
         });
-        
+
         const endTime = Date.now();
         logger.info(`[DigitalOcean AI] Agent responded in ${endTime - startTime}ms`);
-        
+
         if (agentResponse && agentResponse.choices && agentResponse.choices[0]) {
           return agentResponse.choices[0].message.content || '';
         }
@@ -80,12 +86,12 @@ const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
         logger.warn(`[DigitalOcean AI] Agent SDK error: ${agentError.message.substring(0, 100)}`);
       }
     }
-    
+
     // METHOD 2: Try Serverless Inference (fallback)
     if (apiClient && apiClient.chat) {
       try {
         logger.info('[DigitalOcean AI] Trying Serverless Inference via SDK...');
-        
+
         const inferenceResponse = await apiClient.chat.completions.create({
           messages: [{
             role: 'user',
@@ -94,11 +100,12 @@ const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
           model: 'llama3.3-70b-instruct',
           temperature: 0.7,
           max_tokens: 4000,
+          ...responseFormat,
         });
-        
+
         const endTime = Date.now();
         logger.info(`[DigitalOcean AI] Serverless responded in ${endTime - startTime}ms`);
-        
+
         if (inferenceResponse && inferenceResponse.choices && inferenceResponse.choices[0]) {
           return inferenceResponse.choices[0].message.content || '';
         }
@@ -106,11 +113,11 @@ const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
         logger.warn(`[DigitalOcean AI] Serverless SDK error: ${inferenceError.message.substring(0, 100)}`);
       }
     }
-    
+
     // METHOD 3: Fallback to direct API (final fallback)
     logger.info('[DigitalOcean AI] SDK methods failed, trying direct API...');
-    return await directApiFallback(prompt, startTime);
-    
+    return await directApiFallback(prompt, startTime, jsonMode);
+
   } catch (error: any) {
     logger.error(`[DigitalOcean AI] All methods failed:`, error.message);
     throw error;
@@ -120,13 +127,13 @@ const callDigitalOceanAgent = async (prompt: string): Promise<string> => {
 /**
  * Direct API fallback (like Python's _direct_api_fallback)
  */
-const directApiFallback = async (prompt: string, startTime: number): Promise<string> => {
+const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean): Promise<string> => {
   try {
     const headers = {
       'Authorization': `Bearer ${GRADIENT_AGENT_ACCESS_KEY}`,
       'Content-Type': 'application/json',
     };
-    
+
     const payload = {
       messages: [{
         role: 'user',
@@ -136,6 +143,7 @@ const directApiFallback = async (prompt: string, startTime: number): Promise<str
       temperature: 0.7,
       max_tokens: 4000,
       stream: false,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
     };
     
     // Use the full API endpoint path
@@ -196,15 +204,27 @@ const directApiFallback = async (prompt: string, startTime: number): Promise<str
 };
 
 /**
- * Queries Digital Ocean AI with retry logic
+ * Queries Digital Ocean AI with retry logic.
+ *
+ * `jsonMode` requests `response_format: { type: "json_object" }` from the
+ * underlying API — opt-in per call since only some callers (e.g. CV variant
+ * generation) parse the response as JSON; cover letter generation and others
+ * expect plain text and must not set this. It guarantees the response is
+ * *parseable* JSON, not that its keys match any particular schema — schema
+ * drift (e.g. `experience` vs `jobs`) is handled separately by each caller's
+ * own normalization.
  */
-export const queryDigitalOceanAI = async (prompt: string, retryCount: number = 2): Promise<string> => {
+export const queryDigitalOceanAI = async (
+  prompt: string,
+  retryCount: number = 2,
+  jsonMode: boolean = false,
+): Promise<string> => {
   logger.info(`[DigitalOcean AI] Processing prompt (${prompt.length} chars)`);
-  
+
   for (let attempt = 1; attempt <= retryCount + 1; attempt++) {
     try {
       logger.info(`[DigitalOcean AI] Attempt ${attempt} of ${retryCount + 1}`);
-      const result = await callDigitalOceanAgent(prompt);
+      const result = await callDigitalOceanAgent(prompt, jsonMode);
       
       if (!result || result.trim().length === 0) {
         throw new Error('Empty response');
