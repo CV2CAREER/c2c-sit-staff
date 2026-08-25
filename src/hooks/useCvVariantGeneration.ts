@@ -105,6 +105,24 @@ type SaveCvVariantResponse = {
   upload: { document: CvVariantDocument };
 };
 
+type PreviewCvVariantPayload = {
+  userId: string;
+  resumeUploadId: string;
+  cvVariant: string;
+  format: SaveCvVariantFormat;
+  design?: CvVariantDesign;
+};
+
+// Pulls the filename the backend set via Content-Disposition — falls back to
+// a generic name if it's ever missing rather than failing the download.
+const filenameFromContentDisposition = (
+  header: string | undefined,
+  fallback: string,
+): string => {
+  const match = header?.match(/filename="?([^";]+)"?/);
+  return match?.[1] || fallback;
+};
+
 /**
  * Generate/save/download actions behind the "Generate CV Variant" column —
  * mirrors useCoverLetterGeneration's hook shape.
@@ -145,9 +163,27 @@ export function useCvVariantGeneration() {
     return response.data.data.url;
   };
 
+  // Renders a not-yet-saved CV variant to a real file so an admin can check
+  // it before deciding to save — nothing here touches the client's
+  // Document History or onboarding progress.
+  const previewMutation = useMutation({
+    mutationFn: async (payload: PreviewCvVariantPayload) => {
+      const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_CV_VARIANT, payload, {
+        responseType: "blob",
+      });
+      const filename = filenameFromContentDisposition(
+        response.headers["content-disposition"],
+        `CV_Variant_Preview.${payload.format}`,
+      );
+      return { blob: response.data as Blob, filename };
+    },
+  });
+
   return {
     generateCvVariant: generateMutation.mutateAsync,
     isGenerating: generateMutation.isPending,
+    previewCvVariant: previewMutation.mutateAsync,
+    isPreviewing: previewMutation.isPending,
     saveCvVariant: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
     savingFormat: saveMutation.variables?.format,
