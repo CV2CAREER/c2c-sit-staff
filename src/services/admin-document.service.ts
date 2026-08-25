@@ -839,7 +839,10 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
-            isActive: true,
+            // Admin-generated documents start inactive — the client can't
+            // see it until a staff member reviews and activates it via
+            // PATCH /uploads/:id/activate.
+            isActive: false,
         });
 
         logger.info(`[SaveCoverLetter] Saved cover letter upload ${upload.id} for user ${targetUserId}`);
@@ -1129,7 +1132,10 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
-            isActive: true,
+            // Admin-generated documents start inactive — the client can't
+            // see it until a staff member reviews and activates it via
+            // PATCH /uploads/:id/activate.
+            isActive: false,
         });
 
         // Advance the client's onboarding progress bar to the
@@ -1204,7 +1210,10 @@ export class AdminDocumentService {
             },
             status: UploadStatus.REVISED,
             source: UploadSource.ADMIN,
-            isActive: true,
+            // Admin-generated documents start inactive — the client can't
+            // see it until a staff member reviews and activates it via
+            // PATCH /uploads/:id/activate.
+            isActive: false,
         });
 
         logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);
