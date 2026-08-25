@@ -1308,10 +1308,10 @@ export const saveManualApplication = async (
       if (!config.enabled) return;
 
       const profile = await Profile.findOne({
-        where: { userId: manualApplication.client_id, isActive: true },
+        where: { userId: manualApplication.client_id, name: 'primary' },
       });
       if (!profile) {
-        logger.warn(`No active profile found for client ${manualApplication.client_id} — skipping AI vetting`);
+        logger.warn(`No primary profile found for client ${manualApplication.client_id} — skipping AI vetting`);
         return;
       }
 

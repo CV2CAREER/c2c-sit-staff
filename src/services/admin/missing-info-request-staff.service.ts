@@ -11,6 +11,7 @@ import { sendMail } from "@/config/sendGrid";
 import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
 import { JustCallTriggerService } from "@/services/justcall.service";
 import { SlackService } from "@/services/slack.service";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { auditTrailApplicationService } from "./audit-trail.application.service";
 import {
   SlackChannel,
@@ -87,45 +88,66 @@ export class MissingInfoRequestStaffService {
     setImmediate(async () => {
       try {
         if (data.channel === "email") {
-          const fieldLabels = fields
-            .filter((f: any) => f.isVisible)
-            .map((f: any) => f.fieldLabel)
-            .join(", ");
+          let clientEmail = client.email as string | null | undefined;
 
-          await Promise.allSettled([
-            sendMail({
-              email: client.email,
-              subject: `Action Required: Information needed for your application`,
-              templateName: "client-missing-info-v2.ejs",
-              templateData: {
-                name: client.firstName || "there",
-                templateName: template.name,
-                fieldLabels,
-                refereeCount: template.type === "referee_block"
-                  ? Math.max(...fields.map((f: any) => f.refereeBlockIndex || 0))
-                  : null,
-                personalMessage: data.personalMessage || null,
-                updateMissingInfoUrl,
-                currentYear: new Date().getFullYear(),
-              },
-            }),
-            sendMail({
-              email: TEAM_EMAIL,
-              subject: `Missing Info Request Sent — ${client.firstName} ${client.lastName || ""}`,
-              templateName: "admin-missing-info-v2.ejs",
-              templateData: {
-                clientName: `${client.firstName || ""} ${client.lastName || ""}`.trim(),
-                clientEmail: client.email,
-                templateName: template.name,
-                category: template.category.replace(/_/g, " "),
-                fieldCount: fields.length,
-                updateMissingInfoUrl,
-                triggeredBy: staffName,
-                channel: "email",
-                currentYear: new Date().getFullYear(),
-              },
-            }),
-          ]);
+          if (!clientEmail) {
+            try {
+              const decrypted = await fieldEncryption.getDecryptedUsersBatch([data.clientId]);
+              const contact = decrypted.get(data.clientId);
+              if (contact?.email) {
+                clientEmail = contact.email;
+                logger.info(`Initial send: resolved email via field_encryption fallback for ${data.clientId}`);
+              }
+            } catch (decErr: any) {
+              logger.warn(`Initial send: field_encryption fallback failed for ${data.clientId}: ${decErr?.message || decErr}`);
+            }
+          }
+
+          if (!clientEmail) {
+            logger.error(
+              `Initial send email skipped for client ${data.clientId} — no resolvable email found`,
+            );
+          } else {
+            const fieldLabels = fields
+              .filter((f: any) => f.isVisible)
+              .map((f: any) => f.fieldLabel)
+              .join(", ");
+
+            await Promise.allSettled([
+              sendMail({
+                email: clientEmail,
+                subject: `Action Required: Information needed for your application`,
+                templateName: "client-missing-info-v2.ejs",
+                templateData: {
+                  name: client.firstName || "there",
+                  templateName: template.name,
+                  fieldLabels,
+                  refereeCount: template.type === "referee_block"
+                    ? Math.max(...fields.map((f: any) => f.refereeBlockIndex || 0))
+                    : null,
+                  personalMessage: data.personalMessage || null,
+                  updateMissingInfoUrl,
+                  currentYear: new Date().getFullYear(),
+                },
+              }),
+              sendMail({
+                email: TEAM_EMAIL,
+                subject: `Missing Info Request Sent — ${client.firstName} ${client.lastName || ""}`,
+                templateName: "admin-missing-info-v2.ejs",
+                templateData: {
+                  clientName: `${client.firstName || ""} ${client.lastName || ""}`.trim(),
+                  clientEmail: clientEmail,
+                  templateName: template.name,
+                  category: template.category.replace(/_/g, " "),
+                  fieldCount: fields.length,
+                  updateMissingInfoUrl,
+                  triggeredBy: staffName,
+                  channel: "email",
+                  currentYear: new Date().getFullYear(),
+                },
+              }),
+            ]);
+          }
         }
 
         if (data.channel === "whatsapp") {
@@ -365,7 +387,7 @@ export class MissingInfoRequestStaffService {
     const requests = await MissingInfoRequest.findAll({
       where: { id: requestIds },
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
         { model: MissingInfoTemplate, as: "template", attributes: ["id", "name"] },
       ],
     });
@@ -406,13 +428,28 @@ export class MissingInfoRequestStaffService {
               });
             }
 
-            if (req.channel === "email" && req.targetUser?.email) {
+            let bulkEmail = req.targetUser?.email as string | null | undefined;
+
+            if (req.channel === "email" && !bulkEmail) {
+              try {
+                const decrypted = await fieldEncryption.getDecryptedUsersBatch([req.targetUserId]);
+                const contact = decrypted.get(req.targetUserId);
+                if (contact?.email) {
+                  bulkEmail = contact.email;
+                  logger.info(`Bulk reminder: resolved email via field_encryption fallback for ${req.targetUserId}`);
+                }
+              } catch (decErr: any) {
+                logger.warn(`Bulk reminder: field_encryption fallback failed for ${req.targetUserId}: ${decErr?.message || decErr}`);
+              }
+            }
+
+            if (req.channel === "email" && bulkEmail) {
               await sendMail({
-                email: req.targetUser.email,
+                email: bulkEmail,
                 subject: `Reminder: Information needed for your application`,
                 templateName: "client-missing-info-v2.ejs",
                 templateData: {
-                  name: req.targetUser.firstName || "there",
+                  name: req.targetUser?.firstName || "there",
                   templateName: req.template?.name || "Missing Information",
                   fieldLabels: "",
                   refereeCount: null,
@@ -421,6 +458,10 @@ export class MissingInfoRequestStaffService {
                   currentYear: new Date().getFullYear(),
                 },
               });
+            } else if (req.channel === "email" && !bulkEmail) {
+              logger.warn(
+                `Bulk reminder email skipped for request ${req.id} — target user ${req.targetUserId} has no resolvable email`,
+              );
             }
 
             totalProcessed++;
@@ -778,6 +819,15 @@ export class MissingInfoRequestStaffService {
       throw new ErrorHandler("Only open requests can be reminded", 409);
     }
 
+    let fieldLabels = "";
+    if (request.templateId) {
+      const fields = await MissingInfoTemplateField.findAll({
+        where: { templateId: request.templateId, isVisible: true },
+        order: [["sortOrder", "ASC"]],
+      });
+      fieldLabels = fields.map((f: any) => f.fieldLabel).join(", ");
+    }
+
     const newCount = (request.reminderCount || 0) + 1;
     await request.update({ reminderCount: newCount, lastReminderAt: new Date() });
 
@@ -797,21 +847,40 @@ export class MissingInfoRequestStaffService {
           });
         }
 
-        if (request.channel === "email" && (request as any).targetUser?.email) {
+        let clientEmail = (request as any).targetUser?.email as string | null | undefined;
+
+        if (request.channel === "email" && !clientEmail) {
+          try {
+            const decrypted = await fieldEncryption.getDecryptedUsersBatch([request.targetUserId]);
+            const contact = decrypted.get(request.targetUserId);
+            if (contact?.email) {
+              clientEmail = contact.email;
+              logger.info(`Resolved target user email via field_encryption fallback: ${request.targetUserId}`);
+            }
+          } catch (decErr: any) {
+            logger.warn(`field_encryption fallback failed for ${request.targetUserId}: ${decErr?.message || decErr}`);
+          }
+        }
+
+        if (request.channel === "email" && clientEmail) {
           await sendMail({
-            email: (request as any).targetUser.email,
+            email: clientEmail,
             subject: `Reminder: Information needed for your application`,
             templateName: "client-missing-info-v2.ejs",
             templateData: {
-              name: (request as any).targetUser.firstName || "there",
+              name: (request as any).targetUser?.firstName || "there",
               templateName: templateName || "Missing Information",
-              fieldLabels: "",
+              fieldLabels,
               refereeCount: null,
-              personalMessage: null,
+              personalMessage: (request as any).personalMessage || null,
               updateMissingInfoUrl: request.missingInfoUrl,
               currentYear: new Date().getFullYear(),
             },
           });
+        } else if (request.channel === "email" && !clientEmail) {
+          logger.warn(
+            `Reminder email skipped for request ${request.id} — target user ${request.targetUserId} has no resolvable email (channel=${request.channel})`,
+          );
         }
 
         await SlackService.notify({
