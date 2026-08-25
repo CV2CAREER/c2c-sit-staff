@@ -108,13 +108,13 @@ export default function DropdownOptionsPage() {
   const stats = useMemo(
     () => ({
       total: isAdvertisers ? listDomain.total : countAll(items),
-      // Only meaningful for non-paginated categories — `items` for
-      // advertisers is just the current page/search result, not the full
-      // ~3,350 rows, so an "active" count from it would be misleading.
-      active: isAdvertisers ? null : countActive(items),
+      // Advertisers gets its active count from the backend (a real count
+      // over all matching rows) since `items` here is just the current
+      // page/search result, not the full ~3,350 rows.
+      active: isAdvertisers ? listDomain.activeTotal : countActive(items),
       topLevel: items.length,
     }),
-    [items, listDomain.total, isAdvertisers],
+    [items, listDomain.total, listDomain.activeTotal, isAdvertisers],
   );
 
   const handleToggleActive = async (option: DropdownOptionRow) => {
