@@ -78,11 +78,12 @@ const notifyUpload = (
 
     const fileLines = documents
       .map((doc) => {
-        // Role Title CSVs carry their parsed rows, so the alert can say how
-        // many titles were shared and that they still need client sign-off.
+        // Role Title CSV/XLSX uploads carry parsed rows the client confirms
+        // one by one; a PDF in this same category has no rows to confirm, so
+        // it's just a shared file like any other support document.
         const suffix =
-          doc.category ===
-          ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
+          doc.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+          (doc.roleTitles?.length ?? 0) > 0
             ? ` — Role Titles — ${doc.roleTitles?.length ?? 0} titles, awaiting client confirmation`
             : "";
 
@@ -113,10 +114,13 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
       logger.error(`❌ Slack notification failed: ${err}`);
     }
 
+    // Only true when there are actual rows for the client to confirm — a PDF
+    // upload in this category has none, so it shouldn't claim "needs your
+    // confirmation" in the email subject.
     const hasRoleTitles = documents.some(
       (doc) =>
-        doc.category ===
-        ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS,
+        doc.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+        (doc.roleTitles?.length ?? 0) > 0,
     );
     const fileList = documents.map((doc) => doc.filename).join(", ");
     const typeList = Array.from(
@@ -179,7 +183,14 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
 
 /** Allowed extensions per category — mirrors the staff UI. */
 const ALLOWED_EXTENSIONS: Record<ClientSupportDocumentCategory, string[]> = {
-  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: ["csv", "xlsx"],
+  // csv/xlsx carry structured role-title rows (extracted below); pdf is a
+  // plain document the client just views/downloads, same as the other
+  // support categories — no row extraction happens for it.
+  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: [
+    "csv",
+    "xlsx",
+    "pdf",
+  ],
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: [
     "png",
     "jpg",
@@ -203,6 +214,13 @@ export interface UploadSupportDocumentsInput {
   /** Staff user performing the upload. */
   uploadedBy?: string;
   files: IncomingSupportFile[];
+  /**
+   * Manual admin uploads go live immediately (default true) — an admin
+   * already reviewed the file before picking it. AI-generated content
+   * (saveAiRoleTitleRecommendations below) passes false so it starts
+   * inactive until a staff member reviews and activates it.
+   */
+  isActive?: boolean;
 }
 
 const extensionOf = (filename: string) =>
@@ -258,6 +276,7 @@ export const uploadClientSupportDocuments = async ({
   clientId,
   uploadedBy,
   files,
+  isActive = true,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
   const client = await User.findByPk(clientId, {
     attributes: ["id", "firstName", "lastName"],
@@ -288,7 +307,8 @@ export const uploadClientSupportDocuments = async ({
     let roleTitles: RoleTitleRow[] | undefined;
 
     if (
-      file.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
+      file.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+      extension !== "pdf"
     ) {
       const { rows, rowCount, extractionMethod } = await extractRoleTitles(
         buffer,
@@ -317,7 +337,7 @@ export const uploadClientSupportDocuments = async ({
       size: uploadResult.size,
       metadata,
       roleTitles,
-      isActive: true,
+      isActive,
       uploadedBy,
       uploadedAt: new Date(),
       updatedBy: uploadedBy,
@@ -330,9 +350,14 @@ export const uploadClientSupportDocuments = async ({
     created.push(record);
   }
 
-  // Documents are active immediately, so the client is notified right away
-  // instead of waiting on a separate admin activation step.
-  notifyUpload(client, created, uploadedBy);
+  // Manual uploads are active immediately, so the client is notified right
+  // away. AI-generated documents (isActive: false) stay silent here —
+  // activateClientSupportDocument fires the same notification once a staff
+  // member actually activates it, so the client isn't told about something
+  // they can't see yet.
+  if (isActive) {
+    notifyUpload(client, created, uploadedBy);
+  }
 
   return created;
 };
@@ -426,6 +451,9 @@ export const saveAiRoleTitleRecommendations = async (
           mimetype: "text/csv",
         },
       ],
+      // AI-generated — starts inactive until a staff member reviews and
+      // activates it, unlike a manual CSV/XLSX/PDF upload.
+      isActive: false,
     });
 
     // Attach the richer AI metadata (candidate name, qa flags, per-role

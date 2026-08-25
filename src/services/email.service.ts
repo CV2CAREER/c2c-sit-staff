@@ -362,7 +362,7 @@ export const sendPlanChangedEmail = async (
 ): Promise<void> => {
   await sendMail({
     email: options.email,
-    subject: `Your plan has been updated — CVtoCAREER`,
+    subject: `Your CVtoCAREER Plan Has Been Updated`,
     templateName: "plan-changed.ejs",
     templateData: {
       ...options,
