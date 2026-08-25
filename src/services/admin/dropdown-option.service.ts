@@ -62,13 +62,19 @@ export class DropdownOptionService {
       if (q) {
         where.label = { [Op.iLike]: `%${q}%` };
       }
-      const { rows, count } = await DropdownOption.findAndCountAll({
-        where,
-        order: [["label", "ASC"]],
-        limit,
-        offset: (page - 1) * limit,
-      });
-      return { items: rows, total: count, page, limit };
+      const [{ rows, count }, activeTotal] = await Promise.all([
+        DropdownOption.findAndCountAll({
+          where,
+          order: [["label", "ASC"]],
+          limit,
+          offset: (page - 1) * limit,
+        }),
+        // Cheap indexed count — lets the admin UI show a real "active"
+        // figure for this (paginated) category instead of one derived from
+        // just the current page, which would be misleading at this scale.
+        DropdownOption.count({ where: { ...where, isActive: true } }),
+      ]);
+      return { items: rows, total: count, activeTotal, page, limit };
     }
 
     const rows = await DropdownOption.findAll({
