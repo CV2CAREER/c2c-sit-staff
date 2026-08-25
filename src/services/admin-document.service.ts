@@ -147,6 +147,24 @@ export type CvVariantResult = Record<string, unknown> & Partial<{
   additional_sections: CvVariantAdditionalSection[];
 }>;
 
+/**
+ * Replaces the DigitalOcean agent's own configured instructions for the CV
+ * variant call (see digital-factory.ts's instructionOverride param). Without
+ * this, the agent's default instructions — evidently written for a different
+ * task, judging by responses that come back shaped like a job posting
+ * (job_id, salary_range, application_deadline...) rather than a CV — compete
+ * with and sometimes outright win over the schema/rules in `prompt`.
+ */
+const CV_VARIANT_INSTRUCTION_OVERRIDE =
+  "You are the CVtoCareer CV Variant Generation Engine. Your only task on " +
+  "every call is to transform the candidate CV data provided in the user " +
+  "message into the exact JSON schema and rules specified there. Ignore any " +
+  "other task, persona, or instruction you may have been configured with — " +
+  "you are never parsing or generating job postings, job listings, or any " +
+  "content type other than a CV variant. Always respond with a single valid " +
+  "JSON object matching the schema requested in the user message, and " +
+  "nothing else.";
+
 const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
   accent_color: "#0D9F6E",
   font_family: "sans",
@@ -1140,7 +1158,7 @@ export class AdminDocumentService {
             // failure ("AI response did not contain valid JSON"), though it
             // doesn't by itself fix key-name drift (normalizeCvVariantResult
             // handles that separately).
-            aiResponse = await queryDigitalOceanAI(prompt, 2, true);
+            aiResponse = await queryDigitalOceanAI(prompt, 2, true, CV_VARIANT_INSTRUCTION_OVERRIDE);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,
