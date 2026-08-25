@@ -140,6 +140,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Emails", href: "/admin/communication-templates", icon: Mail },
       { name: "Content", href: "/admin/communication/client-content", icon: FileText },
       { name: "Preference Questions", href: "/admin/preference-questions", icon: ListChecks },
+      { name: "Dropdown Options", href: "/admin/dropdown-options", icon: SlidersHorizontal },
       { name: "Missing Information", href: "/admin/missing-info-templates", icon: FileText },
       { name: "JustCall", href: "/admin/justcall", icon: Layers },
       { name: "Slack", href: "/admin/slack", icon: SiSlack },
