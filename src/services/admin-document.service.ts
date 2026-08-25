@@ -8,6 +8,7 @@ import { Profile } from "@/models/v1/profile.model";
 import { getTextExtractor } from "office-text-extractor";
 import { fileTypeFromBuffer } from "file-type";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { CV_VARIANT_REQUIRED_PROMPT } from "../constants/cv-variant-required-prompt";
 import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
@@ -1118,18 +1119,18 @@ export class AdminDocumentService {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        // aiPromptSection is the owner-editable free-text box in Admin >
-        // Prompts, kept separate from `prompt` (the required schema/rules)
-        // so the owner can steer tone/formatting without risking the JSON
-        // schema our renderers depend on. Inserted as its own labeled block
-        // right before the actual CV text, whatever the surrounding template
-        // looks like.
+        // The required JSON schema/rules (CV_VARIANT_REQUIRED_PROMPT) are
+        // locked in code, not the owner-editable VCSPrompt row — the prompt's
+        // non-technical owner only ever sees and edits `aiPromptSection`
+        // (Admin > Prompts), a separate free-text box with no schema to
+        // accidentally break. Inserted as its own labeled block right before
+        // the actual CV text.
         const aiPromptSection = promptRow.aiPromptSection?.trim();
         const cvTextWithSection = aiPromptSection
             ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided)\n${aiPromptSection}\n\n${cvText}`
             : cvText;
 
-        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
+        const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
         return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
