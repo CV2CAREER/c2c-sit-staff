@@ -48,7 +48,13 @@ export type DropdownOptionRow = {
 };
 
 type TreeListResponse = { items: DropdownOptionRow[] };
-type PagedListResponse = { items: DropdownOptionRow[]; total: number; page: number; limit: number };
+type PagedListResponse = {
+  items: DropdownOptionRow[];
+  total: number;
+  activeTotal: number;
+  page: number;
+  limit: number;
+};
 
 type CreateOptionPayload = {
   label: string;
@@ -155,6 +161,9 @@ export function useDropdownOptions(
     listDomain: {
       items,
       total: isPaged ? (listData as PagedListResponse | undefined)?.total ?? 0 : items.length,
+      // Only populated for paginated categories (advertisers) — the tree
+      // response doesn't need it since `items` already holds everything.
+      activeTotal: isPaged ? (listData as PagedListResponse | undefined)?.activeTotal ?? null : null,
       isLoading: listQuery.isLoading,
       isSuccess: listQuery.isSuccess,
       isError: listQuery.isError,
