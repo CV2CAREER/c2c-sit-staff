@@ -454,40 +454,58 @@ const drawGroupsFlowing = (
     const prefix = block.type === "bullet" ? "•  " : block.type === "ordered" ? "1. " : "";
     const align = opts.forceCenter && (block.kind === "title" || block.kind === "meta") ? "center" : block.align;
 
-    block.runs.forEach((run, runIndex) => {
-      let color = TEXT_COLORS.textDark;
-      let size = fontSize;
-      let bold = run.bold;
+    let color = TEXT_COLORS.textDark;
+    let bold = block.runs.every((r) => r.bold);
+    if (block.kind === "title") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    } else if (block.kind === "section") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    } else if (block.kind === "subsection") {
+      color = TEXT_COLORS.textDark;
+      bold = true;
+    } else if (block.kind === "meta") {
+      color = TEXT_COLORS.textMuted;
+    } else if (block.kind === "label") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    }
 
-      if (block.kind === "title") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-        size = fontSize;
-      } else if (block.kind === "section") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-      } else if (block.kind === "subsection") {
-        color = TEXT_COLORS.textDark;
-        bold = true;
-      } else if (block.kind === "meta") {
-        color = TEXT_COLORS.textMuted;
-      } else if (block.kind === "label") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-      }
-
+    if (align && align !== "left" && block.runs.length > 1) {
+      // pdfkit's `continued: true` (used below to mix per-run bold/underline
+      // on one line) is broken when combined with align "center"/"right" —
+      // each continued call recomputes its own aligned position independently
+      // instead of flowing after the previous one, so multi-run lines (e.g.
+      // a centered header's "Email: x · Phone: y · ..." contact line) render
+      // stacked on top of each other instead of side by side. See
+      // github.com/foliojs/pdfkit issues #240, #774, #1206 — unfixed upstream.
+      // Draw non-left multi-run lines as one plain string instead; per-run
+      // bold/underline/strike distinctions are lost for this case, but that's
+      // the only way pdfkit renders them correctly positioned.
       doc
-        .font(pdfFontFor(design.font_family, bold, run.italic))
-        .fontSize(size)
+        .font(pdfFontFor(design.font_family, bold, false))
+        .fontSize(fontSize)
         .fillColor(color)
-        .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
-          continued: runIndex < block.runs.length - 1,
-          underline: run.underline,
-          strike: run.strike,
-          align,
-          indent,
-        });
-    });
+        .text(prefix + block.runs.map((r) => r.text).join(""), { align, indent });
+    } else {
+      // title/section/subsection/label force every run bold regardless of
+      // its own `run.bold`; "meta" and unstyled kinds keep each run's own.
+      const forcedBold = block.kind === "title" || block.kind === "section" || block.kind === "subsection" || block.kind === "label";
+      block.runs.forEach((run, runIndex) => {
+        doc
+          .font(pdfFontFor(design.font_family, forcedBold || run.bold, run.italic))
+          .fontSize(fontSize)
+          .fillColor(color)
+          .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+            continued: runIndex < block.runs.length - 1,
+            underline: run.underline,
+            strike: run.strike,
+            align,
+            indent,
+          });
+      });
+    }
 
     doc.fillColor(TEXT_COLORS.textDark).font(fonts.regular);
 
@@ -632,38 +650,56 @@ const drawBlockAt = (
   doc.x = region.x + indent;
   doc.y = y;
 
-  block.runs.forEach((run, runIndex) => {
-    let color = TEXT_COLORS.textDark;
-    let bold = run.bold;
-    if (block.kind === "title") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    } else if (block.kind === "section") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    } else if (block.kind === "subsection") {
-      color = TEXT_COLORS.textDark;
-      bold = true;
-    } else if (block.kind === "meta") {
-      color = TEXT_COLORS.textMuted;
-    } else if (block.kind === "label") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    }
+  let color = TEXT_COLORS.textDark;
+  let bold = block.runs.every((r) => r.bold);
+  if (block.kind === "title") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  } else if (block.kind === "section") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  } else if (block.kind === "subsection") {
+    color = TEXT_COLORS.textDark;
+    bold = true;
+  } else if (block.kind === "meta") {
+    color = TEXT_COLORS.textMuted;
+  } else if (block.kind === "label") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  }
 
+  if (align && align !== "left" && block.runs.length > 1) {
+    // Same pdfkit continued+align bug as drawGroupsFlowing above — draw
+    // non-left multi-run lines as one plain string instead of per-run
+    // continued calls.
     doc
-      .font(pdfFontFor(design.font_family, bold, run.italic))
+      .font(pdfFontFor(design.font_family, bold, false))
       .fontSize(fontSize)
       .fillColor(color)
-      .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+      .text(prefix + block.runs.map((r) => r.text).join(""), {
         width: region.width - indent,
-        continued: runIndex < block.runs.length - 1,
-        underline: run.underline,
-        strike: run.strike,
         align,
         indent: 0,
       });
-  });
+  } else {
+    // title/section/subsection/label force every run bold regardless of its
+    // own `run.bold`; "meta" and unstyled kinds keep each run's own.
+    const forcedBold = block.kind === "title" || block.kind === "section" || block.kind === "subsection" || block.kind === "label";
+    block.runs.forEach((run, runIndex) => {
+      doc
+        .font(pdfFontFor(design.font_family, forcedBold || run.bold, run.italic))
+        .fontSize(fontSize)
+        .fillColor(color)
+        .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+          width: region.width - indent,
+          continued: runIndex < block.runs.length - 1,
+          underline: run.underline,
+          strike: run.strike,
+          align,
+          indent: 0,
+        });
+    });
+  }
 
   y = doc.y;
   doc.fillColor(TEXT_COLORS.textDark).font(fonts.regular);
