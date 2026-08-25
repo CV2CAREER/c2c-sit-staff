@@ -52,8 +52,11 @@ const PromptEditView = ({
   const { mutateAsync: updateMetadata, isPending: isSavingMetadata } = useUpdateVcsPrompt();
 
   const baselinePrompt = draftVersion?.prompt ?? liveVersion?.prompt ?? vcs.prompt;
+  const baselineAiPromptSection =
+    draftVersion?.aiPromptSection ?? liveVersion?.aiPromptSection ?? vcs.aiPromptSection ?? "";
 
   const [promptText, setPromptText] = useState(baselinePrompt);
+  const [aiPromptSection, setAiPromptSection] = useState(baselineAiPromptSection);
   const [category, setCategory] = useState(vcs.category ?? "");
   const [model, setModel] = useState(vcs.model ?? "");
   const [temperature, setTemperature] = useState(
@@ -65,6 +68,7 @@ const PromptEditView = ({
 
   useEffect(() => {
     setPromptText(baselinePrompt);
+    setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
     setTemperature(
@@ -78,6 +82,7 @@ const PromptEditView = ({
 
   const isDirty =
     promptText !== baselinePrompt ||
+    aiPromptSection !== baselineAiPromptSection ||
     category !== (vcs.category ?? "") ||
     model !== (vcs.model ?? "") ||
     temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") ||
@@ -87,6 +92,7 @@ const PromptEditView = ({
 
   const handleDiscard = () => {
     setPromptText(baselinePrompt);
+    setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
     setTemperature(
@@ -97,8 +103,8 @@ const PromptEditView = ({
 
   const handleSaveDraft = async () => {
     try {
-      if (promptText !== baselinePrompt) {
-        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText });
+      if (promptText !== baselinePrompt || aiPromptSection !== baselineAiPromptSection) {
+        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText, aiPromptSection });
         const savedDraft = result.data;
         // Patch the cache directly with the fresh draft row instead of
         // waiting on the background refetch below — otherwise "Push to
@@ -265,16 +271,29 @@ const PromptEditView = ({
 
           <TabsContent value="edit" className="flex flex-1 flex-col gap-3">
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Prompt template
+              Prompt template <span className="normal-case text-gray-400">(required fields &amp; schema)</span>
             </label>
             <Textarea
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
-              className="min-h-[340px] flex-1 font-mono text-sm leading-relaxed"
+              className="min-h-[280px] flex-1 font-mono text-sm leading-relaxed"
             />
+
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              AI prompt <span className="normal-case text-gray-400">(free-form, combined in automatically)</span>
+            </label>
+            <Textarea
+              value={aiPromptSection}
+              onChange={(e) => setAiPromptSection(e.target.value)}
+              placeholder="Optional — extra tone, formatting, or emphasis instructions. Inserted right before the supplied document at generation time; doesn't need to mention the JSON schema."
+              className="min-h-[120px] font-mono text-sm leading-relaxed"
+            />
+
             <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
               💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it — production
-              keeps reading the current live version until you do.
+              keeps reading the current live version until you do. The Simulate tab currently only
+              tests the prompt template above, not the AI prompt box — use a real Generate to see
+              the combined effect.
             </div>
           </TabsContent>
 
