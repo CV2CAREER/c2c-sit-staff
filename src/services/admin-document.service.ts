@@ -850,6 +850,54 @@ export class AdminDocumentService {
     }
 
     /**
+     * Renders the same file saveCoverLetter would produce, via the identical
+     * render call — but skips the Firebase upload and Upload record, so
+     * nothing here is visible to the client. Lets an admin download and
+     * sanity-check the rendered file before deciding to save it for real.
+     */
+    static async previewCoverLetter(
+        targetUserId: string,
+        resumeUploadId: string,
+        coverLetterText: string,
+        format: "pdf" | "docx",
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewCoverLetter] User ${targetUserId}, format ${format}`);
+
+        if (!coverLetterText?.trim()) {
+            throw new ErrorHandler("Cover letter text is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await textToPdfBuffer(coverLetterText)
+            : await textToDocxBuffer(coverLetterText);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Cover_Letter_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewCoverLetter] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
+    }
+
+    /**
      * Builds the Role Title Recommendations prompt from the
      * `role_title_generation_prompt` VCS entry, substituting the {{CV_TEXT}}
      * placeholder.
@@ -1150,6 +1198,58 @@ export class AdminDocumentService {
     }
 
     /**
+     * Renders the same file saveCvVariant would produce, via the identical
+     * render call — but skips the Firebase upload, Upload record, and
+     * onboarding-progress advance, so nothing here is visible to the client.
+     * Lets an admin download and sanity-check the rendered file before
+     * deciding to save it for real.
+     */
+    static async previewCvVariant(
+        targetUserId: string,
+        resumeUploadId: string,
+        cvVariantHtml: string,
+        format: "pdf" | "docx",
+        design?: Partial<CvVariantDesign>,
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewCvVariant] User ${targetUserId}, format ${format}`);
+
+        if (!cvVariantHtml?.trim()) {
+            throw new ErrorHandler("CV variant content is required", 400);
+        }
+
+        const resolvedDesign = sanitizeCvVariantDesign(design);
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
+            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_CV_Variant_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewCvVariant] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
+    }
+
+    /**
      * Renders the (admin-reviewed/formatted) Interview Pack — rich-text HTML
      * combining all 4 stage results, built on the frontend — into a PDF or
      * DOCX file, uploads it to Firebase, and records it as an `otherDocs`
@@ -1218,6 +1318,55 @@ export class AdminDocumentService {
 
         logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);
         return { upload, clientName };
+    }
+
+    /**
+     * Renders the same file saveInterviewPack would produce, via the
+     * identical render call — but skips the Firebase upload and Upload
+     * record, so nothing here is visible to the client. Lets an admin
+     * download and sanity-check the rendered file before deciding to save
+     * it for real.
+     */
+    static async previewInterviewPack(
+        targetUserId: string,
+        resumeUploadId: string,
+        interviewPackHtml: string,
+        format: "pdf" | "docx",
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewInterviewPack] User ${targetUserId}, format ${format}`);
+
+        if (!interviewPackHtml?.trim()) {
+            throw new ErrorHandler("Interview pack content is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await htmlToPdfBuffer(interviewPackHtml)
+            : await htmlToDocxBuffer(interviewPackHtml);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Interview_Pack_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewInterviewPack] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
     }
 
 }

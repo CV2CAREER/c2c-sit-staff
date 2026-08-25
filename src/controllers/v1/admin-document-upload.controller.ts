@@ -258,6 +258,52 @@ export const generateCoverLetterController = catchAsyncError(
 );
 
 /**
+ * Renders the cover letter text into a PDF/DOCX and streams it straight
+ * back — no Firebase upload, no Upload record, nothing visible to the
+ * client. Lets an admin download and check the render before saving it for
+ * real via save-cover-letter.
+ */
+export const previewCoverLetterController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const userId = (req.body?.userId as string | undefined)?.trim();
+    const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
+    const coverLetter = (req.body?.coverLetter as string | undefined)?.trim();
+    const format = (req.body?.format as string | undefined)?.trim().toLowerCase();
+
+    if (!userId) {
+      return res.apiError(new ErrorHandler("userId is required", 400));
+    }
+    if (!resumeUploadId) {
+      return res.apiError(new ErrorHandler("resumeUploadId is required", 400));
+    }
+    if (!coverLetter) {
+      return res.apiError(new ErrorHandler("coverLetter is required", 400));
+    }
+    if (format !== "pdf" && format !== "docx") {
+      return res.apiError(new ErrorHandler("format must be 'pdf' or 'docx'", 400));
+    }
+
+    try {
+      const { buffer, filename, mimeType } = await AdminDocumentService.previewCoverLetter(
+        userId,
+        resumeUploadId,
+        coverLetter,
+        format,
+      );
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(buffer);
+    } catch (error: any) {
+      const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(`Failed to preview cover letter for user ${userId}: ${error.message}`);
+      return res.apiError(
+        new ErrorHandler(error.message || "Failed to preview cover letter", statusCode),
+      );
+    }
+  },
+);
+
+/**
  * Renders the (admin-reviewed) cover letter text into a PDF or DOCX,
  * uploads it to Firebase, and records it as a `coverletter` Upload for
  * the client — the persistence follow-up to generate-cover-letter above.
@@ -389,6 +435,54 @@ export const generateCvVariantController = catchAsyncError(
       logger.error(`Failed to generate CV variant for user ${userId}: ${error.message}`);
       return res.apiError(
         new ErrorHandler(error.message || "Failed to generate CV variant", statusCode),
+      );
+    }
+  },
+);
+
+/**
+ * Renders the CV variant into a PDF/DOCX and streams it straight back — no
+ * Firebase upload, no Upload record, no onboarding-progress advance, nothing
+ * visible to the client. Lets an admin download and check the render before
+ * saving it for real via save-cv-variant.
+ */
+export const previewCvVariantController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const userId = (req.body?.userId as string | undefined)?.trim();
+    const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
+    const cvVariant = (req.body?.cvVariant as string | undefined)?.trim();
+    const format = (req.body?.format as string | undefined)?.trim().toLowerCase();
+    const design = req.body?.design;
+
+    if (!userId) {
+      return res.apiError(new ErrorHandler("userId is required", 400));
+    }
+    if (!resumeUploadId) {
+      return res.apiError(new ErrorHandler("resumeUploadId is required", 400));
+    }
+    if (!cvVariant) {
+      return res.apiError(new ErrorHandler("cvVariant is required", 400));
+    }
+    if (format !== "pdf" && format !== "docx") {
+      return res.apiError(new ErrorHandler("format must be 'pdf' or 'docx'", 400));
+    }
+
+    try {
+      const { buffer, filename, mimeType } = await AdminDocumentService.previewCvVariant(
+        userId,
+        resumeUploadId,
+        cvVariant,
+        format,
+        design,
+      );
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(buffer);
+    } catch (error: any) {
+      const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(`Failed to preview CV variant for user ${userId}: ${error.message}`);
+      return res.apiError(
+        new ErrorHandler(error.message || "Failed to preview CV variant", statusCode),
       );
     }
   },
@@ -573,6 +667,52 @@ export const getInterviewPackProcessController = catchAsyncError(
       logger.error(`Failed to fetch interview pack process ${processId}: ${error.message}`);
       return res.apiError(
         new ErrorHandler(error.message || "Failed to fetch interview pack process", statusCode),
+      );
+    }
+  },
+);
+
+/**
+ * Renders the Interview Pack into a PDF/DOCX and streams it straight back —
+ * no Firebase upload, no Upload record, nothing visible to the client. Lets
+ * an admin download and check the render before saving it for real via
+ * save-interview-pack.
+ */
+export const previewInterviewPackController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const userId = (req.body?.userId as string | undefined)?.trim();
+    const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
+    const interviewPack = (req.body?.interviewPack as string | undefined)?.trim();
+    const format = (req.body?.format as string | undefined)?.trim().toLowerCase();
+
+    if (!userId) {
+      return res.apiError(new ErrorHandler("userId is required", 400));
+    }
+    if (!resumeUploadId) {
+      return res.apiError(new ErrorHandler("resumeUploadId is required", 400));
+    }
+    if (!interviewPack) {
+      return res.apiError(new ErrorHandler("interviewPack is required", 400));
+    }
+    if (format !== "pdf" && format !== "docx") {
+      return res.apiError(new ErrorHandler("format must be 'pdf' or 'docx'", 400));
+    }
+
+    try {
+      const { buffer, filename, mimeType } = await AdminDocumentService.previewInterviewPack(
+        userId,
+        resumeUploadId,
+        interviewPack,
+        format,
+      );
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(buffer);
+    } catch (error: any) {
+      const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(`Failed to preview interview pack for user ${userId}: ${error.message}`);
+      return res.apiError(
+        new ErrorHandler(error.message || "Failed to preview interview pack", statusCode),
       );
     }
   },
