@@ -957,7 +957,7 @@ export class AdminDocumentService {
         // decides what still needs asking, so it doesn't re-ask what's
         // already been answered.
         const confirmedBlock = confirmedAnswers?.length
-            ? `## CLIENT-CONFIRMED FACTS (treat as CONFIRMED evidence, not a discovery opportunity)\n${confirmedAnswers
+            ? `## CLIENT-CONFIRMED FACTS (treat as CONFIRMED evidence, not a discovery opportunity)\nThese are settled. Do not ask about any of them again in the "Please Confirm" section, in any rewording — only surface a validation question for something genuinely separate that none of these cover.\n${confirmedAnswers
                   .map((a) => `- ${a.question} — ${a.answer}`)
                   .join("\n")}\n\n`
             : "";
