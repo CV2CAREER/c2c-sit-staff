@@ -419,6 +419,9 @@ export const generateCvVariantController = catchAsyncError(
   async (req: Request, res: Response) => {
     const userId = (req.body?.userId as string | undefined)?.trim();
     const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
+    const confirmedAnswers = Array.isArray(req.body?.confirmedAnswers)
+      ? (req.body.confirmedAnswers as { question: string; answer: string }[])
+      : undefined;
 
     if (!userId) {
       return res.apiError(new ErrorHandler("userId is required", 400));
@@ -428,7 +431,7 @@ export const generateCvVariantController = catchAsyncError(
     }
 
     try {
-      const result = await AdminDocumentService.generateCvVariant(userId, resumeUploadId);
+      const result = await AdminDocumentService.generateCvVariant(userId, resumeUploadId, confirmedAnswers);
       return res.apiSuccess(result, "CV variant generated successfully", 200);
     } catch (error: any) {
       const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;

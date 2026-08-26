@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import { getServiceLogger } from "../utils/createLogger";
 import ErrorHandler from "../utils/errorHandler";
 import { Upload } from "../models/v1/upload.model";
@@ -876,11 +877,51 @@ export class AdminDocumentService {
     }
 
     /**
+     * Walks the top-level elements of the AI's generated HTML looking for a
+     * client-facing validation section (heading text matching "Please
+     * Confirm" / "A Few Questions For You", per CV_VARIANT_REQUIRED_PROMPT's
+     * section 25), and collects each question that follows it — either list
+     * items or plain paragraphs — until the next heading or end of document.
+     * Mirrors htmlDocumentGenerator.ts's parseHtmlToBlocks in walking
+     * `body > *` directly rather than a deep traversal.
+     */
+    private static extractConfirmQuestions(html: string): string[] {
+        const $ = cheerio.load(html);
+        const questions: string[] = [];
+        let inConfirmSection = false;
+
+        $("body").children().each((_, el) => {
+            const tag = (el as any).tagName?.toLowerCase();
+            const $el = $(el);
+
+            if (tag && /^h[1-6]$/.test(tag)) {
+                inConfirmSection = /please confirm|questions for you|confirm the following/i.test($el.text());
+                return;
+            }
+
+            if (!inConfirmSection) return;
+
+            if (tag === "ul" || tag === "ol") {
+                $el.find("li").each((_liIndex, li) => {
+                    const text = $(li).text().trim();
+                    if (text) questions.push(text);
+                });
+            } else {
+                const text = $el.text().trim();
+                if (text) questions.push(text);
+            }
+        });
+
+        return questions;
+    }
+
+    /**
      * Builds the CV Variant prompt from the `cv_variant_generation_prompt`
      * VCS entry, substituting the {{CV_TEXT}} placeholder.
      */
     private static async getCvVariantPrompt(
         cvText: string,
+        confirmedAnswers?: { question: string; answer: string }[],
     ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
@@ -910,7 +951,19 @@ export class AdminDocumentService {
             ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided) — MANDATORY\n\nEverything below is a required specification, not a general suggestion. Where it specifies exact formatting, colors, highlighting rules, grid layouts, or any other concrete detail, follow it precisely — it takes precedence over the general design guidance elsewhere in this prompt.\n\n${aiPromptSection}\n\n${cvText}`
             : cvText;
 
-        const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
+        // Answers the admin has already confirmed (from a previous round of
+        // "Please Confirm" questions on this same resume) are CONFIRMED
+        // evidence, not a new discovery opportunity — inserting them ahead
+        // of everything else means the model has them in view before it
+        // decides what still needs asking, so it doesn't re-ask what's
+        // already been answered.
+        const confirmedBlock = confirmedAnswers?.length
+            ? `## CLIENT-CONFIRMED FACTS (treat as CONFIRMED evidence, not a discovery opportunity)\n${confirmedAnswers
+                  .map((a) => `- ${a.question} — ${a.answer}`)
+                  .join("\n")}\n\n`
+            : "";
+
+        const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, confirmedBlock + cvTextWithSection);
         return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
@@ -925,7 +978,8 @@ export class AdminDocumentService {
     static async generateCvVariant(
         targetUserId: string,
         resumeUploadId: string,
-    ): Promise<string> {
+        confirmedAnswers?: { question: string; answer: string }[],
+    ): Promise<{ html: string; confirmQuestions: string[] }> {
         logger.info(`[GenerateCvVariant] User ${targetUserId}, resume ${resumeUploadId}`);
 
         const upload = await Upload.findOne({
@@ -942,7 +996,7 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText);
+        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText, confirmedAnswers);
 
         const startedAt = Date.now();
         let aiResponse: string;
@@ -981,8 +1035,10 @@ export class AdminDocumentService {
             throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
 
-        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${html.length} chars)`);
-        return html;
+        const confirmQuestions = this.extractConfirmQuestions(html);
+
+        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${html.length} chars, ${confirmQuestions.length} open question(s))`);
+        return { html, confirmQuestions };
     }
 
     /**
