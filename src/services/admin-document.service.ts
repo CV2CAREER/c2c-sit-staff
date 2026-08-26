@@ -894,15 +894,20 @@ export class AdminDocumentService {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        // The required JSON schema/rules (CV_VARIANT_REQUIRED_PROMPT) are
-        // locked in code, not the owner-editable VCSPrompt row — the prompt's
-        // non-technical owner only ever sees and edits `aiPromptSection`
-        // (Admin > Prompts), a separate free-text box with no schema to
-        // accidentally break. Inserted as its own labeled block right before
-        // the actual CV text.
+        // The required content/factual-integrity rules and HTML output
+        // contract (CV_VARIANT_REQUIRED_PROMPT) are locked in code, not the
+        // owner-editable VCSPrompt row — the prompt's non-technical owner
+        // only ever sees and edits `aiPromptSection` (Admin > Prompts), a
+        // separate free-text box with no schema to accidentally break.
+        // Framed as MANDATORY rather than supplementary: without this, the
+        // model can treat the owner's specific formatting requests (e.g.
+        // "highlight changed content in red") as competing on equal footing
+        // with CV_VARIANT_REQUIRED_PROMPT's own generic "full creative
+        // control" design section, and default to its own generic instincts
+        // instead of the owner's more specific rules.
         const aiPromptSection = promptRow.aiPromptSection?.trim();
         const cvTextWithSection = aiPromptSection
-            ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided)\n${aiPromptSection}\n\n${cvText}`
+            ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided) — MANDATORY\n\nEverything below is a required specification, not a general suggestion. Where it specifies exact formatting, colors, highlighting rules, grid layouts, or any other concrete detail, follow it precisely — it takes precedence over the general design guidance elsewhere in this prompt.\n\n${aiPromptSection}\n\n${cvText}`
             : cvText;
 
         const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, cvTextWithSection);
