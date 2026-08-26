@@ -898,16 +898,31 @@ export class AdminDocumentService {
         // and heading-detection alone missed real questions as a result.
         $("li, p, div").each((_, el) => {
             const $el = $(el);
-            // Skip wrapper elements whose children include other li/p/div —
-            // only consider leaf-ish text nodes, so a container around
-            // several questions isn't counted as one giant question.
-            if ($el.children("li, p, div").length > 0) return;
+            // Skip wrapper elements that contain other li/p/div ANYWHERE
+            // beneath them, not just as direct children — e.g. a <div> whose
+            // questions are one level further down inside a <ul>/<ol> is
+            // still a wrapper, and .children() alone missed that, letting
+            // its full concatenated text (heading + every question inside)
+            // through as one giant "question".
+            if ($el.find("li, p, div").length > 0) return;
 
             const text = $el.text().trim();
-            if (!text || seen.has(text)) return;
-            if (/please\s+confirm\s*:/i.test(text)) {
-                questions.push(text);
-                seen.add(text);
+            if (!text) return;
+
+            // A genuine leaf normally contains exactly one question. If it
+            // contains more than one "Please confirm:" marker, the AI still
+            // merged several into one node (e.g. via <br> instead of
+            // separate elements) — split them apart instead of keeping the
+            // merge as a single blob.
+            const parts = text
+                .split(/(?=please\s+confirm\s*:)/i)
+                .map((part) => part.trim())
+                .filter((part) => /please\s+confirm\s*:/i.test(part));
+
+            for (const part of parts) {
+                if (seen.has(part)) continue;
+                questions.push(part);
+                seen.add(part);
             }
         });
 
