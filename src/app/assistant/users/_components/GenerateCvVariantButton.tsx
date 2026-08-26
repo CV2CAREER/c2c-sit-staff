@@ -3,8 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineSparkles, HiOutlineDocumentSearch } from "react-icons/hi";
-import { useCvVariantGeneration, type SaveCvVariantFormat } from "@/hooks/useCvVariantGeneration";
+import {
+  useCvVariantGeneration,
+  type SaveCvVariantFormat,
+  type ConfirmedAnswer,
+} from "@/hooks/useCvVariantGeneration";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +60,9 @@ export default function GenerateCvVariantButton({
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
+  const [confirmQuestions, setConfirmQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [cvVariantHtml, setCvVariantHtml] = useState("");
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -95,38 +103,102 @@ export default function GenerateCvVariantButton({
     setPreviewBlob(null);
   };
 
+  // Opens the review modal for a given HTML result and renders its preview —
+  // shared by the no-questions path, "Skip", and "Submit & regenerate" once
+  // no open questions remain.
+  const openReview = async (html: string) => {
+    setCvVariantHtml(html);
+    setReviewStage("review");
+    setIsReviewOpen(true);
+    try {
+      const { blob } = await previewCvVariant({
+        userId,
+        resumeUploadId,
+        cvVariant: html,
+        format: "pdf",
+      });
+      setPreviewBlob(blob);
+      setPreviewUrl(URL.createObjectURL(blob));
+    } catch (previewError: any) {
+      toast.error(
+        previewError?.response?.data?.message || "Generated, but the preview failed to render",
+      );
+    }
+  };
+
   const handleGenerate = async () => {
     try {
-      const html = await generateCvVariant({ userId, resumeUploadId });
+      const { html, confirmQuestions: questions } = await generateCvVariant({ userId, resumeUploadId });
       if (!html?.trim()) {
         toast.error("No CV variant was returned");
         return;
       }
       setCvVariantHtml(html);
-      setReviewStage("review");
-      setIsReviewOpen(true);
       toast.success("CV variant generated");
 
-      // Render an immediate preview so the review modal opens with the
-      // actual design visible, not a blank space.
-      try {
-        const { blob } = await previewCvVariant({
-          userId,
-          resumeUploadId,
-          cvVariant: html,
-          format: "pdf",
-        });
-        setPreviewBlob(blob);
-        setPreviewUrl(URL.createObjectURL(blob));
-      } catch (previewError: any) {
-        toast.error(
-          previewError?.response?.data?.message || "Generated, but the preview failed to render",
-        );
+      // The AI couldn't confirm some facts on its own (missing dates, unclear
+      // responsibilities, etc.) — ask the admin now, before ever showing the
+      // review step, rather than letting the AI guess and risk inventing
+      // something (see CV_VARIANT_REQUIRED_PROMPT's factual-integrity rules).
+      if (questions.length > 0) {
+        setConfirmQuestions(questions);
+        setAnswers({});
+        setIsQuestionsOpen(true);
+        return;
       }
+
+      await openReview(html);
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Failed to generate CV variant";
       toast.error(message);
+    }
+  };
+
+  const handleSkipQuestions = async () => {
+    setIsQuestionsOpen(false);
+    await openReview(cvVariantHtml);
+  };
+
+  const handleSubmitAnswers = async () => {
+    const confirmedAnswers: ConfirmedAnswer[] = confirmQuestions
+      .filter((q) => answers[q]?.trim())
+      .map((q) => ({ question: q, answer: answers[q].trim() }));
+
+    if (confirmedAnswers.length === 0) {
+      toast.error("Answer at least one question, or use Skip instead");
+      return;
+    }
+
+    try {
+      const { html, confirmQuestions: questions } = await generateCvVariant({
+        userId,
+        resumeUploadId,
+        confirmedAnswers,
+      });
+      setCvVariantHtml(html);
+
+      if (questions.length > 0) {
+        // Still something open (could be the same question phrased
+        // differently, or a new one) — keep the modal up with the updated
+        // list rather than assuming everything's resolved.
+        setConfirmQuestions(questions);
+        setAnswers((prev) => {
+          const next: Record<string, string> = {};
+          questions.forEach((q) => {
+            next[q] = prev[q] ?? "";
+          });
+          return next;
+        });
+        toast("A few things are still unconfirmed", { icon: "ℹ️" });
+        return;
+      }
+
+      setIsQuestionsOpen(false);
+      toast.success("Confirmed — CV updated");
+      await openReview(html);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to regenerate CV variant");
     }
   };
 
@@ -135,6 +207,8 @@ export default function GenerateCvVariantButton({
     const toastId = toast.loading("Rejecting CV variant...");
     setIsReviewOpen(false);
     setCvVariantHtml("");
+    setConfirmQuestions([]);
+    setAnswers({});
     clearPreview();
     setReviewStage("review");
     toast.dismiss(toastId);
@@ -260,6 +334,56 @@ export default function GenerateCvVariantButton({
               ))}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* A few questions — the AI couldn't confirm some facts on its own.
+          Answering here becomes CONFIRMED evidence fed back into a fresh
+          generation; skipping leaves them as-is in the document (still
+          visible to the client in its own "Please Confirm" section). */}
+      <Dialog open={isQuestionsOpen}>
+        <DialogContent
+          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden [&>button]:hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="shrink-0">
+            <DialogTitle>A few questions</DialogTitle>
+            <DialogDescription>
+              The AI couldn&apos;t confirm these on its own. Answer what you already know — it
+              gets folded back in as a confirmed fact. Skip to proceed with the CV as-is; anything
+              left unanswered stays visible to the client in the document itself.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+            {confirmQuestions.map((question, index) => (
+              <div key={index} className="flex flex-col gap-1.5">
+                <label className="text-13 font-medium text-career-black-200">{question}</label>
+                <Textarea
+                  value={answers[question] ?? ""}
+                  onChange={(e) =>
+                    setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
+                  }
+                  placeholder="Leave blank if you don't know — it'll stay as an open question"
+                  className="min-h-[70px] text-sm"
+                />
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button variant="outline" disabled={isGenerating} onClick={handleSkipQuestions}>
+              Skip — use as-is
+            </Button>
+            <Button
+              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+              disabled={isGenerating}
+              onClick={handleSubmitAnswers}
+            >
+              {isGenerating ? "Regenerating..." : "Submit & regenerate"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

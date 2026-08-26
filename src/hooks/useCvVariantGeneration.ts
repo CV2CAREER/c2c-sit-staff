@@ -5,15 +5,24 @@ import { ApiSuccess } from "@/types/apiResponse.types";
 
 export type SaveCvVariantFormat = "pdf" | "docx";
 
+export type ConfirmedAnswer = { question: string; answer: string };
+
 type GenerateCvVariantPayload = {
   userId: string;
   resumeUploadId: string;
+  confirmedAnswers?: ConfirmedAnswer[];
 };
 
 // The AI now authors a complete, self-styled HTML document directly (its own
 // colors/layout/fonts) — there's no structured JSON to type here anymore,
 // see cvVariantHtmlRenderer.ts on the backend for how this gets rendered.
-type GenerateCvVariantResponse = string;
+// `confirmQuestions` are pulled from the document's own "Please Confirm"
+// section (see extractConfirmQuestions on the backend) so the admin can
+// resolve them before ever seeing the review/save step.
+type GenerateCvVariantResponse = {
+  html: string;
+  confirmQuestions: string[];
+};
 
 type SaveCvVariantPayload = {
   userId: string;
