@@ -877,18 +877,19 @@ export class AdminDocumentService {
     }
 
     /**
-     * Walks the top-level elements of the AI's generated HTML looking for a
-     * client-facing validation section (heading text matching "Please
-     * Confirm" / "A Few Questions For You", per CV_VARIANT_REQUIRED_PROMPT's
-     * section 25), and collects each question that follows it — either list
-     * items or plain paragraphs — until the next heading or end of document.
-     * Mirrors htmlDocumentGenerator.ts's parseHtmlToBlocks in walking
-     * `body > *` directly rather than a deep traversal.
+     * Finds the AI's client-facing validation questions (per
+     * CV_VARIANT_REQUIRED_PROMPT section 25 — its own "Please confirm: ..."
+     * phrasing) AND strips that entire section out of the returned HTML.
+     * This section only ever exists to drive the admin-facing questions
+     * modal during Generate — it must never reach the actual CV file the
+     * client/employer sees, whether every question got answered, some were
+     * skipped, or it's left open entirely.
      */
-    private static extractConfirmQuestions(html: string): string[] {
+    private static extractAndStripConfirmQuestions(html: string): { html: string; confirmQuestions: string[] } {
         const $ = cheerio.load(html);
         const questions: string[] = [];
         const seen = new Set<string>();
+        const leafElements: any[] = [];
 
         // Match on the question's own mandated phrasing ("Please confirm:
         // ...", per CV_VARIANT_REQUIRED_PROMPT sections 3/25) rather than
@@ -919,14 +920,60 @@ export class AdminDocumentService {
                 .map((part) => part.trim())
                 .filter((part) => /please\s+confirm\s*:/i.test(part));
 
-            for (const part of parts) {
-                if (seen.has(part)) continue;
-                questions.push(part);
-                seen.add(part);
+            if (parts.length > 0) {
+                leafElements.push(el);
+                for (const part of parts) {
+                    if (seen.has(part)) continue;
+                    questions.push(part);
+                    seen.add(part);
+                }
             }
         });
 
-        return questions;
+        if (leafElements.length === 0) {
+            return { html, confirmQuestions: [] };
+        }
+
+        // Section 25 mandates this is placed as one contiguous block "near
+        // the end of the document" — so rather than guess at the AI's own
+        // heading wording, truncate the document at the earliest top-level
+        // (direct child of <body>) element that contains any confirm
+        // question, plus its own preceding heading if there is one. This
+        // works regardless of how the AI structured/styled that section.
+        const $body = $("body");
+        const bodyChildren = $body.children().toArray();
+
+        let cutIndex = -1;
+        for (const leaf of leafElements) {
+            let node = $(leaf);
+            while (node.length && !node.parent().is("body")) {
+                node = node.parent();
+            }
+            const idx = bodyChildren.indexOf(node.get(0) as any);
+            if (idx !== -1 && (cutIndex === -1 || idx < cutIndex)) {
+                cutIndex = idx;
+            }
+        }
+
+        if (cutIndex > -1) {
+            if (cutIndex > 0) {
+                const prevEl = bodyChildren[cutIndex - 1];
+                const prevText = $(prevEl).text().trim();
+                const isHeadingTag = /^h[1-6]$/i.test((prevEl as any).tagName || "");
+                const looksLikeConfirmHeading =
+                    /please\s+confirm|questions?\s+for\s+you|confirm\s+the\s+following|things?\s+to\s+confirm/i.test(
+                        prevText,
+                    );
+                if (prevText && (isHeadingTag || looksLikeConfirmHeading) && !/please\s+confirm\s*:/i.test(prevText)) {
+                    cutIndex -= 1;
+                }
+            }
+            for (let i = bodyChildren.length - 1; i >= cutIndex; i--) {
+                $(bodyChildren[i]).remove();
+            }
+        }
+
+        return { html: $.html(), confirmQuestions: questions };
     }
 
     /**
@@ -1049,10 +1096,10 @@ export class AdminDocumentService {
             throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
 
-        const confirmQuestions = this.extractConfirmQuestions(html);
+        const stripped = this.extractAndStripConfirmQuestions(html);
 
-        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${html.length} chars, ${confirmQuestions.length} open question(s))`);
-        return { html, confirmQuestions };
+        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${stripped.html.length} chars, ${stripped.confirmQuestions.length} open question(s))`);
+        return stripped;
     }
 
     /**

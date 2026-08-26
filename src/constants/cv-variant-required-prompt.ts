@@ -683,7 +683,7 @@ Do not use internal-review wording anywhere in this section (see section 2's pro
 
 If a "CLIENT-CONFIRMED FACTS" block appears above the supplied document, those facts are closed — settled evidence, not open questions. Never re-ask about anything a confirmed fact already covers, in any wording or phrasing, even if the underlying gap that originally prompted the question still feels incomplete to you. Only ask about something genuinely separate that no confirmed fact touches.
 
-Ask about at most the 3 most materially important open gaps — the ones that would most change how a reader assesses the candidate if left unresolved. Skip minor or cosmetic ambiguities entirely rather than listing them.
+Ask about every materially important open gap — the ones that would meaningfully change how a reader assesses the candidate if left unresolved. There's no fixed limit on how many; skip only minor or cosmetic ambiguities that wouldn't change that assessment.
 
 ---
 
