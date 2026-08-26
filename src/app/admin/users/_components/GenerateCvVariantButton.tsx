@@ -2,7 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { HiOutlineSparkles, HiOutlineDocumentSearch } from "react-icons/hi";
+import {
+  HiOutlineSparkles,
+  HiOutlineDocumentSearch,
+  HiOutlineQuestionMarkCircle,
+  HiCheckCircle,
+} from "react-icons/hi";
 import {
   useCvVariantGeneration,
   type SaveCvVariantFormat,
@@ -359,36 +364,75 @@ export default function GenerateCvVariantButton({
           visible to the client in its own "Please Confirm" section). */}
       <Dialog open={isQuestionsOpen}>
         <DialogContent
-          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden [&>button]:hidden"
+          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden rounded-2xl border-none p-0 shadow-2xl [&>button]:hidden"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader className="shrink-0">
-            <DialogTitle>A few questions</DialogTitle>
+          <DialogHeader className="shrink-0 space-y-2 border-b border-career-gray-300/60 bg-gradient-to-br from-[#0D9F6E]/5 to-transparent px-6 pb-4 pt-6">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0D9F6E]/10 text-[#0D9F6E]">
+                <HiOutlineQuestionMarkCircle size={20} />
+              </div>
+              <DialogTitle className="text-lg">A few questions</DialogTitle>
+            </div>
             <DialogDescription>
               The AI couldn&apos;t confirm these on its own. Answer what you already know — it
               gets folded back in as a confirmed fact. Skip to proceed with the CV as-is; anything
               left unanswered stays visible to the client in the document itself.
             </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
-            {confirmQuestions.map((question, index) => (
-              <div key={index} className="flex flex-col gap-1.5">
-                <label className="text-13 font-medium text-career-black-200">{question}</label>
-                <Textarea
-                  value={answers[question] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
-                  }
-                  placeholder="Leave blank if you don't know — it'll stay as an open question"
-                  className="min-h-[70px] text-sm"
+            <div className="flex items-center gap-2 pt-1">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-career-gray-300/50">
+                <div
+                  className="h-full rounded-full bg-[#0D9F6E] transition-all duration-300"
+                  style={{
+                    width: `${(Object.values(answers).filter((a) => a?.trim()).length / Math.max(confirmQuestions.length, 1)) * 100}%`,
+                  }}
                 />
               </div>
-            ))}
+              <span className="shrink-0 text-xs font-medium text-career-gray-200">
+                {Object.values(answers).filter((a) => a?.trim()).length} of {confirmQuestions.length} answered
+              </span>
+            </div>
+          </DialogHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+            {confirmQuestions.map((question, index) => {
+              const isAnswered = !!answers[question]?.trim();
+              return (
+                <div
+                  key={index}
+                  className={`rounded-xl border p-3.5 transition-colors ${
+                    isAnswered
+                      ? "border-[#0D9F6E]/30 bg-[#0D9F6E]/[0.03]"
+                      : "border-career-gray-300/70 bg-white"
+                  }`}
+                >
+                  <div className="mb-2 flex items-start gap-2">
+                    {isAnswered ? (
+                      <HiCheckCircle size={18} className="mt-0.5 shrink-0 text-[#0D9F6E]" />
+                    ) : (
+                      <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-career-gray-300/60 text-[10px] font-semibold text-career-gray-200">
+                        {index + 1}
+                      </span>
+                    )}
+                    <label className="text-13 font-medium leading-snug text-career-black-200">
+                      {question}
+                    </label>
+                  </div>
+                  <Textarea
+                    value={answers[question] ?? ""}
+                    onChange={(e) =>
+                      setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
+                    }
+                    placeholder="Leave blank if you don't know — it'll stay as an open question"
+                    className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
+                  />
+                </div>
+              );
+            })}
           </div>
 
-          <DialogFooter className="shrink-0">
+          <DialogFooter className="shrink-0 border-t border-career-gray-300/60 px-6 py-4">
             <Button variant="outline" disabled={isGenerating} onClick={handleSkipQuestions}>
               Skip — use as-is
             </Button>
