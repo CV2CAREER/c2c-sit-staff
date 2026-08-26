@@ -888,27 +888,26 @@ export class AdminDocumentService {
     private static extractConfirmQuestions(html: string): string[] {
         const $ = cheerio.load(html);
         const questions: string[] = [];
-        let inConfirmSection = false;
+        const seen = new Set<string>();
 
-        $("body").children().each((_, el) => {
-            const tag = (el as any).tagName?.toLowerCase();
+        // Match on the question's own mandated phrasing ("Please confirm:
+        // ...", per CV_VARIANT_REQUIRED_PROMPT sections 3/25) rather than
+        // trying to detect the "Please Confirm" section heading first — the
+        // AI has full creative control over its own HTML/CSS now, so that
+        // heading might be a styled <div>/<p> instead of a semantic <h2-6>,
+        // and heading-detection alone missed real questions as a result.
+        $("li, p, div").each((_, el) => {
             const $el = $(el);
+            // Skip wrapper elements whose children include other li/p/div —
+            // only consider leaf-ish text nodes, so a container around
+            // several questions isn't counted as one giant question.
+            if ($el.children("li, p, div").length > 0) return;
 
-            if (tag && /^h[1-6]$/.test(tag)) {
-                inConfirmSection = /please confirm|questions for you|confirm the following/i.test($el.text());
-                return;
-            }
-
-            if (!inConfirmSection) return;
-
-            if (tag === "ul" || tag === "ol") {
-                $el.find("li").each((_liIndex, li) => {
-                    const text = $(li).text().trim();
-                    if (text) questions.push(text);
-                });
-            } else {
-                const text = $el.text().trim();
-                if (text) questions.push(text);
+            const text = $el.text().trim();
+            if (!text || seen.has(text)) return;
+            if (/please\s+confirm\s*:/i.test(text)) {
+                questions.push(text);
+                seen.add(text);
             }
         });
 
