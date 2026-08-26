@@ -117,6 +117,13 @@ const PromptEditView = ({
         // Live" stays disabled (still sees no/stale draft) until that
         // round-trip resolves.
         patchVersions((list) => [savedDraft, ...list.filter((v) => v.id !== savedDraft.id)]);
+        // The backend trims prompt/aiPromptSection before storing them —
+        // sync local state to what was actually saved, not what was typed,
+        // otherwise any trailing whitespace leaves isDirty permanently true
+        // (baseline reflects the trimmed value, local state doesn't) and
+        // Push to Live stays disabled until a page reload.
+        setPromptText(savedDraft.prompt);
+        setAiPromptSection(savedDraft.aiPromptSection ?? "");
       }
 
       const metadataPatch: { category?: string; model?: string; temperature?: number; maxTokens?: number } = {};
