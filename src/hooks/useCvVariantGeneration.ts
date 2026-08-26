@@ -3,83 +3,6 @@ import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
 
-export type CvVariantStyle = "modern" | "classic" | "contemporary";
-
-export type CvVariantTextRun = {
-  text: string;
-  is_new: boolean;
-};
-
-export type CvVariantHeader = {
-  name: string;
-  headline: CvVariantTextRun;
-  contact_line: string;
-  work_rights_line: { text: string | null; is_new: boolean; flag: string | null };
-};
-
-export type CvVariantExperienceSubSection = {
-  label: string;
-  bullets: CvVariantTextRun[];
-};
-
-export type CvVariantExperience = {
-  title: string;
-  company: string;
-  location: string | null;
-  dates: string;
-  flags: string[];
-  bullets: CvVariantTextRun[];
-  sub_sections: CvVariantExperienceSubSection[];
-};
-
-export type CvVariantEducation = {
-  qualification: string;
-  institution: string;
-  dates: string;
-  detail: { text: string | null; is_new: boolean };
-  flags: string[];
-};
-
-export type CvVariantCertification = CvVariantTextRun & {
-  flag: string | null;
-};
-
-export type CvVariantAdditionalSection = {
-  heading: string;
-  items: CvVariantTextRun[];
-};
-
-export type CvVariantDesign = {
-  accent_color: string;
-  font_family: "sans" | "serif";
-  density: "compact" | "standard" | "spacious";
-  /** Which structural PDF/DOCX layout renders — see htmlDocumentGenerator.ts on the backend. Always present on a generated result (the backend defaults it), so no separate `style_variant` plumbing is needed when passing `design` through to save. */
-  style_variant: CvVariantStyle;
-};
-
-/**
- * The AI prompt behind this (edited via Admin > Prompts, and known to drift
- * — see cvVariantFormat.ts) can return a differently-shaped object at any
- * time, so this is a *hint* at the fields we render specially, not a
- * contract on what the API returns. `Record<string, unknown>` lets any other
- * shape through so the generic renderer can still turn it into a readable
- * document instead of the app breaking on a missing field.
- */
-export type CvVariantResult = Record<string, unknown> & Partial<{
-  client_name: string;
-  style_variant: CvVariantStyle;
-  style_reasoning: string;
-  top_level_flags: string[];
-  design: CvVariantDesign;
-  header: CvVariantHeader;
-  summary: { runs: CvVariantTextRun[] };
-  skills: CvVariantTextRun[];
-  experience: CvVariantExperience[];
-  education: CvVariantEducation[];
-  certifications: CvVariantCertification[];
-  additional_sections: CvVariantAdditionalSection[];
-}>;
-
 export type SaveCvVariantFormat = "pdf" | "docx";
 
 type GenerateCvVariantPayload = {
@@ -87,12 +10,16 @@ type GenerateCvVariantPayload = {
   resumeUploadId: string;
 };
 
+// The AI now authors a complete, self-styled HTML document directly (its own
+// colors/layout/fonts) — there's no structured JSON to type here anymore,
+// see cvVariantHtmlRenderer.ts on the backend for how this gets rendered.
+type GenerateCvVariantResponse = string;
+
 type SaveCvVariantPayload = {
   userId: string;
   resumeUploadId: string;
   cvVariant: string;
   format: SaveCvVariantFormat;
-  design?: CvVariantDesign;
 };
 
 type CvVariantDocument = {
@@ -110,7 +37,6 @@ type PreviewCvVariantPayload = {
   resumeUploadId: string;
   cvVariant: string;
   format: SaveCvVariantFormat;
-  design?: CvVariantDesign;
 };
 
 // Pulls the filename the backend set via Content-Disposition — falls back to
@@ -132,7 +58,7 @@ export function useCvVariantGeneration() {
 
   const generateMutation = useMutation({
     mutationFn: async (payload: GenerateCvVariantPayload) => {
-      const response = await axiosInstance.post<ApiSuccess<CvVariantResult>>(
+      const response = await axiosInstance.post<ApiSuccess<GenerateCvVariantResponse>>(
         endpoints.ADMIN_GENERATE_CV_VARIANT,
         payload,
       );

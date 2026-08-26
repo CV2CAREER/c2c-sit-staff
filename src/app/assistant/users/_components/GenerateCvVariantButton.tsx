@@ -1,20 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  HiOutlineSparkles,
-  HiOutlineDocumentSearch,
-  HiOutlineColorSwatch,
-} from "react-icons/hi";
-import {
-  useCvVariantGeneration,
-  type CvVariantResult,
-  type SaveCvVariantFormat,
-} from "@/hooks/useCvVariantGeneration";
-import { flattenCvVariantToHtml, collectCvVariantFlags } from "@/utils/cvVariantFormat";
+import { HiOutlineSparkles, HiOutlineDocumentSearch } from "react-icons/hi";
+import { useCvVariantGeneration, type SaveCvVariantFormat } from "@/hooks/useCvVariantGeneration";
 import { Button } from "@/components/ui/button";
-import CvVariantEditor from "./CvVariantEditor";
 import {
   Dialog,
   DialogContent,
@@ -32,22 +22,18 @@ interface GenerateCvVariantButtonProps {
 const LOADING_STEPS = [
   "Reading every supplied document…",
   "Resolving conflicting details…",
-  "Selecting the house style…",
+  "Designing the layout…",
   "Elevating flat bullets into outcomes…",
-  "Tagging AI-authored content…",
+  "Styling the finished document…",
   "Finalizing the CV variant…",
 ];
 
-const STYLE_BADGE_CLASSES: Record<string, string> = {
-  modern: "bg-career-blue-800/10 text-career-blue-800",
-  classic: "bg-slate-200 text-slate-700",
-  contemporary: "bg-emerald-100 text-emerald-700",
-};
-
 /**
  * Flow behind the "Generate" button in the Generate CV Variant column:
- * 1. Show a loading modal while AI consolidates + enriches the CV.
- * 2. Show the style/flags summary + an editable, flattened text preview.
+ * 1. Show a loading modal while the AI writes and designs the CV.
+ * 2. Show a rendered preview of the AI's own design (no inline editing —
+ *    a rich-text editor would strip the AI's custom CSS the moment it
+ *    touched the content) with Reject / Download / Continue.
  * 3. Save as PDF or DOC — uploads to Firebase, records a new `resume`
  *    Upload, and advances the client's onboarding progress bar.
  * 4. Show a download link for the saved file.
@@ -69,8 +55,9 @@ export default function GenerateCvVariantButton({
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
-  const [result, setResult] = useState<CvVariantResult | null>(null);
-  const [editedHtml, setEditedHtml] = useState("");
+  const [cvVariantHtml, setCvVariantHtml] = useState("");
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [savedDocument, setSavedDocument] = useState<{ publicId: string; name: string } | null>(null);
   // "review" = Reject/Download/Continue gate; "confirm" = the actual Save
@@ -78,6 +65,7 @@ export default function GenerateCvVariantButton({
   // the client as two distinct, deliberate actions.
   const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
   const [isRejecting, setIsRejecting] = useState(false);
+  const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -90,23 +78,51 @@ export default function GenerateCvVariantButton({
     return () => clearInterval(interval);
   }, [isGenerating]);
 
+  // Revoke the preview object URL whenever it's replaced/cleared, and on
+  // unmount — otherwise each generation leaks a blob URL.
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  const clearPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setPreviewBlob(null);
+  };
+
   const handleGenerate = async () => {
     try {
-      const data = await generateCvVariant({ userId, resumeUploadId });
-      if (!data || Object.keys(data).length === 0) {
+      const html = await generateCvVariant({ userId, resumeUploadId });
+      if (!html?.trim()) {
         toast.error("No CV variant was returned");
         return;
       }
-      const html = flattenCvVariantToHtml(data);
-      if (!html.trim()) {
-        toast.error("The AI response couldn't be turned into a CV — try generating again");
-        return;
-      }
-      setResult(data);
-      setEditedHtml(html);
+      setCvVariantHtml(html);
       setReviewStage("review");
       setIsReviewOpen(true);
       toast.success("CV variant generated");
+
+      // Render an immediate preview so the review modal opens with the
+      // actual design visible, not a blank space.
+      try {
+        const { blob } = await previewCvVariant({
+          userId,
+          resumeUploadId,
+          cvVariant: html,
+          format: "pdf",
+        });
+        setPreviewBlob(blob);
+        setPreviewUrl(URL.createObjectURL(blob));
+      } catch (previewError: any) {
+        toast.error(
+          previewError?.response?.data?.message || "Generated, but the preview failed to render",
+        );
+      }
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Failed to generate CV variant";
@@ -118,34 +134,23 @@ export default function GenerateCvVariantButton({
     setIsRejecting(true);
     const toastId = toast.loading("Rejecting CV variant...");
     setIsReviewOpen(false);
-    setResult(null);
-    setEditedHtml("");
+    setCvVariantHtml("");
+    clearPreview();
     setReviewStage("review");
     toast.dismiss(toastId);
     toast.success("CV variant rejected");
     setIsRejecting(false);
   };
 
-  const handleDownloadPreview = async () => {
-    const toastId = toast.loading("Preparing preview...");
-    try {
-      const { blob, filename } = await previewCvVariant({
-        userId,
-        resumeUploadId,
-        cvVariant: editedHtml,
-        format: "pdf",
-        design: result?.design,
-      });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      toast.dismiss(toastId);
-    } catch (error: any) {
-      toast.dismiss(toastId);
-      const message = error?.response?.data?.message || "Failed to generate preview";
-      toast.error(message);
+  const handleDownloadPreview = () => {
+    if (!previewBlob) {
+      toast.error("Preview isn't ready yet");
+      return;
     }
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(previewBlob);
+    link.download = "CV_Variant_Preview.pdf";
+    link.click();
   };
 
   const handleSave = async (format: SaveCvVariantFormat) => {
@@ -153,9 +158,8 @@ export default function GenerateCvVariantButton({
       const data = await saveCvVariant({
         userId,
         resumeUploadId,
-        cvVariant: editedHtml,
+        cvVariant: cvVariantHtml,
         format,
-        design: result?.design,
       });
       const document_ = data?.upload?.document;
       if (!document_?.publicId) {
@@ -193,8 +197,6 @@ export default function GenerateCvVariantButton({
       toast.error(err?.message || "Failed to download CV variant");
     }
   };
-
-  const flags = result ? collectCvVariantFlags(result) : [];
 
   return (
     <>
@@ -261,62 +263,25 @@ export default function GenerateCvVariantButton({
         </DialogContent>
       </Dialog>
 
-      {/* Review + edit modal */}
+      {/* Review modal — preview only, no inline editing */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
         <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>CV Variant</DialogTitle>
             <DialogDescription>
-              {result?.client_name
-                ? `Generated for ${result.client_name}. Format it below so it reads like a presentable CV, then save.`
-                : "Review and format the AI-generated CV variant, then save it."}
+              Review the AI-designed CV below, then save it. The design (colors, layout, fonts)
+              is the AI's own — reject and regenerate if you want a different look.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
-            {result && (
-              <div className="flex flex-wrap items-center gap-2 text-13">
-                {result.style_variant && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold capitalize ${
-                      STYLE_BADGE_CLASSES[result.style_variant] ?? "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    <HiOutlineColorSwatch />
-                    {result.style_variant}
-                  </span>
-                )}
-                {result.style_reasoning && (
-                  <span className="text-career-gray-200">{result.style_reasoning}</span>
-                )}
-                {result.design && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-career-gray-300 px-2.5 py-1">
-                    <span
-                      className="h-3 w-3 rounded-full border border-black/10"
-                      style={{ backgroundColor: result.design.accent_color }}
-                    />
-                    <span className="capitalize text-career-gray-200">
-                      {result.design.font_family} · {result.design.density}
-                    </span>
-                  </span>
-                )}
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-career-gray-300 bg-career-gray-100">
+            {previewUrl ? (
+              <iframe title="CV Variant Preview" src={previewUrl} className="h-full w-full" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-career-gray-200">
+                {isPreviewing ? "Rendering preview…" : "Preview unavailable — try Download instead."}
               </div>
             )}
-
-            {flags.length > 0 && (
-              <div className="max-h-32 overflow-auto rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p className="font-semibold">Flags — review before saving</p>
-                <ul className="mt-1 list-disc pl-5">
-                  {flags.map((item, index) => (
-                    <li key={index}>
-                      <span className="font-medium">{item.source}:</span> {item.flag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
           </div>
 
           <DialogFooter className="shrink-0">
@@ -325,21 +290,21 @@ export default function GenerateCvVariantButton({
                 <Button
                   variant="outline"
                   className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  disabled={isRejecting || isPreviewing}
+                  disabled={isRejecting}
                   onClick={handleReject}
                 >
                   {isRejecting ? "Rejecting..." : "Reject"}
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={isPreviewing || isRejecting}
+                  disabled={!previewBlob || isRejecting}
                   onClick={handleDownloadPreview}
                 >
-                  {isPreviewing ? "Preparing..." : "Download"}
+                  Download
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-                  disabled={isPreviewing || isRejecting}
+                  disabled={isRejecting}
                   onClick={() => setReviewStage("confirm")}
                 >
                   Continue →
