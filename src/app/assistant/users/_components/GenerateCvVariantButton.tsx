@@ -379,8 +379,10 @@ export default function GenerateCvVariantButton({
 
       {/* A few questions — the AI couldn't confirm some facts on its own.
           Answering here becomes CONFIRMED evidence fed back into a fresh
-          generation; skipping leaves them as-is in the document (still
-          visible to the client in its own "Please Confirm" section). */}
+          generation. This is purely an internal resolution step: the
+          backend always strips its "Please Confirm" section out of the
+          actual CV before it's ever previewed/saved, whether a question
+          got answered, skipped, or left open. */}
       <Dialog open={isQuestionsOpen}>
         <DialogContent
           className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden rounded-2xl border-none p-0 shadow-2xl [&>button]:hidden"
@@ -396,8 +398,8 @@ export default function GenerateCvVariantButton({
             </div>
             <DialogDescription>
               The AI couldn&apos;t confirm these on its own. Answer what you already know — it
-              gets folded back in as a confirmed fact. Skip to proceed with the CV as-is; anything
-              left unanswered stays visible to the client in the document itself.
+              gets folded back in as a confirmed fact. Skip to proceed with the CV as-is; these
+              questions never appear in the actual CV either way, answered or not.
             </DialogDescription>
             <div className="flex items-center gap-2 pt-1">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-career-gray-300/50">
@@ -444,7 +446,7 @@ export default function GenerateCvVariantButton({
                       setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
                     }
                     disabled={isGenerating}
-                    placeholder="Leave blank if you don't know — it'll stay as an open question"
+                    placeholder="Leave blank if you don't know — it just won't appear in the CV"
                     className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
                   />
                 </div>
