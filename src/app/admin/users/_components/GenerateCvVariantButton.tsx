@@ -471,7 +471,7 @@ export default function GenerateCvVariantButton({
 
       {/* Review modal — preview only, no inline editing */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
+        <DialogContent className="flex h-[85vh] max-h-[85vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>CV Variant</DialogTitle>
             <DialogDescription>
@@ -482,7 +482,15 @@ export default function GenerateCvVariantButton({
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-career-gray-300 bg-career-gray-100">
             {previewUrl ? (
-              <iframe title="CV Variant Preview" src={previewUrl} className="h-full w-full" />
+              // The #view=FitH fragment tells the browser's native PDF viewer
+              // to fit the page to the iframe's width — without it, PDFs
+              // default to a small zoom level surrounded by the viewer's own
+              // dark chrome, making the preview look tiny inside the modal.
+              <iframe
+                title="CV Variant Preview"
+                src={`${previewUrl}#view=FitH`}
+                className="h-full w-full"
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-career-gray-200">
                 {isPreviewing ? "Rendering preview…" : "Preview unavailable — try Download instead."}
