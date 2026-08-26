@@ -63,6 +63,12 @@ export default function GenerateCvVariantButton({
   const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
   const [confirmQuestions, setConfirmQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Every answer confirmed across ALL rounds of this Generate session, not
+  // just the latest one — each regenerate call re-sends the full cumulative
+  // list, otherwise a fact confirmed in round 1 drops out of the AI's view
+  // the moment round 2 only carries round 2's answers, and it can re-ask
+  // (or re-derive) something already settled.
+  const [confirmedSoFar, setConfirmedSoFar] = useState<ConfirmedAnswer[]>([]);
   const [cvVariantHtml, setCvVariantHtml] = useState("");
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -143,6 +149,7 @@ export default function GenerateCvVariantButton({
       if (questions.length > 0) {
         setConfirmQuestions(questions);
         setAnswers({});
+        setConfirmedSoFar([]);
         setIsQuestionsOpen(true);
         return;
       }
@@ -161,14 +168,21 @@ export default function GenerateCvVariantButton({
   };
 
   const handleSubmitAnswers = async () => {
-    const confirmedAnswers: ConfirmedAnswer[] = confirmQuestions
+    const newlyAnswered: ConfirmedAnswer[] = confirmQuestions
       .filter((q) => answers[q]?.trim())
       .map((q) => ({ question: q, answer: answers[q].trim() }));
 
-    if (confirmedAnswers.length === 0) {
+    if (newlyAnswered.length === 0) {
       toast.error("Answer at least one question, or use Skip instead");
       return;
     }
+
+    // Merge into everything confirmed in earlier rounds too — a later
+    // answer for the same question text wins, but nothing already settled
+    // gets dropped just because this round's list moved on from it.
+    const merged = new Map(confirmedSoFar.map((a) => [a.question, a]));
+    newlyAnswered.forEach((a) => merged.set(a.question, a));
+    const confirmedAnswers = Array.from(merged.values());
 
     try {
       const { html, confirmQuestions: questions } = await generateCvVariant({
@@ -177,6 +191,7 @@ export default function GenerateCvVariantButton({
         confirmedAnswers,
       });
       setCvVariantHtml(html);
+      setConfirmedSoFar(confirmedAnswers);
 
       if (questions.length > 0) {
         // Still something open (could be the same question phrased
@@ -209,6 +224,7 @@ export default function GenerateCvVariantButton({
     setCvVariantHtml("");
     setConfirmQuestions([]);
     setAnswers({});
+    setConfirmedSoFar([]);
     clearPreview();
     setReviewStage("review");
     toast.dismiss(toastId);
