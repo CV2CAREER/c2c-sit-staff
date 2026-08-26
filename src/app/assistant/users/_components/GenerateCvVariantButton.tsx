@@ -74,6 +74,11 @@ export default function GenerateCvVariantButton({
   // the moment round 2 only carries round 2's answers, and it can re-ask
   // (or re-derive) something already settled.
   const [confirmedSoFar, setConfirmedSoFar] = useState<ConfirmedAnswer[]>([]);
+  // Hard backstop against the AI re-asking (possibly reworded) questions
+  // round after round — after this many regenerate rounds we stop trusting
+  // it to converge and just proceed to review with whatever's confirmed.
+  const [questionRound, setQuestionRound] = useState(0);
+  const MAX_QUESTION_ROUNDS = 2;
   const [cvVariantHtml, setCvVariantHtml] = useState("");
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -155,6 +160,7 @@ export default function GenerateCvVariantButton({
         setConfirmQuestions(questions);
         setAnswers({});
         setConfirmedSoFar([]);
+        setQuestionRound(0);
         setIsQuestionsOpen(true);
         return;
       }
@@ -189,6 +195,8 @@ export default function GenerateCvVariantButton({
     newlyAnswered.forEach((a) => merged.set(a.question, a));
     const confirmedAnswers = Array.from(merged.values());
 
+    const nextRound = questionRound + 1;
+
     try {
       const { html, confirmQuestions: questions } = await generateCvVariant({
         userId,
@@ -197,11 +205,12 @@ export default function GenerateCvVariantButton({
       });
       setCvVariantHtml(html);
       setConfirmedSoFar(confirmedAnswers);
+      setQuestionRound(nextRound);
 
-      if (questions.length > 0) {
-        // Still something open (could be the same question phrased
-        // differently, or a new one) — keep the modal up with the updated
-        // list rather than assuming everything's resolved.
+      // Give it a bounded number of chances to converge — if it's still
+      // surfacing questions after this many rounds, trust the admin's
+      // answers over the AI's persistence and move on rather than looping.
+      if (questions.length > 0 && nextRound < MAX_QUESTION_ROUNDS) {
         setConfirmQuestions(questions);
         setAnswers((prev) => {
           const next: Record<string, string> = {};
@@ -214,8 +223,14 @@ export default function GenerateCvVariantButton({
         return;
       }
 
+      if (questions.length > 0) {
+        toast("Proceeding with what's confirmed — remaining items stay visible in the document", {
+          icon: "ℹ️",
+        });
+      } else {
+        toast.success("Confirmed — CV updated");
+      }
       setIsQuestionsOpen(false);
-      toast.success("Confirmed — CV updated");
       await openReview(html);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to regenerate CV variant");
@@ -230,6 +245,7 @@ export default function GenerateCvVariantButton({
     setConfirmQuestions([]);
     setAnswers({});
     setConfirmedSoFar([]);
+    setQuestionRound(0);
     clearPreview();
     setReviewStage("review");
     toast.dismiss(toastId);
@@ -303,8 +319,11 @@ export default function GenerateCvVariantButton({
         {isGenerating ? "Generating..." : "Generate"}
       </Button>
 
-      {/* Loading modal */}
-      <Dialog open={isGenerating}>
+      {/* Loading modal — suppressed while the questions modal is open, since
+          "Submit & regenerate" already shows its own inline loading state
+          on that dialog's button; without this guard both dialogs render
+          open at once (the loading modal stacking on top). */}
+      <Dialog open={isGenerating && !isQuestionsOpen}>
         <DialogContent
           className="max-w-sm border-none bg-transparent shadow-none [&>button]:hidden"
           onInteractOutside={(e) => e.preventDefault()}
@@ -424,6 +443,7 @@ export default function GenerateCvVariantButton({
                     onChange={(e) =>
                       setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
                     }
+                    disabled={isGenerating}
                     placeholder="Leave blank if you don't know — it'll stay as an open question"
                     className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
                   />
