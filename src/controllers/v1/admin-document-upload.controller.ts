@@ -452,7 +452,6 @@ export const previewCvVariantController = catchAsyncError(
     const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
     const cvVariant = (req.body?.cvVariant as string | undefined)?.trim();
     const format = (req.body?.format as string | undefined)?.trim().toLowerCase();
-    const design = req.body?.design;
 
     if (!userId) {
       return res.apiError(new ErrorHandler("userId is required", 400));
@@ -473,7 +472,6 @@ export const previewCvVariantController = catchAsyncError(
         resumeUploadId,
         cvVariant,
         format,
-        design,
       );
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -500,7 +498,6 @@ export const saveCvVariantController = catchAsyncError(
     const resumeUploadId = (req.body?.resumeUploadId as string | undefined)?.trim();
     const cvVariant = (req.body?.cvVariant as string | undefined)?.trim();
     const format = (req.body?.format as string | undefined)?.trim().toLowerCase();
-    const design = req.body?.design;
 
     if (!userId) {
       return res.apiError(new ErrorHandler("userId is required", 400));
@@ -521,7 +518,6 @@ export const saveCvVariantController = catchAsyncError(
         resumeUploadId,
         cvVariant,
         format,
-        design,
       );
 
       const adminUser = (req as any).user;

@@ -27,6 +27,7 @@ import { Credentials } from "@/models/v1/credentials.model";
 import { uploadBufferToStorage } from "../utils/fileUpload";
 import { textToPdfBuffer, textToDocxBuffer } from "../utils/textDocumentGenerator";
 import { htmlToPdfBuffer, htmlToDocxBuffer } from "../utils/htmlDocumentGenerator";
+import { renderCvVariantHtmlToPdf, renderCvVariantHtmlToDocx } from "../utils/cvVariantHtmlRenderer";
 import { progressValues } from "../utils/user-progress-processor";
 
 const logger = getServiceLogger("document-service");
@@ -60,214 +61,6 @@ export interface RoleTitleRecommendationResult {
   candidate_name: string;
   qa_flags: { type: string; description: string }[];
   roles: RoleTitleRecommendationRow[];
-}
-
-export interface CvVariantTextRun {
-  text: string;
-  is_new: boolean;
-}
-
-export interface CvVariantHeader {
-  name: string;
-  headline: CvVariantTextRun;
-  contact_line: string;
-  work_rights_line: { text: string | null; is_new: boolean; flag: string | null };
-}
-
-export interface CvVariantExperienceSubSection {
-  label: string;
-  bullets: CvVariantTextRun[];
-}
-
-export interface CvVariantExperience {
-  title: string;
-  company: string;
-  location: string | null;
-  dates: string;
-  flags: string[];
-  bullets: CvVariantTextRun[];
-  sub_sections: CvVariantExperienceSubSection[];
-}
-
-export interface CvVariantEducation {
-  qualification: string;
-  institution: string;
-  dates: string;
-  detail: { text: string | null; is_new: boolean };
-  flags: string[];
-}
-
-export interface CvVariantCertification extends CvVariantTextRun {
-  flag: string | null;
-}
-
-export interface CvVariantAdditionalSection {
-  heading: string;
-  items: CvVariantTextRun[];
-}
-
-export interface CvVariantDesign {
-  accent_color: string;
-  font_family: "sans" | "serif";
-  density: "compact" | "standard" | "spacious";
-  /**
-   * Drives which structural PDF/DOCX layout renders (see htmlDocumentGenerator.ts):
-   * "modern" = two-column, "classic" = centered single-column with restrained
-   * color, "contemporary" = single-column with a tinted banner header. Unlike
-   * the other three tokens this isn't optional after sanitization — every CV
-   * variant save gets one of the three real layouts, never the undated
-   * single-column fallback other callers (e.g. Interview Pack) get by
-   * omitting `design` entirely.
-   */
-  style_variant: "modern" | "classic" | "contemporary";
-}
-
-/**
- * The prompt driving this (a VCS-managed row, editable via Admin > Prompts)
- * can change its output shape at any time — a rewritten prompt, a model
- * having an off day, or a differently-tuned agent can all return field names
- * that don't match the shape below. Treating that as a hard failure just
- * loses the whole generation. So this is a *hint* at the shape we ask the AI
- * for and render specially when present — not a contract the AI's response
- * is validated against. `Record<string, unknown>` lets anything else through
- * so the frontend's generic renderer (cvVariantFormat.ts) can still turn it
- * into a readable document.
- */
-export type CvVariantResult = Record<string, unknown> & Partial<{
-  client_name: string;
-  style_variant: "modern" | "classic" | "contemporary";
-  style_reasoning: string;
-  top_level_flags: string[];
-  design: CvVariantDesign;
-  header: CvVariantHeader;
-  summary: { runs: CvVariantTextRun[] };
-  skills: CvVariantTextRun[];
-  experience: CvVariantExperience[];
-  education: CvVariantEducation[];
-  certifications: CvVariantCertification[];
-  additional_sections: CvVariantAdditionalSection[];
-}>;
-
-const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
-  accent_color: "#0D9F6E",
-  font_family: "sans",
-  density: "standard",
-  style_variant: "classic",
-};
-
-const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
-const STYLE_VARIANTS = new Set(["modern", "classic", "contemporary"]);
-
-/**
- * The AI is asked to pick design tokens (accent color / font pairing /
- * density / style_variant) per the schema, but its output is untrusted input
- * like any other field — fall back to the current house-style default for
- * anything missing or malformed rather than rejecting the whole variant over
- * it. `styleVariantHint` covers `style_variant` living at the top level of
- * CvVariantResult rather than nested in `design` — whichever is present and
- * valid wins.
- */
-function sanitizeCvVariantDesign(design: unknown, styleVariantHint?: unknown): CvVariantDesign {
-  const candidate = (design ?? {}) as Partial<CvVariantDesign>;
-  const accent_color = HEX_COLOR_PATTERN.test(candidate.accent_color ?? "")
-    ? (candidate.accent_color as string)
-    : DEFAULT_CV_VARIANT_DESIGN.accent_color;
-  const font_family = candidate.font_family === "serif" ? "serif" : "sans";
-  const density =
-    candidate.density === "compact" || candidate.density === "spacious"
-      ? candidate.density
-      : "standard";
-  const style_variant = STYLE_VARIANTS.has(candidate.style_variant ?? "")
-    ? (candidate.style_variant as CvVariantDesign["style_variant"])
-    : STYLE_VARIANTS.has(styleVariantHint as string)
-      ? (styleVariantHint as CvVariantDesign["style_variant"])
-      : DEFAULT_CV_VARIANT_DESIGN.style_variant;
-
-  return { accent_color, font_family, density, style_variant };
-}
-
-// Known aliases the model has drifted into for the experience section's key
-// name, in place of `experience`.
-const EXPERIENCE_KEY_ALIASES = [
-  "jobs",
-  "work_history",
-  "employment_history",
-  "professional_experience",
-  "work_experience",
-  "roles",
-];
-
-// Within one experience entry, known aliases for a plain descriptive
-// paragraph the model has returned instead of a `bullets` array.
-const ENTRY_SUMMARY_KEY_ALIASES = [
-  "job_description_summary",
-  "description",
-  "role_summary",
-  "responsibilities_summary",
-];
-
-/** `{skill: "JavaScript"}` -> `"JavaScript"` — same single-key-wrapper pattern the frontend's extractText unwraps, mirrored here so the admin sees a clean list even before it reaches the renderer. */
-const flattenSkillEntry = (entry: unknown): string | undefined => {
-  if (typeof entry === "string") return entry.trim() || undefined;
-  if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-    const keys = Object.keys(entry as Record<string, unknown>);
-    if (keys.length === 1) {
-      const only = (entry as Record<string, unknown>)[keys[0]];
-      if (typeof only === "string") return only.trim() || undefined;
-    }
-  }
-  return undefined;
-};
-
-/**
- * The CV variant prompt's JSON schema is a *hint* to the model, not an
- * enforced contract — the underlying AI call has no response_format/schema
- * constraint (see digital-factory.ts), so key names and shapes drift between
- * calls even with an unchanged prompt. This canonicalizes the specific drift
- * patterns observed in practice (experience under a different key, a single
- * summary paragraph instead of bullets, skills wrapped in single-key
- * objects) so the admin sees correctly-formatted content in the review step
- * instead of the renderer's generic fallback labeling every field by its raw
- * key name. Extend the alias lists above as new drift patterns are found —
- * this is necessarily reactive, not exhaustive.
- */
-function normalizeCvVariantResult(result: CvVariantResult): CvVariantResult {
-  const obj = result as Record<string, unknown>;
-
-  // 1. Experience section returned under an alias key.
-  if (!Array.isArray(obj.experience)) {
-    const aliasKey = EXPERIENCE_KEY_ALIASES.find((key) => Array.isArray(obj[key]));
-    if (aliasKey) {
-      obj.experience = obj[aliasKey];
-      delete obj[aliasKey];
-    }
-  }
-
-  // 2. Per-entry: a single summary paragraph instead of a bullets array.
-  if (Array.isArray(obj.experience)) {
-    obj.experience = (obj.experience as unknown[]).map((entry) => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
-      const e = entry as Record<string, unknown>;
-      if (Array.isArray(e.bullets) && e.bullets.length > 0) return e;
-
-      const summaryKey = ENTRY_SUMMARY_KEY_ALIASES.find(
-        (key) => typeof e[key] === "string" && (e[key] as string).trim(),
-      );
-      if (summaryKey) {
-        const text = (e[summaryKey] as string).trim();
-        delete e[summaryKey];
-        e.bullets = [text];
-      }
-      return e;
-    });
-  }
-
-  // 3. Skills as an array of single-key wrapper objects instead of plain strings.
-  if (Array.isArray(obj.skills)) {
-    obj.skills = (obj.skills as unknown[]).map((entry) => flattenSkillEntry(entry) ?? entry);
-  }
-
-  return obj as CvVariantResult;
 }
 
 export class AdminDocumentService {
@@ -1117,15 +910,17 @@ export class AdminDocumentService {
     }
 
     /**
-     * Generate a consolidated, enriched CV Variant for a user's resume.
-     * Returns the parsed AI JSON (with per-field is_new flags) — persistence
-     * is a separate, explicit "save" step once the admin has reviewed/edited
-     * the flattened text on the frontend.
+     * Generate a fully-designed CV Variant for a user's resume. The AI
+     * authors a complete, self-styled HTML document (its own colors, layout,
+     * fonts) — there's no JSON schema to parse or validate here, since the
+     * HTML *is* the design, rendered as-is via cvVariantHtmlRenderer.ts.
+     * Persistence is a separate, explicit "save" step once the admin has
+     * reviewed the rendered result.
      */
     static async generateCvVariant(
         targetUserId: string,
         resumeUploadId: string,
-    ): Promise<CvVariantResult> {
+    ): Promise<string> {
         logger.info(`[GenerateCvVariant] User ${targetUserId}, resume ${resumeUploadId}`);
 
         const upload = await Upload.findOne({
@@ -1147,12 +942,7 @@ export class AdminDocumentService {
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            // jsonMode: this response is always parsed as JSON below — asking
-            // the API to guarantee valid JSON cuts out one whole class of
-            // failure ("AI response did not contain valid JSON"), though it
-            // doesn't by itself fix key-name drift (normalizeCvVariantResult
-            // handles that separately).
-            aiResponse = await queryDigitalOceanAI(prompt, 2, true);
+            aiResponse = await queryDigitalOceanAI(prompt);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,
@@ -1177,65 +967,39 @@ export class AdminDocumentService {
             throw error;
         }
 
-        const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
-        const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            logger.error(`[GenerateCvVariant] No JSON found in AI response for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
-            throw new ErrorHandler("AI response did not contain valid JSON", 500);
-        }
+        // The model sometimes wraps its HTML in a Markdown code fence despite
+        // being asked not to — strip that before validating/returning.
+        const html = aiResponse.replace(/^```(?:html)?\s*|\s*```$/gi, "").trim();
 
-        let result: CvVariantResult;
-        try {
-            result = JSON.parse(jsonMatch[0]);
-        } catch {
-            logger.error(`[GenerateCvVariant] Failed to parse AI JSON for user ${targetUserId}. Matched JSON (first 2000 chars): ${jsonMatch[0].slice(0, 2000)}`);
-            throw new ErrorHandler("Failed to parse AI-generated CV variant", 500);
-        }
-
-        if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
-            logger.error(`[GenerateCvVariant] AI returned an empty/non-object response for user ${targetUserId}. Raw response (first 3000 chars): ${aiResponse.slice(0, 3000)}`);
+        if (!html || !/<html[\s>]/i.test(html)) {
+            logger.error(`[GenerateCvVariant] AI response doesn't look like an HTML document for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
             throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
 
-        result = normalizeCvVariantResult(result);
-
-        if (!result.header || !Array.isArray(result.experience)) {
-            // The prompt's schema is a hint, not a contract — the AI (or a
-            // reworked prompt) can return a differently-shaped object.
-            // normalizeCvVariantResult above already canonicalizes the known
-            // drift patterns; anything still unrecognized after that gets
-            // logged for visibility and handled by the frontend's generic
-            // renderer rather than failing the whole generation.
-            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId} even after normalization. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
-        }
-
-        result.design = sanitizeCvVariantDesign(result.design, result.style_variant);
-
-        logger.info(`[GenerateCvVariant] Generated a "${result.style_variant}" variant for user ${targetUserId}`);
-        return result;
+        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${html.length} chars)`);
+        return html;
     }
 
     /**
-     * Renders the (admin-reviewed/formatted) CV variant — rich-text HTML
-     * from the TipTap editor, so bold/italic/underline/lists/alignment carry
-     * through — into a PDF or DOCX file, uploads it to Firebase, and records
-     * it as a new `resume` Upload for the client — the follow-up
-     * persistence step to generateCvVariant above.
+     * Renders the AI-authored CV variant HTML (its own embedded design —
+     * see cvVariantHtmlRenderer.ts) into a PDF or DOCX file, uploads it to
+     * Firebase, and records it as a new `resume` Upload for the client — the
+     * follow-up persistence step to generateCvVariant above. No admin
+     * editing happens between generate and save (see the frontend review
+     * gate) — a rich-text editor would strip the AI's custom styling the
+     * moment it touched the content, so review is preview-only.
      */
     static async saveCvVariant(
         targetUserId: string,
         resumeUploadId: string,
         cvVariantHtml: string,
         format: "pdf" | "docx",
-        design?: Partial<CvVariantDesign>,
     ): Promise<{ upload: Upload; clientName: string }> {
         logger.info(`[SaveCvVariant] User ${targetUserId}, format ${format}`);
 
         if (!cvVariantHtml?.trim()) {
             throw new ErrorHandler("CV variant content is required", 400);
         }
-
-        const resolvedDesign = sanitizeCvVariantDesign(design);
 
         // Confirm the resume belongs to this user before attaching the
         // generated variant to their account.
@@ -1257,8 +1021,8 @@ export class AdminDocumentService {
 
         const isPdf = format === "pdf";
         const buffer = isPdf
-            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
-            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
+            ? await renderCvVariantHtmlToPdf(cvVariantHtml)
+            : await renderCvVariantHtmlToDocx(cvVariantHtml);
 
         const mimeType = isPdf
             ? "application/pdf"
@@ -1313,15 +1077,12 @@ export class AdminDocumentService {
         resumeUploadId: string,
         cvVariantHtml: string,
         format: "pdf" | "docx",
-        design?: Partial<CvVariantDesign>,
     ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
         logger.info(`[PreviewCvVariant] User ${targetUserId}, format ${format}`);
 
         if (!cvVariantHtml?.trim()) {
             throw new ErrorHandler("CV variant content is required", 400);
         }
-
-        const resolvedDesign = sanitizeCvVariantDesign(design);
 
         const resumeUpload = await Upload.findOne({
             where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
@@ -1341,8 +1102,8 @@ export class AdminDocumentService {
 
         const isPdf = format === "pdf";
         const buffer = isPdf
-            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
-            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
+            ? await renderCvVariantHtmlToPdf(cvVariantHtml)
+            : await renderCvVariantHtmlToDocx(cvVariantHtml);
 
         const mimeType = isPdf
             ? "application/pdf"
