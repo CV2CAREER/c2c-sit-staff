@@ -37,6 +37,7 @@ import { IoAddCircle } from "react-icons/io5";
 import CustomButton from "@/components/CustomButton/CustomButton";
 import { ButtonProperties } from "@/lib/helpers";
 import { FiLoader } from "react-icons/fi";
+import { Table2 } from "lucide-react";
 
 
 /*---- Data / Interfaces ----*/
@@ -771,11 +772,16 @@ const ClientDataTable: React.FC<{ clientId: string | number, route: string }> = 
             </section>
 
             {/* Client Table Section */}
-            <section>
-                <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between mb-5">
-                    <h2 className="text-xl md:text-2xl font-bold">
-                        {table.charAt(0).toUpperCase() + table.slice(1).replace("_", " ")} table
-                    </h2>
+            <section className="relative overflow-hidden flex flex-col gap-5 bg-white rounded-xl p-4 md:p-6 border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+                <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Table2 size={20} />
+                        </span>
+                        <h2 className="text-lg md:text-xl font-semibold leading-tight">
+                            {table.charAt(0).toUpperCase() + table.slice(1).replace("_", " ")} Table
+                        </h2>
+                    </div>
                     {isEditable &&
                         <div className="flex flex-row flex-wrap gap-4 w-full md:w-auto">
                             <Button>Import Data</Button>

@@ -121,7 +121,6 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 width: 300,
                 type: 'jobsite',
                 cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF]',
                 renderCell: (params: any) =>
                     params?.row?.aggregator.name ?? '-',
             },
@@ -131,7 +130,6 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 width: 300,
                 type: 'generatedEmail',
                 cellClassName: 'el',
-                headerClassName: 'bg-[#80D7FF]',
                 renderCell: (params: any) => {
                     return setupAliasmail(params?.row?.username);
                 },
@@ -153,8 +151,6 @@ const AdminUsersJobSites = ({ userId }: { userId: string }) => {
                 width: 300,
                 type: 'triggerJobsite',
                 cellClassName: 'el',
-                headerClassName:
-                    'bg-[#80D7FF] text-black font-semibold',
                 renderCell: (params: any) => {
                     return (
                         <CustomButton

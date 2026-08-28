@@ -8,3 +8,9 @@ export const MISSING_INFO_REQUESTS_STAFF_OUTSTANDING = '/api/v1/missing-info-req
 export const MISSING_INFO_REQUESTS_STAFF_STATS = '/api/v1/missing-info-requests/stats';
 export const MISSING_INFO_REQUESTS_STAFF_BULK_REMINDER = '/api/v1/missing-info-requests/bulk-reminder';
 export const MISSING_INFO_REQUESTS_STAFF_RESPONSES = (id: string) => `/api/v1/missing-info-requests/${id}/responses`;
+export const MISSING_INFO_REQUESTS_STAFF_CLIENT = (targetUserId: string) => `/api/v1/missing-info-requests/client/${targetUserId}`;
+export const MISSING_INFO_REQUESTS_STAFF_REMINDER = (id: string) => `/api/v1/missing-info-requests/${id}/reminder`;
+export const MISSING_INFO_REQUESTS_STAFF_CANCEL = (id: string) => `/api/v1/missing-info-requests/${id}/cancel`;
+export const MISSING_INFO_REQUESTS_STAFF_DECLINE = (id: string) => `/api/v1/missing-info-requests/${id}/decline`;
+export const MISSING_INFO_REQUESTS_STAFF_REUSE = (id: string) => `/api/v1/missing-info-requests/${id}/reuse`;
+export const MISSING_INFO_REQUESTS_STAFF_COPY_AUDIT = (id: string) => `/api/v1/missing-info-requests/${id}/copy-audit`;

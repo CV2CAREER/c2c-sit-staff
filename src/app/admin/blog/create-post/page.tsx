@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 import TiptapEditor from "../_components/TiptapEditor";
 import { useRouter } from "next/navigation";
 import FeaturedImagePicker from "../_components/FeaturedImagePicker";
+import { BLOG_CATEGORIES, BLOG_OPTIONS } from "@/constants/blogCategories";
 
 const CreateBlogPostPage = () => {
   const [showDate, setShowDate] = useState(false);
@@ -104,7 +105,7 @@ const CreateBlogPostPage = () => {
 
   return (
     <div className="w-full h-auto bg-[#C1C1C1] flex flex-col">
-      <div className="flex flex-col w-full h-[240px] bg-white relative right-1000">
+      <div className="flex flex-col w-full h-[240px] bg-white">
         <div className="flex flex-col sm:text-left md:flex-row parent justify-between rounded-t-lg w-full h-[80px] bg-white p-4 items-center ml-4">
           <div className="flex items-center w-[300px] h-[40px] bg-white  text-F3F3F3 p-2">
             <div className='flex mr-4 items-center space-x-1 w-[133px] h-[40px] rounded text-black border border-[#A3A3A3] text-center'> 
@@ -114,10 +115,15 @@ const CreateBlogPostPage = () => {
               <span><RiArrowDownSFill/></span>
             </div>
 
-            <div className='flex space-x-1 bg-[#008ED3] hover:bg-blue-800 items-center text-white md:w-[95px] w-auto rounded p-2 h-40px text-center mr-4'>
+            <button
+              type="button"
+              onClick={handleCreateContent}
+              disabled={createPost.isPending}
+              className="flex space-x-1 bg-[#008ED3] hover:bg-blue-800 items-center text-white md:w-[95px] w-auto rounded p-2 h-40px text-center mr-4 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <span><IoSendSharp/></span>
-              <span className='cursor-pointer' onClick={handleCreateContent}> {createPost.isPending ? 'Publishing...' : 'Publish'}</span>
-            </div>
+              <span>{createPost.isPending ? 'Publishing...' : 'Publish'}</span>
+            </button>
             <span className='text-[#A3A3A3] items-center'> <IoCloudDone/></span>
           </div>
 
@@ -175,9 +181,9 @@ const CreateBlogPostPage = () => {
             </div>
             {isOpen && (
               <div className="mt-1 bg-white border border-gray-300 rounded shadow-lg">
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleCategoryChange('Technology')}>Technology</p>
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleCategoryChange('Job')}>Job</p>
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleCategoryChange('Career')}>Career</p>
+                {BLOG_CATEGORIES.map((category) => (
+                  <p key={category} className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleCategoryChange(category)}>{category}</p>
+                ))}
               </div>
             )}
           </div>
@@ -197,9 +203,9 @@ const CreateBlogPostPage = () => {
             </div>
             {isOpenOption && (
               <div className="mt-1 bg-white border border-gray-300 rounded shadow-lg">
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleOPtionChange('Interview')}>Interview</p>
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleOPtionChange('Resume')}>Resume</p>
-                <p className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleOPtionChange('Career Transition')}>Career Transition</p>
+                {BLOG_OPTIONS.map((option) => (
+                  <p key={option} className="p-2 cursor-pointer hover:bg-gray-200" onClick={() => handleOPtionChange(option)}>{option}</p>
+                ))}
               </div>
             )}
           </div>

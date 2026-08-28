@@ -69,6 +69,18 @@ function createNewField(fieldType: string): FreeFormField {
   };
 }
 
+// Collapse expanded referee block rows back into a single block card so the
+// free-form preview never renders one "REFEREE × N" card per sub-field.
+function collapseRefereeFields(templateFields: any[]): FreeFormField[] {
+  const hasReferee = templateFields.some((f: any) => f.isRefereeBlock);
+  if (!hasReferee) return templateFields.map(buildFormField);
+  const blockField = createNewField("referee_block");
+  const nonBlock = templateFields
+    .filter((f: any) => !f.isRefereeBlock)
+    .map(buildFormField);
+  return [blockField, ...nonBlock];
+}
+
 function fieldsToApi(fields: FreeFormField[], blockTemplate?: FieldToggleRow[]): any[] {
   const refereeTemplate = (blockTemplate && blockTemplate.length > 0)
     ? blockTemplate
@@ -134,7 +146,7 @@ export default function FreeFormBuilderClient() {
       setTemplateName(template.name);
       setCategory(template.category || "references");
       if (template.fields && template.fields.length > 0) {
-        setFields(template.fields.map(buildFormField));
+        setFields(collapseRefereeFields(template.fields));
       }
       const blockFields = template.fields?.filter(
         (f: any) => f.isRefereeBlock && f.refereeBlockIndex === 1,

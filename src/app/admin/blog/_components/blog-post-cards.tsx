@@ -1,5 +1,5 @@
 "use client"
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import { User, Edit, Recycle, Trash2, Delete } from "lucide-react";
 import {
   Select,
@@ -24,7 +24,7 @@ type PostCardType = "active-posts" | "recycle-bin"
 const filterLists = [
   { value: "all", label: "All" },
   { value: "published", label: "Published" },
-  { value: "drafts", label: "Drafts" },
+  { value: "draft", label: "Drafts" },
   { value: "scheduled", label: "Scheduled" }
 ];
 
@@ -33,6 +33,13 @@ const BlogPostCards: React.FC<{type: PostCardType}> = ({type}) => {
 
   const { blogPostsDomain } = useBlogQueries({ recycled: type === "recycle-bin" });
   const blogPosts = blogPostsDomain.data || [];
+
+  const filteredPosts = useMemo(() => {
+    if (selectedFilter.value === "all") return blogPosts;
+    return blogPosts.filter(
+      (post) => post.status.toLowerCase() === selectedFilter.value,
+    );
+  }, [blogPosts, selectedFilter]);
 
   return (
     <section>
@@ -46,7 +53,7 @@ const BlogPostCards: React.FC<{type: PostCardType}> = ({type}) => {
         >
           <SelectTrigger className="w-[180px] ml-auto bg-white shadow-md mb-5">
             <SelectValue
-              placeholder={selectedFilter.label + ` (${blogPosts.length || 0})`}
+              placeholder={selectedFilter.label + ` (${filteredPosts.length || 0})`}
             />
           </SelectTrigger>
           <SelectContent>
@@ -59,8 +66,8 @@ const BlogPostCards: React.FC<{type: PostCardType}> = ({type}) => {
 
       <section className="flex flex-col gap-6">
         <Suspense fallback={<SkeletonCards numOfCards={5} />}>
-        {blogPosts.length > 0 ? 
-          blogPosts.map((post, idx) => <PostCard key={idx} post={post} type={type} />) 
+        {filteredPosts.length > 0 ? 
+          filteredPosts.map((post, idx) => <PostCard key={idx} post={post} type={type} />) 
           : (
             <EmptyList
              listName="Posts" 

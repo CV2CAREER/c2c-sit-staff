@@ -163,11 +163,6 @@ export default function TemplateManager() {
           loading={isTriggersLoading || updateTriggerMutation.isPending}
           getRowId={(row) => row._id}
           disableRowSelectionOnClick
-          sx={{
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#80D7FF",
-            },
-          }}
         />
       </div>
 

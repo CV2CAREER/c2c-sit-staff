@@ -162,5 +162,25 @@ export const useDocumentsMutations = () => {
       onSuccess: () => {},
       onError: () => {},
     }),
+    bulkDeleteUploadsMutation: useMutateData<
+      { deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] },
+      { ids: string[] }
+    >({
+      method: "DELETE",
+      url: endpoints.ADMIN_UPLOADS_BULK_DELETE,
+      mutationKey: ["admin-bulk-delete-uploads"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    bulkDeleteClientSupportDocumentsMutation: useMutateData<
+      { deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] },
+      { ids: string[] }
+    >({
+      method: "DELETE",
+      url: endpoints.ADMIN_CLIENT_SUPPORT_DOCUMENTS_BULK_DELETE,
+      mutationKey: ["admin-bulk-delete-client-support-documents"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
   };
 };

@@ -102,7 +102,6 @@ const generateJobHistoryColumns = () => {
             const timestampEl:GridColDef = {
                 ...el,
                 width: 200,
-                headerClassName: 'bg-[#80D7FF]',
                 renderCell: (params: any) => {
                     const formatter = new Intl.DateTimeFormat('en-GB', {
                         year: 'numeric',
@@ -147,7 +146,6 @@ const generateJobHistoryColumns = () => {
             const arrayEl:GridColDef = {
                 ...el,
                 width: 200,
-                headerClassName: 'bg-[#80D7FF]',
                 sortable: false,
                 renderCell: (params: any) => {
                     const arr = getFieldValue(params.row, el.field) as []
@@ -167,7 +165,6 @@ const generateJobHistoryColumns = () => {
             const boolEl: GridColDef = {
                 ...el,
                 width: 100,
-                headerClassName: 'bg-[#80D7FF]',
                 sortable: false,
                 renderCell: (params: any) => <PreferenceToolTip title={getFieldValue(params.row, el.field) ? "Yes" : "No" }/>
             }
@@ -176,7 +173,6 @@ const generateJobHistoryColumns = () => {
         return [...acc, {
             ...el,
             width: 200,
-            headerClassName: 'bg-[#80D7FF]',
             renderCell: (params: any) => {
                 const value = getFieldValue(params.row, el.field);
                 return <PreferenceToolTip title={value ?? "N/A"} />;

@@ -1,4 +1,18 @@
 import { GridColDef } from "@mui/x-data-grid"
+
+// Raw upload `type` values are lowercase, single-word ("resume",
+// "coverletter"); ClientSupportDocument rows already arrive pre-labeled
+// ("Role Title Recommendations", etc.) via CATEGORY_LABELS. This normalizes
+// the column display for both.
+const TYPE_LABELS: Record<string, string> = {
+    resume: "Resume",
+    coverletter: "Cover Letter",
+}
+const formatTypeLabel = (value: unknown) => {
+    const raw = typeof value === "string" ? value : ""
+    if (!raw) return ""
+    return TYPE_LABELS[raw] ?? raw.charAt(0).toUpperCase() + raw.slice(1)
+}
 import DocumentTableActions from "./client-document-actions"
 import GenerateCoverLetterButton from "./GenerateCoverLetterButton"
 import GenerateRoleTitlesButton from "./GenerateRoleTitlesButton"
@@ -36,14 +50,6 @@ const clientDocumentsColumns = [
     }, {
         field: "dataPoints",
         headerName: "Data Points"
-    },
-    {
-        field: "suggestedKeywords",
-        headerName: "Suggested Keywords"
-    },
-    {
-        field: "suggestedJobTitles",
-        headerName: "Suggested Job Titles"
     },
     {
         field: "generateRTR",
@@ -86,7 +92,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
                 {
                     ...el,
                     width: 120,
-                    headerClassName: "bg-[#D4FFFF]",
                     renderCell: (params: any) => {
                         // Only admin-generated documents (Upload rows and
                         // ClientSupportDocument rows both use source: "admin")
@@ -111,9 +116,18 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
                 ...acc, {
                     ...el,
                     width: 280,
-                    headerClassName: "bg-[#D4FFFF]",
                     renderCell: (params:any) => (
                         <p>{params.value}</p>
+                    )
+                }
+            ]
+        }
+        if (el.field === "type") {
+            return [
+                ...acc, {
+                    ...el,
+                    renderCell: (params: any) => (
+                        <p>{formatTypeLabel(params.value)}</p>
                     )
                 }
             ]
@@ -136,7 +150,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
             const buttonEl: GridColDef = {
                 ...el,
                 width: 190,
-                headerClassName: "bg-[#D4FFFF]",
                 renderCell: (params: any) => {
                     // Blank means "not applicable to this document" (e.g. not
                     // a resume) — the cell renders as a dash instead.
@@ -158,7 +171,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
             const buttonEl: GridColDef = {
                 ...el,
                 width: 190,
-                headerClassName: "bg-[#D4FFFF]",
                 renderCell: (params: any) => {
                     // Blank means "not applicable to this document" (e.g. not
                     // a resume) — the cell renders as a dash instead.
@@ -180,7 +192,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
             const buttonEl: GridColDef = {
                 ...el,
                 width: 190,
-                headerClassName: "bg-[#D4FFFF]",
                 renderCell: (params: any) => {
                     // Blank means "not applicable to this document" (e.g. not
                     // a resume) — the cell renders as a dash instead.
@@ -202,7 +213,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
             const buttonEl: GridColDef = {
                 ...el,
                 width: 190,
-                headerClassName: "bg-[#D4FFFF]",
                 renderCell: (params: any) => {
                     // Blank means "not applicable to this document" (e.g. not
                     // a resume) — the cell renders as a dash instead.
@@ -225,7 +235,6 @@ export const generateClientDocumentsColumns = (rows: any[], userId?: string) => 
             {
                 ...el,
                 width: 200,
-                headerClassName: "bg-[#D4FFFF]"
             }
         ]
     }, [])

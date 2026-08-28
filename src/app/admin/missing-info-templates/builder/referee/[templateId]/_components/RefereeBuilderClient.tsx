@@ -15,7 +15,17 @@ function buildInitialFields(refereeCount: number, existingFields?: any[]): Field
       (f: any) => f.isRefereeBlock && f.refereeBlockIndex === 1,
     );
     if (blockFields.length > 0) {
-      return blockFields.map((f: any) => ({
+      // Dedupe by fieldName — corrupt/historically-duplicated rows must never
+      // render as repeated copies of the same block field.
+      const seen = new Set<string>();
+      const unique: any[] = [];
+      for (const f of blockFields) {
+        const key = f.fieldName || f.fieldLabel;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(f);
+      }
+      return unique.map((f: any) => ({
         fieldName: f.fieldName,
         fieldLabel: f.fieldLabel,
         fieldType: f.fieldType,
@@ -34,6 +44,7 @@ function buildInitialFields(refereeCount: number, existingFields?: any[]): Field
 function buildFieldsArray(
   refereeCount: number,
   blockTemplate: FieldToggleRow[],
+  extraFields: any[] = [],
 ): any[] {
   const fields: any[] = [];
   for (let blockIndex = 1; blockIndex <= refereeCount; blockIndex++) {
@@ -51,6 +62,22 @@ function buildFieldsArray(
       });
     });
   }
+  extraFields.forEach((f, i) => {
+    fields.push({
+      fieldName: f.fieldName,
+      fieldLabel: f.fieldLabel,
+      fieldType: f.fieldType,
+      isRequired: f.isRequired,
+      isVisible: f.isVisible,
+      helpText: f.helpText,
+      options: f.options,
+      isRepeatable: f.isRepeatable,
+      validation: f.validation,
+      sortOrder: refereeCount * blockTemplate.length + i,
+      isRefereeBlock: false,
+      refereeBlockIndex: null,
+    });
+  });
   return fields;
 }
 
@@ -65,6 +92,7 @@ export default function RefereeBuilderClient() {
   const [templateName, setTemplateName] = useState("");
   const [refereeCount, setRefereeCount] = useState(3);
   const [blockTemplate, setBlockTemplate] = useState<FieldToggleRow[]>([]);
+  const [extraFields, setExtraFields] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [category, setCategory] = useState<string>("references");
 
@@ -80,6 +108,9 @@ export default function RefereeBuilderClient() {
         .reduce((max: number, f: any) => Math.max(max, f.refereeBlockIndex || 0), 0) || 3;
       setRefereeCount(maxBlockIndex);
       setBlockTemplate(buildInitialFields(maxBlockIndex, template.fields));
+      setExtraFields(
+        (template.fields || []).filter((f: any) => !f.isRefereeBlock),
+      );
       setLoaded(true);
     }
   }, [template, loaded]);
@@ -116,7 +147,7 @@ export default function RefereeBuilderClient() {
     }
     const toastId = toast.loading("Saving template...");
     try {
-      const fields = buildFieldsArray(refereeCount, blockTemplate);
+      const fields = buildFieldsArray(refereeCount, blockTemplate, extraFields);
       await actions.updateTemplate({
         name: templateName.trim(),
         category,
@@ -137,7 +168,7 @@ export default function RefereeBuilderClient() {
     }
     const toastId = toast.loading("Publishing template...");
     try {
-      const fields = buildFieldsArray(refereeCount, blockTemplate);
+      const fields = buildFieldsArray(refereeCount, blockTemplate, extraFields);
       await actions.updateTemplate({
         name: templateName.trim(),
         category,

@@ -5,7 +5,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { GridRowSelectionModel, GridToolbar } from "@mui/x-data-grid-pro";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { applyHeaderClassName, StyledDataGridPro } from "@/utils/table";
+import { StyledDataGridPro } from "@/utils/table";
 import jobApplicationsColumns from "./table-columns";
 import questionsColumns from "./questions-columns";
 import { useJobAppsAndQuestionsData } from "./context";
@@ -316,7 +316,7 @@ export default function JobApplicationsAndQuestionsDataTable() {
           className="bg-white shadow-md rounded-lg"
           disableRowSelectionOnClick
           rowBufferPx={100}
-          columns={applyHeaderClassName(isQuestions ? questionsColumns : jobApplicationsColumns)}
+          columns={isQuestions ? questionsColumns : jobApplicationsColumns}
           columnVisibilityModel={isMobile ? mobileColumnVisibilityModel : undefined}
           columnBufferPx={5}
           loading={activeTracker.isLoading || activeTracker.isFetching}
