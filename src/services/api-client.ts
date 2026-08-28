@@ -29,6 +29,37 @@ const PUBLIC_ROUTES = [
   `${BASE_URL}${API_AUTH_PATHS.VALIDATESESSION}`,
 ];
 
+// The zustand `persist` key from store/user.store.tsx — read directly since
+// the store is created per-Provider (via useRef), not a module-level
+// singleton, so it isn't importable from here the way a plain store would be.
+const AUTH_STORAGE_KEY = "c2c-staff-auth-storage";
+
+/**
+ * The real session credential is the httpOnly `c2c-access` cookie, set by
+ * this backend's own /login response — that's all a same-portal login ever
+ * needs. But when a staff user logs in on the CUSTOMER portal and gets
+ * redirected here with `?token=`, no such cookie exists yet: it was the
+ * customer backend's login that ran, and its Set-Cookie is scoped to that
+ * backend's own domain, not this one. The token is only ever stored
+ * client-side (via setAccessToken) in that flow.
+ *
+ * The backend's own auth middleware already checks the Authorization header
+ * before falling back to the cookie (see checkBlacklistedToken.ts) — it was
+ * built to support exactly this handoff. Attaching it here as a fallback
+ * whenever a stored token exists is what actually uses that path; without
+ * it, the cross-portal redirect had no way to authenticate at all.
+ */
+const getStoredAccessToken = (): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw)?.state?.staffAccessToken ?? null;
+  } catch {
+    return null;
+  }
+};
+
 
 // SITE UNDER MAINTENANCE
 const redirectToSiteUnderMaintenacePage = () => {
@@ -53,7 +84,19 @@ axiosInstance.interceptors.request.use(
       return config;
     }
 
-    // 2️⃣ Check if backend is reachable
+    // 2️⃣ Attach the stored access token as a Bearer fallback — the backend
+    // checks this before the cookie, so it authenticates requests made
+    // before any staff-domain cookie exists (e.g. the customer-portal
+    // cross-login redirect) without disturbing normal cookie-based auth.
+    if (!config.headers?.Authorization) {
+      const token = getStoredAccessToken();
+      if (token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+
+    // 3️⃣ Check if backend is reachable
     const serverRes = await isServerOnline();
 
     if (!serverRes.online) {
