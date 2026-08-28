@@ -1000,7 +1000,6 @@ export const extractJobData = async (
   // Look up user by credentials.id
   const credentialsRecord = await Credentials.findOne({
     where: { id: clientId },
-    raw: true,
   });
 
   if (!credentialsRecord) {
@@ -1011,7 +1010,6 @@ export const extractJobData = async (
   // Get the associated user
   const userRecord = await User.findOne({
     where: { id: credentialsRecord.clientId },
-    raw: true,
   });
 
   if (!userRecord) {
