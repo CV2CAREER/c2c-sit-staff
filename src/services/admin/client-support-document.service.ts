@@ -68,7 +68,7 @@ const notifyUpload = (
     let uploadedByLabel = "system";
     if (uploadedBy) {
       const uploader = await User.findByPk(uploadedBy, {
-        attributes: ["id", "firstName", "lastName"],
+        attributes: ["id", "firstName", "lastName", "email"],
       }).catch(() => null);
 
       uploadedByLabel = uploader
@@ -279,7 +279,7 @@ export const uploadClientSupportDocuments = async ({
   isActive = true,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName", "email"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -424,7 +424,7 @@ export const saveAiRoleTitleRecommendations = async (
   }
 
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName", "email"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -525,7 +525,7 @@ export const activateClientSupportDocument = async (
   await document.update({ isActive: true, updatedBy: activatedBy });
 
   const client = await User.findByPk(document.clientId, {
-    attributes: ["id", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName", "email"],
   });
 
   if (client) {
