@@ -79,7 +79,7 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
 
 
   return (
-    <div className="relative flex flex-col gap-6 overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+    <div className="relative flex h-full flex-col gap-6 overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-6 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
 
       <div className="flex w-full flex-col items-center gap-4 text-center sm:flex-row sm:text-left lg:w-auto">
         <motion.div

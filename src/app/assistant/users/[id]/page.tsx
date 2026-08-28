@@ -39,7 +39,7 @@ const itemVariants: Variants = {
 const DEFAULT_TAB = "documents";
 
 const TAB_TRIGGER_CLASS =
-    "relative whitespace-nowrap rounded-lg px-4 py-2 text-[13px] font-medium text-[#475569] transition-colors hover:text-[#10365A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B96D6]/40 data-[state=active]:bg-[#0B96D6] data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-sm";
+    "relative whitespace-nowrap px-4 py-2.5 text-[13px] font-medium text-[#475569] transition-colors hover:text-[#10365A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B96D6]/40 data-[state=active]:text-[#0B96D6] data-[state=active]:font-semibold data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#0B96D6] rounded-none";
 
 const TAB_DEFS = [
     { value: "documents", label: "Documents" },
@@ -123,11 +123,13 @@ function UserDetailsContent({ userId }: { userId: string }) {
             animate="show"
             className="flex flex-col gap-6 mt-6 w-full pb-4"
         >
-            <motion.div variants={itemVariants}>
-                <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
-            </motion.div>
-            <motion.div variants={itemVariants}>
-                <TriggerApplicationAction/>
+            <motion.div variants={itemVariants} className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+                <div className="flex-1 min-w-0">
+                    <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
+                </div>
+                <div className="w-full lg:w-80 shrink-0">
+                    <TriggerApplicationAction/>
+                </div>
             </motion.div>
             <motion.div variants={itemVariants}>
                 <AdminClientJourney userId={currentUserId}/>
@@ -137,7 +139,7 @@ function UserDetailsContent({ userId }: { userId: string }) {
             </motion.div>
             <motion.div variants={itemVariants}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="flex h-auto w-full flex-wrap items-center gap-1.5 rounded-xl bg-[#F1F5F9] p-1.5 text-muted-foreground">
+                    <TabsList className="flex h-auto w-full items-center gap-0 border-b border-gray-200 bg-transparent p-0 text-muted-foreground">
                         {TAB_DEFS.map((t) => (
                             <TabsTrigger key={t.value} value={t.value} className={TAB_TRIGGER_CLASS}>{t.label}</TabsTrigger>
                         ))}
