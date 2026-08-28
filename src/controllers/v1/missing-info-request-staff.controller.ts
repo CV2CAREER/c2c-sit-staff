@@ -46,3 +46,54 @@ export const bulkSendReminder = catchAsyncError(async (req: any, res: Response) 
   const result = await MissingInfoRequestStaffService.bulkSendReminder(requestIds, req.user, host, protocol);
   return res.apiSuccess(result, "Reminders queued for delivery", 200);
 });
+
+export const getClientRequests = catchAsyncError(async (req: any, res: Response) => {
+  const { targetUserId } = req.params;
+  logger.info(`Fetching missing info requests for client ${targetUserId}`);
+  const result = await MissingInfoRequestStaffService.getClientRequests(targetUserId);
+  return res.apiSuccess(result, "Client requests fetched", 200);
+});
+
+export const sendSingleReminder = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Single reminder triggered by: ${req.user?.email ?? "unknown"}, request: ${id}`);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.sendSingleReminder(id, req.user, host, protocol);
+  return res.apiSuccess(result, "Reminder queued for delivery", 200);
+});
+
+export const cancelRequest = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Cancel request triggered by: ${req.user?.email ?? "unknown"}, request: ${id}`);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.cancelRequest(id, req.user, host, protocol);
+  return res.apiSuccess(result, "Request cancelled", 200);
+});
+
+export const declineRequest = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Decline request triggered by: ${req.user?.email ?? "unknown"}, request: ${id}`);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.declineRequest(id, req.user, host, protocol);
+  return res.apiSuccess(result, "Request declined", 200);
+});
+
+export const reusePriorSubmission = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  const { clientId } = req.body;
+  logger.info(`Reuse prior submission triggered by: ${req.user?.email ?? "unknown"}, request: ${id}, client: ${clientId}`);
+  const host = req.headers.host || req.headers.origin || "localhost";
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const result = await MissingInfoRequestStaffService.reusePriorSubmission(id, clientId, req.user, host, protocol);
+  return res.apiSuccess(result, "Prior submission reused", 201);
+});
+
+export const logCopyAudit = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Copy audit triggered by: ${req.user?.email ?? "unknown"}, request: ${id}`);
+  const result = await MissingInfoRequestStaffService.logCopyAudit(id, req.user);
+  return res.apiSuccess(result, "Audit entry logged", 200);
+});

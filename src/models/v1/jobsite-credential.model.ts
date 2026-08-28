@@ -22,6 +22,9 @@ import {
   JobsiteCredentialRejectionReason,
 } from "../../utils/enum";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("jobsite-credential.model");
 
 @Table({
   tableName: "jobsite_credentials",
@@ -174,7 +177,9 @@ export class JobsiteCredential extends Model {
         if (!decrypted) return;
         if (decrypted.email) instance.setDataValue('email', decrypted.email);
         if (decrypted.generatedPassword) instance.setDataValue('generatedPassword', decrypted.generatedPassword);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt fields for jobsite credential ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 

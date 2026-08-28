@@ -48,6 +48,39 @@ function getFutureDateFromDays(days: number, formatType: number = 1): string {
 }
 
 /**
+ * Resolves a Feature's `validityPeriod` string (e.g. "6 months", "12 months",
+ * "14 days", "1 year") into the campaign-management date/day-count pair.
+ * Replaces the old hardcoded "Gold = 6 months, everything else = 12 months"
+ * guess, which ignored the plan's actual configured duration entirely (e.g.
+ * a 6-month Bronze plan was landing on 365 days).
+ */
+function resolveDurationFromValidityPeriod(
+  validityPeriod?: string,
+): { campaignEnd: string; subDurDays: number } {
+  const [rawValue, rawUnit] = (validityPeriod || "").trim().split(/\s+/);
+  const value = parseInt(rawValue, 10);
+  const unit = (rawUnit || "").toLowerCase();
+
+  if (!Number.isFinite(value) || value <= 0) {
+    // No parseable validityPeriod — fall back to the previous default (12 months)
+    return {
+      campaignEnd: getFutureDateFromMonth(12) as string,
+      subDurDays: getFutureDateFromMonth(12, 1, true) as number,
+    };
+  }
+
+  if (unit.startsWith("day")) {
+    return { campaignEnd: getFutureDateFromDays(value), subDurDays: value };
+  }
+
+  const months = unit.startsWith("year") ? value * 12 : value;
+  return {
+    campaignEnd: getFutureDateFromMonth(months) as string,
+    subDurDays: getFutureDateFromMonth(months, 1, true) as number,
+  };
+}
+
+/**
  * Get future date from current date by adding months
  */
 function getFutureDateFromMonth(
@@ -358,7 +391,8 @@ export const handleCampaignManagement = async (
   updatedClient: CampaignClientData,
   plan: string,
   userId: string,
-  baseURL: string
+  baseURL: string,
+  validityPeriod?: string,
 ): Promise<void> => {
   // Get user profile from database
   const user = await User.findByPk(userId);
@@ -408,13 +442,9 @@ export const handleCampaignManagement = async (
   const Craft = userCraft;
   const Country = updatedClient.country;
   const isCoralPlan = plan?.toLowerCase() === "coral";
-  const planExp = !plan ? 0 : plan?.toLowerCase() === "gold" ? 6 : 12;
-  const CampaignEnd = isCoralPlan
-    ? getFutureDateFromDays(14)
-    : getFutureDateFromMonth(planExp) as string;
-  const SeekSubDurDays = isCoralPlan
-    ? 14
-    : getFutureDateFromMonth(planExp, 1, true) as number;
+  const duration = resolveDurationFromValidityPeriod(validityPeriod);
+  const CampaignEnd = isCoralPlan ? getFutureDateFromDays(14) : duration.campaignEnd;
+  const SeekSubDurDays = isCoralPlan ? 14 : duration.subDurDays;
 
   // Check if the customer already exists in credentials (by email OR userId).
   // paranoid: false ensures soft-deleted rows are included — they still occupy unique constraints.
@@ -579,9 +609,9 @@ export const handleCampaignManagement = async (
         ...(existing.seekExternalCredentials as object),
         Plan: plan,
         Active: true,
-        CampaignEnd: isCoralPlan ? getFutureDateFromDays(14) : undefined,
-        SeekSubEndDate: isCoralPlan ? getFutureDateFromDays(14) : undefined,
-        SeekSubDurDays: isCoralPlan ? 14 : 183,
+        CampaignEnd,
+        SeekSubEndDate: CampaignEnd,
+        SeekSubDurDays,
       },
     });
   }

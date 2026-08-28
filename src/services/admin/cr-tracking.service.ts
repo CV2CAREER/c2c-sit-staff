@@ -104,7 +104,7 @@ export class CRTrackingService {
           { association: "owner", attributes: ["id", "name", "email", "slackId"] },
           { association: "nil", attributes: ["id", "name", "email", "slackId"] },
           { association: "nominatedDeveloper", attributes: ["id", "name", "email", "slackId"] },
-          { association: "creator", attributes: ["id", "firstName", "lastName"] },
+          { association: "creator", attributes: ["id", "firstName", "lastName", "email"] },
         ],
         order: [['createdAt', 'DESC']],
         benchmark: true
@@ -166,7 +166,7 @@ export class CRTrackingService {
         CRTrackingHistory.findAll({
           where: whereClause,
           include: [
-            { association: "performer", attributes: ["id", "firstName", "lastName"] }
+            { association: "performer", attributes: ["id", "firstName", "lastName", "email"] }
           ],
           order: [['createdAt', 'DESC']],
           offset,

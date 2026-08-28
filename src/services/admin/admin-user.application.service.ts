@@ -511,7 +511,7 @@ class AdminUserApplicationService {
         try {
           const actor = await User.findOne({
             where: { id: actorUserId },
-            attributes: ["firstName", "lastName"],
+            attributes: ["firstName", "lastName", "email"],
           });
           const actorName = actor
             ? `${actor.firstName} ${actor.lastName}`
@@ -721,7 +721,7 @@ class AdminUserApplicationService {
 
     const existing = await User.findOne({
       where: { email: { [Op.iLike]: email }, deletedAt: null },
-      attributes: ["id", "role", "firstName", "lastName"],
+      attributes: ["id", "role", "firstName", "lastName", "email"],
     });
 
     if (!existing) return { exists: false };

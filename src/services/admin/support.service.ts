@@ -124,7 +124,7 @@ ${data.feedback ? `• Customer Feedback: ${data.feedback}` : ''}
         include: [{
           model: User,
           as: 'sender',
-          attributes: ['id', 'firstName', 'lastName']
+          attributes: ['id', 'firstName', 'lastName', 'email']
         }],
         order: [['createdAt', 'ASC']],
         raw: true,
@@ -220,7 +220,7 @@ ${comment ? `• Comment: ${comment}` : ''}
         
         setImmediate(async () => {
           try {
-            const staffUser = await User.findByPk(staffId, { attributes: ['firstName', 'lastName'] });
+            const staffUser = await User.findByPk(staffId, { attributes: ['firstName', 'lastName', 'email'] });
             const staffInfo = staffUser ? `${staffUser.email} (${staffUser.firstName} ${staffUser.lastName})` : staffId;
 
             const slackMessage = `
@@ -302,8 +302,8 @@ ${comment ? `• Comment: ${comment}` : ''}
       
       const { rows, count } = await SupportSession.findAndCountAll({
         include: [
-          { model: User, as: 'customer', attributes: ['id', 'firstName', 'lastName'] },
-          { model: User, as: 'assignedStaff', attributes: ['id', 'firstName', 'lastName'] }
+          { model: User, as: 'customer', attributes: ['id', 'firstName', 'lastName', 'email'] },
+          { model: User, as: 'assignedStaff', attributes: ['id', 'firstName', 'lastName', 'email'] }
         ],
         order: [['createdAt', 'DESC']],
         limit,

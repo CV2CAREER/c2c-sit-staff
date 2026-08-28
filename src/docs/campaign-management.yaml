@@ -1241,11 +1241,12 @@ paths:
         '200':
           description: Campaign client deleted successfully
 
-  /v1/campaigns/clients/bulk:
-    delete:
+  /v1/campaigns/clients/bulk/soft-delete:
+    patch:
       tags:
         - Campaign Management
-      summary: Bulk delete multiple campaign clients
+      summary: Bulk soft delete multiple campaign clients (recoverable)
+      description: Sets isDeleted=true for all matching clients. Hidden from lists but can be restored individually.
       requestBody:
         required: true
         content:
@@ -1259,10 +1260,34 @@ paths:
                   type: array
                   items:
                     type: string
-                  description: Array of client IDs to delete
+                  description: Array of client IDs to soft delete
       responses:
         '200':
-          description: Campaign clients deleted successfully
+          description: Campaign clients moved to recycle bin successfully
+
+  /v1/campaigns/clients/bulk/permanent:
+    delete:
+      tags:
+        - Campaign Management
+      summary: Bulk permanently delete multiple campaign clients
+      description: Hard deletes all matching clients. Cannot be undone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ids
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of client IDs to permanently delete
+      responses:
+        '200':
+          description: Campaign clients permanently deleted successfully
 
   /v1/campaigns/clients/{id}/soft-delete:
     patch:

@@ -39,7 +39,7 @@ export const viewAsUserService = async (
 
   const targetUserId = await fieldEncryption.findUserByEmail(targetEmail.trim().toLowerCase());
   const targetUser = targetUserId ? await User.findByPk(targetUserId, {
-    attributes: ["id", "role"],
+    attributes: ["id", "role", "email"],
   }) : null;
 
   if (!targetUser) {

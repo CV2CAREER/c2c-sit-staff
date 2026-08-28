@@ -2,7 +2,7 @@ import sgMail, { MailDataRequired } from "@sendgrid/mail";
 import path from "path";
 import ejs from "ejs";
 import { getServiceLogger } from "../utils/createLogger";
-import { EmailTemplate } from "../models/v1/email-template.model";
+import { EmailTemplate, EmailTemplateType } from "../models/v1/email-template.model";
 import { EmailLog, EmailLogStatus } from "../models/v1/email-log.model";
 import { User } from "../models/v1/user.model";
 import { SlackService } from "../services/slack.service";
@@ -19,6 +19,7 @@ import {
   SENDGRID_FROM_EMAIL,
   SENDGRID_FROM_NAME,
   LOCAL_FRONTEND_URL,
+  CUSTOMER_EMAIL_BCC,
 } from "./env";
 import { getEnvironmentFromHost } from "@/utils/slack-helpers";
 
@@ -147,8 +148,9 @@ export const sendMail = async (options: EmailOptions): Promise<void> => {
 
   let html: string;
   let usedFallback = false;
+  let template: EmailTemplate | null = null;
   try {
-    const template = await EmailTemplate.findOne({
+    template = await EmailTemplate.findOne({
       where: { key: options.templateName },
     });
     if (!template) {
@@ -183,8 +185,20 @@ export const sendMail = async (options: EmailOptions): Promise<void> => {
 
   const allAttachments = [...(options.attachments || [])];
 
+  // Customer-facing emails (as opposed to internal/admin notifications, e.g.
+  // those addressed to TEAM_EMAIL) are blind-copied to CUSTOMER_EMAIL_BCC.
+  // Falls back to CUSTOMER when the template's type can't be determined
+  // (matches the DB column's own default), so an edge-case lookup failure
+  // still gets the blind copy rather than silently skipping it.
+  const templateType = template?.type ?? EmailTemplateType.CUSTOMER;
+  const bcc =
+    templateType === EmailTemplateType.CUSTOMER && CUSTOMER_EMAIL_BCC
+      ? CUSTOMER_EMAIL_BCC
+      : undefined;
+
   const msg: MailDataRequired = {
     to: options.email,
+    ...(bcc ? { bcc } : {}),
     from: {
       email: SENDGRID_FROM_EMAIL,
       name: SENDGRID_FROM_NAME,

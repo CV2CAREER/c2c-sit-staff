@@ -13,6 +13,9 @@ import {
   AfterFind,
 } from "sequelize-typescript";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("missing-info-response.model");
 
 @Table({
   tableName: "missing_info_responses",
@@ -93,7 +96,9 @@ export class MissingInfoResponse extends Model {
           if (decrypted !== null) {
             instance.setDataValue("fieldValue", decrypted);
           }
-        } catch {}
+        } catch (error: any) {
+          logger.warn(`Failed to decrypt field value for missing info response ${instance.id}: ${error?.message || error}`);
+        }
       }),
     );
   }

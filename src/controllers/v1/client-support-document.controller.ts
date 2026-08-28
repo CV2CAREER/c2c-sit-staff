@@ -11,6 +11,7 @@ import {
 import {
   activateClientSupportDocument,
   deleteClientSupportDocument,
+  deleteClientSupportDocumentsBulk,
   getClientSupportDocument,
   listClientSupportDocuments,
   saveAiRoleTitleRecommendations,
@@ -228,6 +229,21 @@ export const deleteClientSupportDocumentController = catchAsyncError(
     await deleteClientSupportDocument(id, req.user?.id);
 
     return res.apiSuccess({}, "Document deleted successfully", 200);
+  },
+);
+
+/** DELETE — bulk soft-delete client support documents. */
+export const deleteClientSupportDocumentsBulkController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.apiError(new ErrorHandler("ids must be a non-empty array", 400));
+    }
+
+    const result = await deleteClientSupportDocumentsBulk(ids, req.user?.id);
+
+    return res.apiSuccess(result, "Documents deleted successfully", 200);
   },
 );
 

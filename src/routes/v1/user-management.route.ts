@@ -6,8 +6,10 @@ import {
   approveUserDocument, 
   rejectUserDocument, 
   deleteUser,
+  bulkDeleteUsers,
   restoreUser,
   purgeUser,
+  bulkPurgeUsers,
   getPendingDocumentsByUserId,
   approveUserAccount,
   sendUserDetailsToSlack,
@@ -48,6 +50,16 @@ userManagementRouterV1.post(
 // Get pending documents for user
 userManagementRouterV1.get(
   "/users/:userId/documents/pending", getPendingDocumentsByUserId
+);
+
+// Bulk delete users (soft delete to recycle bin) - must be registered before /users/:userId
+userManagementRouterV1.delete(
+  "/users/bulk", authorizeRoles("admin"), bulkDeleteUsers
+);
+
+// Bulk permanently delete users (irreversible) - must be registered before /users/:userId/purge
+userManagementRouterV1.delete(
+  "/users/bulk/purge", authorizeRoles("admin"), bulkPurgeUsers
 );
 
 // Delete user (soft delete to recycle bin)
