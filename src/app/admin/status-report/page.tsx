@@ -19,6 +19,7 @@ type AnswerModeState = "AI" | "DB" | null;
 
 const StatusReportPage = () => {
   const [answerMode, setAnswerMode] = useState<AnswerModeState>(null);
+  const [togglingBot, setTogglingBot] = useState<BotName | null>(null);
   const [botStatus, setBotStatus] = useState<BotStatusState>(
     () =>
       Object.fromEntries(
@@ -89,8 +90,11 @@ const StatusReportPage = () => {
   };
 
   const handleBotToggle = (botName: BotName) => {
+    if (toggleBotMutation.isPending) return;
+
     const currentStatus = botStatus[botName];
     const nextEnabled = currentStatus !== "On";
+    setTogglingBot(botName);
 
     toggleBotMutation.mutate(
       { botEnabled: nextEnabled },
@@ -105,10 +109,18 @@ const StatusReportPage = () => {
             });
             return next;
           });
+          // Re-pull the authoritative status right away rather than trusting
+          // the next 15s poll — otherwise an in-flight poll response from
+          // before the toggle can land after it and stomp this update back
+          // to the old value.
+          adminStatusDomain.refetch?.();
         },
         onError: (err) => {
           toast.error(err.message || `Failed to ${nextEnabled ? "start" : "stop"} bots`);
-        }
+        },
+        onSettled: () => {
+          setTogglingBot(null);
+        },
       }
     );
   };
@@ -199,9 +211,7 @@ const StatusReportPage = () => {
                   key={bot}
                   botName={bot}
                   status={botStatus[bot]}
-                  isLoading={
-                    toggleBotMutation.isPending
-                  }
+                  isLoading={toggleBotMutation.isPending && togglingBot === bot}
                   botError={getBotError(bot)}
                   onToggle={handleBotToggle}
                 />

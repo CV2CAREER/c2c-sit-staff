@@ -151,34 +151,124 @@ export const moveTo = (tableName: string, field: string, target: number) => {
  * );
  */
 export const StyledDataGridPro = styled(DataGridPro)(() => ({
-  "& .MuiDataGrid-root": {
-    border: "none",
-    backgroundColor: "#fefefe",
-    boxShadow:
-      "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    borderRadius: "8px",
-  },
-  "& .MuiDataGrid-cell": {
-    borderBottom: "1px solid #f0f0f0",
-  },
+  border: "none",
+  borderRadius: "12px",
+  backgroundColor: "#ffffff",
+  boxShadow:
+    "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06)",
   "& .MuiDataGrid-columnHeaders": {
-    backgroundColor: "#fefefe",
-    color: "#333333",
-    fontWeight: "bold",
+    backgroundColor: "#F0FBFF",
+    borderBottom: "2px solid #D3FFFF",
   },
   "& .MuiDataGrid-columnHeaderTitle": {
-    fontWeight: "bold",
+    fontWeight: 600,
+    color: "#004174",
+    fontSize: "0.8125rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.03em",
+  },
+  "& .MuiDataGrid-columnSeparator": {
+    color: "transparent",
+  },
+  "& .MuiDataGrid-cell": {
+    borderBottom: "1px solid #F1F5F9",
+    fontSize: "0.875rem",
+    color: "#1D1B20",
+  },
+  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-row": {
+    transition: "background-color 0.15s ease",
   },
   "& .MuiDataGrid-row:nth-of-type(even)": {
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#FAFCFF",
   },
   "& .MuiDataGrid-row:hover": {
-    backgroundColor: "#e6f7ff",
+    backgroundColor: "#EDFFFF",
   },
-  "& .MuiDataGrid-footer": {
-    borderTop: "1px solid #e0e0e0",
+  "& .MuiDataGrid-footerContainer": {
+    borderTop: "1px solid #EEF2F6",
+    backgroundColor: "#FCFEFF",
+  },
+  "& .MuiDataGrid-toolbarContainer": {
+    padding: "10px 16px",
+    gap: "8px",
+    borderBottom: "1px solid #F1F5F9",
   },
 }));
+
+/**
+ * Polished sx overrides for the admin/assistant Users table — scoped to this
+ * table only (not the shared StyledDataGridPro base, which many other tables
+ * across the app also use). Crisp uppercase header labels, subtle zebra
+ * striping, a brand-tinted hover/selected state, and a shadow separator on
+ * pinned columns so they read as "frozen" against the horizontally
+ * scrolling rest of the row.
+ */
+export const usersGridSx = {
+  border: "1px solid #eef1f5",
+  borderRadius: "12px",
+  backgroundColor: "#fff",
+  boxShadow: "none",
+  "& .MuiDataGrid-columnHeaders": {
+    backgroundColor: "#f8fafc",
+    borderBottom: "1px solid #e7ebf0",
+  },
+  "& .MuiDataGrid-columnHeaderTitle": {
+    fontSize: "11px",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    color: "#64748b",
+  },
+  "& .MuiDataGrid-columnHeader:focus, & .MuiDataGrid-columnHeader:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-columnSeparator": {
+    color: "#e7ebf0",
+  },
+  "& .MuiDataGrid-cell": {
+    borderBottom: "1px solid #f1f5f9",
+    fontSize: "13px",
+    color: "#334155",
+    display: "flex",
+    alignItems: "center",
+  },
+  "& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within": {
+    outline: "none",
+  },
+  "& .MuiDataGrid-row": {
+    transition: "background-color 120ms ease",
+  },
+  "& .MuiDataGrid-row:nth-of-type(even)": {
+    backgroundColor: "#fafbfc",
+  },
+  "& .MuiDataGrid-row:hover": {
+    backgroundColor: "rgba(0, 142, 211, 0.06)",
+  },
+  "& .MuiDataGrid-row.Mui-selected": {
+    backgroundColor: "rgba(0, 142, 211, 0.10)",
+  },
+  "& .MuiDataGrid-row.Mui-selected:hover": {
+    backgroundColor: "rgba(0, 142, 211, 0.14)",
+  },
+  "& .MuiDataGrid-cell--pinnedLeft:last-of-type, & .MuiDataGrid-columnHeader--pinnedLeft:last-of-type": {
+    boxShadow: "2px 0 4px -2px rgba(15, 23, 42, 0.12)",
+  },
+  "& .MuiDataGrid-footerContainer": {
+    borderTop: "1px solid #e7ebf0",
+    backgroundColor: "#f8fafc",
+  },
+  "& .MuiDataGrid-virtualScroller": {
+    scrollbarWidth: "thin",
+  },
+  "& .MuiDataGrid-toolbarContainer": {
+    padding: "10px 12px",
+    borderBottom: "1px solid #eef1f5",
+    gap: "8px",
+  },
+} as const;
 
 export const applyHeaderClassName = (
   columns: GridColDef<any>[],

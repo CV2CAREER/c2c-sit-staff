@@ -32,8 +32,11 @@ export const tableColumns: GridColDef[] = [
   { field: "isActive", headerName: "Active", width: 100 },
   { field: "email", headerName: "Email", width: 200 },
   { field: "role", headerName: "Persona", width: 150 },
-  { field: "gender", headerName: "Gender", width: 100 },
   { field: "customerClass", headerName: "Customer Class", width: 200 },
+  { field: "plan", headerName: "Plan", width: 150 },
+  { field: "signUpAs", headerName: "Sign Up As", width: 160 },
+  { field: "referralsCount", headerName: "Referrals", width: 120 },
+  { field: "gender", headerName: "Gender", width: 100 },
   { field: "currentCityOfResidence", headerName: "Current City Of Residence", width: 200 },
   { field: "phoneNumber", headerName: "Voice Number", width: 150 },
   { field: "whatsappNumber", headerName: "Whatsapp Number", width: 150 },
@@ -65,7 +68,6 @@ export const tableColumns: GridColDef[] = [
   { field: "communication", headerName: "Communication", width: 150 },
   { field: "returnCount", headerName: "Return Count", width: 150 },
   { field: "socials", headerName: "Socials", width: 150 },
-  { field: "plan", headerName: "Plan", width: 150 },
   { field: "progress", headerName: "Progress", width: 150 },
   { field: "createdAt", headerName: "Created At", width: 180 },
   { field: "updatedBy", headerName: "Updated By", width: 150 },
@@ -89,7 +91,8 @@ export const modifyTableActionsColAndRows = (
   usersDataState: "active" | "recycle",
   isVisible: boolean,
   route: "admin"| "assistant" = "admin",
-  handleUserProgress?: any
+  handleUserProgress?: any,
+  onOpenChangePlan?: (user: any) => void,
 ) => {
   const newArr = columnArr.reduce((acc: GridColDef[], el: GridColDef) => {
     if (el.field === "actions") {
@@ -223,15 +226,130 @@ export const modifyTableActionsColAndRows = (
     }
 
     if (el.field === "role") {
+    const roleConfig: Record<string, { label: string; dot: string; text: string }> = {
+      admin: { label: "Admin", dot: "bg-rose-500", text: "text-rose-700" },
+      coach: { label: "Coach", dot: "bg-career-blue-800", text: "text-career-blue-800" },
+      client: { label: "Client", dot: "bg-emerald-500", text: "text-emerald-700" },
+      guest: { label: "Guest", dot: "bg-gray-400", text: "text-gray-600" },
+      partner: { label: "Partner", dot: "bg-purple-500", text: "text-purple-700" },
+      sales: { label: "Sales", dot: "bg-amber-500", text: "text-amber-700" },
+      cse: { label: "CSE", dot: "bg-cyan-500", text: "text-cyan-700" },
+      customer: { label: "Customer", dot: "bg-cyan-500", text: "text-cyan-700" },
+      assistant: { label: "PC", dot: "bg-indigo-500", text: "text-indigo-700" },
+      probono: { label: "Probono", dot: "bg-teal-500", text: "text-teal-700" },
+      technology: { label: "Technology", dot: "bg-slate-500", text: "text-slate-700" },
+      business: { label: "Business", dot: "bg-pink-500", text: "text-pink-700" },
+      test: { label: "Test", dot: "bg-gray-300", text: "text-gray-400" },
+    };
     const personaCol: GridColDef = {
       ...el,
       renderCell: (params: any) => {
-        const val = params?.row?.role; 
-        return val === "assistant" ? "PC" : val ?? "";
+        const val = params?.row?.role;
+        const entry = val ? roleConfig[val] : null;
+
+        if (!entry) {
+          if (!val) {
+            return (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium italic text-gray-400">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300" />
+                Not Set
+              </span>
+            );
+          }
+          return (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize text-gray-600">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" />
+              {val}
+            </span>
+          );
+        }
+
+        return (
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${entry.text}`}>
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${entry.dot}`} />
+            {entry.label}
+          </span>
+        );
       },
     };
     return [...acc, personaCol];
   }
+
+    if (el.field === "signUpAs") {
+      const signUpAsCol: GridColDef = {
+        ...el,
+        renderCell: (params: any) => {
+          const value = params?.row?.signUpAs;
+          const config: Record<string, { label: string; dot: string; text: string }> = {
+            Job_Seeker: { label: "Job Seeker", dot: "bg-career-blue-800", text: "text-career-blue-800" },
+            Employee: { label: "Employee", dot: "bg-emerald-500", text: "text-emerald-700" },
+            Channel_Partner: { label: "Channel Partner", dot: "bg-purple-500", text: "text-purple-700" },
+            Ambassador: { label: "Ambassador", dot: "bg-amber-500", text: "text-amber-700" },
+          };
+          const entry = value ? config[value] : null;
+
+          if (!entry) {
+            return (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium italic text-gray-400">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gray-300" />
+                Not Set
+              </span>
+            );
+          }
+
+          return (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${entry.text}`}>
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${entry.dot}`} />
+              {entry.label}
+            </span>
+          );
+        },
+      };
+      return [...acc, signUpAsCol];
+    }
+
+    if (el.field === "plan") {
+      const planCol: GridColDef = {
+        ...el,
+        renderCell: (params: any) => {
+          const value = params?.row?.plan;
+          if (isVisible && onOpenChangePlan) {
+            return (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChangePlan(params.row);
+                }}
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-career-blue-800 shadow-sm transition-colors hover:border-career-blue-800/40 hover:bg-career-blue-800/5"
+              >
+                {value || "No plan"}
+              </button>
+            );
+          }
+          return <p>{value || "N/A"}</p>;
+        },
+      };
+      return [...acc, planCol];
+    }
+
+    if (el.field === "referralsCount") {
+      const referralsCol: GridColDef = {
+        ...el,
+        renderCell: (params: any) => {
+          const count = params?.row?.referralsCount ?? 0;
+          return (
+            <span
+              className={`inline-flex min-w-[28px] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                count > 0 ? "bg-career-blue-800/10 text-career-blue-800" : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              {count}
+            </span>
+          );
+        },
+      };
+      return [...acc, referralsCol];
+    }
     return [...acc, el];
   }, []); 
   return newArr;

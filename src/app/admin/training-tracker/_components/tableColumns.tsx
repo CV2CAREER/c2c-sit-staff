@@ -21,14 +21,12 @@ export const getBaseColumns = (
       type: "actions",
       headerName: "Actions",
       width: 100,
-      headerClassName: "bg-[#80D7FF]",
       getActions,
     },
     {
       field: "traineeId",
       headerName: "Full Name",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
       editable: true,
       type: "singleSelect",
       valueOptions: user.map((u) => ({
@@ -75,7 +73,6 @@ export const getBaseColumns = (
         label: c.fullName,
       })),
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
       renderCell: (params: any) => {
         const pc = params.row.pc;
         if (pc) return `${pc.firstName} ${pc.lastName}`;
@@ -112,7 +109,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [1, 2, 3, 4],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "date",
@@ -120,7 +116,6 @@ export const getBaseColumns = (
       width: 150,
       type: "date",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
       valueGetter: (params: any) =>
         params?.value ? moment(params.value).toDate() : null,
       renderCell: (params: GridRenderCellParams) => (
@@ -136,14 +131,12 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Pending", "In Progress", "Completed", "Cancelled", "Upcoming", "No Show"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "notes",
       headerName: "Notes",
       width: 250,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "progress",
@@ -152,7 +145,6 @@ export const getBaseColumns = (
       editable: true,
       type: "singleSelect",
       valueOptions: ["Pro-Bono", "Prospects", "Onboarding", "in-Flight"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "reworkType",
@@ -161,14 +153,12 @@ export const getBaseColumns = (
       width: 160,
       type: "singleSelect",
       valueOptions: ["Light-Touch", "Partial", "Complete", "Nil"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "createdAt",
       headerName: "Date Received",
       width: 170,
       editable: false,
-      headerClassName: "bg-[#80D7FF]",
       renderCell: (params: GridRenderCellParams) => (
         <div className="w-full justify-start">
           <p>{moment(params?.row?.createdAt).format("YYYY-MM-DD HH:mm:ss")}</p>
@@ -183,7 +173,6 @@ export const getBaseColumns = (
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "smeTechnicalDepth",
@@ -192,7 +181,6 @@ export const getBaseColumns = (
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "deliverablesQuantification",
@@ -201,7 +189,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Deliverables Quantification",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "locationYearroleInTimeExample",
@@ -210,7 +197,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Location Year/Role In Time Example",
       width: 220,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "selfPronounUsage",
@@ -219,7 +205,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Self Pronoun Usage",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "businessDeliverables",
@@ -228,7 +213,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Business Deliverables",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "grammardictioncommunication",
@@ -237,7 +221,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Grammar Diction Communication",
       width: 220,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "personabilitylikeabilityhumor",
@@ -246,7 +229,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Personability Likeability Humor",
       width: 220,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "respectcurtesy",
@@ -255,7 +237,6 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Respect Courtesy",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "appearance",
@@ -264,14 +245,12 @@ export const getBaseColumns = (
       valueOptions: [0, 1, 2, 3, 4, 5],
       headerName: "Appearance",
       width: 200,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "assessment",
       headerName: "Assessment",
       type: "number",
       width: 150,
-      headerClassName: "bg-[#80D7FF]",
       editable: false,
     },
     // ── PC Assessment Fields ───────────────────────────────────────────
@@ -282,7 +261,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "sessionObjectives",
@@ -291,7 +269,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "professionIntroduction",
@@ -300,7 +277,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "kpiDescriptionWithExamples",
@@ -309,7 +285,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "cvresumeRendition",
@@ -318,7 +293,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "respectcourtesyempathyhumility",
@@ -327,7 +301,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "kpiCollaborativeScoring",
@@ -336,7 +309,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "recordingAvailabilitySurvey",
@@ -345,7 +317,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "maximumNumberOfQuestions",
@@ -354,7 +325,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "complementingpositiveFeedback",
@@ -363,7 +333,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "clientMultipleGosOnAllQs",
@@ -372,7 +341,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "timeUtilization",
@@ -381,7 +349,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "clientStoryResponses",
@@ -390,7 +357,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "partingQuestions",
@@ -399,7 +365,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "timeKeeping",
@@ -408,7 +373,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "fillerPhrases",
@@ -417,7 +381,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "intermittentClarificationRequest",
@@ -426,7 +389,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "perfectAlternateResponses",
@@ -435,7 +397,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "audiovisualRoomLighteningSetup",
@@ -444,14 +405,12 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [0, 1, 2, 3, 4, 5],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "pcAssessment",
       headerName: "PC Assessment",
       type: "number",
       width: 150,
-      headerClassName: "bg-[#80D7FF]",
       editable: false,
     },
     // ── Background / Profile Fields ────────────────────────────────────
@@ -460,35 +419,30 @@ export const getBaseColumns = (
       headerName: "Preferred Craft",
       width: 180,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "undergrad",
       headerName: "Undergrad",
       width: 180,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "postgrad",
       headerName: "Postgrad",
       width: 180,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "training",
       headerName: "Training",
       width: 180,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "experience",
       headerName: "Experience",
       width: 180,
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     // ── Session / Scheduling Fields ────────────────────────────────────
     {
@@ -497,7 +451,6 @@ export const getBaseColumns = (
       width: 170,
       type: "date",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
       valueGetter: (params: any) =>
         params?.value ? moment(params.value).toDate() : null,
       renderCell: (params: any) => (
@@ -512,7 +465,6 @@ export const getBaseColumns = (
       width: 170,
       type: "date",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
       valueGetter: (params: any) =>
         params?.value ? moment(params.value).toDate() : null,
       renderCell: (params: any) => (
@@ -535,7 +487,6 @@ export const getBaseColumns = (
         "16.00","16.30","17.00","17.30","18.00","18.30","19.00","19.30",
         "20.00","20.30","21.00","21.30","22.00","22.30","23.00",
       ],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "duration",
@@ -544,7 +495,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: [30, 60],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "sessionType",
@@ -553,7 +503,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Screening", "Interview", "Review", "Feedback"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "surveyvideo",
@@ -562,7 +511,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["YES", "NO"],
-      headerClassName: "bg-[#80D7FF]",
     },
     // ── CV Development Status & Reviewer Fields ────────────────────────
     {
@@ -572,7 +520,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Completed", "In-Progress", "Not-Reviewed", "Not-Required"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "reviewer1",
@@ -581,7 +528,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Completed", "In-Progress", "Not-Reviewed", "Not-Required"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "reviewer2",
@@ -590,7 +536,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Completed", "In-Progress", "Not-Reviewed", "Not-Required"],
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "reviewer3",
@@ -599,7 +544,6 @@ export const getBaseColumns = (
       type: "singleSelect",
       editable: true,
       valueOptions: ["Completed", "In-Progress", "Not-Reviewed", "Not-Required"],
-      headerClassName: "bg-[#80D7FF]",
     },
     // ── CV Checklist — Boolean Fields ──────────────────────────────────
     {
@@ -608,7 +552,6 @@ export const getBaseColumns = (
       width: 280,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "personalDataGrouping",
@@ -616,7 +559,6 @@ export const getBaseColumns = (
       width: 210,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "narrativeBasedGroupings",
@@ -624,7 +566,6 @@ export const getBaseColumns = (
       width: 220,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "professionalSummary",
@@ -632,7 +573,6 @@ export const getBaseColumns = (
       width: 200,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "technicalSkills",
@@ -640,7 +580,6 @@ export const getBaseColumns = (
       width: 170,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "softSkills",
@@ -648,7 +587,6 @@ export const getBaseColumns = (
       width: 150,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "jobDescriptionModification",
@@ -656,7 +594,6 @@ export const getBaseColumns = (
       width: 240,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "factBasedGroupings",
@@ -664,7 +601,6 @@ export const getBaseColumns = (
       width: 200,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "businessNameBusinessLocation",
@@ -672,7 +608,6 @@ export const getBaseColumns = (
       width: 220,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "roleTitle",
@@ -680,7 +615,6 @@ export const getBaseColumns = (
       width: 140,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "dateFormat",
@@ -688,7 +622,6 @@ export const getBaseColumns = (
       width: 150,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "educationFormat",
@@ -696,7 +629,6 @@ export const getBaseColumns = (
       width: 180,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "additionals",
@@ -704,7 +636,6 @@ export const getBaseColumns = (
       width: 150,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "colourHighlightNewText",
@@ -712,7 +643,6 @@ export const getBaseColumns = (
       width: 220,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "layoutModification",
@@ -720,7 +650,6 @@ export const getBaseColumns = (
       width: 190,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "findReplaceAnd",
@@ -728,7 +657,6 @@ export const getBaseColumns = (
       width: 190,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "paragraphing",
@@ -736,7 +664,6 @@ export const getBaseColumns = (
       width: 160,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "alignment",
@@ -744,7 +671,6 @@ export const getBaseColumns = (
       width: 150,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "textSpacing",
@@ -752,7 +678,6 @@ export const getBaseColumns = (
       width: 160,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "differentiationOfEachRoleTitle",
@@ -760,7 +685,6 @@ export const getBaseColumns = (
       width: 260,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "roleNarrativeDifferentiation",
@@ -768,7 +692,6 @@ export const getBaseColumns = (
       width: 240,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "dateSerializationRationalization",
@@ -776,7 +699,6 @@ export const getBaseColumns = (
       width: 260,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "roleSegmentation",
@@ -784,7 +706,6 @@ export const getBaseColumns = (
       width: 190,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "grammerreadabilityEase",
@@ -792,7 +713,6 @@ export const getBaseColumns = (
       width: 230,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "smeTechnicalContent",
@@ -800,7 +720,6 @@ export const getBaseColumns = (
       width: 210,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "clientRequirementsAssessment",
@@ -808,7 +727,6 @@ export const getBaseColumns = (
       width: 250,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
     {
       field: "dispatchToClient",
@@ -816,7 +734,6 @@ export const getBaseColumns = (
       width: 190,
       type: "boolean",
       editable: true,
-      headerClassName: "bg-[#80D7FF]",
     },
   ];
 

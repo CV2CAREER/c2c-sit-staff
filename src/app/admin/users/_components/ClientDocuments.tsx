@@ -1,20 +1,30 @@
 "use client";
 import Icon from "../../../../../public/icons";
-import { useAdminQueries } from "@/hooks/api/admin.api";
+import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import {
   generateClientDocumentRows,
   generateClientDocumentsColumns,
 } from "./clientDocumentsColumns";
 import { generateSupportDocumentRows } from "@/components/DocumentUpload/supportDocumentRows";
-import { GridColDef, GridToolbar } from "@mui/x-data-grid-pro";
+import { GridColDef, GridRowSelectionModel, GridToolbar } from "@mui/x-data-grid-pro";
 import { StyledDataGridPro } from "@/utils/table";
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { motion, AnimatePresence } from "framer-motion";
 import { SuggestedKeywordsModal } from "./SuggestionModals";
 import { Button } from "@/components/ui/button";
 import CustomModal from "@/components/CustomModal/CustomModal";
-import { FiX, FiUploadCloud, FiCheckCircle } from "react-icons/fi";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import toast from "react-hot-toast";
+import { FiX, FiUploadCloud, FiCheckCircle, FiTrash2 } from "react-icons/fi";
 import {
   HiOutlineFolder,
   HiOutlineViewGrid,
@@ -47,6 +57,7 @@ const DOCUMENT_TYPE_TABS = [
 
 const ClientDocument = ({ userId }: { userId: string }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const queryClient = useQueryClient();
   const {
     userDocumentsDomain: documentsData,
     clientSupportDocumentsDomain: supportDocumentsData,
@@ -55,9 +66,17 @@ const ClientDocument = ({ userId }: { userId: string }) => {
     fetchUserDocuments: true,
     fetchClientSupportDocuments: true,
   });
+  const { bulkDeleteUploadsMutation, bulkDeleteClientSupportDocumentsMutation } =
+    useAdminMutations();
   const isLoading = documentsData.isLoading;
   const [isKeywordModalOpen, setIsKeywordModalOpen] = useState(false);
   const [isReviseModalOpen, setIsReviseModalOpen] = useState(false);
+  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>({
+    type: "include",
+    ids: new Set(),
+  });
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const rows = documentsData?.data?.documents || [];
   const supportRows = useMemo(
     () => supportDocumentsData?.data ?? [],
@@ -100,6 +119,61 @@ const ClientDocument = ({ userId }: { userId: string }) => {
     const target = normalizeType(activeTypeTab);
     return (documentRows as any[]).filter((row) => normalizeType(row.type) === target);
   }, [documentRows, activeTypeTab]);
+
+  const selectedIds = useMemo(
+    () => Array.from(rowSelectionModel.ids),
+    [rowSelectionModel],
+  );
+
+  const clearSelection = () => setRowSelectionModel({ type: "include", ids: new Set() });
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+
+    // The grid mixes two record types (Upload rows and ClientSupportDocument
+    // rows) that live in different tables with different delete endpoints —
+    // split the selection and call whichever bulk endpoints are needed.
+    const uploadIds: string[] = [];
+    const supportDocumentIds: string[] = [];
+    for (const id of selectedIds) {
+      const row = (documentRows as any[]).find((r) => r.id === id);
+      if (row?.recordType === "supportDocument") {
+        supportDocumentIds.push(String(id));
+      } else {
+        uploadIds.push(String(id));
+      }
+    }
+
+    try {
+      const results = await Promise.all([
+        uploadIds.length > 0
+          ? bulkDeleteUploadsMutation.mutateAsync({ ids: uploadIds })
+          : null,
+        supportDocumentIds.length > 0
+          ? bulkDeleteClientSupportDocumentsMutation.mutateAsync({ ids: supportDocumentIds })
+          : null,
+      ]);
+
+      const deletedCount = results.reduce((sum, r) => sum + (r?.data?.deletedCount ?? 0), 0);
+      const failedCount = results.reduce((sum, r) => sum + (r?.data?.failedCount ?? 0), 0);
+
+      if (deletedCount > 0) {
+        toast.success(`${deletedCount} document(s) deleted`);
+      }
+      if (failedCount > 0) {
+        toast.error(`Failed to delete ${failedCount} document(s)`);
+      }
+    } catch {
+      toast.error("Failed to delete documents");
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["admin-user-documents", userId] });
+    queryClient.invalidateQueries({ queryKey: ["client-support-documents"] });
+    clearSelection();
+    setIsBulkDeleting(false);
+    setIsBulkDeleteDialogOpen(false);
+  };
 
   const { handleSubmit: handleUploadSubmit, isUploading } =
     useDocumentUploadSubmit(userId, () => setIsReviseModalOpen(false));
@@ -198,6 +272,23 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           })}
         </div>
 
+        {selectedIds.length > 0 && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
+            <span className="text-13 font-medium text-red-700">
+              {selectedIds.length} document{selectedIds.length === 1 ? "" : "s"} selected
+            </span>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-2"
+              onClick={() => setIsBulkDeleteDialogOpen(true)}
+            >
+              <FiTrash2 />
+              Delete Selected
+            </Button>
+          </div>
+        )}
+
         <div className="h-fit w-[100%] mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center h-48">
@@ -239,6 +330,8 @@ const ClientDocument = ({ userId }: { userId: string }) => {
               disableRowSelectionOnClick
               checkboxSelection
               checkboxSelectionVisibleOnly
+              rowSelectionModel={rowSelectionModel}
+              onRowSelectionModelChange={setRowSelectionModel}
               sx={
                 isMobile
                   ? {
@@ -274,6 +367,35 @@ const ClientDocument = ({ userId }: { userId: string }) => {
           {isUploading ? "Uploading..." : "Upload Revised Document"}
         </Button>
       </div>
+      <Dialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={(open) => !isBulkDeleting && setIsBulkDeleteDialogOpen(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              {selectedIds.length} document{selectedIds.length === 1 ? "" : "s"} will be deleted. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              disabled={isBulkDeleting}
+              onClick={() => setIsBulkDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isBulkDeleting}
+              onClick={handleBulkDelete}
+            >
+              {isBulkDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <SuggestedKeywordsModal
         isOpen={isKeywordModalOpen}
         setIsOpen={setIsKeywordModalOpen}

@@ -35,24 +35,25 @@ const TriggerApplicationAction = () => {
   return (
     <>
       <div className="relative h-full overflow-hidden rounded-xl border border-primary/15 bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <div className="flex h-full flex-col justify-center gap-3 p-4 md:p-6">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <HiOutlineLightningBolt size={20} />
+        <div className="flex h-full flex-col justify-center gap-3 p-4 md:p-5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <HiOutlineLightningBolt size={16} />
             </span>
-            <h2 className="text-lg font-medium text-career-black-200">Trigger Application Action</h2>
+            <h2 className="text-sm font-medium text-career-black-200">Trigger Action</h2>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
               onClick={() => setConfirmType("START")}
               disabled={isPending}
               title="Commence Application — starts the application process and notifies the client"
-              className="flex-1 gap-2"
+              className="flex-1 gap-1.5 text-xs"
+              size="sm"
             >
               {isPending && confirmType === "START" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <HiOutlinePlay className="w-4 h-4" />
+                <HiOutlinePlay className="w-3.5 h-3.5" />
               )}
               Commence
             </Button>
@@ -60,12 +61,13 @@ const TriggerApplicationAction = () => {
               onClick={() => setConfirmType("END")}
               disabled={isPending}
               title="End Application — closes out the application cycle and notifies the client"
-              className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700"
+              className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
+              size="sm"
             >
               {isPending && confirmType === "END" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <HiOutlineFlag className="w-4 h-4" />
+                <HiOutlineFlag className="w-3.5 h-3.5" />
               )}
               End
             </Button>

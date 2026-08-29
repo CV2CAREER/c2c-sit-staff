@@ -94,7 +94,6 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
         headerName: camelCaseToSentenceCase(el),
         width: 200,
         type: el,
-        headerClassName: "bg-[#80D7FF]",
         editable: editMode,
         ...(el === 'dataEntry' ? {
           renderCell: (params: any) => {

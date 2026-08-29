@@ -11,7 +11,6 @@ import Image from "next/image";
 import hLogo from "../../../public/svg/h-logo.svg";
 import {
   GridRowsProp,
-  DataGridPro,
   GridRowModesModel,
   GridToolbarContainer,
   GridActionsCellItem,
@@ -19,8 +18,7 @@ import {
   GridFilterModel,
 } from "@mui/x-data-grid-pro";
 
-import { moveTo, orderTable } from "@/utils/table";
-import { styled } from "@mui/material";
+import { moveTo, orderTable, StyledDataGridPro } from "@/utils/table";
 import dateSortComparator, { applyDateSort } from "@/utils/dateSort";
 import "./table.css";
 
@@ -66,38 +64,7 @@ interface Itable {
   onRowUpdate?: (updatedRow: any, originalRow: any) => Promise<any>;
 }
 
-// Styled component for DataGridPro
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const StyledDataGridPro = styled(DataGridPro)(({ theme }) => ({
-  "& .MuiDataGrid-root": {
-    border: "none",
-    backgroundColor: "#ffffff",
-    boxShadow:
-      "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    borderRadius: "8px",
-    overflow: "visible !important",
-  },
-  "& .MuiDataGrid-cell": {
-    borderBottom: "1px solid #f0f0f0",
-  },
-  "& .MuiDataGrid-columnHeaders": {
-    backgroundColor: "#80D7FF",
-    color: "#333333",
-    fontWeight: "bold",
-  },
-  "& .MuiDataGrid-columnHeaderTitle": {
-    fontWeight: "bold",
-  },
-  "& .MuiDataGrid-row:nth-of-type(even)": {
-    backgroundColor: "#f8f8f8",
-  },
-  "& .MuiDataGrid-row:hover": {
-    backgroundColor: "#e6f7ff",
-  },
-  "& .MuiDataGrid-footer": {
-    borderTop: "1px solid #e0e0e0",
-  },
-}));
+export { StyledDataGridPro };
 
 const Table = ({
   data,
@@ -188,7 +155,6 @@ const Table = ({
         width: 200,
         type: el,
         cellClassName: "el",
-        headerClassName: "bg-[#80D7FF]",
         renderCell: el === "counter" ? renderCounterCell : undefined,
         sortComparator: [
           "createdat",
@@ -208,7 +174,6 @@ const Table = ({
         type: "actions",
         headerName: "Delete",
         width: 100,
-        headerClassName: "bg-[#80D7FF]",
         getActions: (params: any) => {
           return [
             <GridActionsCellItem
@@ -238,7 +203,6 @@ const Table = ({
         type: "actions",
         headerName: "Restore",
         width: 100,
-        headerClassName: "bg-[#80D7FF]",
         getActions: (params: any) => {
           return [
             <GridActionsCellItem
