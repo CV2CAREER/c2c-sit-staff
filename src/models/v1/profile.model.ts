@@ -23,6 +23,9 @@ import { Plan } from "./plan.model";
 import { Classification, Question } from "../../types/profile.types";
 import { AggregatorLink } from "../../types/aggregator.types";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("profile.model");
 
 @Table({
   tableName: "profiles",
@@ -373,7 +376,9 @@ export class Profile extends Model {
         if (decrypted.socialSecurityNumber) instance.setDataValue('socialSecurityNumber', decrypted.socialSecurityNumber);
         if (decrypted.taxIdentificationNumber) instance.setDataValue('taxIdentificationNumber', decrypted.taxIdentificationNumber);
         if (decrypted.dateOfBirth) instance.setDataValue('dateOfBirth', decrypted.dateOfBirth);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt fields for profile ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }

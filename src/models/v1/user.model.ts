@@ -19,6 +19,7 @@ import {
   BeforeUpdate,
   AfterUpdate,
   AfterFind,
+  BeforeFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import {
@@ -29,6 +30,7 @@ import {
   Progress,
   RevenueStatus,
   Role,
+  SignUpAs,
   SampleDispatchedStatus,
   SocialPlatform,
 } from "../../utils/enum";
@@ -39,8 +41,37 @@ import {
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
 import { fieldEncryption } from "../../utils/field-encryption";
-import { Profile } from "./profile.model";
-import { Referrer } from "./referrer.model";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("user.model");
+
+const PII_CONTACT_FIELDS = ["email", "phoneNumber", "whatsappNumber"];
+const PII_BANK_FIELDS = ["bankName", "bsbCode", "bankAccountNo", "bankAccountName"];
+
+const wantsField = (attributes: any, fieldName: string): boolean => {
+  if (!attributes) return true;
+  if (Array.isArray(attributes)) {
+    return attributes.some((a) => (typeof a === "string" ? a === fieldName : false));
+  }
+  if (typeof attributes === "object") {
+    const { include, exclude } = attributes as any;
+    if (Array.isArray(include)) {
+      return include.some((a) => (typeof a === "string" ? a === fieldName : false));
+    }
+    if (Array.isArray(exclude)) {
+      return !exclude.includes(fieldName);
+    }
+  }
+  return true;
+};
+
+const wantsContactDecrypt = (attributes: any): boolean =>
+  PII_CONTACT_FIELDS.some((f) => wantsField(attributes, f));
+
+const wantsBankDecrypt = (attributes: any): boolean =>
+  PII_BANK_FIELDS.some((f) => wantsField(attributes, f));
+
+import { Profile } from "./profile.model";import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
 import { SalesConsultant } from "./sales-consultant.model";
 import { CustomerService } from "./customer-service.model";
@@ -305,6 +336,12 @@ export class User extends Model {
   @Default(Role.GUEST)
   @Column(DataType.ENUM(...Object.values(Role)))
   role!: Role;
+
+  // What the user actually picked in the "Sign up as" field at registration —
+  // unlike `role`, this is never remapped afterwards (e.g. ambassador stays Ambassador here).
+  @AllowNull(true)
+  @Column(DataType.ENUM(...Object.values(SignUpAs)))
+  signUpAs?: SignUpAs;
 
   @AllowNull(false)
   @Default(false)
@@ -577,27 +614,52 @@ export class User extends Model {
     if (pii._pii_bankAccountName) instance.setDataValue('bankAccountName', pii._pii_bankAccountName);
   }
 
+  @BeforeFind
+  static async captureRequestedAttributes(options: any) {
+    (options as any).__requestedAttributes = options?.attributes;
+  }
+
   @AfterFind
-  static async decryptSensitiveFields(instances: User[] | User | null) {
+  static async decryptSensitiveFields(instances: User[] | User | null, options: any) {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
-    await Promise.all(list.map(async (instance) => {
-      if (!instance?.id) return;
+    const ids = list.filter(i => i?.id).map(i => i.id);
+    if (!ids.length) return;
+
+    const attributes = (options as any)?.__requestedAttributes;
+
+    let contactMap = new Map();
+    let bankMap = new Map();
+    if (wantsContactDecrypt(attributes)) {
       try {
-        const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
-        if (decrypted?.email) instance.setDataValue('email', decrypted.email);
-        if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
-        if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
-      } catch {}
+        contactMap = await fieldEncryption.getDecryptedUsersBatch(ids);
+      } catch (error: any) {
+        logger.warn(`Failed to batch-decrypt contact fields: ${error?.message || error}`);
+      }
+    }
+    if (wantsBankDecrypt(attributes)) {
       try {
-        const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
-        if (bank?.bankName) {
-          instance.setDataValue('bankName', bank.bankName);
-          instance.setDataValue('bsbCode', bank.bsbCode);
-          instance.setDataValue('bankAccountNo', bank.bankAccountNo);
-          instance.setDataValue('bankAccountName', bank.bankAccountName);
-        }
-      } catch {}
-    }));
+        bankMap = await fieldEncryption.getDecryptedUsersBankBatch(ids);
+      } catch (error: any) {
+        logger.warn(`Failed to batch-decrypt bank fields: ${error?.message || error}`);
+      }
+    }
+
+    for (const instance of list) {
+      if (!instance?.id) continue;
+      const contact = contactMap.get(instance.id);
+      if (contact) {
+        if (contact.email) instance.setDataValue('email', contact.email);
+        if (contact.phoneNumber) instance.setDataValue('phoneNumber', contact.phoneNumber);
+        if (contact.whatsappNumber) instance.setDataValue('whatsappNumber', contact.whatsappNumber);
+      }
+      const bank = bankMap.get(instance.id);
+      if (bank?.bankName) {
+        instance.setDataValue('bankName', bank.bankName);
+        instance.setDataValue('bsbCode', bank.bsbCode);
+        instance.setDataValue('bankAccountNo', bank.bankAccountNo);
+        instance.setDataValue('bankAccountName', bank.bankAccountName);
+      }
+    }
   }
 }

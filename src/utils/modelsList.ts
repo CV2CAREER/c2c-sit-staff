@@ -80,6 +80,8 @@ import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
+import { PreferenceQuestion } from '../models/v1/preference-question.model';
+import { DropdownOption } from '../models/v1/dropdown-option.model';
 
 export const modelList = [
   User,
@@ -166,4 +168,6 @@ export const modelList = [
   CredentialsTour,
   ClientJourneyStep,
   AiVettingComparison,
+  PreferenceQuestion,
+  DropdownOption,
 ];

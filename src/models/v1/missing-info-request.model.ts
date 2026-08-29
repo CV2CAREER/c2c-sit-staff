@@ -19,12 +19,18 @@ import { User } from "./user.model";
 import { MissingInfoType } from "../../types/missingInfoConfig";
 import { MissingInfoTemplate } from "./missing-info-template.model";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("missing-info-request.model");
 
 export const MISSING_INFO_REQUEST_STATUSES = [
   "pending",
   "viewed",
   "in_progress",
   "submitted",
+  "cancelled",
+  "declined",
+  "failed",
   "expired",
 ] as const;
 export type MissingInfoRequestStatus = (typeof MISSING_INFO_REQUEST_STATUSES)[number];
@@ -130,6 +136,10 @@ export class MissingInfoRequest extends Model {
   @Column(DataType.DATE)
   fulfilledAt!: Date;
 
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  reusedFromRequestId!: string | null;
+
   @CreatedAt
   createdAt!: Date;
 
@@ -175,7 +185,9 @@ export class MissingInfoRequest extends Model {
         if (decrypted !== null) {
           instance.setDataValue('personalMessage', decrypted);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt personal message for missing info request ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }

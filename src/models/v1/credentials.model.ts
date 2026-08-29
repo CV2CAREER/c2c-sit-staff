@@ -21,6 +21,9 @@ import { User } from "./user.model";
 import { CredentialsTour } from "./credentials-tour.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("credentials.model");
 
 @Table({
   tableName: "credentials",
@@ -221,6 +224,12 @@ export class Credentials extends Model {
 
   @BeforeSave
   static captureAndClearPlaintext(instance: Credentials) {
+    // instance.changed() must be read here, before the setDataValue calls
+    // below blank these fields — @BeforeUpdate runs after @BeforeSave, so by
+    // then these fields always look unchanged (both old and new value are
+    // null), which was silently skipping re-encryption on every unassign
+    // (setting an already-decrypted field to null never reached the DB).
+    (instance as any)._pii_changedFields = instance.changed() || [];
     (instance as any)._pii_seekEmail = instance.getDataValue('seekEmail');
     (instance as any)._pii_seekPassword = instance.getDataValue('seekPassword');
     (instance as any)._pii_AssignedPCName = instance.getDataValue('AssignedPCName');
@@ -262,9 +271,9 @@ export class Credentials extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
     const pii = instance as any;
+    const changed: string[] = pii._pii_changedFields || [];
+    if (!changed.length) return;
     if (changed.some(f => ['seekPassword'].includes(f))) {
       await fieldEncryption.encryptCredentialFields(
         instance.id,
@@ -272,7 +281,8 @@ export class Credentials extends Model {
         options.transaction,
       );
     }
-    if (changed.some(f => ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'].includes(f))) {
+    const extendedFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'];
+    if (changed.some(f => extendedFields.includes(f))) {
       await fieldEncryption.encryptCredentialExtendedFields(
         instance.id,
         pii._pii_seekEmail ?? null,
@@ -283,6 +293,7 @@ export class Credentials extends Model {
         pii._pii_AssignedCompletedName ?? null,
         pii._pii_AssignedCompletedEmail ?? null,
         options.transaction,
+        changed.filter(f => extendedFields.includes(f)),
       );
     }
   }
@@ -296,19 +307,27 @@ export class Credentials extends Model {
       try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
         if (pw !== null) instance.setDataValue('seekPassword', pw);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt seek password for credential ${instance.id}: ${error?.message || error}`);
+      }
       try {
         const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
         if (ext) {
-          if (ext.seekEmail) instance.setDataValue('seekEmail', ext.seekEmail);
-          if (ext.AssignedPCName) instance.setDataValue('AssignedPCName', ext.AssignedPCName);
-          if (ext.AssignedPCEmail) instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
-          if (ext.AssignedVetName) instance.setDataValue('AssignedVetName', ext.AssignedVetName);
-          if (ext.AssignedVetEmail) instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
-          if (ext.AssignedCompletedName) instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
-          if (ext.AssignedCompletedEmail) instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+          // Always overwrite with the decrypted value (or null) — never leave the
+          // stale plaintext column as the dataValue. Otherwise a plaintext column
+          // populated outside the model hooks would surface in the UI even after
+          // the encrypted assignment was cleared.
+          instance.setDataValue('seekEmail', ext.seekEmail);
+          instance.setDataValue('AssignedPCName', ext.AssignedPCName);
+          instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
+          instance.setDataValue('AssignedVetName', ext.AssignedVetName);
+          instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
+          instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
+          instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt extended fields for credential ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }

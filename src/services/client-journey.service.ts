@@ -145,6 +145,20 @@ export async function markDocumentAccepted(userId: string, adminId: string): Pro
   );
 }
 
+// Side-effect hook for admin-triggered plan changes (updateUserPlanByFeature,
+// activateCoralPlan) — records the account-level "payment_confirmed" step.
+// perTour: false for this step, so it's recorded once at the account level
+// regardless of which tour is currently active.
+export async function markPaymentConfirmed(userId: string, actorId: string): Promise<void> {
+  await completeStep(
+    userId,
+    "payment_confirmed",
+    actorId,
+    ClientJourneyActorType.ADMIN,
+    ClientJourneySource.AUTOMATIC,
+  );
+}
+
 export async function reopenClientJourneyStep(
   userId: string,
   stepKey: string,

@@ -2,6 +2,7 @@ import { getServiceLogger } from "../utils/createLogger";
 import { Upload } from "../models/v1/upload.model";
 import { UploadSource } from "../utils/enum";
 import ErrorHandler from "../utils/errorHandler";
+import { deleteFileFromStorage } from "../utils/fileUpload";
 
 const logger = getServiceLogger("upload-service");
 
@@ -161,4 +162,64 @@ export const activateUpload = async (uploadId: string) => {
   }
 
   return upload;
+};
+
+/**
+ * Soft-deletes an upload record and removes its underlying object from
+ * storage on a best-effort basis (mirrors deleteClientSupportDocument).
+ * @param uploadId ID of upload to delete
+ */
+export const deleteUpload = async (uploadId: string) => {
+  if (!uploadId) {
+    throw new ErrorHandler("Invalid upload ID.", 400);
+  }
+
+  const upload = await Upload.findByPk(uploadId);
+  if (!upload) {
+    throw new ErrorHandler("Upload document not found.", 404);
+  }
+
+  // `document` is normally a single object, but some legacy rows store it as
+  // an array — mirrors the same defensive unwrap the download action uses.
+  const doc0 = Array.isArray(upload.document) ? upload.document[0] : upload.document;
+  const cloudFilename = (doc0 as any)?.cloudFilename ?? (doc0 as any)?.publicId;
+  if (cloudFilename) {
+    try {
+      await deleteFileFromStorage(cloudFilename);
+    } catch (error: any) {
+      // A missing object shouldn't block the record from being retired.
+      logger.warn(`Could not remove ${cloudFilename} from storage: ${error.message}`);
+    }
+  }
+
+  upload.isDeleted = true;
+  await upload.save();
+  await upload.destroy();
+
+  logger.info(`Deleted upload ${uploadId}`);
+};
+
+/**
+ * Bulk soft-delete upload records. Continues past per-upload failures
+ * instead of aborting the whole batch.
+ * @param uploadIds IDs of uploads to delete
+ */
+export const deleteUploadsBulk = async (
+  uploadIds: string[],
+): Promise<{ deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] }> => {
+  const failures: { id: string; reason: string }[] = [];
+  let deletedCount = 0;
+
+  for (const id of uploadIds) {
+    try {
+      await deleteUpload(id);
+      deletedCount++;
+    } catch (error: any) {
+      failures.push({ id, reason: error?.message || "Failed to delete upload" });
+    }
+  }
+
+  logger.info(`Bulk deleted ${deletedCount} upload(s)`);
+
+  return { deletedCount, failedCount: failures.length, failures };
 };

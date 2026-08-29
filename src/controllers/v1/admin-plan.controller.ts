@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
-import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan } from "../../services/admin-plan.service";
+import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan, extendUserPlan, getUserPlanSummary } from "../../services/admin-plan.service";
 import { Progress } from "../../utils/enum";
 import { User } from "../../models/v1/user.model";
 import { Plan } from "../../models/v1/plan.model";
@@ -23,8 +23,9 @@ const logger = getServiceLogger("admin-plan-controller");
 export const updateUserPlanByFeatureController = catchAsyncError(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
-    const { featureId } = req.body;
+    const { featureId, reason, notifyClient } = req.body;
     const host = req.headers.host || req.headers.origin || "localhost";
+    const reqUser = req.user as any;
 
     logger.info(
       `Processing request to update plan for user ${userId} with feature ${featureId}`,
@@ -36,7 +37,21 @@ export const updateUserPlanByFeatureController = catchAsyncError(
       );
     }
 
-    const plan = await updateUserPlanByFeature(host, userId, featureId);
+    // `reason` is optional here since this endpoint is also used by the
+    // legacy "Payment Confirmed" progress-tracking flow, which doesn't
+    // collect one. The Change Plan modal enforces it as required client-side.
+    const plan = await updateUserPlanByFeature(host, userId, featureId, {
+      reason: typeof reason === "string" ? reason : undefined,
+      notifyClient: notifyClient === true,
+      adminUser: reqUser
+        ? {
+            id: reqUser.id,
+            firstName: reqUser.firstName,
+            lastName: reqUser.lastName,
+            role: reqUser.role,
+          }
+        : undefined,
+    });
 
     if (!plan) {
       return res.apiSuccess(
@@ -49,6 +64,69 @@ export const updateUserPlanByFeatureController = catchAsyncError(
     return res.apiSuccess(
       { plan },
       `User plan updated to "${plan.title}" successfully`,
+      200,
+    );
+  },
+);
+
+/**
+ * GET /api/v1/admin/users/:userId/plan
+ *
+ * Get a summary of the user's current active plan (title, expiry, days left)
+ * for display in the Change Plan / Add Days modal header.
+ */
+export const getUserPlanSummaryController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const summary = await getUserPlanSummary(userId);
+
+    return res.apiSuccess(summary, "User plan summary retrieved successfully", 200);
+  },
+);
+
+/**
+ * PATCH /api/v1/admin/users/:userId/plan/extend
+ *
+ * Extend a user's active plan by a number of days.
+ * Body: { days: number, reason?: string, notifyClient?: boolean }
+ */
+export const extendUserPlanController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { days, reason, notifyClient } = req.body;
+    const host = req.headers.host || req.headers.origin || "localhost";
+    const reqUser = req.user as any;
+
+    const parsedDays = Number(days);
+    if (!Number.isFinite(parsedDays) || !Number.isInteger(parsedDays) || parsedDays <= 0) {
+      return res.apiError(
+        new ErrorHandler("days is required and must be a positive integer", 400),
+      );
+    }
+
+    if (!reason || typeof reason !== "string" || !reason.trim()) {
+      return res.apiError(
+        new ErrorHandler("reason is required in the request body", 400),
+      );
+    }
+
+    const plan = await extendUserPlan(host, userId, parsedDays, {
+      reason,
+      notifyClient: notifyClient === true,
+      adminUser: reqUser
+        ? {
+            id: reqUser.id,
+            firstName: reqUser.firstName,
+            lastName: reqUser.lastName,
+            role: reqUser.role,
+          }
+        : undefined,
+    });
+
+    return res.apiSuccess(
+      { plan },
+      `Plan extended by ${parsedDays} day(s) successfully`,
       200,
     );
   },

@@ -1,0 +1,22 @@
+[
+  {
+    "label": "All",
+    "value": "All"
+  },
+  {
+    "label": "Full time",
+    "value": "Full time"
+  },
+  {
+    "label": "Part time",
+    "value": "Part time"
+  },
+  {
+    "label": "Contract / Temporary",
+    "value": "Contract / Temporary"
+  },
+  {
+    "label": "Casual / Vacation",
+    "value": "Casual / Vacation"
+  }
+]

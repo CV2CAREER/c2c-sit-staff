@@ -27,6 +27,7 @@ import {
   updateCampaignClientController,
   deleteCampaignClientController,
   deleteCampaignClientsBulkController,
+  softDeleteCampaignClientsBulkController,
   softDeleteCampaignClientController,
   restoreCampaignClientController,
   permanentDeleteCampaignClientController,
@@ -122,15 +123,22 @@ campaignManagementRouterV1.patch(
   authorizeRoles('admin'),
   updateCampaignClientController
 );
+// Bulk soft delete campaign clients (move to recycle bin) - must be registered before /clients/:id/soft-delete
+campaignManagementRouterV1.patch(
+  '/clients/bulk/soft-delete',
+  authorizeRoles('admin'),
+  softDeleteCampaignClientsBulkController
+);
+// Bulk permanently delete campaign clients - must be registered before /clients/:id/permanent
+campaignManagementRouterV1.delete(
+  '/clients/bulk/permanent',
+  authorizeRoles('admin'),
+  deleteCampaignClientsBulkController
+);
 campaignManagementRouterV1.delete(
   '/clients/:id',
   authorizeRoles('admin'),
   deleteCampaignClientController
-);
-campaignManagementRouterV1.delete(
-  '/clients/bulk',
-  authorizeRoles('admin'),
-  deleteCampaignClientsBulkController
 );
 campaignManagementRouterV1.patch(
   '/clients/:clientId/dispatch-samples',

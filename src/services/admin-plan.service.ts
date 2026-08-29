@@ -22,11 +22,38 @@ import { Credentials } from "../models/v1/credentials.model";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
-import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag } from "./email.service";
+import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag, sendPlanChangedEmail, sendPlanChangedAdminEmail, sendPlanExtendedEmail } from "./email.service";
 import { AuditLogService } from "./admin/audit-log.service";
 import { fieldEncryption } from "../utils/field-encryption";
+import { createCredentialsTour } from "./credentials-tour.service";
+import { markPaymentConfirmed } from "./client-journey.service";
+import { parseDate as parseCampaignDate, formatDate as formatCampaignDate, addDays as addCampaignDays, calculateCampaignFields } from "../utils/campaign-calculator";
 
 const logger = getServiceLogger("admin-plan-service");
+
+const formatShortDate = (date?: Date | string | null): string => {
+  if (!date) return "N/A";
+  return new Date(date).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatTermLabel = (validityPeriod?: string | null): string => {
+  if (!validityPeriod) return "";
+  const [rawValue, rawUnit] = validityPeriod.trim().split(/\s+/);
+  const value = parseInt(rawValue, 10);
+  if (!Number.isFinite(value)) return "";
+  const unit = (rawUnit || "").toLowerCase().replace(/s$/, "");
+  return `(${value}-${unit} term)`;
+};
+
+const formatSignUpAsLabel = (user: { signUpAs?: string | null; role?: string | null }): string => {
+  const signUpAs = user.signUpAs ? user.signUpAs.replace(/_/g, " ") : "Not set";
+  const role = user.role ? user.role.toUpperCase() : "";
+  return role ? `${signUpAs} (${role})` : signUpAs;
+};
 
 /**
  * Update a user's plan based on a featureId.
@@ -45,6 +72,11 @@ export const updateUserPlanByFeature = async (
   host: string,
   userId: string,
   featureId: string,
+  options?: {
+    reason?: string;
+    notifyClient?: boolean;
+    adminUser?: { id: string; firstName?: string; lastName?: string; role?: string };
+  },
 ): Promise<Plan | null> => {
 
   const location = getEnvironmentFromHost(host);
@@ -58,6 +90,13 @@ export const updateUserPlanByFeature = async (
 
   const userEmail = await fieldEncryption.getUserEmail(userId);
   const userFullName = getFullName(user);
+  const previousPlanTitle = user.plan || "No plan";
+
+  const previousActivePlan = await Plan.findOne({
+    where: { userId, hasExpired: false },
+    order: [["createdAt", "DESC"]],
+  });
+  const previousExpiresAt = previousActivePlan?.expiresAt ?? null;
 
   const feature = await Feature.findByPk(featureId);
   if (!feature) {
@@ -66,8 +105,7 @@ export const updateUserPlanByFeature = async (
 
   const sequelize = getSequelize();
 
-  // Use a transaction for atomicity
-  return sequelize.transaction(async (transaction: Transaction) => {
+  const result = await sequelize.transaction(async (transaction: Transaction) => {
     // 1. Expire any existing active plan for this user
     await Plan.update(
       { hasExpired: true },
@@ -152,7 +190,13 @@ export const updateUserPlanByFeature = async (
       { transaction },
     );
 
-    // Handle campaign management (non-blocking)
+    // Handle campaign management (non-blocking). Tour creation runs
+    // sequentially AFTER this, in the same callback, rather than as an
+    // independent post-transaction call — both touch the Credentials row via
+    // their own find-or-create, and running them concurrently raced (two
+    // processes both finding no row and both trying to create one, tripping
+    // the unique constraint on seekEmail). Awaiting one before the other
+    // guarantees the row exists by the time tour creation runs.
     setImmediate(async () => {
       try {
         if (!userEmail) {
@@ -172,10 +216,34 @@ export const updateUserPlanByFeature = async (
           },
           feature.title,
           userId,
-          getFrontendUrl()
+          getFrontendUrl(),
+          feature.validityPeriod,
         );
       } catch (error) {
         logger.error(`Campaign management failed: ${error}`);
+      }
+
+      // isNewCycle=true (no currently-active plan) always starts a new tour.
+      // isNewCycle=false is normally a no-op (mid-tour plan swap), except
+      // createCredentialsTour self-heals a client with an active plan but no
+      // tour history yet (e.g. from before this code existed).
+      try {
+        await createCredentialsTour({
+          userId,
+          planId: newPlan.id,
+          planTitle: newPlan.title,
+          expireAt: newPlan.expiresAt ?? null,
+          isNewCycle: !previousActivePlan,
+        });
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Tour creation failed for user ${userId}: ${err.message}`);
+      }
+
+      // Idempotent (account-level, completes once ever), safe on every paid assignment.
+      try {
+        await markPaymentConfirmed(userId, options?.adminUser?.id ?? "system");
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Journey step "payment_confirmed" failed for user ${userId}: ${err.message}`);
       }
     });
 
@@ -254,6 +322,137 @@ export const updateUserPlanByFeature = async (
 
     return newPlan;
   });
+
+  const newPlanTitle = result ? result.title : "No plan (Free)";
+  const adminUser = options?.adminUser;
+  const actorName = adminUser
+    ? `${adminUser.firstName || ""} ${adminUser.lastName || ""}`.trim() || "Admin"
+    : "System";
+
+  // The "Plan Changed" Slack/email trio below is for an existing subscriber
+  // switching plans. A user with no prior plan gets the separate
+  // service-subscription-user.ejs / service-subscription-admin.ejs
+  // "new subscription" emails instead (sent unconditionally further down,
+  // inside the transaction's paid-tier branch) — sending both would
+  // duplicate the notification for a first-time purchase.
+  const isNewSubscription = !previousActivePlan;
+
+  // Tour creation and "payment_confirmed" now run inside the campaign
+  // management setImmediate above (sequenced after handleCampaignManagement
+  // so they don't race it for the Credentials row — see comment there).
+
+  if (adminUser) {
+    AuditLogService.log({
+      userId: adminUser.id,
+      userFullName: actorName,
+      userRole: adminUser.role || "admin",
+      method: "PATCH",
+      url: `/v1/admin/users/${userId}/plan`,
+      description: `Plan changed for ${userFullName} (${userEmail}): "${previousPlanTitle}" → "${newPlanTitle}"${options?.reason ? ` | reason: ${options.reason}` : ""}`,
+      dataEntry: {
+        action: isNewSubscription ? "PLAN_ASSIGNED" : "PLAN_CHANGED",
+        actor: actorName,
+        target_user_id: (user as any).uniqueId ?? userId,
+        target_email: userEmail,
+        previous_plan: previousPlanTitle,
+        new_plan: newPlanTitle,
+        reason: options?.reason || null,
+        notify_client: options?.notifyClient === true,
+      },
+    });
+  }
+
+  const subEndFrom = formatShortDate(previousExpiresAt);
+  const subEndTo = formatShortDate(result?.expiresAt ?? null);
+  const termLabel = result ? formatTermLabel(feature.validityPeriod) : "";
+  const timestamp = new Date().toLocaleString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const customerId = (user as any).uniqueId ?? userId;
+  const signupAsLabel = formatSignUpAsLabel(user);
+  const clientToldLabel = options?.notifyClient ? "Yes" : "No";
+
+  if (!isNewSubscription) {
+    setImmediate(async () => {
+      try {
+        const subEndLine = termLabel
+          ? `Sub end date: ${subEndFrom} → ${subEndTo} - ${termLabel}`
+          : `Sub end date: ${subEndFrom} → ${subEndTo}`;
+
+        await SlackService.notify({
+          location,
+          host,
+          node: SlackNode.PAYMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: "Plan Changed",
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.PAID_SUB,
+          teamMentions: "CSM",
+          body: [
+            `🔄 Plan changed — ${userFullName}`,
+            `Customer: ${customerId}`,
+            `Changed by: ${actorName}`,
+            `Plan: ${previousPlanTitle} → ${newPlanTitle}`,
+            subEndLine,
+            options?.reason ? `Why: "${options.reason}"` : undefined,
+            `Client notify: ${clientToldLabel}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        });
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Slack notification failed: ${err.message}`);
+      }
+    });
+  }
+
+  if (!isNewSubscription && TEAM_EMAIL) {
+    setImmediate(async () => {
+      try {
+        await sendPlanChangedAdminEmail({
+          email: TEAM_EMAIL,
+          customerId,
+          signupAs: signupAsLabel,
+          planFrom: previousPlanTitle,
+          planTo: newPlanTitle,
+          subEndFrom,
+          subEndTo,
+          why: options?.reason || "Not provided",
+          adminName: actorName,
+          timestamp,
+          clientTold: clientToldLabel,
+        });
+        logger.info(`[UpdateUserPlanByFeature] Admin plan-change email sent to team`);
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Admin plan-change email failed: ${err.message}`);
+      }
+    });
+  }
+
+  if (!isNewSubscription && options?.notifyClient && userEmail) {
+    setImmediate(async () => {
+      try {
+        await sendPlanChangedEmail({
+          name: user.firstName,
+          email: userEmail,
+          previousPlan: previousPlanTitle,
+          planTo: newPlanTitle,
+          subEndDate: subEndTo,
+          frontendUrl: getFrontendUrl(),
+        });
+        logger.info(`[UpdateUserPlanByFeature] Plan-changed notification sent to ${userEmail}`);
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Plan-changed notification failed: ${err.message}`);
+      }
+    });
+  }
+
+  return result;
 };
 
 /**
@@ -317,6 +516,10 @@ export const activateCoralPlan = async (
     return plan;
   });
 
+  // Tour creation and "payment_confirmed" now run inside the campaign
+  // management setImmediate below (sequenced after handleCampaignManagement
+  // so they don't race it for the Credentials row).
+
   const frontendUrl = getFrontendUrl();
   const subEndDate = newPlan.expiresAt
     ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
@@ -373,6 +576,12 @@ export const activateCoralPlan = async (
     }
   });
 
+  // Tour creation runs sequentially AFTER campaign management, in the same
+  // callback — both touch the Credentials row via their own find-or-create,
+  // and running them as independent concurrent calls raced (two processes
+  // both finding no row and both trying to create one, tripping the unique
+  // constraint on seekEmail). Awaiting one before the other guarantees the
+  // row exists by the time tour creation runs.
   setImmediate(async () => {
     try {
       if (!userEmail) {
@@ -393,9 +602,30 @@ export const activateCoralPlan = async (
         coralFeature.title,
         userId,
         frontendUrl,
+        coralFeature.validityPeriod,
       );
     } catch (err: any) {
       logger.error(`[ActivateCoralPlan] Campaign management failed: ${err.message}`);
+    }
+
+    try {
+      await createCredentialsTour({
+        userId,
+        planId: newPlan.id,
+        planTitle: newPlan.title,
+        expireAt: newPlan.expiresAt ?? null,
+        // activateCoralPlan already throws earlier if the user has an
+        // active plan, so this is always a fresh cycle.
+        isNewCycle: true,
+      });
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Tour creation failed for user ${userId}: ${err.message}`);
+    }
+
+    try {
+      await markPaymentConfirmed(userId, adminUser?.id ?? "system");
+    } catch (err: any) {
+      logger.error(`[ActivateCoralPlan] Journey step "payment_confirmed" failed for user ${userId}: ${err.message}`);
     }
   });
 
@@ -494,6 +724,14 @@ export const deactivateCoralPlan = async (
           capitalized: "HOLD",
           SeekAnswerPriority: false,
           SeekAggregator: false,
+          // Auto-unassign DPC/VPC/SPC on plan deactivation so no staff keeps
+          // responsibility for a client whose subscription has ended.
+          AssignedPCName: null,
+          AssignedPCEmail: null,
+          AssignedVetName: null,
+          AssignedVetEmail: null,
+          AssignedCompletedName: null,
+          AssignedCompletedEmail: null,
           seekExternalCredentials: {
             ...(campaignRow.seekExternalCredentials as object),
             Active: false,
@@ -598,4 +836,271 @@ export const confirmUserProgress = async (
   );
 
   return user;
+};
+
+const daysLeftFromExpiry = (expiresAt?: Date | null): number | null => {
+  if (!expiresAt) return null;
+  const diffMs = new Date(expiresAt).getTime() - Date.now();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Get a summary of a user's current active plan — used to populate the
+ * "Change Plan" / "Add Days" modal header (uniqueId, plan title, days left).
+ */
+export const getUserPlanSummary = async (userId: string) => {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "uniqueId", "firstName", "lastName", "plan"],
+  });
+  if (!user) {
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  const activePlan = await Plan.findOne({
+    where: { userId, hasExpired: false },
+    order: [["createdAt", "DESC"]],
+  });
+
+  // "Add Days" extends the grace period, not the subscription term itself
+  // (see extendUserPlan) — so the effective end date staff should see here
+  // is CampaignEnd (SeekSubEndDate + GraceDuration), live-computed the same
+  // way campaign.service.ts's enrichCampaignFields does it, not the raw
+  // stored SeekSubEndDate (which stays fixed at the actual paid term).
+  // Falls back to Plan.expiresAt only when there's no Credentials row yet.
+  // A Gold-plan client has a second, secondary-profile Credentials row
+  // created after the primary one — order by createdAt so we always land on
+  // the primary.
+  const credentials = await Credentials.findOne({
+    where: { clientId: userId },
+    order: [["createdAt", "ASC"]],
+  });
+  const credentialsData = (credentials?.seekExternalCredentials as Record<string, any>) || {};
+
+  let effectiveEndDate: Date | null = null;
+  if (credentials) {
+    const computed = calculateCampaignFields({
+      SeekSubStartDate: credentials.SeekSubStartDate,
+      createdAt: credentials.createdAt,
+      SeekSubDurDays: credentialsData.SeekSubDurDays,
+      GraceDuration: credentialsData.GraceDuration,
+    });
+    effectiveEndDate = parseCampaignDate(computed.CampaignEnd);
+  }
+  if (!effectiveEndDate) {
+    effectiveEndDate = activePlan?.expiresAt ? new Date(activePlan.expiresAt) : null;
+  }
+
+  return {
+    userId: user.id,
+    uniqueId: user.uniqueId ?? null,
+    currentPlan: activePlan?.title ?? user.plan ?? null,
+    expiresAt: effectiveEndDate,
+    daysLeft: daysLeftFromExpiry(effectiveEndDate),
+  };
+};
+
+/**
+ * Extend a user's active plan by a number of days.
+ *
+ * - Finds the user's current non-expired Plan record.
+ * - Extends `expiresAt` by `days` from its current value (or from now if unset).
+ * - Logs an audit entry and optionally emails the client an FYI notice.
+ */
+export const extendUserPlan = async (
+  host: string,
+  userId: string,
+  days: number,
+  options?: {
+    reason?: string;
+    notifyClient?: boolean;
+    adminUser?: { id: string; firstName?: string; lastName?: string; role?: string };
+    // Lets a future system-triggered caller (e.g. referral confirmation)
+    // attribute the extension correctly instead of defaulting to "ADMIN — ...".
+    triggeredBy?: string;
+    referralsConfirmedToDate?: number;
+  },
+): Promise<Plan> => {
+  logger.info(`[ExtendUserPlan] User: ${userId}, Days: ${days}`);
+
+  const location = getEnvironmentFromHost(host);
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new ErrorHandler("User not found", 404);
+  }
+
+  const activePlan = await Plan.findOne({
+    where: { userId, hasExpired: false },
+    order: [["createdAt", "DESC"]],
+  });
+  if (!activePlan) {
+    throw new ErrorHandler("User has no active plan to extend", 400);
+  }
+
+  const userEmail = await fieldEncryption.getUserEmail(userId);
+  const userFullName = getFullName(user);
+
+  // "Add Days" extends the GRACE PERIOD, not the underlying subscription.
+  // SeekSubDurDays and SeekSubEndDate represent what the client actually
+  // paid for and must stay fixed. CampaignEnd (= SeekSubEndDate +
+  // GraceDuration) is what actually determines the cutoff (SeekSubToExpireDays/
+  // SeekSubExpired both key off it — see campaign-calculator.ts) and is
+  // recomputed live on every read, so bumping GraceDuration alone is enough
+  // to move it; nothing else needs to be (re)persisted.
+  //
+  // This also sidesteps a race with handleCampaignManagement's Credentials
+  // write (fired async off plan activation/change) — that write overwrites
+  // SeekSubDurDays/SeekSubEndDate/CampaignEnd wholesale but never touches
+  // GraceDuration, so an extension landing before that write settles no
+  // longer gets silently clobbered.
+  //
+  // A Gold-plan client has a second, secondary-profile Credentials row
+  // created after the primary one — order by createdAt so we always land on
+  // the primary (the one the dashboard actually displays).
+  const credentials = await Credentials.findOne({
+    where: { clientId: userId },
+    order: [["createdAt", "ASC"]],
+  });
+  const credentialsData = (credentials?.seekExternalCredentials as Record<string, any>) || {};
+
+  let storedSubEndDate: Date | null = null;
+  let newSubEndDate: Date;
+
+  if (credentials) {
+    const currentGraceDays = Number(credentialsData.GraceDuration || 0);
+    const newGraceDays = currentGraceDays + days;
+
+    const before = calculateCampaignFields({
+      SeekSubStartDate: credentials.SeekSubStartDate,
+      createdAt: credentials.createdAt,
+      SeekSubDurDays: credentialsData.SeekSubDurDays,
+      GraceDuration: credentialsData.GraceDuration,
+    });
+    const after = calculateCampaignFields({
+      SeekSubStartDate: credentials.SeekSubStartDate,
+      createdAt: credentials.createdAt,
+      SeekSubDurDays: credentialsData.SeekSubDurDays,
+      GraceDuration: newGraceDays,
+    });
+
+    storedSubEndDate = parseCampaignDate(before.CampaignEnd);
+    newSubEndDate =
+      parseCampaignDate(after.CampaignEnd) ??
+      addCampaignDays(storedSubEndDate ?? new Date(), days);
+
+    await credentials.update({
+      seekExternalCredentials: {
+        ...credentialsData,
+        GraceDuration: newGraceDays,
+      },
+    });
+  } else {
+    logger.warn(`[ExtendUserPlan] No Credentials row found for user ${userId} — GraceDuration not updated`);
+    const base = activePlan.expiresAt ? new Date(activePlan.expiresAt) : new Date();
+    newSubEndDate = addCampaignDays(base, days);
+  }
+
+  // Keep Plan.expiresAt in sync too so the Users page "Expires" display
+  // doesn't drift out of step with the real subscription end date.
+  const planBase = activePlan.expiresAt ? new Date(activePlan.expiresAt) : new Date();
+  const newExpiresAt = new Date(planBase);
+  newExpiresAt.setDate(newExpiresAt.getDate() + days);
+  await activePlan.update({ expiresAt: newExpiresAt });
+
+  const adminUser = options?.adminUser;
+  const actorName = adminUser
+    ? `${adminUser.firstName || ""} ${adminUser.lastName || ""}`.trim() || "Admin"
+    : "System";
+
+  const formattedNewSubEndDate = newSubEndDate.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  if (adminUser) {
+    AuditLogService.log({
+      userId: adminUser.id,
+      userFullName: actorName,
+      userRole: adminUser.role || "admin",
+      method: "PATCH",
+      url: `/v1/admin/users/${userId}/plan/extend`,
+      description: `Plan extended by ${days} day(s) for ${userFullName} (${userEmail})${options?.reason ? ` | reason: ${options.reason}` : ""}`,
+      dataEntry: {
+        action: "PLAN_EXTENDED",
+        actor: actorName,
+        target_user_id: (user as any).uniqueId ?? userId,
+        target_email: userEmail,
+        plan_title: activePlan.title,
+        days_added: days,
+        old_campaign_end: storedSubEndDate,
+        new_campaign_end: newSubEndDate,
+        plan_expires_at: newExpiresAt,
+        reason: options?.reason || null,
+        notify_client: options?.notifyClient === true,
+      },
+    });
+  }
+
+  if (options?.notifyClient && userEmail) {
+    setImmediate(async () => {
+      try {
+        await sendPlanExtendedEmail({
+          name: user.firstName,
+          email: userEmail,
+          planTitle: activePlan.title,
+          daysAdded: days,
+          newExpiresAt: formattedNewSubEndDate,
+          frontendUrl: getFrontendUrl(),
+        });
+        logger.info(`[ExtendUserPlan] Plan-extended notification sent to ${userEmail}`);
+      } catch (err: any) {
+        logger.error(`[ExtendUserPlan] Plan-extended notification failed: ${err.message}`);
+      }
+    });
+  }
+
+  const triggeredByLabel = options?.triggeredBy || `ADMIN — ${actorName}`;
+  const customerId = (user as any).uniqueId ?? userId;
+  const signupAsLabel = formatSignUpAsLabel(user);
+  const subEndFrom = formatShortDate(storedSubEndDate);
+  const subEndTo = formatShortDate(newSubEndDate);
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.PAYMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Plan Days Added",
+        type: SlackEventType.ADMIN_ACTION,
+        channel: SlackChannel.PAID_SUB,
+        teamMentions: "CSM",
+        body: [
+          `⏱ +${days} days added`,
+          `Customer: ${customerId}  ·  Sign Up As: ${signupAsLabel}`,
+          `Plan: ${activePlan.title} — unchanged`,
+          options?.reason ? `Why: ${options.reason}` : undefined,
+          `Triggered by: ${triggeredByLabel}`,
+          `Sub end date: ${subEndFrom} → ${subEndTo}`,
+          options?.referralsConfirmedToDate !== undefined
+            ? `Referrals confirmed to date: ${options.referralsConfirmedToDate}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+    } catch (err: any) {
+      logger.error(`[ExtendUserPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
+  logger.info(
+    `[ExtendUserPlan] Plan ${activePlan.id} extended by ${days} day(s) — ` +
+      `new sub end date: ${formatCampaignDate(newSubEndDate)}, plan expiresAt: ${newExpiresAt.toISOString()}`,
+  );
+
+  return activePlan;
 };
