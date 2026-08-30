@@ -94,7 +94,6 @@ export const modifyCRArray = (
           </div>
         );
       },
-      headerClassName: "bg-[#80D7FF] text-gray-800 font-semibold",
     });
   } else if (dataState === "active" && allowEdit) {
     modifiedArr.unshift({
@@ -133,7 +132,6 @@ export const modifyCRArray = (
             />
           </span>
         ),
-        headerClassName: "bg-[#80D7FF] text-gray-800 font-semibold",
       },
       {
         field: "downgrade cr",
@@ -178,7 +176,6 @@ export const modifyCRArray = (
             </div>
           );
         },
-        headerClassName: "bg-[#80D7FF] text-gray-800 font-semibold",
       },
       {
         field: "upgrade cr",
@@ -223,7 +220,6 @@ export const modifyCRArray = (
             </div>
           );
         },
-        headerClassName: "bg-[#80D7FF] text-gray-800 font-semibold",
       }
     );
   }
@@ -271,7 +267,6 @@ export const modifyCRArray = (
       field: "durationInHours",
       headerName: "Duration (Hours)",
       width: 150,
-      headerClassName: "bg-[#80D7FF]",
     });
   } else if (durationInHoursIndex !== durationInHoursColumnIndex) {
     const durationInHoursColumn = modifiedArr.splice(
@@ -289,7 +284,6 @@ export const modifyCRArray = (
       field: "counter",
       headerName: "Counter",
       width: 100,
-      headerClassName: "bg-[#80D7FF]",
     });
   } else if (counterIndex !== -1) {
     const counterColumn = modifiedArr.splice(counterIndex, 1)[0];
@@ -304,7 +298,6 @@ export const modifyCRArray = (
       field: "NIL",
       headerName: "Next in Line",
       width: 150,
-      headerClassName: "bg-[#80D7FF]",
     });
   } else if (nilIndex !== nilColumnIndex) {
     const nilColumn = modifiedArr.splice(nilIndex, 1)[0];
@@ -320,7 +313,6 @@ export const modifyCRArray = (
       field: "createdBy",
       headerName: "Created By",
       width: 150,
-      headerClassName: "bg-[#80D7FF]",
     });
   } else if (createdByIndex !== 7) {
     const createdByColumn = modifiedArr.splice(createdByIndex, 1)[0];
@@ -339,7 +331,6 @@ export const modifyCRArray = (
   if (currentStateIndex !== -1) {
     modifiedArr[currentStateIndex] = {
       ...modifiedArr[currentStateIndex],
-      headerClassName: "bg-[#80D7FF]",
       headerName: "Current State Images",
       width: 200,
       renderCell: (params) => (
@@ -366,7 +357,6 @@ export const modifyCRArray = (
     modifiedArr[futureStateIndex] = {
       ...modifiedArr[futureStateIndex],
       headerName: "Future State Images",
-      headerClassName: "bg-[#80D7FF]",
       width: 200,
       renderCell: (params) => (
         <div>

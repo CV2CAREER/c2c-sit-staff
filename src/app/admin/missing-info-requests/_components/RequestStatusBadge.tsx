@@ -7,6 +7,9 @@ const STATUS_STYLES: Record<string, string> = {
   viewed: "text-[#B45309]",
   in_progress: "text-[#0B96D6]",
   submitted: "text-[#16A34A]",
+  cancelled: "text-[#6B7280]",
+  declined: "text-[#7C3AED]",
+  failed: "text-[#DC2626]",
   expired: "text-[#9CA3AF]",
 };
 
@@ -15,6 +18,9 @@ const STATUS_LABELS: Record<string, string> = {
   viewed: "Viewed",
   in_progress: "In Progress",
   submitted: "Submitted",
+  cancelled: "Cancelled",
+  declined: "Declined",
+  failed: "Failed",
   expired: "Expired",
 };
 

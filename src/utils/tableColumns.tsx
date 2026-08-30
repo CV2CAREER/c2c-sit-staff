@@ -18,7 +18,6 @@ export function generateColumns(rows: any[]) {
       width: 200,
       type: el,
       cellClassName: "el",
-      headerClassName: "bg-[#80D7FF]",
       renderCell: el === "counter" ? renderCounterCell : undefined,
       sortComparator: [
         "createdat",

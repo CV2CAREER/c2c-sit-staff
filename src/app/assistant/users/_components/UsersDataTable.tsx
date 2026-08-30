@@ -26,7 +26,7 @@ import { modifyTableActionsColAndRows, tableColumns } from "../../users/_compone
 
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
-import { moveTo, StyledDataGridPro } from "@/utils/table";
+import { moveTo, StyledDataGridPro, usersGridSx } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -380,7 +380,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 showToolbar={true}
                 rows={tableData}
                 getRowId={(row) => row.id}
-                rowHeight={38}
+                rowHeight={46}
+                columnHeaderHeight={44}
                 rowReordering
                 disableRowSelectionOnClick
                 onRowClick={handleRowClick}
@@ -405,16 +406,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 pagination
                 pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}
-                sx={{
-                  border: "1px solid #f1f5f9",
-                  borderRadius: "12px",
-                  "& .MuiDataGrid-columnHeaders": {
-                    backgroundColor: "rgba(0, 142, 211, 0.08)",
-                  },
-                  "& .MuiDataGrid-row:hover": {
-                    backgroundColor: "rgba(0, 142, 211, 0.06)",
-                  },
-                }}
+                sx={usersGridSx}
               />
             </div>
           );

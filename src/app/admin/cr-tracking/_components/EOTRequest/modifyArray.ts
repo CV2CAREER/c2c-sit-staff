@@ -17,7 +17,6 @@ export function modifyEOTArray(modifiedArr: any[]) {
     field: 'numberOfHours',
     headerName: 'Hours',
     width: 150,
-    headerClassName: 'bg-[#80D7FF]',
     renderCell: (params: any) => params?.value || null,
   };
 
@@ -29,7 +28,6 @@ export function modifyEOTArray(modifiedArr: any[]) {
     field: 'NIL',
     headerName: 'Next in Line',
     width: 150,
-    headerClassName: 'bg-[#80D7FF]',
     renderCell: (params: any) => params?.value?.name || null,
   };
 
@@ -41,7 +39,6 @@ export function modifyEOTArray(modifiedArr: any[]) {
     field: 'developer',
     headerName: 'Developer',
     width: 150,
-    headerClassName: 'bg-[#80D7FF]',
     renderCell: (params: any) => params.value?.name || null,
   };
 
@@ -52,7 +49,6 @@ export function modifyEOTArray(modifiedArr: any[]) {
     field: 'duration',
     headerName: 'Duration',
     width: 150,
-    headerClassName: 'bg-[#80D7FF]',
     renderCell: (params: any) =>
       `${moment(params.value.start).format('MMMM Do, h:mm a')} - ${moment(params.value.end).format('MMMM Do, h:mm a')}` ||
       null,
@@ -65,7 +61,6 @@ export function modifyEOTArray(modifiedArr: any[]) {
     field: 'CR',
     headerName: 'CR ID',
     width: 150,
-    headerClassName: 'bg-[#80D7FF]',
     renderCell: (params: any) => params.value?.id || null,
   };
 

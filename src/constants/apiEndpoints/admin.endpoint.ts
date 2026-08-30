@@ -14,7 +14,8 @@ export const ADMIN_AGGREGATORS = '/api/v1/aggregator';
 export const ADMIN_APPLICATIONS = '/api/v1/admin/applications';
 export const ADMIN_QUESTIONS = '/api/v1/admin/interview-prep';
 export const ADMIN_FOLLOWERS = '/api/v1/analytics/followers';
-export const ADMIN_ANSWER_MODE = '/api/v1/admin/bot-toggle'; // Both share the same endpoint in v1
+export const ADMIN_BOT_TOGGLE = '/api/v1/admin/bot-toggle';
+export const ADMIN_ANSWER_MODE = ADMIN_BOT_TOGGLE; // Both share the same endpoint in v1
 export const ADMIN_TABLE_MANAGER = '/api/v1/admin/schema';
 export const ADMIN_SCHEMA_DELETE_TABLE = (table: string) =>
   `/api/v1/admin/schema/${table}`;
@@ -76,6 +77,10 @@ export const ADMIN_CLIENT_JOBSITE = '/api/v1/admin/client-jobsite';
 export const ADMIN_UPGRADE_PLAN = '/api/v1/admin/upgrade-plan';
 export const ADMIN_USER_PLAN_UPGRADE = (userId: string) =>
   `/api/v1/admin/users/${userId}/plan`;
+export const ADMIN_USER_PLAN_SUMMARY = (userId: string) =>
+  `/api/v1/admin/users/${userId}/plan`;
+export const ADMIN_USER_PLAN_EXTEND = (userId: string) =>
+  `/api/v1/admin/users/${userId}/plan/extend`;
 export const ADMIN_ACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
@@ -116,6 +121,9 @@ export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
   '/api/v1/admin/client-support-documents';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BY_CLIENT = (clientId: string) =>
   `/api/v1/admin/client-support-documents/client/${clientId}`;
+export const ADMIN_CLIENT_SUPPORT_DOCUMENTS_BULK_DELETE =
+  '/api/v1/admin/client-support-documents/bulk';
+export const ADMIN_UPLOADS_BULK_DELETE = '/api/v1/uploads/bulk';
 export const ADMIN_SAVE_ROLE_TITLE_RECOMMENDATIONS =
   '/api/v1/admin/client-support-documents/role-titles/save';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENT_ACTIVATE = (id: string) =>
@@ -188,6 +196,8 @@ export const ADMIN_GENERATE_PASSWORD =
   '/api/v1/campaigns/credentials/generate-password';
 export const ADMIN_DISPATCH_CREDENTIALS =
   '/api/v1/campaigns/credentials/dispatch';
+// Per-client job-site aggregator toggle (expects { clientId, jobSite }) — NOT the
+// global scraper on/off switch, that's ADMIN_BOT_TOGGLE above.
 export const ADMIN_BOT_CONTROL = '/api/v1/campaigns/aggregators/toggle';
 export const ADMIN_CAMPAIGN_JOBS_EXTRACT = '/api/v1/campaigns/jobs/extract';
 export const ADMIN_CAMPAIGN_JOBS_SAVE = '/api/v1/campaigns/jobs/save/manual';

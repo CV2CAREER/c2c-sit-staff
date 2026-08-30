@@ -358,6 +358,20 @@ export const useCampaignMutations = () => {
         toast.error("Failed to permanently delete campaign");
       },
     }),
+    bulkSoftDeleteCampaignMutation: useMutateData<{ affectedCount: number }, { ids: (string | number)[] }>({
+      method: "PATCH",
+      url: "/api/v1/campaigns/clients/bulk/soft-delete",
+      mutationKey: ["admin-bulk-soft-delete-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
+    bulkPermanentDeleteCampaignMutation: useMutateData<{ affectedCount: number }, { ids: (string | number)[] }>({
+      method: "DELETE",
+      url: "/api/v1/campaigns/clients/bulk/permanent",
+      mutationKey: ["admin-bulk-permanent-delete-campaign"],
+      onSuccess: () => {},
+      onError: () => {},
+    }),
     toggleFlightStatusMutation: useMutateData<any, { clientId: string | number }>({
       method: "PATCH",
       url: (params) => `/api/v1/campaigns/clients/${params?.clientId}/toggle-flight`,

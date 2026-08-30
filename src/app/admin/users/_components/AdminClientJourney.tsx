@@ -476,9 +476,22 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
                                   </span>
                                 )
                               ) : (
-                                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                                  Awaiting
-                                </span>
+                                <>
+                                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+                                    Client step
+                                  </span>
+                                  {isAdmin && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-career-blue-800/20 text-career-blue-800 hover:bg-career-blue-800/5"
+                                      onClick={() => handleAttest(step.stepKey)}
+                                      disabled={isPending}
+                                    >
+                                      {isPending ? "Attesting…" : "Attest"}
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
