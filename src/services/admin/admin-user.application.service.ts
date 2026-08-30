@@ -381,6 +381,7 @@ class AdminUserApplicationService {
         "id",
         "firstName",
         "lastName",
+        "email",
         "role",
         "country",
         "isActive",
@@ -479,7 +480,7 @@ class AdminUserApplicationService {
             targetKey: createdUser.id,
             before: null,
             after: {
-              email: createdUser.email,
+              email: userInput.email,
               role: createdUser.role,
             },
             metadata: {
@@ -492,7 +493,7 @@ class AdminUserApplicationService {
 
         created.push({
           userId: createdUser.id,
-          email: createdUser.email,
+          email: userInput.email,
           role: createdUser.role,
           firstName: createdUser.firstName,
           lastName: createdUser.lastName,

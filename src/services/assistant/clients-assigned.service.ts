@@ -92,7 +92,7 @@ export class ClientsAssignedService {
         },
         deletedAt: null
       },
-      attributes: ['id', 'firstName', 'lastName', 'uniqueId', 'applicationStatus', 'progress', 'createdAt'],
+      attributes: ['id', 'firstName', 'lastName', 'uniqueId', 'applicationStatus', 'progress', 'createdAt', 'email'],
       order: [['firstName', 'ASC']],
     });
 
