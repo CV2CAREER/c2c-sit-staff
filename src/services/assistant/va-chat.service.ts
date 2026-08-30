@@ -57,7 +57,7 @@ export class VaChatService {
       logger.info(`VA Chat: Loading client context for userId: ${userId}`);
 
       const client = await User.findByPk(userId, {
-        attributes: ["id", "firstName", "lastName"],
+        attributes: ["id", "firstName", "lastName", "email"],
         raw: true,
       });
 
