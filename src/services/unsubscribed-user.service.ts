@@ -23,7 +23,7 @@ export class UnsubscribedUserService {
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           }
         ],
         order: [['createdAt', 'DESC']],

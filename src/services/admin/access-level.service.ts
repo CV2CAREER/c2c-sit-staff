@@ -54,7 +54,7 @@ export class AccessLevelService {
   static async getAllUsers() {
     const users = await User.findAll({
       where: { deletedAt: null },
-      attributes: ["id", "firstName", "lastName", "role"],
+      attributes: ["id", "firstName", "lastName", "email", "role"],
       order: [["createdAt", "DESC"]],
     });
 
@@ -69,7 +69,7 @@ export class AccessLevelService {
           model: User,
           as: "user",
           required: true,
-          attributes: ["id", "firstName", "lastName", "role", "deletedAt"],
+          attributes: ["id", "firstName", "lastName", "email", "role", "deletedAt"],
           where: { deletedAt: null },
         },
       ],

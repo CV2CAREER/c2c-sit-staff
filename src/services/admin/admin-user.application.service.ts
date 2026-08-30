@@ -381,6 +381,7 @@ class AdminUserApplicationService {
         "id",
         "firstName",
         "lastName",
+        "email",
         "role",
         "country",
         "isActive",
@@ -418,10 +419,10 @@ class AdminUserApplicationService {
     const sequelize = getSequelize();
     const existingRows = await sequelize.query<{ email: string }>(
       `
-        SELECT LOWER(pgp_sym_decrypt("emailEncrypted", :key)) AS email
+        SELECT LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) AS email
         FROM users
         WHERE "emailEncrypted" IS NOT NULL
-          AND LOWER(pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
+          AND LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
           AND "deletedAt" IS NULL;
       `,
       {
@@ -479,7 +480,7 @@ class AdminUserApplicationService {
             targetKey: createdUser.id,
             before: null,
             after: {
-              email: createdUser.email,
+              email: userInput.email,
               role: createdUser.role,
             },
             metadata: {
@@ -492,7 +493,7 @@ class AdminUserApplicationService {
 
         created.push({
           userId: createdUser.id,
-          email: createdUser.email,
+          email: userInput.email,
           role: createdUser.role,
           firstName: createdUser.firstName,
           lastName: createdUser.lastName,
@@ -511,7 +512,7 @@ class AdminUserApplicationService {
         try {
           const actor = await User.findOne({
             where: { id: actorUserId },
-            attributes: ["firstName", "lastName"],
+            attributes: ["firstName", "lastName", "email"],
           });
           const actorName = actor
             ? `${actor.firstName} ${actor.lastName}`
@@ -721,7 +722,7 @@ class AdminUserApplicationService {
 
     const existing = await User.findOne({
       where: { email: { [Op.iLike]: email }, deletedAt: null },
-      attributes: ["id", "role", "firstName", "lastName"],
+      attributes: ["id", "role", "firstName", "lastName", "email"],
     });
 
     if (!existing) return { exists: false };

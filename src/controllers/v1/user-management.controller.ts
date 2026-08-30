@@ -103,6 +103,29 @@ export const deleteUser = catchAsyncError(
   },
 );
 
+export const bulkDeleteUsers = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+    const { userIds } = req.body;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      throw new ErrorHandler("userIds must be a non-empty array.", 400);
+    }
+
+    logger.info(`User ${authorizedUser.email} attempting to bulk delete ${userIds.length} user(s)`);
+
+    const result = await userManagementService.bulkDeleteUsers(
+      userIds,
+      authorizedUser.id,
+      authorizedUser.email,
+      host
+    );
+
+    res.apiSuccess(result, result.message);
+  },
+);
+
 export const restoreUser = catchAsyncError(
   async (req: Request, res: Response) => {
     const authorizedUser = ensureAuthorized(req);
@@ -144,6 +167,35 @@ export const purgeUser = catchAsyncError(
     );
 
     res.apiSuccess(result, "User permanently deleted successfully");
+  },
+);
+
+export const bulkPurgeUsers = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+
+    // Only super admin can permanently delete users
+    if (authorizedUser.role !== Role.ADMIN) {
+      throw new ErrorHandler("Only Super Admin can permanently delete users.", 403);
+    }
+
+    const { userIds } = req.body;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      throw new ErrorHandler("userIds must be a non-empty array.", 400);
+    }
+
+    logger.info(`User ${authorizedUser.email} attempting to permanently bulk delete ${userIds.length} user(s)`);
+
+    const result = await userManagementService.bulkPurgeUsers(
+      userIds,
+      authorizedUser.id,
+      authorizedUser.email,
+      host
+    );
+
+    res.apiSuccess(result, result.message);
   },
 );
 

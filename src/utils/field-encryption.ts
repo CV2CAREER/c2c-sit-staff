@@ -3,6 +3,32 @@ import { QueryTypes, Transaction } from "sequelize";
 
 const KEY = ENCRYPTION_SECRET!;
 
+const DECRYPT_CHUNK_SIZE = 50;
+const DECRYPT_MAX_CONCURRENCY = 2;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const idx = cursor++;
+      results[idx] = await worker(items[idx]);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
 function db() {
   return require("./sequelize").getSequelize();
 }
@@ -100,6 +126,45 @@ export const fieldEncryption = {
       { replacements: { userId, key: KEY }, type: QueryTypes.SELECT }
     );
     return result as any;
+  },
+
+  // ── Batch decrypt helpers (avoid N+1 in afterFind hooks) ──
+
+  async getDecryptedUsersBatch(userIds: string[]): Promise<Map<string, { email: string | null; phoneNumber: string | null; whatsappNumber: string | null }>> {
+    if (!userIds.length) return new Map();
+    const map = new Map<string, { email: string | null; phoneNumber: string | null; whatsappNumber: string | null }>();
+    const chunks = chunkArray(userIds, DECRYPT_CHUNK_SIZE);
+    await runWithConcurrency(chunks, DECRYPT_MAX_CONCURRENCY, async (chunk) => {
+      const rows: any[] = await db().query(
+        `SELECT id,
+                safe_pgp_sym_decrypt("emailEncrypted", :key) AS email,
+                safe_pgp_sym_decrypt("phoneNumberEncrypted", :key) AS "phoneNumber",
+                safe_pgp_sym_decrypt("whatsappNumberEncrypted", :key) AS "whatsappNumber"
+           FROM users WHERE id IN (:ids)`,
+        { replacements: { ids: chunk, key: KEY }, type: QueryTypes.SELECT }
+      );
+      for (const row of rows) map.set(row.id, { email: row.email ?? null, phoneNumber: row.phoneNumber ?? null, whatsappNumber: row.whatsappNumber ?? null });
+    });
+    return map;
+  },
+
+  async getDecryptedUsersBankBatch(userIds: string[]): Promise<Map<string, { bankName: string | null; bsbCode: string | null; bankAccountNo: string | null; bankAccountName: string | null }>> {
+    if (!userIds.length) return new Map();
+    const map = new Map<string, { bankName: string | null; bsbCode: string | null; bankAccountNo: string | null; bankAccountName: string | null }>();
+    const chunks = chunkArray(userIds, DECRYPT_CHUNK_SIZE);
+    await runWithConcurrency(chunks, DECRYPT_MAX_CONCURRENCY, async (chunk) => {
+      const rows: any[] = await db().query(
+        `SELECT id,
+                safe_pgp_sym_decrypt("bankNameEncrypted", :key) AS "bankName",
+                safe_pgp_sym_decrypt("bsbCodeEncrypted", :key) AS "bsbCode",
+                safe_pgp_sym_decrypt("bankAccountNoEncrypted", :key) AS "bankAccountNo",
+                safe_pgp_sym_decrypt("bankAccountNameEncrypted", :key) AS "bankAccountName"
+           FROM users WHERE id IN (:ids)`,
+        { replacements: { ids: chunk, key: KEY }, type: QueryTypes.SELECT }
+      );
+      for (const row of rows) map.set(row.id, { bankName: row.bankName ?? null, bsbCode: row.bsbCode ?? null, bankAccountNo: row.bankAccountNo ?? null, bankAccountName: row.bankAccountName ?? null });
+    });
+    return map;
   },
 
   async getDecryptedCredentialExtended(credentialId: string) {

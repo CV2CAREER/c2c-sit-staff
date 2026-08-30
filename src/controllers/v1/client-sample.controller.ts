@@ -345,7 +345,7 @@ export const getLoadBalancer = catchAsyncError(async (req: Request, res: Respons
 
         const user = await db.users.findUnique({
           where: { id: cred.clientId },
-          attributes: ["id", "firstName", "lastName"],
+          attributes: ["id", "firstName", "lastName", "email"],
         });
 
         if (!user) continue;

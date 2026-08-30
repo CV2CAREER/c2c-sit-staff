@@ -1,7 +1,8 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
+import { Referrer } from "../models/v1/referrer.model";
 import ErrorHandler from "../utils/errorHandler";
-import { Op } from "sequelize";
+import { Op, fn, col } from "sequelize";
 import bcrypt from "bcryptjs";
 import { getCachedUser, setCachedUser } from "./cache/user.cache.service";
 import { hopeUserExists, hopeUserIdExists } from "../utils/user-helper";
@@ -595,8 +596,27 @@ export const getAllUsers = async (query: {
 
   const users = await User.findAll(options);
 
+  // Attach referral counts — Referrer.referrer stores the referring user's email
+  const emails = users.map((u) => u.email).filter(Boolean);
+  const referralCounts = emails.length
+    ? await Referrer.findAll({
+        where: { referrer: { [Op.in]: emails }, isDeleted: false },
+        attributes: ["referrer", [fn("COUNT", col("id")), "count"]],
+        group: ["referrer"],
+        raw: true,
+      })
+    : [];
+  const referralCountMap = new Map(
+    referralCounts.map((r: any) => [r.referrer, parseInt(r.count, 10)]),
+  );
+
+  const usersWithReferrals = users.map((u) => ({
+    ...u.toJSON(),
+    referralsCount: referralCountMap.get(u.email) || 0,
+  }));
+
   logger.info(`Retrieved ${users.length} users from database`);
-  return users;
+  return usersWithReferrals;
 };
 
 // Get all clients — only full name and email (for dropdowns / selectors)
@@ -605,7 +625,7 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName"],
+    attributes: ["firstName", "lastName", "email"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],
