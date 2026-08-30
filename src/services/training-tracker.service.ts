@@ -385,9 +385,9 @@ export class TrainingTrackerService {
       const trackers = await TrainingTracker.findAll({
         where: whereClause,
         include: [
-          { association: "user", attributes: ["firstName", "lastName"] },
+          { association: "user", attributes: ["firstName", "lastName", "email"] },
           { association: "session", attributes: ["id", "sessionNumber", "name"] },
-          { association: "pc", attributes: ["firstName", "lastName"] }
+          { association: "pc", attributes: ["firstName", "lastName", "email"] }
         ],
         order: [["createdAt", "DESC"]],
         raw: true,
