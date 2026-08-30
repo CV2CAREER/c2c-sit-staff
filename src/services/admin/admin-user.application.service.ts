@@ -418,10 +418,10 @@ class AdminUserApplicationService {
     const sequelize = getSequelize();
     const existingRows = await sequelize.query<{ email: string }>(
       `
-        SELECT LOWER(pgp_sym_decrypt("emailEncrypted", :key)) AS email
+        SELECT LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) AS email
         FROM users
         WHERE "emailEncrypted" IS NOT NULL
-          AND LOWER(pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
+          AND LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
           AND "deletedAt" IS NULL;
       `,
       {
