@@ -118,6 +118,9 @@ const AvailableHours = () => {
         setSlots([{ from: "", to: "" }]);
         setSelectedTimeZone("");
       },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.message || "Failed to save availability");
+      },
     });
   };
 
@@ -225,7 +228,7 @@ const AvailableHours = () => {
           <button
             onClick={handleUploadSchedule}
             disabled={createSchedule.isPending || !date || !selectedTimeZone}
-            className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-black font-bold py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {createSchedule.isPending ? "Creating..." : "Save Availability"}
           </button>
