@@ -11,6 +11,16 @@ import toast from "react-hot-toast";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_PRECHECK_DEBOUNCE_MS = 400;
+// Digits, a leading +, spaces, hyphens and parens — enough for any real
+// phone format, but no letters.
+const PHONE_SANITIZE_REGEX = /[^\d+\s()-]/g;
+
+// A backend error message that leaks raw SQL/Sequelize internals (an enum
+// constraint violation, a column/constraint name, etc.) — not something a
+// staff user should ever see verbatim in a toast.
+const RAW_DB_ERROR_PATTERN = /invalid input value for enum|violates .*constraint|sequelizedatabaseerror/i;
+const friendlyErrorMessage = (raw: string | undefined, fallback: string): string =>
+  raw && !RAW_DB_ERROR_PATTERN.test(raw) ? raw : fallback;
 
 interface PrecheckEmailResult {
   exists: boolean;
@@ -96,7 +106,9 @@ const AddUserBtn = () => {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [emailConflict, setEmailConflict] = useState<string | null>(null);
+  const [emailAvailable, setEmailAvailable] = useState(false);
   const [precheckPending, setPrecheckPending] = useState(false);
+  const fieldRefs = React.useRef<Partial<Record<keyof FormData, HTMLInputElement | null>>>({});
   const [createdUserId, setCreatedUserId] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -108,6 +120,7 @@ const AddUserBtn = () => {
 
   useEffect(() => {
     const trimmed = form.email.trim();
+    setEmailAvailable(false);
     if (!trimmed || !EMAIL_REGEX.test(trimmed)) {
       setEmailConflict(null);
       setPrecheckPending(false);
@@ -133,12 +146,15 @@ const AddUserBtn = () => {
               ? `This email already belongs to ${roleLabel} ${name}.`
               : `This email is already registered to an ${roleLabel} account.`,
           );
+          setEmailAvailable(false);
         } else {
           setEmailConflict(null);
+          setEmailAvailable(true);
         }
       } catch (err: any) {
         if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
           setEmailConflict(null);
+          setEmailAvailable(false);
         }
       } finally {
         setPrecheckPending(false);
@@ -194,6 +210,7 @@ const AddUserBtn = () => {
     setForm(EMPTY_FORM);
     setErrors({});
     setEmailConflict(null);
+    setEmailAvailable(false);
     setPrecheckPending(false);
     setCreatedUserId(null);
     setOtp("");
@@ -202,7 +219,23 @@ const AddUserBtn = () => {
 
   const handleStep1Submit = async () => {
     setErrors(fieldErrors);
-    if (!isFormValid || precheckPending) return;
+    if (!isFormValid || precheckPending) {
+      // Scroll to (and focus) the first field that's actually wrong, in the
+      // order it appears in the form — otherwise a required field missing
+      // below the fold gives no visible indication anything's wrong.
+      const firstErrorKey = (Object.keys(EMPTY_FORM) as (keyof FormData)[]).find(
+        (key) => fieldErrors[key],
+      );
+      const el = firstErrorKey ? fieldRefs.current[firstErrorKey] : null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus();
+      } else if (emailConflict) {
+        fieldRefs.current.email?.scrollIntoView({ behavior: "smooth", block: "center" });
+        fieldRefs.current.email?.focus();
+      }
+      return;
+    }
     const toastId = toast.loading("Creating user...");
     try {
       const result = await createUserMutation.mutateAsync({
@@ -233,7 +266,8 @@ const AddUserBtn = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setStep(2);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || "Failed to create user", {
+      const raw = err?.response?.data?.message || err?.message;
+      toast.error(friendlyErrorMessage(raw, "Failed to create user — please try again"), {
         id: toastId,
       });
     }
@@ -246,7 +280,8 @@ const AddUserBtn = () => {
       toast.success("OTP sent to email", { id: toastId });
       setStep(3);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || "Failed to send OTP", {
+      const raw = err?.response?.data?.message || err?.message;
+      toast.error(friendlyErrorMessage(raw, "Failed to send OTP — please try again"), {
         id: toastId,
       });
     }
@@ -265,7 +300,8 @@ const AddUserBtn = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       resetAndClose();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Invalid OTP";
+      const raw = err?.response?.data?.message || err?.message;
+      const msg = friendlyErrorMessage(raw, "Invalid OTP — please try again");
       setOtpError(msg);
       toast.error(msg, { id: toastId });
     }
@@ -285,17 +321,21 @@ const AddUserBtn = () => {
     hint?: string | null,
   ) => {
     const errorText = errors[key] || (key === "email" ? emailConflict : null);
-    const showHint = !errorText && hint;
+    const isEmailAvailableHint = key === "email" && !errorText && emailAvailable;
+    const showHint = !errorText && !isEmailAvailableHint && hint;
     return (
       <div>
         <label className={labelClass}>{label}</label>
         <input
+          ref={(el) => {
+            fieldRefs.current[key] = el;
+          }}
           type={type}
           className={`${inputClass} ${errorText ? "border-red-400" : ""}`}
           value={form[key]}
           placeholder={placeholder}
           onChange={(e) => {
-            const value = e.target.value;
+            const value = type === "tel" ? e.target.value.replace(PHONE_SANITIZE_REGEX, "") : e.target.value;
             setForm((f) => ({ ...f, [key]: value }));
             if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
           }}
@@ -305,6 +345,7 @@ const AddUserBtn = () => {
           }}
         />
         {errorText && <p className="text-xs text-red-500 mt-1">{errorText}</p>}
+        {isEmailAvailableHint && <p className="text-xs text-emerald-600 mt-1">✓ Email is available</p>}
         {showHint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
       </div>
     );
