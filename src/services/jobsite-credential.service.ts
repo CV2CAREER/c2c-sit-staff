@@ -523,7 +523,13 @@ export async function approveJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName"],
+          // "email" must be requested here — the User model's email is a
+          // virtual field only populated by its @AfterFind hook's batch
+          // decrypt, which is itself gated on "email" being in this
+          // attributes list (a perf guard against decrypting on every
+          // unrelated User fetch). Without it, sendActiveNotifications
+          // below sent client.email as undefined, which SendGrid rejects.
+          attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
       ],
@@ -661,7 +667,11 @@ export async function rejectJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName"],
+          // "email" must be requested here — see approveJobsiteCredential's
+          // identical fix above for why (the AfterFind decrypt hook is
+          // gated on it being in this list). This function's own
+          // jobsite-credential-failed email also sends client.email.
+          attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
       ],
