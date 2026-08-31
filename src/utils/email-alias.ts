@@ -1,7 +1,7 @@
 import { getServiceLogger } from "./createLogger";
-import { SlackChannel } from "./enum";
-import { sendStandardSlackNotification } from "./slack-helpers";
-import { SlackNode, SlackProvider, SlackSeverity, SlackEventType } from "./enum";
+// import { SlackChannel } from "./enum";
+// import { sendStandardSlackNotification } from "./slack-helpers";
+// import { SlackNode, SlackProvider, SlackSeverity, SlackEventType } from "./enum";
 import axios from "axios";
 
 const logger = getServiceLogger("email-alias");
@@ -41,17 +41,17 @@ async function createEmailAlias(
 
   // Return dummy alias for stage environment
   if (isStage) {
-    setImmediate(async () => {
-      await sendStandardSlackNotification({
-        host,
-        node: SlackNode.USER_MANAGEMENT,
-        provider: SlackProvider.SYSTEM,
-        severity: SlackSeverity.INFO,
-        type: SlackEventType.SYSTEM_NOTIFICATION,
-        channel: SlackChannel.CRY_WOLF,
-        body: `Dummy email alias generated \`${dbUserMail}\` → \`${aliasEmail}\``,
-      });
-    });
+    // setImmediate(async () => {
+    //   await sendStandardSlackNotification({
+    //     host,
+    //     node: SlackNode.USER_MANAGEMENT,
+    //     provider: SlackProvider.SYSTEM,
+    //     severity: SlackSeverity.INFO,
+    //     type: SlackEventType.SYSTEM_NOTIFICATION,
+    //     channel: SlackChannel.CRY_WOLF,
+    //     body: `Dummy email alias generated \`${dbUserMail}\` → \`${aliasEmail}\``,
+    //   });
+    // });
 
     logger.info(`Dummy email alias created for ${dbUserMail}: ${aliasEmail}`);
     
@@ -94,17 +94,17 @@ async function createEmailAlias(
       if (data?.message?.includes("Too many aliases for the user")) {
         logger.warn(`Alias limit reached for sender account: ${senderEmail}`);
         
-        setImmediate(async () => {
-          await sendStandardSlackNotification({
-            host,
-            node: SlackNode.USER_MANAGEMENT,
-            provider: SlackProvider.SYSTEM,
-            severity: SlackSeverity.CRITICAL,
-            type: SlackEventType.ERROR_ALERT,
-            channel: SlackChannel.CRY_WOLF,
-            body: `Email alias limit reached for ${senderEmail} account. Please verify sender accounts configuration`,
-          });
-        });
+        // setImmediate(async () => {
+        //   await sendStandardSlackNotification({
+        //     host,
+        //     node: SlackNode.USER_MANAGEMENT,
+        //     provider: SlackProvider.SYSTEM,
+        //     severity: SlackSeverity.CRITICAL,
+        //     type: SlackEventType.ERROR_ALERT,
+        //     channel: SlackChannel.CRY_WOLF,
+        //     body: `Email alias limit reached for ${senderEmail} account. Please verify sender accounts configuration`,
+        //   });
+        // });
 
         throw new Error("Alias limit reached for this sender");
       }
@@ -124,17 +124,17 @@ async function createEmailAlias(
   // All senders failed - fall back to dummy alias
   logger.error(`All sender accounts exhausted for alias creation for ${dbUserMail}, falling back to dummy alias`);
   
-  setImmediate(async () => {
-    await sendStandardSlackNotification({
-      host,
-      node: SlackNode.USER_MANAGEMENT,
-      provider: SlackProvider.SYSTEM,
-      severity: SlackSeverity.ERROR,
-      type: SlackEventType.ERROR_ALERT,
-      channel: SlackChannel.TOWN_CRIER,
-      body: `Email Alias creation script failed for \`${dbUserMail}\`, defaulting to dummy alias → \`${aliasEmail}\``,
-    });
-  });
+  // setImmediate(async () => {
+  //   await sendStandardSlackNotification({
+  //     host,
+  //     node: SlackNode.USER_MANAGEMENT,
+  //     provider: SlackProvider.SYSTEM,
+  //     severity: SlackSeverity.ERROR,
+  //     type: SlackEventType.ERROR_ALERT,
+  //     channel: SlackChannel.TOWN_CRIER,
+  //     body: `Email Alias creation script failed for \`${dbUserMail}\`, defaulting to dummy alias → \`${aliasEmail}\``,
+  //   });
+  // });
 
   return {
     success: true,
