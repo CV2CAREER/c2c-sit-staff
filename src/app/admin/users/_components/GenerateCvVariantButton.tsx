@@ -42,9 +42,10 @@ const LOADING_STEPS = [
 /**
  * Flow behind the "Generate" button in the Generate CV Variant column:
  * 1. Show a loading modal while the AI writes and designs the CV.
- * 2. Show a rendered preview of the AI's own design (no inline editing —
- *    a rich-text editor would strip the AI's custom CSS the moment it
- *    touched the content) with Reject / Download / Continue.
+ * 2. Show the AI's own HTML live, directly editable in place (not a rich
+ *    -text editor like TipTap — that would normalize the AI's markup into
+ *    its own limited style vocabulary and strip anything outside it) with
+ *    Reject / Download / Continue.
  * 3. Save as PDF or DOC — uploads to Firebase, records a new `resume`
  *    Upload, and advances the client's onboarding progress bar.
  * 4. Show a download link for the saved file.
@@ -81,8 +82,6 @@ export default function GenerateCvVariantButton({
   const [questionRound, setQuestionRound] = useState(0);
   const MAX_QUESTION_ROUNDS = 2;
   const [cvVariantHtml, setCvVariantHtml] = useState("");
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [savedDocument, setSavedDocument] = useState<{ publicId: string; name: string } | null>(null);
   // "review" = Reject/Download/Continue gate; "confirm" = the actual Save
@@ -90,7 +89,13 @@ export default function GenerateCvVariantButton({
   // the client as two distinct, deliberate actions.
   const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
   const [isRejecting, setIsRejecting] = useState(false);
-  const previewUrlRef = useRef<string | null>(null);
+  // The review modal shows the AI's actual HTML live (via srcDoc), directly
+  // editable in place — not a rendered PDF and not a rich-text editor like
+  // TipTap, which would normalize the AI's markup into its own limited
+  // style vocabulary and strip everything outside it (custom banners,
+  // colors, grid layouts). Editing text nodes in the AI's own DOM leaves
+  // the surrounding styled elements untouched.
+  const editableIframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -103,44 +108,36 @@ export default function GenerateCvVariantButton({
     return () => clearInterval(interval);
   }, [isGenerating]);
 
-  // Revoke the preview object URL whenever it's replaced/cleared, and on
-  // unmount — otherwise each generation leaks a blob URL.
-  useEffect(() => {
-    previewUrlRef.current = previewUrl;
-  }, [previewUrl]);
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-    };
-  }, []);
+  // The sandbox permits same-origin access (so this — and the parent —
+  // can read/write contentDocument) but deliberately omits allow-scripts,
+  // which unconditionally blocks any <script> the AI's HTML contains from
+  // ever executing, regardless of same-origin status. Mirrors the
+  // javaScriptEnabled: false guard already used server-side in
+  // cvVariantHtmlRenderer.ts — this is the same untrusted HTML, just now
+  // also rendered in the admin's own browser for editing.
+  const stripScriptsForEditing = (html: string): string =>
+    html.replace(/<script[\s\S]*?<\/script>/gi, "");
 
-  const clearPreview = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
-    setPreviewBlob(null);
+  // Reads whatever's currently in the editable iframe (including any
+  // in-place edits) and syncs it into cvVariantHtml — called right before
+  // any action that uses the CV content, so a save/download/continue never
+  // uses stale pre-edit HTML. Returns the synced value directly since the
+  // state update itself is async.
+  const syncEditedHtml = (): string => {
+    const doc = editableIframeRef.current?.contentDocument;
+    if (!doc?.documentElement) return cvVariantHtml;
+    const edited = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+    setCvVariantHtml(edited);
+    return edited;
   };
 
-  // Opens the review modal for a given HTML result and renders its preview —
-  // shared by the no-questions path, "Skip", and "Submit & regenerate" once
-  // no open questions remain.
+  // Opens the review modal for a given HTML result — shared by the
+  // no-questions path, "Skip", and "Submit & regenerate" once no open
+  // questions remain.
   const openReview = async (html: string) => {
     setCvVariantHtml(html);
     setReviewStage("review");
     setIsReviewOpen(true);
-    try {
-      const { blob } = await previewCvVariant({
-        userId,
-        resumeUploadId,
-        cvVariant: html,
-        format: "pdf",
-      });
-      setPreviewBlob(blob);
-      setPreviewUrl(URL.createObjectURL(blob));
-    } catch (previewError: any) {
-      toast.error(
-        previewError?.response?.data?.message || "Generated, but the preview failed to render",
-      );
-    }
   };
 
   const handleGenerate = async () => {
@@ -247,30 +244,42 @@ export default function GenerateCvVariantButton({
     setAnswers({});
     setConfirmedSoFar([]);
     setQuestionRound(0);
-    clearPreview();
     setReviewStage("review");
     toast.dismiss(toastId);
     toast.success("CV variant rejected");
     setIsRejecting(false);
   };
 
-  const handleDownloadPreview = () => {
-    if (!previewBlob) {
-      toast.error("Preview isn't ready yet");
-      return;
+  // Renders the current (possibly edited) HTML to a real PDF on demand —
+  // there's no standing preview blob anymore since the review modal shows
+  // the live editable HTML directly, not a pre-rendered PDF.
+  const handleDownloadPreview = async () => {
+    const html = syncEditedHtml();
+    try {
+      const { blob } = await previewCvVariant({
+        userId,
+        resumeUploadId,
+        cvVariant: html,
+        format: "pdf",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = "CV_Variant_Preview.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to render preview");
     }
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(previewBlob);
-    link.download = "CV_Variant_Preview.pdf";
-    link.click();
   };
 
   const handleSave = async (format: SaveCvVariantFormat) => {
+    const html = syncEditedHtml();
     try {
       const data = await saveCvVariant({
         userId,
         resumeUploadId,
-        cvVariant: cvVariantHtml,
+        cvVariant: html,
         format,
       });
       const document_ = data?.upload?.document;
@@ -515,31 +524,34 @@ export default function GenerateCvVariantButton({
         </DialogContent>
       </Dialog>
 
-      {/* Review modal — preview only, no inline editing */}
+      {/* Review modal — the AI's actual HTML, live and directly editable */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
         <DialogContent className="flex h-[85vh] max-h-[85vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>CV Variant</DialogTitle>
             <DialogDescription>
-              Review the AI-designed CV below, then save it. The design (colors, layout, fonts)
-              is the AI's own — reject and regenerate if you want a different look.
+              Review the AI-designed CV below — click directly into the text to fix anything the
+              AI missed. The design (colors, layout, fonts) is the AI's own and stays intact while
+              you edit; reject and regenerate instead if you want a different look entirely.
             </DialogDescription>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-career-gray-300 bg-career-gray-100">
-            {previewUrl ? (
-              // The #view=FitH fragment tells the browser's native PDF viewer
-              // to fit the page to the iframe's width — without it, PDFs
-              // default to a small zoom level surrounded by the viewer's own
-              // dark chrome, making the preview look tiny inside the modal.
+            {cvVariantHtml ? (
               <iframe
+                ref={editableIframeRef}
                 title="CV Variant Preview"
-                src={`${previewUrl}#view=FitH`}
-                className="h-full w-full"
+                srcDoc={stripScriptsForEditing(cvVariantHtml)}
+                sandbox="allow-same-origin"
+                className="h-full w-full bg-white"
+                onLoad={() => {
+                  const doc = editableIframeRef.current?.contentDocument;
+                  if (doc?.body) doc.body.contentEditable = "true";
+                }}
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-career-gray-200">
-                {isPreviewing ? "Rendering preview…" : "Preview unavailable — try Download instead."}
+                Preview unavailable — try Download instead.
               </div>
             )}
           </div>
@@ -557,15 +569,18 @@ export default function GenerateCvVariantButton({
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={!previewBlob || isRejecting}
+                  disabled={isPreviewing || isRejecting}
                   onClick={handleDownloadPreview}
                 >
-                  Download
+                  {isPreviewing ? "Rendering…" : "Download"}
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
                   disabled={isRejecting}
-                  onClick={() => setReviewStage("confirm")}
+                  onClick={() => {
+                    syncEditedHtml();
+                    setReviewStage("confirm");
+                  }}
                 >
                   Continue →
                 </Button>
