@@ -82,6 +82,9 @@ export const COOKIE_SECRET = process.env.COOKIE_SECRET;
 // JUST CALL
 export const JUSTCALL_API_KEY = process.env.JUSTCALL_API_KEY!;
 export const JUSTCALL_API_SECRET = process.env.JUSTCALL_API_SECRET!;
+// Optional: value expected on the `x-webhook-secret` header of inbound JustCall
+// webhook events. Leave unset to accept events without verification.
+export const JUSTCALL_WEBHOOK_SECRET = process.env.JUSTCALL_WEBHOOK_SECRET;
 
 // SLACK
 export const SLACK_USERS_TOKEN = process.env.SLACK_USERS_TOKEN;

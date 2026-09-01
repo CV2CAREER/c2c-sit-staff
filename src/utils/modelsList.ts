@@ -82,6 +82,18 @@ import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 import { PreferenceQuestion } from '../models/v1/preference-question.model';
 import { DropdownOption } from '../models/v1/dropdown-option.model';
+import { JustCallEvent } from '../models/v1/justcall-event.model';
+import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
+import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
+import { JustCallMessageEventLog } from '../models/v1/justcall-message-log.model';
+import { JustCallWhatsAppMessage } from '../models/v1/justcall-whatsapp-message.model';
+import { JustCallWhatsAppMessageLog } from '../models/v1/justcall-whatsapp-message-log.model';
+import { JustCallSalesDialerCall } from '../models/v1/justcall-sales-dialer-call.model';
+import { JustCallSalesDialerCallLog } from '../models/v1/justcall-sales-dialer-call-log.model';
+import { JustCallContact } from '../models/v1/justcall-contact.model';
+import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
+import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
+import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
 
 export const modelList = [
   User,
@@ -170,4 +182,16 @@ export const modelList = [
   AiVettingComparison,
   PreferenceQuestion,
   DropdownOption,
+  JustCallEvent,
+  JustCallEventLog,
+  JustCallMessageEvent,
+  JustCallMessageEventLog,
+  JustCallWhatsAppMessage,
+  JustCallWhatsAppMessageLog,
+  JustCallSalesDialerCall,
+  JustCallSalesDialerCallLog,
+  JustCallContact,
+  JustCallContactLog,
+  JustCallAppointment,
+  JustCallAppointmentLog,
 ];
