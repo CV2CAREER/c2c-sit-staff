@@ -12,6 +12,7 @@ import {
   useCvVariantGeneration,
   type SaveCvVariantFormat,
   type ConfirmedAnswer,
+  type ConfirmQuestion,
 } from "@/hooks/useCvVariantGeneration";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,7 +67,7 @@ export default function GenerateCvVariantButton({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
-  const [confirmQuestions, setConfirmQuestions] = useState<string[]>([]);
+  const [confirmQuestions, setConfirmQuestions] = useState<ConfirmQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   // Every answer confirmed across ALL rounds of this Generate session, not
   // just the latest one — each regenerate call re-sends the full cumulative
@@ -180,8 +181,8 @@ export default function GenerateCvVariantButton({
 
   const handleSubmitAnswers = async () => {
     const newlyAnswered: ConfirmedAnswer[] = confirmQuestions
-      .filter((q) => answers[q]?.trim())
-      .map((q) => ({ question: q, answer: answers[q].trim() }));
+      .filter((q) => answers[q.question]?.trim())
+      .map((q) => ({ question: q.question, answer: answers[q.question].trim() }));
 
     if (newlyAnswered.length === 0) {
       toast.error("Answer at least one question, or use Skip instead");
@@ -215,7 +216,7 @@ export default function GenerateCvVariantButton({
         setAnswers((prev) => {
           const next: Record<string, string> = {};
           questions.forEach((q) => {
-            next[q] = prev[q] ?? "";
+            next[q.question] = prev[q.question] ?? "";
           });
           return next;
         });
@@ -417,8 +418,9 @@ export default function GenerateCvVariantButton({
           </DialogHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
-            {confirmQuestions.map((question, index) => {
-              const isAnswered = !!answers[question]?.trim();
+            {confirmQuestions.map(({ question, options }, index) => {
+              const currentAnswer = answers[question] ?? "";
+              const isAnswered = !!currentAnswer.trim();
               return (
                 <div
                   key={index}
@@ -440,15 +442,40 @@ export default function GenerateCvVariantButton({
                       {question}
                     </label>
                   </div>
-                  <Textarea
-                    value={answers[question] ?? ""}
-                    onChange={(e) =>
-                      setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
-                    }
-                    disabled={isGenerating}
-                    placeholder="Leave blank if you don't know — it just won't appear in the CV"
-                    className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
-                  />
+                  {options && options.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {options.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          disabled={isGenerating}
+                          onClick={() =>
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [question]: prev[question] === option ? "" : option,
+                            }))
+                          }
+                          className={`rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors disabled:opacity-50 ${
+                            currentAnswer === option
+                              ? "border-[#0D9F6E] bg-[#0D9F6E] text-white"
+                              : "border-career-gray-300/70 bg-white text-career-black-200 hover:border-[#0D9F6E]/40 hover:text-[#0D9F6E]"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={currentAnswer}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
+                      }
+                      disabled={isGenerating}
+                      placeholder="Leave blank if you don't know — it just won't appear in the CV"
+                      className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
+                    />
+                  )}
                 </div>
               );
             })}

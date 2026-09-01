@@ -7,6 +7,11 @@ export type SaveCvVariantFormat = "pdf" | "docx";
 
 export type ConfirmedAnswer = { question: string; answer: string };
 
+// A "Please confirm: ..." question pulled from the AI's generated CV. When
+// the AI supplies a short set of likely answers, `options` lets the admin
+// pick one instead of typing a free-text answer.
+export type ConfirmQuestion = { question: string; options?: string[] };
+
 type GenerateCvVariantPayload = {
   userId: string;
   resumeUploadId: string;
@@ -21,7 +26,7 @@ type GenerateCvVariantPayload = {
 // resolve them before ever seeing the review/save step.
 type GenerateCvVariantResponse = {
   html: string;
-  confirmQuestions: string[];
+  confirmQuestions: ConfirmQuestion[];
 };
 
 type SaveCvVariantPayload = {
