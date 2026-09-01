@@ -33,6 +33,15 @@ import { progressValues } from "../utils/user-progress-processor";
 
 const logger = getServiceLogger("document-service");
 
+// A "Please confirm: ..." question pulled from the AI's generated CV. When
+// the AI supplies a "[Options: A | B | C]" suffix (per section 25 — for
+// questions with a natural small set of likely answers), `options` lets the
+// admin pick one instead of typing a free-text answer.
+export interface ConfirmQuestion {
+  question: string;
+  options?: string[];
+}
+
 export interface ExtractCvDataPointsPayload {
   id: string;
   cvType?: string;
@@ -885,9 +894,11 @@ export class AdminDocumentService {
      * client/employer sees, whether every question got answered, some were
      * skipped, or it's left open entirely.
      */
-    private static extractAndStripConfirmQuestions(html: string): { html: string; confirmQuestions: string[] } {
+    private static extractAndStripConfirmQuestions(
+        html: string,
+    ): { html: string; confirmQuestions: ConfirmQuestion[] } {
         const $ = cheerio.load(html);
-        const questions: string[] = [];
+        const questions: ConfirmQuestion[] = [];
         const seen = new Set<string>();
         const leafElements: any[] = [];
 
@@ -915,18 +926,43 @@ export class AdminDocumentService {
             // merged several into one node (e.g. via <br> instead of
             // separate elements) — split them apart instead of keeping the
             // merge as a single blob.
-            const parts = text
+            const rawParts = text
                 .split(/(?=please\s+confirm\s*:)/i)
                 .map((part) => part.trim())
                 .filter((part) => /please\s+confirm\s*:/i.test(part));
 
-            if (parts.length > 0) {
-                leafElements.push(el);
-                for (const part of parts) {
-                    if (seen.has(part)) continue;
-                    questions.push(part);
-                    seen.add(part);
+            if (rawParts.length === 0) return;
+            leafElements.push(el);
+
+            for (const rawPart of rawParts) {
+                // Section 25 has the AI append "[Options: A | B | C]" right
+                // after multiple-choice-style questions — pull that off
+                // (and its optional wrapping "[" "]") before cleaning the
+                // question text itself, since it sits at the very end.
+                let question = rawPart;
+                let options: string[] | undefined;
+                const optionsMatch = rawPart.match(/\[?\s*options\s*:\s*([^[\]]+?)\s*\]?\s*$/i);
+                if (optionsMatch) {
+                    const parsedOptions = optionsMatch[1]
+                        .split("|")
+                        .map((o) => o.trim())
+                        .filter(Boolean);
+                    if (parsedOptions.length > 0) options = parsedOptions;
+                    question = rawPart.slice(0, optionsMatch.index).trim();
                 }
+
+                // The AI sometimes wraps the question in [...] (the owner's
+                // aiPromptSection asks for this bracketed format even
+                // though the locked prompt itself doesn't) — the split
+                // above cuts right after the "[" (which lands in a
+                // discarded fragment), leaving a stray trailing "]" on the
+                // kept part; strip both ends regardless of which prompt
+                // caused it.
+                question = question.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "").trim();
+                if (!question || seen.has(question)) continue;
+
+                seen.add(question);
+                questions.push(options ? { question, options } : { question });
             }
         });
 
@@ -1040,7 +1076,7 @@ export class AdminDocumentService {
         targetUserId: string,
         resumeUploadId: string,
         confirmedAnswers?: { question: string; answer: string }[],
-    ): Promise<{ html: string; confirmQuestions: string[] }> {
+    ): Promise<{ html: string; confirmQuestions: ConfirmQuestion[] }> {
         logger.info(`[GenerateCvVariant] User ${targetUserId}, resume ${resumeUploadId}`);
 
         const upload = await Upload.findOne({

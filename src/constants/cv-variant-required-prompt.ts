@@ -685,6 +685,8 @@ If a "CLIENT-CONFIRMED FACTS" block appears above the supplied document, those f
 
 Ask about every materially important open gap — the ones that would meaningfully change how a reader assesses the candidate if left unresolved. There's no fixed limit on how many; skip only minor or cosmetic ambiguities that wouldn't change that assessment.
 
+Where a question has a natural small set of likely answers (e.g. a yes/no question, or a choice between a few named statuses, tools, or categories), append the choices on the same line immediately after the question text, in this exact format: " [Options: Choice One | Choice Two | Choice Three]". Use 2 to 5 short options, each a plausible real answer — never invent an option the evidence doesn't support just to fill the set. Leave the "[Options: ...]" suffix off entirely for open-ended questions that don't reduce to a short list of choices (e.g. "describe your responsibilities in this role") — those stay a plain question with no suffix.
+
 ---
 
 # 26. FINAL QUALITY ASSURANCE
