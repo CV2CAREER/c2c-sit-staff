@@ -1,0 +1,250 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/justcallWhatsappWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive JustCall WhatsApp webhook events
+      description: |
+        Receives JustCall whatsapp.* webhook payloads - call.*/jc.* and
+        sms.* events go to their own separate endpoints (see
+        justcall-webhook.yaml and justcall-message-webhook.yaml), since a
+        WhatsApp message's shape (reactions, read receipts, business
+        template messages with their own header media) has almost no
+        overlap with either beyond contact/agent metadata.
+        `justcall_whatsapp_messages` holds one current-state row per
+        message, keyed on JustCall's message id - a later delivery for the
+        same id (e.g. a delivery_status or read-receipt update) updates that
+        row instead of creating a duplicate. Every individual delivery is
+        also appended to `justcall_whatsapp_message_logs` (FK ->
+        justcall_whatsapp_messages), so the full history is never lost even
+        though the current-state row gets overwritten.
+
+        A message can carry media in two different places, both hosted on
+        JustCall's own CDN (Filestack) - links outside our control that can
+        expire or be revoked: `message_info.mms.media_url` (the message's
+        own attachment - a single object here, unlike SMS's mms array) and
+        `message_info.template.header_value` (a business template's header
+        image). This endpoint re-hosts whichever are present into our
+        Firebase Storage bucket in the background (after acking the
+        webhook) and repoints them at that copy, keeping the original
+        JustCall URLs alongside as `justcall_media_url` /
+        `justcall_header_value`.
+
+        Configure this URL as the webhook target in JustCall for whichever
+        WhatsApp event types you want captured - whatsapp.message_sent,
+        whatsapp.message_received, etc.
+
+        If `JUSTCALL_WEBHOOK_SECRET` is set in the environment, requests must
+        include a matching `x-webhook-secret` header (set this as a custom
+        header on the webhook in JustCall's dashboard) or they are rejected
+        with 401. If it is unset, the endpoint accepts events unauthenticated.
+      security: []
+      parameters:
+        - name: x-webhook-secret
+          in: header
+          required: false
+          description: Required only if JUSTCALL_WEBHOOK_SECRET is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              whatsapp_message_sent:
+                summary: whatsapp.message_sent sample payload (with an MMS attachment and a business template)
+                value:
+                  request_id: "01HQAMVFRC4HZ0144TDSXXXX"
+                  webhook_url: "https://webhook.site/ce74f4ac-1b4ce7805646dd5XXXX"
+                  url_id: "65d5a5ed180da91d76edXXXX"
+                  type: "whatsapp.message_sent"
+                  data:
+                    id: 5678
+                    contact_number: "13801136XXX"
+                    contact_name: "Rachel Green"
+                    contact_email: "rachel@example.com"
+                    justcall_number: "12707705XXX"
+                    justcall_line_name: "Sales Team"
+                    agent_id: 9876
+                    agent_name: "John Smith"
+                    agent_email: "john@suits.co"
+                    message_date: "2017-12-18"
+                    message_user_date: "2017-12-17"
+                    message_time: "14:05:43"
+                    message_user_time: "08:35:43"
+                    direction: "Outgoing"
+                    reaction_outbound: ""
+                    reaction_outbound_time: ""
+                    reaction_inbound: "👍"
+                    reaction_inbound_time: "2017-12-18 14:06:00"
+                    delivery_status: "sent"
+                    delivery_date: "2017-12-17"
+                    delivery_time: "14:05:43"
+                    read_date: ""
+                    read_time: ""
+                    failure_reason: ""
+                    message_origin: "web"
+                    message_info:
+                      body: "Hello Rachel! Here's the brochure you asked for."
+                      is_mms: "Yes"
+                      mms:
+                        media_url: "https://www.filepicker.io/api/file/NZsgbzvkTirEewmX79Sh"
+                        content_type: "image/png"
+                      is_template: "Yes"
+                      template:
+                        template_id: "123"
+                        template_name: "product_info"
+                        language: "English"
+                        category: "Marketing"
+                        header_type: "Image"
+                        header_value: "https://www.filepicker.io/api/file/NZsgbzvkTirEewmX79Sh"
+                        footer: "For more info, reply HELP"
+                        actions_count: 1
+                        actions:
+                          - action_type: "Visit Website"
+                            action_text: "Visit Us"
+                            action_value: "https://example.com"
+              whatsapp_message_received:
+                summary: >-
+                  whatsapp.message_received sample payload - note this reuses
+                  the same placeholder message id as whatsapp_message_sent
+                  above (a sent and a received message are actually
+                  different messages in real usage, same caveat as SMS); mms
+                  and template are present but empty here, which correctly
+                  leaves any real values captured by an earlier delivery
+                  untouched rather than blanking them out.
+                value:
+                  request_id: "01HQAMVFRC4HZ0144TDSXXXX"
+                  webhook_url: "https://webhook.site/ce74f4ac-1b4ce7805646dd5XXXX"
+                  url_id: "65d5a5ed180da91d76edXXXX"
+                  type: "whatsapp.message_received"
+                  data:
+                    id: 5678
+                    contact_number: "13801136XXX"
+                    contact_name: "Rachel Green"
+                    contact_email: "rachel@example.com"
+                    justcall_number: "12707705XXX"
+                    justcall_line_name: "Sales Team"
+                    agent_id: 9876
+                    agent_name: "John Smith"
+                    agent_email: "john@suits.co"
+                    message_date: "2017-12-18"
+                    message_user_date: "2017-12-17"
+                    message_time: "14:05:43"
+                    message_user_time: "08:35:43"
+                    direction: "Incoming"
+                    reaction_outbound: ""
+                    reaction_outbound_time: ""
+                    reaction_inbound: "👍"
+                    reaction_inbound_time: "2017-12-18 14:06:00"
+                    delivery_status: "received"
+                    delivery_date: "2017-12-17"
+                    delivery_time: "14:05:43"
+                    read_date: ""
+                    read_time: ""
+                    failure_reason: ""
+                    message_origin: "web"
+                    message_info:
+                      body: "Thanks, got it!"
+                      is_mms: "No"
+                      mms:
+                        media_url: ""
+                        content_type: ""
+                      is_template: "No"
+                      template:
+                        template_id: ""
+                        template_name: ""
+                        language: ""
+                        category: ""
+                        header_type: ""
+                        header_value: ""
+                        footer: ""
+                        actions_count: 0
+                        actions: []
+              whatsapp_message_status_updated:
+                summary: >-
+                  whatsapp.message_status_updated sample payload - unlike
+                  whatsapp_message_sent vs whatsapp_message_received above,
+                  this really is the same message (same id) getting a later
+                  delivery_status update, so it's the realistic case for the
+                  upsert/merge behavior: it updates the existing row and
+                  produces a "Delivery: received -> sent" diff line.
+                value:
+                  request_id: "01HQAMVFRC4HZ0144TDSXXXX"
+                  webhook_url: "https://webhook.site/ce74f4ac-1b4ce7805646dd5XXXX"
+                  url_id: "65d5a5ed180da91d76edXXXX"
+                  type: "whatsapp.message_status_updated"
+                  data:
+                    id: 5678
+                    contact_number: "13801136XXX"
+                    contact_name: "Rachel Green"
+                    contact_email: "rachel@example.com"
+                    justcall_number: "12707705XXX"
+                    justcall_line_name: "Sales Team"
+                    agent_id: 9876
+                    agent_name: "John Smith"
+                    agent_email: "john@suits.co"
+                    message_date: "2017-12-18"
+                    message_user_date: "2017-12-17"
+                    message_time: "14:05:43"
+                    message_user_time: "08:35:43"
+                    direction: "Incoming"
+                    reaction_outbound: ""
+                    reaction_outbound_time: ""
+                    reaction_inbound: "👍"
+                    reaction_inbound_time: "2017-12-18 14:06:00"
+                    delivery_status: "sent"
+                    delivery_date: "2017-12-17"
+                    delivery_time: "14:05:43"
+                    read_date: ""
+                    read_time: ""
+                    failure_reason: ""
+                    message_origin: "web"
+                    message_info:
+                      body: "Thanks, got it!"
+                      is_mms: "No"
+                      mms:
+                        media_url: ""
+                        content_type: ""
+                      is_template: "No"
+                      template:
+                        template_id: ""
+                        template_name: ""
+                        language: ""
+                        category: ""
+                        header_type: ""
+                        header_value: ""
+                        footer: ""
+                        actions_count: 0
+                        actions: []
+      responses:
+        '200':
+          description: WhatsApp message event recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: WhatsApp message event recorded
+                  value:
+                    success: true
+                    message: "WhatsApp message event recorded"
+                    statusCode: 200
+        '401':
+          description: Missing or invalid x-webhook-secret header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_secret:
+                  summary: Invalid webhook secret
+                  value:
+                    success: false
+                    message: "Invalid webhook secret"
+                    statusCode: 401

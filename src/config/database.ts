@@ -3,6 +3,18 @@ import { setDbReady } from '../middlewares/dbReady';
 import { getServiceLogger } from '../utils/createLogger';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
+// import { JustCallEvent } from '../models/v1/justcall-event.model';
+// import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
+// import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
+// import { JustCallMessageEventLog } from '../models/v1/justcall-message-log.model';
+// import { JustCallWhatsAppMessage } from '../models/v1/justcall-whatsapp-message.model';
+// import { JustCallWhatsAppMessageLog } from '../models/v1/justcall-whatsapp-message-log.model';
+// import { JustCallSalesDialerCall } from '../models/v1/justcall-sales-dialer-call.model';
+// import { JustCallSalesDialerCallLog } from '../models/v1/justcall-sales-dialer-call-log.model';
+// import { JustCallContact } from '../models/v1/justcall-contact.model';
+// import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
+// import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
+// import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -38,6 +50,18 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
+        // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallMessageEventLog.sync({ force: false }); // new table (FK -> justcall_message_events) — remove after first deploy
+        // await JustCallWhatsAppMessage.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallWhatsAppMessageLog.sync({ force: false }); // new table (FK -> justcall_whatsapp_messages) — remove after first deploy
+        // await JustCallSalesDialerCall.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallSalesDialerCallLog.sync({ force: false }); // new table (FK -> justcall_sales_dialer_calls) — remove after first deploy
+        // await JustCallContact.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallContactLog.sync({ force: false }); // new table (FK -> justcall_contact_events) — remove after first deploy
+        // await JustCallAppointment.sync({ force: false }); // new table — remove after first deploy
+        // await JustCallAppointmentLog.sync({ force: false }); // new table (FK -> justcall_appointments) — remove after first deploy
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();

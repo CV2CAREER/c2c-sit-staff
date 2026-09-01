@@ -1,0 +1,251 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/justcallSalesDialerWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive JustCall Sales Dialer webhook events
+      description: |
+        Receives JustCall sd.* (Sales Dialer / predictive dialer) webhook
+        payloads - plain call.*/jc.* events go to a separate endpoint (see
+        justcall-webhook.yaml), since Sales Dialer adds a predictive-dialer
+        campaign, a CRM-style contact_id, human/machine answer detection
+        (call_answered_by), and an auto-redial reattempt_number that a
+        regular JustCall call doesn't have. `justcall_sales_dialer_calls`
+        holds one current-state row per call, keyed on call_sid (falling
+        back to Sales Dialer's own call_id field) - later deliveries for the
+        same call update that row instead of creating duplicates. Every
+        individual delivery is also appended to
+        `justcall_sales_dialer_call_logs` (FK ->
+        justcall_sales_dialer_calls), so the full history is never lost even
+        though the current-state row gets overwritten.
+
+        The call recording lives on JustCall's own AWS S3 bucket - a link
+        outside our control that can expire or be revoked. This endpoint
+        re-hosts it into our Firebase Storage bucket in the background
+        (after acking the webhook) and repoints `call_info.recording` at
+        that copy, keeping the original JustCall URL alongside as
+        `justcall_recording_url`.
+
+        Configure this URL as the webhook target in JustCall for whichever
+        Sales Dialer event types you want captured - sd.call_completed, etc.
+
+        If `JUSTCALL_WEBHOOK_SECRET` is set in the environment, requests must
+        include a matching `x-webhook-secret` header (set this as a custom
+        header on the webhook in JustCall's dashboard) or they are rejected
+        with 401. If it is unset, the endpoint accepts events unauthenticated.
+      security: []
+      parameters:
+        - name: x-webhook-secret
+          in: header
+          required: false
+          description: Required only if JUSTCALL_WEBHOOK_SECRET is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              sd_call_completed:
+                summary: sd.call_completed sample payload
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "sd.call_completed"
+                  data:
+                    campaign:
+                      id: 20243
+                      name: "Health Insurance Premium Plan Sale 2024"
+                      type: "Predictive"
+                    call_id: 178632
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    sales_dialer_number: "1213566XXXX"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "00:00:00"
+                    contact_id: 6254
+                    call_info:
+                      call_answered_by: "Human"
+                      direction: "Outgoing"
+                      type: "Outgoing human answered"
+                      disposition: ""
+                      notes: ""
+                      rating: 0
+                      recording: "https://jc-recordings.s3.amazonaws.com/REcd1664567122baf51axxxxxxxxxxx.mp3"
+                      reattempt_number: 0
+                      cost_incurred: 0
+                      duration: 4
+                      friendly_duration: "00:00:04"
+                    justcall_iq:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+                      action_items: []
+              sd_call_updated:
+                summary: >-
+                  sd.call_updated sample payload - a partial patch, like
+                  call.updated for plain calls: no contact/agent/duration/
+                  reattempt_number fields, only disposition/notes/rating
+                  (numeric here, unlike the string rating on plain calls).
+                  Deep-merges onto whatever's already on file for the same
+                  call_sid so the omitted fields aren't lost.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "sd.call_updated"
+                  data:
+                    campaign:
+                      id: 20243
+                      name: "Health Insurance Premium Plan Sale 2024"
+                      type: "Predictive"
+                    call_id: 178632
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    call_info:
+                      call_answered_by: "Human"
+                      direction: "Outgoing"
+                      type: "Outgoing human answered"
+                      disposition: "Sales: Lead"
+                      notes: "Requires additional follow-up"
+                      rating: 5
+                      recording: "https://jc-recordings.s3.amazonaws.com/RE09b557475af8cxxxxxxxxx.mp3"
+                      cost_incurred: 0.065
+              sd_call_ai_generated:
+                summary: >-
+                  sd.call_ai_generated sample payload - full snapshot like
+                  sd_call_completed, but the AI block arrives as
+                  justcall_ai here (sd_call_completed used justcall_iq for
+                  the same call) - exposed a real bug where a stale, empty
+                  justcall_iq left over from an earlier merge shadowed the
+                  fresh, populated justcall_ai via a plain ?? fallback; fixed
+                  with a pickPopulated() helper that checks for actual
+                  content instead of just key presence.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "sd.call_ai_generated"
+                  data:
+                    campaign:
+                      id: 20243000
+                      name: "Health Insurance Premium Plan Sale 2024"
+                      type: "Predictive"
+                    call_id: 1786321111
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    sales_dialer_number: "1213566XXXX"
+                    agent_id: 278725467
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    contact_id: 62545678
+                    call_info:
+                      call_answered_by: "Human"
+                      direction: "Outgoing"
+                      type: "Outgoing human answered"
+                      disposition: ""
+                      notes: ""
+                      rating: 0
+                      recording: "https://jc-recordings.s3.amazonaws.com/REcd1664567122baf51axxxxxxxxxxx.mp3"
+                      reattempt_number: 1
+                      cost_incurred: 0.38
+                      duration: 40
+                      friendly_duration: "00:00:40"
+                    justcall_ai:
+                      call_moments:
+                        - "Procurement Process"
+                        - "Phone numbers"
+                        - "Dutch"
+                      call_score: 93
+                      tags:
+                        - "Demo"
+                        - "Onboarding"
+                      call_score_parameters:
+                        dead_air_time: 30
+                        filler_word: 4
+                        de_escalation: 10
+                        empathy: 9
+                        talk_listen_ratio: 8
+                        greetings: 6
+                        words_per_minute: 9
+                        monologue_duration: 20
+                        call_etiquette: 8
+                        customer_sentiment_score: 9
+                      manual_call_score: 94
+                      customer_sentiment: "Positive"
+                      call_transcription:
+                        - speaker_id: 1
+                          sentence: "Hi."
+                          timestamp:
+                            starttime: 7
+                            endtime: 8
+                        - speaker_id: 0
+                          sentence: "Hello! I understand you guys are on our platform. I was looking to check if you're interested in getting a demo of the product."
+                          timestamp:
+                            starttime: 5
+                            endtime: 19
+                      call_summary: >-
+                        Call Summary: Robert is interested in a demo and asks
+                        about phone numbers. John explains local numbers are
+                        available on request and will send required
+                        documents plus a demo scheduling link by email.
+                      action_items: []
+      responses:
+        '200':
+          description: Sales Dialer call event recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Sales Dialer call event recorded
+                  value:
+                    success: true
+                    message: "Sales Dialer call event recorded"
+                    statusCode: 200
+        '401':
+          description: Missing or invalid x-webhook-secret header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_secret:
+                  summary: Invalid webhook secret
+                  value:
+                    success: false
+                    message: "Invalid webhook secret"
+                    statusCode: 401
