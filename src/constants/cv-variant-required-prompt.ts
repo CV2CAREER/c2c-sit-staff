@@ -502,7 +502,9 @@ Examples:
 * hospitality;
 * customer service;
 * security;
-* unrelated casual employment.
+* unrelated casual employment;
+* compulsory/mandatory national or community service placements (e.g. NYSC or equivalent), even where the placement's own duties are technical or professional — the mandatory, fixed-term nature of the placement itself is what makes it non-core, not the subject matter;
+* any role whose only available evidence is thin and generic (a single vague duty, no distinguishing detail) regardless of industry — thin evidence belongs here rather than being stretched to fill Professional Experience.
 
 Use approximately 2–4 concise bullets where sufficient information exists.
 
@@ -747,7 +749,9 @@ DESIGN AND FORMAT
 * Dates use Month Year; current roles use Present.
 * Visual design (colors, layout, typography) is consistent throughout and appropriate to the candidate's field.
 * Summary is 3–4 sentences.
+* Every role checked against section 16's Additional Employment criteria — any that qualify have actually been moved there, not merely eligible in principle.
 * Professional Experience precedes Additional Employment.
+* Body paragraphs and bullet text use \`text-align: justify\` (or the equivalent) in the CSS — checked by looking at the actual style rule, not assumed from having written it once elsewhere.
 * References are omitted if none are supplied.
 
 TRUTH TEST
