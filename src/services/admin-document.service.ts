@@ -1098,7 +1098,13 @@ export class AdminDocumentService {
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            aiResponse = await queryDigitalOceanAI(prompt);
+            // A full designed CV as HTML+CSS (header, skills grid, every
+            // experience entry, a <style> block covering all of it) needs
+            // far more than the shared 4000-token default meant for
+            // plain-text/JSON callers — a tight budget here means the model
+            // has to choose between finishing the content and spending
+            // tokens on decorative styling, and it reliably chooses content.
+            aiResponse = await queryDigitalOceanAI(prompt, 2, false, 8000);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,

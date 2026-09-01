@@ -49,7 +49,7 @@ try {
 /**
  * Calls the Digital Ocean AI Agent using SDK (like Python code)
  */
-const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise<string> => {
+const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxTokens: number): Promise<string> => {
   logger.info(`[DigitalOcean AI] Using agent client with endpoint: ${GRADIENT_AGENT_ENDPOINT}`);
 
   // Only requested for callers that parse the response as JSON (e.g. CV
@@ -72,7 +72,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise
           }],
           model: 'llama3.3-70b-instruct',
           temperature: 0.7,
-          max_tokens: 4000,
+          max_tokens: maxTokens,
           ...responseFormat,
         });
 
@@ -99,7 +99,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise
           }],
           model: 'llama3.3-70b-instruct',
           temperature: 0.7,
-          max_tokens: 4000,
+          max_tokens: maxTokens,
           ...responseFormat,
         });
 
@@ -116,7 +116,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise
 
     // METHOD 3: Fallback to direct API (final fallback)
     logger.info('[DigitalOcean AI] SDK methods failed, trying direct API...');
-    return await directApiFallback(prompt, startTime, jsonMode);
+    return await directApiFallback(prompt, startTime, jsonMode, maxTokens);
 
   } catch (error: any) {
     logger.error(`[DigitalOcean AI] All methods failed:`, error.message);
@@ -127,7 +127,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean): Promise
 /**
  * Direct API fallback (like Python's _direct_api_fallback)
  */
-const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean): Promise<string> => {
+const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, maxTokens: number): Promise<string> => {
   try {
     const headers = {
       'Authorization': `Bearer ${GRADIENT_AGENT_ACCESS_KEY}`,
@@ -141,7 +141,7 @@ const directApiFallback = async (prompt: string, startTime: number, jsonMode: bo
       }],
       model: 'llama3.3-70b-instruct',
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: maxTokens,
       stream: false,
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
     };
@@ -218,13 +218,20 @@ export const queryDigitalOceanAI = async (
   prompt: string,
   retryCount: number = 2,
   jsonMode: boolean = false,
+  // Every caller shares this one output budget by default; CV variant
+  // generation passes a higher value since its output is a full designed
+  // HTML/CSS document (much more verbose than the plain-text/JSON other
+  // callers return), and a tight budget discourages the model from
+  // spending tokens on decorative styling in favor of just fitting the
+  // content in.
+  maxTokens: number = 4000,
 ): Promise<string> => {
   logger.info(`[DigitalOcean AI] Processing prompt (${prompt.length} chars)`);
 
   for (let attempt = 1; attempt <= retryCount + 1; attempt++) {
     try {
       logger.info(`[DigitalOcean AI] Attempt ${attempt} of ${retryCount + 1}`);
-      const result = await callDigitalOceanAgent(prompt, jsonMode);
+      const result = await callDigitalOceanAgent(prompt, jsonMode, maxTokens);
       
       if (!result || result.trim().length === 0) {
         throw new Error('Empty response');
