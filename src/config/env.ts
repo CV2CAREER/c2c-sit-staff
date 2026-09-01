@@ -95,6 +95,10 @@ export const SLACK_ADMIN_CHANNEL_ID = process.env.SLACK_ADMIN_CHANNEL_ID;
 export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY!;
 export const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL!;
 export const SENDGRID_FROM_NAME = 'CVtoCAREER PTY LTD';
+// Base64 "Verification Key" from SendGrid's Event Webhook page, once
+// "Signed Event Webhook" is toggled on. Optional: if unset, incoming events
+// are accepted without signature verification.
+export const SENDGRID_WEBHOOK_PUBLIC_KEY = process.env.SENDGRID_WEBHOOK_PUBLIC_KEY;
 
 // PASSWORD HASH
 export const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS!);

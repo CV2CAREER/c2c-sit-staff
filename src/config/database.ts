@@ -15,6 +15,8 @@ import { NODE_ENV } from './env';
 // import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
 // import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
 // import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
+import { SendGridEvent } from '../models/v1/sendgrid-event.model';
+import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -62,6 +64,8 @@ export const connectDB = async (): Promise<void> => {
         // await JustCallContactLog.sync({ force: false }); // new table (FK -> justcall_contact_events) — remove after first deploy
         // await JustCallAppointment.sync({ force: false }); // new table — remove after first deploy
         // await JustCallAppointmentLog.sync({ force: false }); // new table (FK -> justcall_appointments) — remove after first deploy
+        await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
+        await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
