@@ -444,26 +444,45 @@ export default function GenerateCvVariantButton({
                   </div>
                   {options && options.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {options.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          disabled={isGenerating}
-                          onClick={() =>
-                            setAnswers((prev) => ({
-                              ...prev,
-                              [question]: prev[question] === option ? "" : option,
-                            }))
-                          }
-                          className={`rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors disabled:opacity-50 ${
-                            currentAnswer === option
-                              ? "border-[#0D9F6E] bg-[#0D9F6E] text-white"
-                              : "border-career-gray-300/70 bg-white text-career-black-200 hover:border-[#0D9F6E]/40 hover:text-[#0D9F6E]"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      ))}
+                      {options.map((option) => {
+                        // Answers are stored as one string, so multiple picks
+                        // are represented as a comma-joined list — this
+                        // question may only need one option (a yes/no), or
+                        // several (e.g. "which of these did you use"), and
+                        // toggling independently supports both without the
+                        // AI needing to say which kind a question is.
+                        const selected = currentAnswer
+                          .split(",")
+                          .map((o) => o.trim())
+                          .filter(Boolean);
+                        const isSelected = selected.includes(option);
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            disabled={isGenerating}
+                            onClick={() =>
+                              setAnswers((prev) => {
+                                const current = (prev[question] ?? "")
+                                  .split(",")
+                                  .map((o) => o.trim())
+                                  .filter(Boolean);
+                                const next = current.includes(option)
+                                  ? current.filter((o) => o !== option)
+                                  : [...current, option];
+                                return { ...prev, [question]: next.join(", ") };
+                              })
+                            }
+                            className={`rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors disabled:opacity-50 ${
+                              isSelected
+                                ? "border-[#0D9F6E] bg-[#0D9F6E] text-white"
+                                : "border-career-gray-300/70 bg-white text-career-black-200 hover:border-[#0D9F6E]/40 hover:text-[#0D9F6E]"
+                            }`}
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <Textarea
