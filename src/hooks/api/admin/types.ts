@@ -17,8 +17,18 @@ export interface VaAllocationsData {
   unAllocatedClients: string[];
 }
 
+export interface VaAllocationsMetadata {
+  totalInflightClients: number;
+  allocatedCount: number;
+  unallocatedCount: number;
+  activePCsWithClientsCount: number;
+  totalActivePCsCount: number;
+  viewMode: string;
+}
+
 export interface VaAllocationsResponse {
   parsedData: VaAllocationsData;
+  metadata: VaAllocationsMetadata;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -30,8 +40,72 @@ export interface MilestoneStat {
   offerNotification: number;
 }
 
+export type PipelineRangeKey = "today" | "week" | "month" | "quarter" | "year" | "all";
+
+export interface PipelineCoverageController {
+  name: string;
+  count: number;
+  sharePct: number;
+}
+
+export interface PipelineCoverage {
+  totalInFlight: number;
+  allocated: number;
+  unallocated: number;
+  controllerCount: number;
+  minLoad: number;
+  maxLoad: number;
+  topController: PipelineCoverageController | null;
+}
+
+export interface PipelineStats {
+  range: PipelineRangeKey;
+  from: string | null;
+  to: string;
+  paidNotInFlight: number;
+  onboarding: number;
+  unallocatedInFlight: number;
+  inFlight: number;
+  completed: number;
+  coverage: PipelineCoverage;
+  generatedAt: string;
+}
+
+export interface DashboardListItem {
+  id: string;
+  name: string;
+  journeyStepKey: string | null;
+  journeyPhaseKey: string | null;
+  daysAgo: number;
+}
+
+export interface PipelineLists {
+  paidNotInFlight: DashboardListItem[];
+  onboarding: DashboardListItem[];
+  unallocatedQueue: DashboardListItem[];
+  generatedAt: string;
+}
+
+export interface ApplicationsPeriodStat {
+  total: number;
+  successful: number;
+  failed: number;
+}
+
+export interface ApplicationsPeriodBreakdown {
+  today: ApplicationsPeriodStat;
+  week: ApplicationsPeriodStat;
+  month: ApplicationsPeriodStat;
+  quarter: ApplicationsPeriodStat;
+  year: ApplicationsPeriodStat;
+}
+
 export interface AdminQueriesOptions {
   fetchVaAllocations?: boolean;
+  fetchPipelineStats?: boolean;
+  fetchPipelineLists?: boolean;
+  pipelineRange?: PipelineRangeKey;
+  fetchApplicationsPeriodBreakdown?: boolean;
   fetchMilestoneStats?: boolean;
   milestonesRange?: string;
   onboardedRange?: string;
