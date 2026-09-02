@@ -13,7 +13,7 @@ import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { fieldEncryption } from '../utils/field-encryption';
 import { sendMail } from '../config/sendGrid';
 import { SlackService } from './slack.service';
-import { classifyJob, PROMPT_VERSION } from './ai-vetting.service';
+import { classifyJob } from './ai-vetting.service';
 import { systemConfigApplicationService } from './admin/system-config.application.service';
 import {
   ApplicationStatus,
@@ -1296,7 +1296,7 @@ export const saveManualApplication = async (
         updateFields.ai_score = result.score;
         updateFields.ai_reason = result.reason;
         updateFields.ai_classified_at = new Date();
-        updateFields.ai_prompt_version = PROMPT_VERSION;
+        updateFields.ai_prompt_version = result.promptVersion;
       } else {
         updateFields.ai_reason = result.reason;
       }

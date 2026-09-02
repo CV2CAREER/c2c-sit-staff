@@ -79,7 +79,8 @@
     "file-type": ">=18.5.0",
     "office-text-extractor": {
       "file-type": ">=18.5.0"
-    }
+    },
+    "browserslist": "^4.28.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
