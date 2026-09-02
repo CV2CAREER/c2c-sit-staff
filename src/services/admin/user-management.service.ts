@@ -1202,19 +1202,21 @@ class UserManagementService {
   }
 
   /**
-   * Get all users with INFLIGHT campaigns for Dashboard display
+   * Get all users with in-flight campaigns (capitalized INFLIGHT or FLIGHT)
+   * for Dashboard display — same population as the Pipeline card's
+   * "In-Flight" tile.
    */
   async getInflightUsers() {
-    logger.info(`Retrieving users with INFLIGHT campaigns`);
+    logger.info(`Retrieving users with in-flight campaigns`);
 
     const inflightCredentials = await Credentials.findAll({
       where: {
-        capitalized: "INFLIGHT",
+        capitalized: { [Op.in]: ["INFLIGHT", "FLIGHT"] },
         isDeleted: false
       }
     });
 
-    logger.info(`Retrieved ${inflightCredentials.length} users with INFLIGHT campaigns`);
+    logger.info(`Retrieved ${inflightCredentials.length} users with in-flight campaigns`);
 
     return {
       inflightCredentials,

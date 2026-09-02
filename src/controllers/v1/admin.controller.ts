@@ -9,6 +9,8 @@ import { tableMetadataApplicationService } from "../../services/admin/table-meta
 import { adminUserApplicationService } from "../../services/admin/admin-user.application.service";
 import { adminUserExportApplicationService } from "../../services/admin/admin-user-export.application.service";
 import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
+import { pipelineStatsService, isPipelineRangeKey } from "../../services/admin/pipeline-stats.service";
+import { pipelineListsService } from "../../services/admin/pipeline-lists.service";
 import { FeatureService } from "../../services/feature.service";
 import { Location } from "../../models/v1/location.model";
 import { Feature } from "../../models/v1/feature.model";
@@ -387,6 +389,35 @@ export const getAdminAnalytics = catchAsyncError(
       },
       "Admin analytics retrieved successfully",
     );
+  },
+);
+
+export const getAdminPipelineStats = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const rawRange = req.query.range;
+    const range = isPipelineRangeKey(rawRange) ? rawRange : "all";
+
+    logger.info(
+      `Processing pipeline-stats request for admin ${user.email} (range=${range})`,
+    );
+
+    const stats = await pipelineStatsService.getPipelineStats(range);
+
+    res.apiSuccess(stats, "Admin pipeline stats retrieved successfully");
+  },
+);
+
+export const getAdminPipelineLists = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    logger.info(`Processing pipeline-lists request for admin ${user.email}`);
+
+    const lists = await pipelineListsService.getPipelineLists();
+
+    res.apiSuccess(lists, "Admin pipeline lists retrieved successfully");
   },
 );
 
