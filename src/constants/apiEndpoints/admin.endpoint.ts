@@ -1,6 +1,8 @@
 export const ADMIN_STATS = '/api/v1/admin/analytics';
+export const ADMIN_PIPELINE_STATS = '/api/v1/admin/pipeline-stats';
+export const ADMIN_PIPELINE_LISTS = '/api/v1/admin/pipeline-lists';
 export const ADMIN_APPLICATION_STATS = '/api/v1/admin/analytics'; // Both maps to analytics in v1
-export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/in-flight/staff'; // Closest match for staff list
+export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/client-allocation';
 export const ADMIN_CLIENT_MILESTONE_STATS =
   '/api/v1/admin/analytics/milestones'; // Note: Might need backend update
 export const ADMIN_ONBOARDED_CLIENTS = '/api/v1/admin/analytics/onboarded'; // Note: Might need backend update
