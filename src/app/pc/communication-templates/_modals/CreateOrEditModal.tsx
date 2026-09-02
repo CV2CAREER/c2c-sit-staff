@@ -40,6 +40,15 @@ interface CreateOrEditModalProps {
   onClose: () => void;
   /** Editing this template in place — its `key` is locked once saved. */
   template: CommunicationTemplate | null;
+  /**
+   * Duplicating this template — seeds name/type/variables/body from it, but
+   * NOT its key: the key is the literal filename the backend's sendMail()
+   * calls already look up by, so cloning it verbatim would either collide
+   * with the original or (if a dev only checks for exact known keys)
+   * silently create a template no code path can ever trigger. The admin
+   * picks a fresh, real key for the duplicate same as any new template.
+   */
+  duplicateFrom?: CommunicationTemplate | null;
   onSave: (values: FormValues) => Promise<void>;
   isSaving: boolean;
 }
@@ -48,6 +57,7 @@ export function CreateOrEditModal({
   open,
   onClose,
   template,
+  duplicateFrom,
   onSave,
   isSaving,
 }: CreateOrEditModalProps) {
@@ -56,7 +66,8 @@ export function CreateOrEditModal({
   const editorRef = useRef<RichEmailEditorHandle>(null);
 
   const isEditing = !!template;
-  const isFreshTemplate = !template;
+  const isDuplicating = !template && !!duplicateFrom;
+  const isFreshTemplate = !template && !duplicateFrom;
 
   useEffect(() => {
     if (!open) return;
@@ -68,10 +79,18 @@ export function CreateOrEditModal({
         body: template.body,
         variables: template.variables ?? [],
       });
+    } else if (duplicateFrom) {
+      setFormValues({
+        key: "",
+        name: `${duplicateFrom.name} (Copy)`,
+        type: duplicateFrom.type,
+        body: duplicateFrom.body,
+        variables: duplicateFrom.variables ?? [],
+      });
     } else {
       setFormValues(freshValues("customer"));
     }
-  }, [open, template]);
+  }, [open, template, duplicateFrom]);
 
   const handleTypeChange = (type: EmailTemplateType) => {
     setFormValues((prev) => {
@@ -118,11 +137,12 @@ export function CreateOrEditModal({
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 pr-12 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="text-xl">
-              {isEditing ? "Edit Email Template" : "Create Email Template"}
+              {isEditing ? "Edit Email Template" : isDuplicating ? "Duplicate Email Template" : "Create Email Template"}
             </DialogTitle>
             <p className="text-sm text-gray-500 mt-1">
-              Design the email visually — no HTML knowledge needed. Click a variable below to drop it
-              into the message, or switch to Code view if you need to fine-tune the markup directly.
+              {isDuplicating
+                ? "Starting from a copy of the original's content — give it a name and a new key before saving."
+                : "Design the email visually — no HTML knowledge needed. Click a variable below to drop it into the message, or switch to Code view if you need to fine-tune the markup directly."}
             </p>
           </DialogHeader>
         </div>

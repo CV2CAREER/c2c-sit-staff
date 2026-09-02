@@ -4,7 +4,7 @@ import { Accordion, AccordionDetails, AccordionSummary, MenuItem, Select } from 
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { FaEdit, FaSearch, FaTrashAlt, FaUndo } from "react-icons/fa";
-import { FaCheck, FaChevronDown, FaEye, FaFileExport, FaPaperPlane, FaPlus } from "react-icons/fa6";
+import { FaCheck, FaChevronDown, FaCopy, FaEye, FaFileExport, FaPaperPlane, FaPlus } from "react-icons/fa6";
 import { ArrowLeft, Layers, Mail, ShieldCheck, Sparkles, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import FilterSelect from "./FilterSelect";
@@ -51,6 +51,7 @@ export default function CommunicationTemplatesPage() {
   const [activeTab, setActiveTab] = useState<"templates" | "triggers">("templates");
 
   const [selectedTemplate, setSelectedTemplate] = useState<CommunicationTemplate | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<CommunicationTemplate | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -168,6 +169,7 @@ export default function CommunicationTemplatesPage() {
       toast.dismiss(toastId);
       toast.success(isEditing ? "Template updated." : "Template created.");
       setCreateEditOpen(false);
+      setDuplicateSource(null);
     } catch (e: any) {
       toast.dismiss(toastId);
       toast.error(e?.message || "Failed to save template.");
@@ -291,6 +293,7 @@ export default function CommunicationTemplatesPage() {
               className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[#004174] to-[#00568f] px-5 py-5 text-[14px] font-semibold text-white shadow-md shadow-blue-900/20 transition-all hover:shadow-lg hover:shadow-blue-900/30 hover:brightness-110 active:scale-[0.98] sm:text-[16px]"
               onClick={() => {
                 setSelectedTemplate(null);
+                setDuplicateSource(null);
                 setCreateEditOpen(true);
               }}
             >
@@ -419,7 +422,7 @@ export default function CommunicationTemplatesPage() {
                                 title="Edit"
                                 className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 disabled={recycleBin}
-                                onClick={() => { setSelectedTemplate(template); setCreateEditOpen(true); }}
+                                onClick={() => { setSelectedTemplate(template); setDuplicateSource(null); setCreateEditOpen(true); }}
                               >
                                 <FaEdit />
                               </button>
@@ -430,6 +433,14 @@ export default function CommunicationTemplatesPage() {
                                 onClick={() => void handleTestSend(template)}
                               >
                                 <FaPaperPlane />
+                              </button>
+                              <button
+                                title="Duplicate"
+                                className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                                disabled={recycleBin}
+                                onClick={() => { setSelectedTemplate(null); setDuplicateSource(template); setCreateEditOpen(true); }}
+                              >
+                                <FaCopy />
                               </button>
                               <button
                                 title="Export as .html"
@@ -495,8 +506,9 @@ export default function CommunicationTemplatesPage() {
       />
       <CreateOrEditModal
         open={createEditOpen}
-        onClose={() => setCreateEditOpen(false)}
+        onClose={() => { setCreateEditOpen(false); setDuplicateSource(null); }}
         template={selectedTemplate?.id ? selectedTemplate : null}
+        duplicateFrom={duplicateSource}
         onSave={handleSave}
         isSaving={actions.isMutating}
       />
