@@ -19,15 +19,65 @@ export interface AiVettingResult {
 const safeList = (arr: string[] | undefined | null): string =>
   arr && arr.length > 0 ? arr.join(", ") : "Not specified";
 
+const extractHyperlinkTitle = (raw: string | undefined | null): string => {
+  if (!raw) return "N/A";
+  const match = raw.match(/=HYPERLINK\("[^"]*","([^"]*?)"\)/i);
+  return match ? match[1].trim() : raw.trim();
+};
+
+const AU_STATE_NAMES: Record<string, string> = {
+  "new south wales": "NSW", "queensland": "QLD", "victoria": "VIC",
+  "south australia": "SA", "western australia": "WA", "tasmania": "TAS",
+  "northern territory": "NT", "australian capital territory": "ACT",
+};
+const AU_STATE_ABBREVS = new Set(["NSW", "QLD", "VIC", "SA", "WA", "TAS", "NT", "ACT"]);
+const REMOTE_KEYWORDS = ["work from home", "remote", "wfh", "hybrid"];
+
+const normalizeLocations = (arr: string[] | undefined | null): string[] => {
+  if (!arr || arr.length === 0) return [];
+  const cleaned = arr
+    .map(v => v.trim())
+    .filter(v => v.length > 0 && !REMOTE_KEYWORDS.includes(v.toLowerCase()));
+  const unique = Array.from(new Set(cleaned));
+  return unique.slice(0, 30);
+};
+
+const normalizeStates = (locations: string[] | undefined | null, states: string[] | undefined | null): string[] => {
+  const locArr = locations || [];
+  const stateArr = (states || []).filter(s => !REMOTE_KEYWORDS.includes(s.toLowerCase()));
+  const movedFromLoc: string[] = [];
+
+  for (const loc of locArr) {
+    const upper = loc.trim().toUpperCase();
+    if (AU_STATE_ABBREVS.has(upper)) {
+      movedFromLoc.push(upper);
+    } else {
+      const full = AU_STATE_NAMES[loc.trim().toLowerCase()];
+      if (full) movedFromLoc.push(full);
+    }
+  }
+
+  const combined = [...stateArr, ...movedFromLoc];
+  return Array.from(new Set(combined)).slice(0, 10);
+};
+
 const buildClientProfile = (profile: Profile): string => {
+    const hasAllLocations =
+      (profile.locations || []).some(l => l.trim().toLowerCase().startsWith('all ')) ||
+      (profile.state || []).some(s => s.trim().toLowerCase().startsWith('all '));
+
+    const locations = hasAllLocations ? [] : normalizeLocations(profile.locations);
+    const states = hasAllLocations ? [] : normalizeStates(profile.locations, profile.state);
+    const cities = hasAllLocations ? [] : normalizeLocations(profile.city);
+
     return [
       `- Target Titles: ${safeList(profile.titles)}`,
       `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
       `- Target Keywords: ${safeList(profile.keywords)}`,
       `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
-      `- Target Locations: ${safeList(profile.locations)}`,
-      `- Target Cities: ${safeList(profile.city)}`,
-      `- Target States: ${safeList(profile.state)}`,
+      `- Target Locations: ${safeList(locations)}`,
+      `- Target Cities: ${safeList(cities)}`,
+      `- Target States: ${safeList(states)}`,
       `- Target Country: ${profile.country || "Not specified"}`,
       `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
       `- Target Industries: ${safeList(profile.industriesInclude)}`,
@@ -39,13 +89,11 @@ const buildClientProfile = (profile: Profile): string => {
 
 const buildJobDetails = (job: ManualApplication): string => {
   return [
-    `- Title: ${job.Job_Title || "N/A"}`,
+    `- Title: ${extractHyperlinkTitle(job.Job_Title)}`,
     `- Company: ${job.Advertiser || "N/A"}`,
     `- Location: ${job.Location || "N/A"}`,
     `- Country: ${job.Country || "N/A"}`,
     `- Job Type: ${job.Job_Type || "N/A"}`,
-    `- Salary: ${job.Salary || "Not specified"}`,
-    `- Skills/Tech: ${job.Skills && job.Skills !== "N/A" ? job.Skills : "Not specified"}`,
   ].join("\n");
 };
 
