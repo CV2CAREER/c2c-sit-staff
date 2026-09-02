@@ -211,10 +211,8 @@ export const getClientAllocation = catchAsyncError(
         const entry = pcClientMap.get(assignedPCName)!;
         entry.names.push(clientName);
         entry.ids.push(credentialId);
-        logger.debug(`Allocated: ${clientName} (credentialId=${credentialId}) → ${assignedPCName}`);
       } else {
         unAllocatedClients.push(clientName);
-        logger.debug(`Unallocated: ${clientName}`);
       }
     }
 
