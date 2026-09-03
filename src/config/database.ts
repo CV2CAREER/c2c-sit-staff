@@ -53,6 +53,10 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
+        // aiPromptSection added to vcs_prompts — force:false only CREATEs
+        // missing tables, it won't ALTER an existing one to add a column, so
+        // this needs alter:true specifically. Remove after first deploy.
+        // await VCSPrompt.sync({ alter: true });
         // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
         // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
         // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy

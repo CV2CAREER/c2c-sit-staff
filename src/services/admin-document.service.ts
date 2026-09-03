@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import { getServiceLogger } from "../utils/createLogger";
 import ErrorHandler from "../utils/errorHandler";
 import { Upload } from "../models/v1/upload.model";
@@ -8,6 +9,7 @@ import { Profile } from "@/models/v1/profile.model";
 import { getTextExtractor } from "office-text-extractor";
 import { fileTypeFromBuffer } from "file-type";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { CV_VARIANT_REQUIRED_PROMPT } from "../constants/cv-variant-required-prompt";
 import { VcsPromptUsageService } from "./vcs-prompt-usage.service";
 import { sendMail } from "../config/sendGrid";
 import { SlackService } from "./slack.service";
@@ -26,9 +28,19 @@ import { Credentials } from "@/models/v1/credentials.model";
 import { uploadBufferToStorage } from "../utils/fileUpload";
 import { textToPdfBuffer, textToDocxBuffer } from "../utils/textDocumentGenerator";
 import { htmlToPdfBuffer, htmlToDocxBuffer } from "../utils/htmlDocumentGenerator";
+import { renderCvVariantHtmlToPdf, renderCvVariantHtmlToDocx } from "../utils/cvVariantHtmlRenderer";
 import { progressValues } from "../utils/user-progress-processor";
 
 const logger = getServiceLogger("document-service");
+
+// A "Please confirm: ..." question pulled from the AI's generated CV. When
+// the AI supplies a "[Options: A | B | C]" suffix (per section 25 — for
+// questions with a natural small set of likely answers), `options` lets the
+// admin pick one instead of typing a free-text answer.
+export interface ConfirmQuestion {
+  question: string;
+  options?: string[];
+}
 
 export interface ExtractCvDataPointsPayload {
   id: string;
@@ -59,130 +71,6 @@ export interface RoleTitleRecommendationResult {
   candidate_name: string;
   qa_flags: { type: string; description: string }[];
   roles: RoleTitleRecommendationRow[];
-}
-
-export interface CvVariantTextRun {
-  text: string;
-  is_new: boolean;
-}
-
-export interface CvVariantHeader {
-  name: string;
-  headline: CvVariantTextRun;
-  contact_line: string;
-  work_rights_line: { text: string | null; is_new: boolean; flag: string | null };
-}
-
-export interface CvVariantExperienceSubSection {
-  label: string;
-  bullets: CvVariantTextRun[];
-}
-
-export interface CvVariantExperience {
-  title: string;
-  company: string;
-  location: string | null;
-  dates: string;
-  flags: string[];
-  bullets: CvVariantTextRun[];
-  sub_sections: CvVariantExperienceSubSection[];
-}
-
-export interface CvVariantEducation {
-  qualification: string;
-  institution: string;
-  dates: string;
-  detail: { text: string | null; is_new: boolean };
-  flags: string[];
-}
-
-export interface CvVariantCertification extends CvVariantTextRun {
-  flag: string | null;
-}
-
-export interface CvVariantAdditionalSection {
-  heading: string;
-  items: CvVariantTextRun[];
-}
-
-export interface CvVariantDesign {
-  accent_color: string;
-  font_family: "sans" | "serif";
-  density: "compact" | "standard" | "spacious";
-  /**
-   * Drives which structural PDF/DOCX layout renders (see htmlDocumentGenerator.ts):
-   * "modern" = two-column, "classic" = centered single-column with restrained
-   * color, "contemporary" = single-column with a tinted banner header. Unlike
-   * the other three tokens this isn't optional after sanitization — every CV
-   * variant save gets one of the three real layouts, never the undated
-   * single-column fallback other callers (e.g. Interview Pack) get by
-   * omitting `design` entirely.
-   */
-  style_variant: "modern" | "classic" | "contemporary";
-}
-
-/**
- * The prompt driving this (a VCS-managed row, editable via Admin > Prompts)
- * can change its output shape at any time — a rewritten prompt, a model
- * having an off day, or a differently-tuned agent can all return field names
- * that don't match the shape below. Treating that as a hard failure just
- * loses the whole generation. So this is a *hint* at the shape we ask the AI
- * for and render specially when present — not a contract the AI's response
- * is validated against. `Record<string, unknown>` lets anything else through
- * so the frontend's generic renderer (cvVariantFormat.ts) can still turn it
- * into a readable document.
- */
-export type CvVariantResult = Record<string, unknown> & Partial<{
-  client_name: string;
-  style_variant: "modern" | "classic" | "contemporary";
-  style_reasoning: string;
-  top_level_flags: string[];
-  design: CvVariantDesign;
-  header: CvVariantHeader;
-  summary: { runs: CvVariantTextRun[] };
-  skills: CvVariantTextRun[];
-  experience: CvVariantExperience[];
-  education: CvVariantEducation[];
-  certifications: CvVariantCertification[];
-  additional_sections: CvVariantAdditionalSection[];
-}>;
-
-const DEFAULT_CV_VARIANT_DESIGN: CvVariantDesign = {
-  accent_color: "#0D9F6E",
-  font_family: "sans",
-  density: "standard",
-  style_variant: "classic",
-};
-
-const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
-const STYLE_VARIANTS = new Set(["modern", "classic", "contemporary"]);
-
-/**
- * The AI is asked to pick design tokens (accent color / font pairing /
- * density / style_variant) per the schema, but its output is untrusted input
- * like any other field — fall back to the current house-style default for
- * anything missing or malformed rather than rejecting the whole variant over
- * it. `styleVariantHint` covers `style_variant` living at the top level of
- * CvVariantResult rather than nested in `design` — whichever is present and
- * valid wins.
- */
-function sanitizeCvVariantDesign(design: unknown, styleVariantHint?: unknown): CvVariantDesign {
-  const candidate = (design ?? {}) as Partial<CvVariantDesign>;
-  const accent_color = HEX_COLOR_PATTERN.test(candidate.accent_color ?? "")
-    ? (candidate.accent_color as string)
-    : DEFAULT_CV_VARIANT_DESIGN.accent_color;
-  const font_family = candidate.font_family === "serif" ? "serif" : "sans";
-  const density =
-    candidate.density === "compact" || candidate.density === "spacious"
-      ? candidate.density
-      : "standard";
-  const style_variant = STYLE_VARIANTS.has(candidate.style_variant ?? "")
-    ? (candidate.style_variant as CvVariantDesign["style_variant"])
-    : STYLE_VARIANTS.has(styleVariantHint as string)
-      ? (styleVariantHint as CvVariantDesign["style_variant"])
-      : DEFAULT_CV_VARIANT_DESIGN.style_variant;
-
-  return { accent_color, font_family, density, style_variant };
 }
 
 export class AdminDocumentService {
@@ -850,6 +738,54 @@ export class AdminDocumentService {
     }
 
     /**
+     * Renders the same file saveCoverLetter would produce, via the identical
+     * render call — but skips the Firebase upload and Upload record, so
+     * nothing here is visible to the client. Lets an admin download and
+     * sanity-check the rendered file before deciding to save it for real.
+     */
+    static async previewCoverLetter(
+        targetUserId: string,
+        resumeUploadId: string,
+        coverLetterText: string,
+        format: "pdf" | "docx",
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewCoverLetter] User ${targetUserId}, format ${format}`);
+
+        if (!coverLetterText?.trim()) {
+            throw new ErrorHandler("Cover letter text is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await textToPdfBuffer(coverLetterText)
+            : await textToDocxBuffer(coverLetterText);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Cover_Letter_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewCoverLetter] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
+    }
+
+    /**
      * Builds the Role Title Recommendations prompt from the
      * `role_title_generation_prompt` VCS entry, substituting the {{CV_TEXT}}
      * placeholder.
@@ -950,11 +886,139 @@ export class AdminDocumentService {
     }
 
     /**
+     * Finds the AI's client-facing validation questions (per
+     * CV_VARIANT_REQUIRED_PROMPT section 25 — its own "Please confirm: ..."
+     * phrasing) AND strips that entire section out of the returned HTML.
+     * This section only ever exists to drive the admin-facing questions
+     * modal during Generate — it must never reach the actual CV file the
+     * client/employer sees, whether every question got answered, some were
+     * skipped, or it's left open entirely.
+     */
+    private static extractAndStripConfirmQuestions(
+        html: string,
+    ): { html: string; confirmQuestions: ConfirmQuestion[] } {
+        const $ = cheerio.load(html);
+        const questions: ConfirmQuestion[] = [];
+        const seen = new Set<string>();
+        const leafElements: any[] = [];
+
+        // Match on the question's own mandated phrasing ("Please confirm:
+        // ...", per CV_VARIANT_REQUIRED_PROMPT sections 3/25) rather than
+        // trying to detect the "Please Confirm" section heading first — the
+        // AI has full creative control over its own HTML/CSS now, so that
+        // heading might be a styled <div>/<p> instead of a semantic <h2-6>,
+        // and heading-detection alone missed real questions as a result.
+        $("li, p, div").each((_, el) => {
+            const $el = $(el);
+            // Skip wrapper elements that contain other li/p/div ANYWHERE
+            // beneath them, not just as direct children — e.g. a <div> whose
+            // questions are one level further down inside a <ul>/<ol> is
+            // still a wrapper, and .children() alone missed that, letting
+            // its full concatenated text (heading + every question inside)
+            // through as one giant "question".
+            if ($el.find("li, p, div").length > 0) return;
+
+            const text = $el.text().trim();
+            if (!text) return;
+
+            // A genuine leaf normally contains exactly one question. If it
+            // contains more than one "Please confirm:" marker, the AI still
+            // merged several into one node (e.g. via <br> instead of
+            // separate elements) — split them apart instead of keeping the
+            // merge as a single blob.
+            const rawParts = text
+                .split(/(?=please\s+confirm\s*:)/i)
+                .map((part) => part.trim())
+                .filter((part) => /please\s+confirm\s*:/i.test(part));
+
+            if (rawParts.length === 0) return;
+            leafElements.push(el);
+
+            for (const rawPart of rawParts) {
+                // Section 25 has the AI append "[Options: A | B | C]" right
+                // after multiple-choice-style questions — pull that off
+                // (and its optional wrapping "[" "]") before cleaning the
+                // question text itself, since it sits at the very end.
+                let question = rawPart;
+                let options: string[] | undefined;
+                const optionsMatch = rawPart.match(/\[?\s*options\s*:\s*([^[\]]+?)\s*\]?\s*$/i);
+                if (optionsMatch) {
+                    const parsedOptions = optionsMatch[1]
+                        .split("|")
+                        .map((o) => o.trim())
+                        .filter(Boolean);
+                    if (parsedOptions.length > 0) options = parsedOptions;
+                    question = rawPart.slice(0, optionsMatch.index).trim();
+                }
+
+                // The AI sometimes wraps the question in [...] (the owner's
+                // aiPromptSection asks for this bracketed format even
+                // though the locked prompt itself doesn't) — the split
+                // above cuts right after the "[" (which lands in a
+                // discarded fragment), leaving a stray trailing "]" on the
+                // kept part; strip both ends regardless of which prompt
+                // caused it.
+                question = question.replace(/^\[+\s*/, "").replace(/\s*\]+$/, "").trim();
+                if (!question || seen.has(question)) continue;
+
+                seen.add(question);
+                questions.push(options ? { question, options } : { question });
+            }
+        });
+
+        if (leafElements.length === 0) {
+            return { html, confirmQuestions: [] };
+        }
+
+        // Section 25 mandates this is placed as one contiguous block "near
+        // the end of the document" — so rather than guess at the AI's own
+        // heading wording, truncate the document at the earliest top-level
+        // (direct child of <body>) element that contains any confirm
+        // question, plus its own preceding heading if there is one. This
+        // works regardless of how the AI structured/styled that section.
+        const $body = $("body");
+        const bodyChildren = $body.children().toArray();
+
+        let cutIndex = -1;
+        for (const leaf of leafElements) {
+            let node = $(leaf);
+            while (node.length && !node.parent().is("body")) {
+                node = node.parent();
+            }
+            const idx = bodyChildren.indexOf(node.get(0) as any);
+            if (idx !== -1 && (cutIndex === -1 || idx < cutIndex)) {
+                cutIndex = idx;
+            }
+        }
+
+        if (cutIndex > -1) {
+            if (cutIndex > 0) {
+                const prevEl = bodyChildren[cutIndex - 1];
+                const prevText = $(prevEl).text().trim();
+                const isHeadingTag = /^h[1-6]$/i.test((prevEl as any).tagName || "");
+                const looksLikeConfirmHeading =
+                    /please\s+confirm|questions?\s+for\s+you|confirm\s+the\s+following|things?\s+to\s+confirm/i.test(
+                        prevText,
+                    );
+                if (prevText && (isHeadingTag || looksLikeConfirmHeading) && !/please\s+confirm\s*:/i.test(prevText)) {
+                    cutIndex -= 1;
+                }
+            }
+            for (let i = bodyChildren.length - 1; i >= cutIndex; i--) {
+                $(bodyChildren[i]).remove();
+            }
+        }
+
+        return { html: $.html(), confirmQuestions: questions };
+    }
+
+    /**
      * Builds the CV Variant prompt from the `cv_variant_generation_prompt`
      * VCS entry, substituting the {{CV_TEXT}} placeholder.
      */
     private static async getCvVariantPrompt(
         cvText: string,
+        confirmedAnswers?: { question: string; answer: string }[],
     ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
@@ -968,20 +1032,51 @@ export class AdminDocumentService {
             throw new ErrorHandler("CV variant prompt is not configured", 500);
         }
 
-        const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
+        // The required content/factual-integrity rules and HTML output
+        // contract (CV_VARIANT_REQUIRED_PROMPT) are locked in code, not the
+        // owner-editable VCSPrompt row — the prompt's non-technical owner
+        // only ever sees and edits `aiPromptSection` (Admin > Prompts), a
+        // separate free-text box with no schema to accidentally break.
+        // Framed as MANDATORY rather than supplementary: without this, the
+        // model can treat the owner's specific formatting requests (e.g.
+        // "highlight changed content in red") as competing on equal footing
+        // with CV_VARIANT_REQUIRED_PROMPT's own generic "full creative
+        // control" design section, and default to its own generic instincts
+        // instead of the owner's more specific rules.
+        const aiPromptSection = promptRow.aiPromptSection?.trim();
+        const cvTextWithSection = aiPromptSection
+            ? `## ADDITIONAL AI INSTRUCTIONS (owner-provided) — MANDATORY\n\nEverything below is a required specification, not a general suggestion. Where it specifies exact formatting, colors, highlighting rules, grid layouts, or any other concrete detail, follow it precisely — it takes precedence over the general design guidance elsewhere in this prompt.\n\n${aiPromptSection}\n\n${cvText}`
+            : cvText;
+
+        // Answers the admin has already confirmed (from a previous round of
+        // "Please Confirm" questions on this same resume) are CONFIRMED
+        // evidence, not a new discovery opportunity — inserting them ahead
+        // of everything else means the model has them in view before it
+        // decides what still needs asking, so it doesn't re-ask what's
+        // already been answered.
+        const confirmedBlock = confirmedAnswers?.length
+            ? `## CLIENT-CONFIRMED FACTS (treat as CONFIRMED evidence, not a discovery opportunity)\nThese are settled. Do not ask about any of them again in the "Please Confirm" section, in any rewording — only surface a validation question for something genuinely separate that none of these cover.\n${confirmedAnswers
+                  .map((a) => `- ${a.question} — ${a.answer}`)
+                  .join("\n")}\n\n`
+            : "";
+
+        const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, confirmedBlock + cvTextWithSection);
         return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
     }
 
     /**
-     * Generate a consolidated, enriched CV Variant for a user's resume.
-     * Returns the parsed AI JSON (with per-field is_new flags) — persistence
-     * is a separate, explicit "save" step once the admin has reviewed/edited
-     * the flattened text on the frontend.
+     * Generate a fully-designed CV Variant for a user's resume. The AI
+     * authors a complete, self-styled HTML document (its own colors, layout,
+     * fonts) — there's no JSON schema to parse or validate here, since the
+     * HTML *is* the design, rendered as-is via cvVariantHtmlRenderer.ts.
+     * Persistence is a separate, explicit "save" step once the admin has
+     * reviewed the rendered result.
      */
     static async generateCvVariant(
         targetUserId: string,
         resumeUploadId: string,
-    ): Promise<CvVariantResult> {
+        confirmedAnswers?: { question: string; answer: string }[],
+    ): Promise<{ html: string; confirmQuestions: ConfirmQuestion[] }> {
         logger.info(`[GenerateCvVariant] User ${targetUserId}, resume ${resumeUploadId}`);
 
         const upload = await Upload.findOne({
@@ -998,12 +1093,18 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText);
+        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText, confirmedAnswers);
 
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            aiResponse = await queryDigitalOceanAI(prompt);
+            // A full designed CV as HTML+CSS (header, skills grid, every
+            // experience entry, a <style> block covering all of it) needs
+            // far more than the shared 4000-token default meant for
+            // plain-text/JSON callers — a tight budget here means the model
+            // has to choose between finishing the content and spending
+            // tokens on decorative styling, and it reliably chooses content.
+            aiResponse = await queryDigitalOceanAI(prompt, 2, false, 8000);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,
@@ -1028,62 +1129,41 @@ export class AdminDocumentService {
             throw error;
         }
 
-        const cleanResponse = aiResponse.replace(/```(?:json)?\s*|\s*```/gi, "").trim();
-        const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            logger.error(`[GenerateCvVariant] No JSON found in AI response for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
-            throw new ErrorHandler("AI response did not contain valid JSON", 500);
-        }
+        // The model sometimes wraps its HTML in a Markdown code fence despite
+        // being asked not to — strip that before validating/returning.
+        const html = aiResponse.replace(/^```(?:html)?\s*|\s*```$/gi, "").trim();
 
-        let result: CvVariantResult;
-        try {
-            result = JSON.parse(jsonMatch[0]);
-        } catch {
-            logger.error(`[GenerateCvVariant] Failed to parse AI JSON for user ${targetUserId}. Matched JSON (first 2000 chars): ${jsonMatch[0].slice(0, 2000)}`);
-            throw new ErrorHandler("Failed to parse AI-generated CV variant", 500);
-        }
-
-        if (!result || typeof result !== "object" || Object.keys(result).length === 0) {
-            logger.error(`[GenerateCvVariant] AI returned an empty/non-object response for user ${targetUserId}. Raw response (first 3000 chars): ${aiResponse.slice(0, 3000)}`);
+        if (!html || !/<html[\s>]/i.test(html)) {
+            logger.error(`[GenerateCvVariant] AI response doesn't look like an HTML document for user ${targetUserId}. Raw response (first 2000 chars): ${aiResponse.slice(0, 2000)}`);
             throw new ErrorHandler("AI did not return a usable CV variant", 500);
         }
 
-        if (!result.header || !Array.isArray(result.experience)) {
-            // The prompt's schema is a hint, not a contract — the AI (or a
-            // reworked prompt) can return a differently-shaped object. Don't
-            // fail the whole generation over it; log the drift for
-            // visibility and let the frontend's generic renderer handle
-            // whatever shape actually came back.
-            logger.warn(`[GenerateCvVariant] AI response doesn't match the expected CV variant shape for user ${targetUserId}. Top-level keys: ${Object.keys(result).join(", ")}. Falling back to generic rendering.`);
-        }
+        const stripped = this.extractAndStripConfirmQuestions(html);
 
-        result.design = sanitizeCvVariantDesign(result.design, result.style_variant);
-
-        logger.info(`[GenerateCvVariant] Generated a "${result.style_variant}" variant for user ${targetUserId}`);
-        return result;
+        logger.info(`[GenerateCvVariant] Generated CV variant HTML for user ${targetUserId} (${stripped.html.length} chars, ${stripped.confirmQuestions.length} open question(s))`);
+        return stripped;
     }
 
     /**
-     * Renders the (admin-reviewed/formatted) CV variant — rich-text HTML
-     * from the TipTap editor, so bold/italic/underline/lists/alignment carry
-     * through — into a PDF or DOCX file, uploads it to Firebase, and records
-     * it as a new `resume` Upload for the client — the follow-up
-     * persistence step to generateCvVariant above.
+     * Renders the AI-authored CV variant HTML (its own embedded design —
+     * see cvVariantHtmlRenderer.ts) into a PDF or DOCX file, uploads it to
+     * Firebase, and records it as a new `resume` Upload for the client — the
+     * follow-up persistence step to generateCvVariant above. No admin
+     * editing happens between generate and save (see the frontend review
+     * gate) — a rich-text editor would strip the AI's custom styling the
+     * moment it touched the content, so review is preview-only.
      */
     static async saveCvVariant(
         targetUserId: string,
         resumeUploadId: string,
         cvVariantHtml: string,
         format: "pdf" | "docx",
-        design?: Partial<CvVariantDesign>,
     ): Promise<{ upload: Upload; clientName: string }> {
         logger.info(`[SaveCvVariant] User ${targetUserId}, format ${format}`);
 
         if (!cvVariantHtml?.trim()) {
             throw new ErrorHandler("CV variant content is required", 400);
         }
-
-        const resolvedDesign = sanitizeCvVariantDesign(design);
 
         // Confirm the resume belongs to this user before attaching the
         // generated variant to their account.
@@ -1105,8 +1185,8 @@ export class AdminDocumentService {
 
         const isPdf = format === "pdf";
         const buffer = isPdf
-            ? await htmlToPdfBuffer(cvVariantHtml, resolvedDesign)
-            : await htmlToDocxBuffer(cvVariantHtml, resolvedDesign);
+            ? await renderCvVariantHtmlToPdf(cvVariantHtml)
+            : await renderCvVariantHtmlToDocx(cvVariantHtml);
 
         const mimeType = isPdf
             ? "application/pdf"
@@ -1147,6 +1227,55 @@ export class AdminDocumentService {
 
         logger.info(`[SaveCvVariant] Saved CV variant upload ${upload.id} for user ${targetUserId}`);
         return { upload, clientName };
+    }
+
+    /**
+     * Renders the same file saveCvVariant would produce, via the identical
+     * render call — but skips the Firebase upload, Upload record, and
+     * onboarding-progress advance, so nothing here is visible to the client.
+     * Lets an admin download and sanity-check the rendered file before
+     * deciding to save it for real.
+     */
+    static async previewCvVariant(
+        targetUserId: string,
+        resumeUploadId: string,
+        cvVariantHtml: string,
+        format: "pdf" | "docx",
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewCvVariant] User ${targetUserId}, format ${format}`);
+
+        if (!cvVariantHtml?.trim()) {
+            throw new ErrorHandler("CV variant content is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await renderCvVariantHtmlToPdf(cvVariantHtml)
+            : await renderCvVariantHtmlToDocx(cvVariantHtml);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_CV_Variant_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewCvVariant] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
     }
 
     /**
@@ -1218,6 +1347,55 @@ export class AdminDocumentService {
 
         logger.info(`[SaveInterviewPack] Saved interview pack upload ${upload.id} for user ${targetUserId}`);
         return { upload, clientName };
+    }
+
+    /**
+     * Renders the same file saveInterviewPack would produce, via the
+     * identical render call — but skips the Firebase upload and Upload
+     * record, so nothing here is visible to the client. Lets an admin
+     * download and sanity-check the rendered file before deciding to save
+     * it for real.
+     */
+    static async previewInterviewPack(
+        targetUserId: string,
+        resumeUploadId: string,
+        interviewPackHtml: string,
+        format: "pdf" | "docx",
+    ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+        logger.info(`[PreviewInterviewPack] User ${targetUserId}, format ${format}`);
+
+        if (!interviewPackHtml?.trim()) {
+            throw new ErrorHandler("Interview pack content is required", 400);
+        }
+
+        const resumeUpload = await Upload.findOne({
+            where: { id: resumeUploadId, userId: targetUserId, type: "resume" },
+        });
+        if (!resumeUpload) {
+            throw new ErrorHandler("Resume not found or does not belong to user", 404);
+        }
+
+        const user = await User.findByPk(targetUserId);
+        const clientName = user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || targetUserId
+            : targetUserId;
+        const filenameSlug = clientName
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_|_$/g, "") || targetUserId;
+        const dateStamp = new Date().toISOString().split("T")[0];
+
+        const isPdf = format === "pdf";
+        const buffer = isPdf
+            ? await htmlToPdfBuffer(interviewPackHtml)
+            : await htmlToDocxBuffer(interviewPackHtml);
+
+        const mimeType = isPdf
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        const filename = `${filenameSlug}_Interview_Pack_Preview_${dateStamp}.${isPdf ? "pdf" : "docx"}`;
+
+        logger.info(`[PreviewInterviewPack] Rendered preview for user ${targetUserId} (not persisted)`);
+        return { buffer, filename, mimeType };
     }
 
 }
