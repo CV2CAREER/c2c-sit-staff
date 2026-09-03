@@ -9,9 +9,9 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
+import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { ADMIN_CEC_REFERRAL_PAYOUTS } from "@/constants/apiEndpoints/admin.endpoint";
 import axiosInstance from "@/services/api-client";
-
-const API = "/api/v1/admin/cec/referral-payouts";
 
 interface ReferralPayout {
   id: string;
@@ -85,12 +85,13 @@ export default function CECReferralPayoutsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_REFERRAL_PAYOUTS, "cec-referral-payouts");
 
   const fetchData = useCallback(async () => {
     try {
       const [dataRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${API}/clients-with-logs`),
-        axiosInstance.get(`${API}/stats`),
+        axiosInstance.get(`${ADMIN_CEC_REFERRAL_PAYOUTS}/clients-with-logs`),
+        axiosInstance.get(`${ADMIN_CEC_REFERRAL_PAYOUTS}/stats`),
       ]);
       if (dataRes.status === "fulfilled") setData(dataRes.value.data?.data?.rows || []);
       if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
@@ -113,15 +114,15 @@ export default function CECReferralPayoutsPage() {
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
     if (String(selected.id).startsWith("temp-")) {
-      axiosInstance.post(API, { ...updated, id: undefined }).then((res) => {
-        const saved = res.data?.data;
+      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
+        const saved = res.data;
         if (saved) {
           setSelected(saved);
           setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
         }
-      }).catch(() => {});
+      });
     } else {
-      axiosInstance.put(`${API}/${selected.id}`, { [key]: value }).catch(() => {});
+      updateRow.mutateAsync({ id: selected.id, field: key, value });
     }
   };
 
@@ -141,12 +142,11 @@ export default function CECReferralPayoutsPage() {
       setSelected(null);
       return;
     }
-    try {
-      await axiosInstance.delete(`${API}/${selected.id}`);
+    deleteRow.mutateAsync({ id: selected.id }).then(() => {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
-    } catch { /* empty */ }
+    });
   };
 
   if (loading) {

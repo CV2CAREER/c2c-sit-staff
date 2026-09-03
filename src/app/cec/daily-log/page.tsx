@@ -9,9 +9,9 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
+import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { ADMIN_CEC_DAILY_LOG } from "@/constants/apiEndpoints/admin.endpoint";
 import axiosInstance from "@/services/api-client";
-
-const API = "/api/v1/admin/cec/daily-log";
 
 interface DailyLog {
   id: string;
@@ -135,12 +135,13 @@ export default function CECDailyLogPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_DAILY_LOG, "cec-daily-log");
 
   const fetchData = useCallback(async () => {
     try {
       const [clientsRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${API}/clients-with-logs`),
-        axiosInstance.get(`${API}/stats`),
+        axiosInstance.get(`${ADMIN_CEC_DAILY_LOG}/clients-with-logs`),
+        axiosInstance.get(`${ADMIN_CEC_DAILY_LOG}/stats`),
       ]);
       if (clientsRes.status === "fulfilled") setData(clientsRes.value.data?.data?.rows || []);
       if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
@@ -168,16 +169,16 @@ export default function CECDailyLogPage() {
 
     if (!selected.hasLog) {
       const { id, logId, campaignCredentialId, hasLog, plan, flightStatus, seekEmail, ...logData } = updated as any;
-      axiosInstance.post(API, logData).then((res) => {
-        const saved = res.data?.data;
+      createRow.mutateAsync(logData).then((res) => {
+        const saved = res.data;
         if (saved) {
           const merged = { ...updated, id: saved.id, logId: saved.id, hasLog: true };
           setSelected(merged);
           setData((prev) => prev.map((r) => r.id === updated.id ? merged : r));
         }
-      }).catch(() => {});
+      });
     } else {
-      axiosInstance.put(`${API}/${selected.logId || selected.id}`, { [key]: value }).catch(() => {});
+      updateRow.mutateAsync({ id: selected.logId || selected.id, field: key, value });
     }
   };
 
@@ -205,12 +206,11 @@ export default function CECDailyLogPage() {
       setSelected(null);
       return;
     }
-    try {
-      await axiosInstance.delete(`${API}/${selected.logId || selected.id}`);
+    deleteRow.mutateAsync({ id: selected.logId || selected.id }).then(() => {
       const reset = { ...selected, hasLog: false, logId: null, callEstablished: "", sentimentBefore: "", sentimentAfter: "", survey: "", referral: "", notes: "", postCall: "", blockerFixed: "", followUp: "", briefing: "", migration: "", qqa: "", cvFidelity: "", prefs: "", historyReviewed: "", lastCall: "" };
       setSelected(reset);
       setData((prev) => prev.map((r) => r.id === selected.id ? reset : r));
-    } catch { /* empty */ }
+    });
   };
 
   const getPills = (row: DailyLog) => {

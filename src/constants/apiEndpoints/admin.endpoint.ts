@@ -319,3 +319,11 @@ export const ADMIN_SALES_OPERATION = '/api/v1/sales-operation';
 
 // Jobsite v2 Endpoints
 export const ADMIN_JOBSITE = '/api/v1/jobsite';
+
+// CEC Tracker Endpoints
+export const ADMIN_CEC_DAILY_LOG = '/api/v1/admin/cec/daily-log';
+export const ADMIN_CEC_ISSUE_BURNDOWN = '/api/v1/admin/cec/issue-burndown';
+export const ADMIN_CEC_COMPLAINTS = '/api/v1/admin/cec/complaints';
+export const ADMIN_CEC_REFERRAL_PAYOUTS = '/api/v1/admin/cec/referral-payouts';
+export const ADMIN_CEC_SALES_OUTREACH = '/api/v1/admin/cec/sales-outreach';
+export const ADMIN_CEC_AMBASSADOR_SCOUTING = '/api/v1/admin/cec/ambassador-scouting';
