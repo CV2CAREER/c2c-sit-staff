@@ -9,7 +9,7 @@
     "build": "tsc && copyfiles -u 1 \"src/views/**/*\" \"src/public/**/*\" build",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "audit": "npm audit --omit=dev",
+    "audit": "npm audit --omit=dev --audit-level=critical",
     "benchmark:analytics": "tsx scripts/benchmark-admin-analytics.ts",
     "backfill:pricing:locations": "tsx scripts/backfill-pricing-feature-locations.ts",
     "sync:pricing:mongo": "tsx scripts/sync-pricing-from-mongo.ts",
@@ -53,6 +53,7 @@
     "got-scraping": "^4.2.1",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
+    "html-to-docx": "^1.8.0",
     "html-to-text": "^9.0.5",
     "ioredis": "^5.6.1",
     "json2csv": "^6.0.0-alpha.2",
@@ -64,6 +65,7 @@
     "office-text-extractor": "^4.0.0",
     "pdfkit": "^0.19.1",
     "pg": "^8.16.3",
+    "playwright": "^1.62.1",
     "sequelize": "^6.37.7",
     "sequelize-typescript": "^2.1.6",
     "swagger-jsdoc": "^6.2.8",
@@ -79,6 +81,8 @@
     "minimatch": "^10.2.1",
     "@tootallnate/once": "3.0.1",
     "file-type": ">=18.5.0",
+    "image-size": "^2.0.2",
+    "qs": "^6.16.0",
     "gaxios": {
       "uuid": "^11.1.1"
     },

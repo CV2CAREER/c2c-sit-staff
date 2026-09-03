@@ -63,6 +63,7 @@ import communicationTemplateRouterV1 from "./routes/v1/communication-template.ro
 import missingInfoTemplateRouterV1 from "./routes/v1/missing-info-template.route";
 import preferenceQuestionRouterV1 from "./routes/v1/preference-question.route";
 import dropdownOptionRouterV1 from "./routes/v1/dropdown-option.route";
+import socialVerificationRouterV1 from "./routes/v1/social-verification.route";
 import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
 
 // Assistant routes
@@ -241,6 +242,7 @@ app.use("/api/v1/communication-template", communicationTemplateRouterV1);
 app.use("/api/v1/missing-info-templates", missingInfoTemplateRouterV1);
 app.use("/api/v1/preference-questions", preferenceQuestionRouterV1);
 app.use("/api/v1/admin/dropdown-options", dropdownOptionRouterV1);
+app.use("/api/v1/admin/social-verifications", socialVerificationRouterV1);
 app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)

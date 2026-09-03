@@ -182,6 +182,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   country!: string;
 
+  // SPR-19-07-005: admin waiver for the social verification gate. Set true
+  // when admin exempts a user from the "capture all 7 handles" requirement.
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  socialVerificationExempt!: boolean;
+
   @AllowNull(true)
   @Column(DataType.STRING)
   slackId?: string;
