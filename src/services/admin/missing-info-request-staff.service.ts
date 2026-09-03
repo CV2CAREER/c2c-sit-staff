@@ -246,7 +246,7 @@ export class MissingInfoRequestStaffService {
     const { rows, count } = await MissingInfoRequest.findAndCountAll({
       where,
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
         { model: MissingInfoTemplate, attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
@@ -314,7 +314,7 @@ export class MissingInfoRequestStaffService {
   static async getRequestResponses(requestId: string) {
     const request = await MissingInfoRequest.findByPk(requestId, {
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
         { model: MissingInfoTemplate, attributes: ["id", "name", "type"],
           include: [{ model: MissingInfoTemplateField, as: "fields" }] },
       ],
@@ -708,7 +708,7 @@ export class MissingInfoRequestStaffService {
   static async reusePriorSubmission(requestId: string, clientId: string, user: any, host?: string, protocol?: string) {
     const source = await MissingInfoRequest.findByPk(requestId, {
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
         { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
       ],
     });

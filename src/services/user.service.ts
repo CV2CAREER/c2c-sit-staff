@@ -625,7 +625,7 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName"],
+    attributes: ["firstName", "lastName", "email"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],

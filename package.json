@@ -16,6 +16,8 @@
     "sync:cr-options:mongo": "tsx scripts/sync-cr-options-from-mongo.ts",
     "sync:admin-ai:mongo": "tsx scripts/sync-admin-ai-from-mongo.ts",
     "fix:seek-sub-start-date": "tsx scripts/fix-seek-sub-start-date-format.ts",
+    "backfill:campaign:sub-end-date": "tsx scripts/backfill-campaign-sub-end-date.ts",
+    "cleanup:justcall-duplicates": "tsx scripts/cleanup-justcall-duplicate-events.ts",
     "check-all": "npm run audit && npm run build",
     "prepare": "node scripts/setup-hooks.js"
   },
@@ -95,7 +97,8 @@
     "office-text-extractor": {
       "file-type": ">=18.5.0",
       "js-yaml": "^4.3.1"
-    }
+    },
+    "browserslist": "^4.28.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

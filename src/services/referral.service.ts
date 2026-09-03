@@ -1503,8 +1503,8 @@ Skipped: ${failedEmails.length}`,
     setImmediate(async () => {
       try {
         const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
-        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "uniqueId"] }) : null;
-        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName"] });
+        const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email", "uniqueId"] }) : null;
+        const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
         const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
         const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 
@@ -1583,8 +1583,8 @@ Skipped: ${failedEmails.length}`,
       setImmediate(async () => {
         try {
           const referrerUserId = await fieldEncryption.findUserByEmail(referral.referrer ?? '');
-          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName"] }) : null;
-          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName"] });
+          const referrerUser = referrerUserId ? await User.findByPk(referrerUserId, { attributes: ["firstName", "lastName", "email"] }) : null;
+          const referredUser = await User.findByPk(referral.userId, { attributes: ["firstName", "lastName", "email"] });
           const referrerName = referrerUser ? `${referrerUser.firstName} ${referrerUser.lastName}` : (referral.referrer ?? "Unknown");
           const refereeName = referredUser ? `${referredUser.firstName} ${referredUser.lastName}` : "Unknown";
 

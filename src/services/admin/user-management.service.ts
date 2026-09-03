@@ -1069,7 +1069,7 @@ class UserManagementService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -1139,7 +1139,7 @@ class UserManagementService {
     logger.info(`Retrieving progress for user ID: ${userId}`);
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'firstName', 'lastName', 'progress', 'role', 'updatedAt']
+      attributes: ['id', 'firstName', 'lastName', 'email', 'progress', 'role', 'updatedAt']
     });
     if (!user) {
       throw new ErrorHandler("User not found.", 404);
@@ -1202,19 +1202,21 @@ class UserManagementService {
   }
 
   /**
-   * Get all users with INFLIGHT campaigns for Dashboard display
+   * Get all users with in-flight campaigns (capitalized INFLIGHT or FLIGHT)
+   * for Dashboard display — same population as the Pipeline card's
+   * "In-Flight" tile.
    */
   async getInflightUsers() {
-    logger.info(`Retrieving users with INFLIGHT campaigns`);
+    logger.info(`Retrieving users with in-flight campaigns`);
 
     const inflightCredentials = await Credentials.findAll({
       where: {
-        capitalized: "INFLIGHT",
+        capitalized: { [Op.in]: ["INFLIGHT", "FLIGHT"] },
         isDeleted: false
       }
     });
 
-    logger.info(`Retrieved ${inflightCredentials.length} users with INFLIGHT campaigns`);
+    logger.info(`Retrieved ${inflightCredentials.length} users with in-flight campaigns`);
 
     return {
       inflightCredentials,

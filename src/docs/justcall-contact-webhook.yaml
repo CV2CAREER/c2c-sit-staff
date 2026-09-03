@@ -1,0 +1,110 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/justcallContactWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive JustCall contact/CRM webhook events
+      description: |
+        Receives JustCall jc.contact_* webhook payloads - a contact/CRM
+        record (name, other_numbers, notes, blacklist/dnd/dnm compliance
+        flags), not tied to any call or message at all, so it goes to its
+        own endpoint separate from call.*/jc.call_*, sms.*, whatsapp.*, and
+        sd.* events. `justcall_contact_events` holds one current-state row
+        per contact, keyed on JustCall's own contact id - a later delivery
+        for the same contact (e.g. a status change or a new note) updates
+        that row instead of creating a duplicate. Every individual delivery
+        is also appended to `justcall_contact_event_logs` (FK ->
+        justcall_contact_events), so the full history is never lost even
+        though the current-state row gets overwritten - including a running
+        note history, since notes only ever grows and each delivery's diff
+        calls out the newest one.
+
+        Note: this table is deliberately named `justcall_contact_events`,
+        not `justcall_contacts` - a separate, pre-existing table already
+        owns that name (an unrelated periodic import/sync job).
+
+        `blacklist`/`dnd`/`dnm` are promoted to their own columns since
+        they're compliance flags worth being able to query directly (e.g.
+        "never call blacklisted contacts").
+
+        Configure this URL as the webhook target in JustCall for whichever
+        contact event types you want captured - jc.contact_status_updated,
+        etc.
+
+        If `JUSTCALL_WEBHOOK_SECRET` is set in the environment, requests must
+        include a matching `x-webhook-secret` header (set this as a custom
+        header on the webhook in JustCall's dashboard) or they are rejected
+        with 401. If it is unset, the endpoint accepts events unauthenticated.
+      security: []
+      parameters:
+        - name: x-webhook-secret
+          in: header
+          required: false
+          description: Required only if JUSTCALL_WEBHOOK_SECRET is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              jc_contact_status_updated:
+                summary: jc.contact_status_updated sample payload
+                value:
+                  request_id: "01HQAMVFRC4HZ0144TDSXXXX"
+                  webhook_url: "https://webhook.site/ce74f4ac-1b4ce7805646dd5XXXX"
+                  url_id: "65d5a5ed180da91d76edXXXX"
+                  type: "jc.contact_status_updated"
+                  data:
+                    id: 1234
+                    name: "Rachel Green"
+                    contact_number: "1213566XXXX"
+                    other_numbers:
+                      - label: "Mobile"
+                        number: "1987654XXXX"
+                    email: "rachel.green@friends.co"
+                    extension: 101
+                    company: "Friends.co"
+                    address: "New York, United States"
+                    notes:
+                      - description: "wants a demo of AI features"
+                        added_at: "2024-05-13"
+                    status:
+                      blacklist: true
+                      dnd: false
+                      dnm: false
+                    status_updated_at: "2024-05-13"
+                    created_at: "2024-04-01"
+                    last_updated_at: "2024-05-10"
+                    agent_id: 105678
+      responses:
+        '200':
+          description: Contact event recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Contact event recorded
+                  value:
+                    success: true
+                    message: "Contact event recorded"
+                    statusCode: 200
+        '401':
+          description: Missing or invalid x-webhook-secret header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_secret:
+                  summary: Invalid webhook secret
+                  value:
+                    success: false
+                    message: "Invalid webhook secret"
+                    statusCode: 401

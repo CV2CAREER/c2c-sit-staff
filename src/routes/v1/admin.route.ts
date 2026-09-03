@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminPipelineStats,
+  getAdminPipelineLists,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -471,6 +473,20 @@ adminRouterV1.get(
   isUserAuthenticated,
   readAccess,
   getAdminAnalytics,
+);
+adminRouterV1.get(
+  "/pipeline-stats",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineStats,
+);
+adminRouterV1.get(
+  "/pipeline-lists",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineLists,
 );
 adminRouterV1.get(
   "/campaign",

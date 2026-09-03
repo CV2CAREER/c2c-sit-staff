@@ -233,16 +233,16 @@ Immediate impact: Alias creation failed for this user. Manual intervention requi
   // If all the email accounts in the array have been processed with an actual result then proceed to default to dummy
   if(!isStaging){
 
-    await sendStandardSlackNotification({
-      node: SlackNode.MESSAGING,
-      provider: SlackProvider.SYSTEM,
-      severity: SlackSeverity.ERROR,
-      trigger: "Email Alias creation script failed",
-      type: SlackEventType.SYSTEM_NOTIFICATION,
-      body: `Email Alias creation script failed for \`${email}\`, defaulting to Dummy creation -> \`${aliasEmail}\`.
-Immediate impact: Using fallback dummy alias.`,
-      channel: SlackChannel.TOWN_CRIER
-    });
+//     await sendStandardSlackNotification({
+//       node: SlackNode.MESSAGING,
+//       provider: SlackProvider.SYSTEM,
+//       severity: SlackSeverity.ERROR,
+//       trigger: "Email Alias creation script failed",
+//       type: SlackEventType.SYSTEM_NOTIFICATION,
+//       body: `Email Alias creation script failed for \`${email}\`, defaulting to Dummy creation -> \`${aliasEmail}\`.
+// Immediate impact: Using fallback dummy alias.`,
+//       channel: SlackChannel.TOWN_CRIER
+//     });
 
     return {
       data: aliasEmail,
