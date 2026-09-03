@@ -1,6 +1,13 @@
 export const ADMIN_STATS = '/api/v1/admin/analytics';
 export const ADMIN_PIPELINE_STATS = '/api/v1/admin/pipeline-stats';
 export const ADMIN_PIPELINE_LISTS = '/api/v1/admin/pipeline-lists';
+export const ADMIN_PLACEMENT_ASSIGNMENTS = '/api/v1/admin/placement-assignments';
+export const ADMIN_PLACEMENT_ASSIGNMENTS_BULK = '/api/v1/admin/placement-assignments/bulk-assign';
+export const ADMIN_PLACEMENT_CLIENT_COMMENTS = (credId: string) => `/api/v1/admin/placement-assignments/${credId}/comments`;
+export const ADMIN_PLACEMENT_ASSIGNMENT_DETAIL = (credId: string) => `/api/v1/admin/placement-assignments/${credId}`;
+export const ADMIN_PLACEMENT_EXCEPTIONS = '/api/v1/admin/placement-exceptions';
+export const ADMIN_PLACEMENT_PERFORMANCE = '/api/v1/admin/placement-performance';
+export const ADMIN_PLACEMENT_OVERVIEW = '/api/v1/admin/placement-overview';
 export const ADMIN_APPLICATION_STATS = '/api/v1/admin/analytics'; // Both maps to analytics in v1
 export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/client-allocation';
 export const ADMIN_CLIENT_MILESTONE_STATS =

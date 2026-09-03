@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 import { VaAllocationItem, VaStats } from "@/hooks/api/admin/types";
@@ -59,13 +60,12 @@ export default function ControllerWorkload() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* TODO: wire up the real destination for this link */}
-            <button
-              type="button"
+            <Link
+              href="/admin/placement-management/assignments"
               className="whitespace-nowrap text-xs font-medium text-primary hover:underline"
             >
               Manage allocation →
-            </button>
+            </Link>
             <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1">
               {RANGES.map((r) => (
                 <button

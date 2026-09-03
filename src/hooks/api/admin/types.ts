@@ -86,6 +86,195 @@ export interface PipelineLists {
   generatedAt: string;
 }
 
+export type AssignmentRoleKey = "dpc" | "vpc" | "spc";
+
+export interface AssignmentRoleValue {
+  name: string | null;
+  email: string | null;
+  load: number;
+}
+
+export interface AssignmentRow {
+  credId: string;
+  clientId: string | null;
+  name: string;
+  dpc: AssignmentRoleValue;
+  vpc: AssignmentRoleValue;
+  spc: AssignmentRoleValue;
+  industry: string | null;
+  subEnd: string | null;
+  days: number | null;
+  gaps: number;
+  capitalized: string | null;
+}
+
+export interface AssignableController {
+  name: string;
+  email: string;
+}
+
+export interface PlacementAssignments {
+  rows: AssignmentRow[];
+  controllers: AssignableController[];
+  generatedAt: string;
+}
+
+export interface AssignmentRowDetail {
+  row: AssignmentRow;
+  controllers: AssignableController[];
+}
+
+export interface ClientComment {
+  id: string;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}
+
+export type ExceptionLevel = "warn" | "bad";
+
+export interface ExceptionRow {
+  credId: string;
+  name: string;
+  reason: string;
+  level: ExceptionLevel;
+  status: string | null;
+  dpc: string | null;
+  subEnd: string | null;
+  days: number | null;
+}
+
+export interface PlacementExceptions {
+  rows: ExceptionRow[];
+  lapsedCount: number;
+  renewalCount: number;
+  holdCount: number;
+  noDateCount: number;
+  generatedAt: string;
+}
+
+export type PerformanceRange = "1d" | "5d";
+
+export interface BookClient {
+  clientId: string;
+  name: string;
+  days: number | null;
+  subEnd: string | null;
+}
+
+export interface Standing {
+  met: boolean;
+  missed: string[];
+}
+
+export interface DpcPerformanceRow {
+  name: string;
+  email: string | null;
+  score: number;
+  jobs: number;
+  clientsAt15: number;
+  clientsAssigned: number;
+  vetThrough: number;
+  lqaRate: number;
+  standing: Standing;
+  book: BookClient[];
+}
+
+export interface VpcPerformanceRow {
+  name: string;
+  email: string | null;
+  score: number;
+  vetted: number;
+  queueEntries: number;
+  queueScore: number;
+  high: number;
+  med: number;
+  low: number;
+  standing: Standing;
+  book: BookClient[];
+}
+
+export interface SpcPerformanceRow {
+  name: string;
+  email: string | null;
+  score: number;
+  submitted: number;
+  queueEntries: number;
+  queueScore: number;
+  clientsClear: number;
+  clientsAssigned: number;
+  standing: Standing;
+  book: BookClient[];
+}
+
+export interface DayCard {
+  date: string;
+  dow: string;
+  label: string;
+  value: number;
+  isLatestActive: boolean;
+}
+
+export interface PlacementPerformance {
+  range: PerformanceRange;
+  windowLabel: string;
+  headline: string;
+  dayCards: DayCard[];
+  dpc: DpcPerformanceRow[];
+  vpc: VpcPerformanceRow[];
+  spc: SpcPerformanceRow[];
+  generatedAt: string;
+}
+
+export interface HeroStat {
+  key: string;
+  label: string;
+  value: string;
+  sub: string;
+  tone: "ok" | "bad";
+  href: string | null;
+}
+
+export interface RuleChip {
+  id: string;
+  label: string;
+  available: boolean;
+  count: number;
+}
+
+export interface CrackRow {
+  credId: string;
+  name: string;
+  reasons: string[];
+  dpc: string | null;
+  days: number | null;
+}
+
+export interface FunnelStage {
+  label: string;
+  value: number;
+}
+
+export interface TopBottomEntry {
+  role: "DPC" | "VPC" | "SPC";
+  name: string | null;
+  score: number | null;
+  detail: string;
+}
+
+export interface PlacementOverview {
+  range: PerformanceRange;
+  windowLabel: string;
+  hero: HeroStat[];
+  crackChips: RuleChip[];
+  crackRows: CrackRow[];
+  crackNote: string;
+  topPerformers: TopBottomEntry[];
+  bottomPerformers: TopBottomEntry[];
+  funnel: FunnelStage[];
+  generatedAt: string;
+}
+
 export interface ApplicationsPeriodStat {
   total: number;
   successful: number;
@@ -104,6 +293,8 @@ export interface AdminQueriesOptions {
   fetchVaAllocations?: boolean;
   fetchPipelineStats?: boolean;
   fetchPipelineLists?: boolean;
+  fetchPlacementAssignments?: boolean;
+  fetchPlacementExceptions?: boolean;
   pipelineRange?: PipelineRangeKey;
   fetchApplicationsPeriodBreakdown?: boolean;
   fetchMilestoneStats?: boolean;
