@@ -20,7 +20,6 @@ import { PreviewModal } from "../_modals/PreviewModal";
 import { DeleteConfirmModal } from "../_modals/DeleteConfirmModal";
 import { CreateOrEditModal } from "../_modals/CreateOrEditModal";
 import { MissingInfoModal } from "../_modals/MissingInfoModal";
-import { TestSendModal } from "../_modals/TestSendModal";
 
 const TYPE_META: Record<
   EmailTemplateType,
@@ -57,7 +56,6 @@ export default function CommunicationTemplatesPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [createEditOpen, setCreateEditOpen] = useState(false);
   const [missingInfoOpen, setMissingInfoOpen] = useState(false);
-  const [testSendOpen, setTestSendOpen] = useState(false);
 
   const { usersDomain, templatesDomain, triggersDomain, actions } = useCommunicationTemplates({ recycleBin });
   const templates = templatesDomain.data;
@@ -173,6 +171,19 @@ export default function CommunicationTemplatesPage() {
     } catch (e: any) {
       toast.dismiss(toastId);
       toast.error(e?.message || "Failed to save template.");
+    }
+  };
+
+  const handleTestSend = async (template: CommunicationTemplate) => {
+    const toastId = toast.loading("Sending test email...");
+    try {
+      const { variables, triggerKeyUsed } = await actions.resolveTestSend(template.id);
+      const result = await actions.sendTestEmail({ templateId: template.id, values: variables, triggerKeyUsed });
+      toast.dismiss(toastId);
+      toast.success(`Test email sent to ${result.recipientEmail}`);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.message || "Failed to send test email.");
     }
   };
 
@@ -413,10 +424,10 @@ export default function CommunicationTemplatesPage() {
                                 <FaEdit />
                               </button>
                               <button
-                                title="Test Send"
+                                title="Send Test Email"
                                 className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 disabled={recycleBin}
-                                onClick={() => { setSelectedTemplate(template); setTestSendOpen(true); }}
+                                onClick={() => void handleTestSend(template)}
                               >
                                 <FaPaperPlane />
                               </button>
@@ -495,13 +506,6 @@ export default function CommunicationTemplatesPage() {
         users={usersDomain.data}
         onSend={handleNotify}
         isSending={actions.isMutating}
-      />
-      <TestSendModal
-        open={testSendOpen}
-        onClose={() => setTestSendOpen(false)}
-        template={selectedTemplate}
-        resolveTestSend={actions.resolveTestSend}
-        sendTestEmail={actions.sendTestEmail}
       />
     </div>
   );
