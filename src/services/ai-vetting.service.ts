@@ -33,6 +33,40 @@ const AU_STATE_NAMES: Record<string, string> = {
 const AU_STATE_ABBREVS = new Set(["NSW", "QLD", "VIC", "SA", "WA", "TAS", "NT", "ACT"]);
 const REMOTE_KEYWORDS = ["work from home", "remote", "wfh", "hybrid"];
 
+// Strict suburb -> state inference for state-priority (all locations must map to same single state)
+const WA_SUBURBS = new Set([
+  "perth","perth cbd","west perth","east perth","northbridge","highgate","mount lawley","subiaco","leederville","willetton","leeming","como","south perth","burswood","victoria park","claremont","nedlands","applecross","ascot","baldivis","beckenham","kenwick","ferndale","rockingham","success","parmelia","warnbro","orelia","mandurah","mandagulop","joondalup","balga","cockburn central","atwell","wellard","ellenbrook","forrestfield","kewdale","butler","lakelands","bayswater","osborne park","morley","midland","canning vale","joondanna","innaloo","scarborough",
+]);
+const CITY_TO_STATE: Record<string, string> = {
+  "perth": "WA", "sydney": "NSW", "melbourne": "VIC", "brisbane": "QLD", "adelaide": "SA", "hobart": "TAS", "darwin": "NT", "canberra": "ACT",
+};
+
+const getStateForSuburb = (loc: string): string | null => {
+  const lower = loc.trim().toLowerCase();
+  if (AU_STATE_ABBREVS.has(lower.toUpperCase())) return lower.toUpperCase();
+  const full = AU_STATE_NAMES[lower];
+  if (full) return full;
+  if (WA_SUBURBS.has(lower)) return "WA";
+  // city name fallback
+  for (const [city, st] of Object.entries(CITY_TO_STATE)) {
+    if (lower === city || lower.includes(city)) return st;
+  }
+  // If location contains state hint like ", WA" already, extract
+  const waMatch = lower.match(/\b(wa|nsw|vic|qld|sa|tas|nt|act)\b/);
+  if (waMatch) return waMatch[1].toUpperCase();
+  return null;
+};
+
+const inferStateFromLocations = (locations: string[], cities: string[]): string | null => {
+  const all = [...locations, ...cities].filter(v => v && v.trim().length > 0);
+  if (all.length === 0) return null;
+  const states = all.map(getStateForSuburb);
+  // Strict: all must be known and same
+  if (states.some(s => s === null)) return null;
+  const unique = Array.from(new Set(states));
+  return unique.length === 1 ? unique[0] : null;
+};
+
 const normalizeLocations = (arr: string[] | undefined | null): string[] => {
   if (!arr || arr.length === 0) return [];
   const cleaned = arr
@@ -70,6 +104,17 @@ const buildClientProfile = (profile: Profile): string => {
     const states = hasAllLocations ? [] : normalizeStates(profile.locations, profile.state);
     const cities = hasAllLocations ? [] : normalizeLocations(profile.city);
 
+    // State-priority inference: if no explicit state but all suburbs map to one state, infer it
+    let inferred: string | null = null;
+    let displayStates = states;
+    if (!hasAllLocations && states.length === 0) {
+      inferred = inferStateFromLocations(locations, cities);
+      if (inferred) displayStates = [inferred];
+    }
+    const statesLine = inferred
+      ? `${safeList(displayStates)} (inferred from ${locations.length} locations in ${inferred})`
+      : safeList(displayStates);
+
     return [
       `- Target Titles: ${safeList(profile.titles)}`,
       `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
@@ -77,7 +122,7 @@ const buildClientProfile = (profile: Profile): string => {
       `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
       `- Target Locations: ${safeList(locations)}`,
       `- Target Cities: ${safeList(cities)}`,
-      `- Target States: ${safeList(states)}`,
+      `- Target States: ${statesLine}`,
       `- Target Country: ${profile.country || "Not specified"}`,
       `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
       `- Target Industries: ${safeList(profile.industriesInclude)}`,
