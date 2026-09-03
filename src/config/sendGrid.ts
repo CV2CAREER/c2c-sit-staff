@@ -147,18 +147,26 @@ interface EmailOptions {
 export const sendMail = async (options: EmailOptions): Promise<void> => {
   initializeSendGrid();
 
+  // A trigger can be rebound to a different template, or explicitly
+  // disabled (templateId null — admin chose "send nothing" for this
+  // trigger). Absence of a row means "use the default" — today's only
+  // behavior — so an unbound trigger is completely unaffected.
+  const binding = await EmailTemplateTrigger.findOne({
+    where: { triggerKey: options.templateName },
+  });
+
+  if (binding && binding.templateId === null) {
+    logger.info(
+      `Skipped sending "${options.templateName}" to ${options.email} — trigger disabled by an admin (set to send nothing).`,
+    );
+    return;
+  }
+
   let html: string;
   let usedFallback = false;
   let template: EmailTemplate | null = null;
   try {
-    // A trigger can be rebound to a different template than the one whose
-    // own `key` literally matches — check that override first, and fall
-    // through to the direct key match (today's only behavior) when no
-    // binding row exists, so an unbound trigger is unaffected.
-    const binding = await EmailTemplateTrigger.findOne({
-      where: { triggerKey: options.templateName },
-    });
-    template = binding
+    template = binding?.templateId
       ? await EmailTemplate.findByPk(binding.templateId)
       : await EmailTemplate.findOne({ where: { key: options.templateName } });
     if (!template) {

@@ -16,10 +16,11 @@ import { EmailTemplate } from "./email-template.model";
 
 /**
  * Optional override binding a trigger key (the literal templateName string a
- * sendMail() call site already passes) to a specific EmailTemplate. Absence
- * of a row for a given triggerKey means "use the default" — the EmailTemplate
- * whose own `key` equals that triggerKey, exactly like today. Deleting a row
- * reverts that trigger to the default with no other side effects.
+ * sendMail() call site already passes) to a specific EmailTemplate. Three
+ * states: no row = use the default (the EmailTemplate whose own `key` equals
+ * the triggerKey, exactly like today); a row with `templateId` set = send
+ * that template instead; a row with `templateId` null = send nothing at all
+ * for this trigger. Deleting a row reverts that trigger to the default.
  */
 @Table({
   tableName: "email_template_triggers",
@@ -36,10 +37,11 @@ export class EmailTemplateTrigger extends Model {
   @Column(DataType.STRING(128))
   triggerKey!: string;
 
+  /** Null means "this trigger is disabled — send nothing." */
   @ForeignKey(() => EmailTemplate)
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.STRING)
-  templateId!: string;
+  templateId?: string | null;
 
   @BelongsTo(() => EmailTemplate, {
     foreignKey: "templateId",

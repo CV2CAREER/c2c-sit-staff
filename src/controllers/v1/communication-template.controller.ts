@@ -89,10 +89,12 @@ export const listEmailTriggers = catchAsyncError(async (req: any, res: Response)
 
 export const rebindEmailTrigger = catchAsyncError(async (req: any, res: Response) => {
   const { triggerKey } = req.params;
-  const { templateId } = req.body;
-  logger.info(`Rebinding trigger "${triggerKey}" to template ${templateId} — by ${getActorLabel(req)}`);
+  const templateId: string | null = req.body.templateId ?? null;
+  logger.info(
+    `${templateId === null ? "Disabling" : "Rebinding"} trigger "${triggerKey}"${templateId ? ` to template ${templateId}` : ""} — by ${getActorLabel(req)}`,
+  );
   const data = await CommunicationTemplateService.rebindTrigger(triggerKey, templateId, req.user?.id);
-  return res.apiSuccess(data, "Trigger rebound successfully", 200);
+  return res.apiSuccess(data, templateId === null ? "Trigger disabled" : "Trigger rebound successfully", 200);
 });
 
 export const resetEmailTrigger = catchAsyncError(async (req: any, res: Response) => {

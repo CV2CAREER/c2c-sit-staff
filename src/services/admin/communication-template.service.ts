@@ -143,6 +143,30 @@ const resolveTriggerKeyForTemplate = async (template: EmailTemplate): Promise<st
   return findTriggerDefinition(template.key) ? template.key : undefined;
 };
 
+const EJS_RESERVED_WORDS = new Set([
+  "if", "else", "for", "while", "do", "function", "return", "var", "let", "const",
+  "true", "false", "null", "undefined", "typeof", "new", "this", "in", "of", "break",
+  "continue", "switch", "case", "default", "try", "catch", "finally", "throw", "include",
+  "locals", // EJS's own name for the data object passed to render — not a real variable
+]);
+
+/**
+ * template.variables is manually maintained metadata (for the admin's
+ * click-to-insert picker) — it's documentation, not a guarantee of what the
+ * raw EJS body actually references. Scanning the body directly catches
+ * variables that were used but never declared, so test-send can surface
+ * them as editable instead of crashing on render.
+ */
+const extractEjsVariableNames = (body: string): string[] => {
+  const names = new Set<string>();
+  const tagRegex = /<%[-=]?\s*([a-zA-Z_$][\w$]*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagRegex.exec(body))) {
+    if (!EJS_RESERVED_WORDS.has(match[1])) names.add(match[1]);
+  }
+  return Array.from(names);
+};
+
 export class CommunicationTemplateService {
   static async listTemplates(filters: { category?: string; status?: string } = {}) {
     const showDeleted = filters.status?.toLowerCase() === "deleted";
@@ -290,35 +314,44 @@ export class CommunicationTemplateService {
     const results = [];
     for (const definition of EMAIL_TRIGGERS) {
       const binding = bindingByTriggerKey.get(definition.key);
-      const template = binding
-        ? await EmailTemplate.findByPk(binding.templateId)
-        : await EmailTemplate.findOne({ where: { key: definition.key } });
+      const disabled = !!binding && binding.templateId === null;
+      const template = disabled
+        ? null
+        : binding
+          ? await EmailTemplate.findByPk(binding.templateId as string)
+          : await EmailTemplate.findOne({ where: { key: definition.key } });
 
       results.push({
         triggerKey: definition.key,
         label: definition.label,
         reassignable: definition.reassignable,
         isBound: !!binding,
+        disabled,
         resolvedTemplate: template ? serialize(template) : null,
       });
     }
     return results;
   }
 
-  static async rebindTrigger(triggerKey: string, templateId: string, adminUserId?: string) {
+  /** `templateId: null` disables the trigger — it sends nothing at all. */
+  static async rebindTrigger(triggerKey: string, templateId: string | null, adminUserId?: string) {
     const definition = findTriggerDefinition(triggerKey);
     if (!definition) {
       throw new ErrorHandler(`Unknown trigger "${triggerKey}"`, 404);
     }
     // Server-side gate — the real enforcement point, independent of the UI
-    // hiding the picker for these.
+    // hiding the picker for these. Covers disabling too: a trigger that
+    // can't be reassigned also can't be silently turned off.
     if (!definition.reassignable) {
       throw new ErrorHandler(`"${definition.label}" cannot be reassigned`, 400);
     }
 
-    const target = await EmailTemplate.findByPk(templateId);
-    if (!target) {
-      throw new ErrorHandler("Template not found", 404);
+    let target: EmailTemplate | null = null;
+    if (templateId !== null) {
+      target = await EmailTemplate.findByPk(templateId);
+      if (!target) {
+        throw new ErrorHandler("Template not found", 404);
+      }
     }
 
     const existing = await EmailTemplateTrigger.findOne({ where: { triggerKey } });
@@ -328,13 +361,18 @@ export class CommunicationTemplateService {
       await EmailTemplateTrigger.create({ triggerKey, templateId, updatedBy: adminUserId });
     }
 
-    logger.info(`Trigger "${triggerKey}" rebound to template ${templateId} by ${adminUserId ?? "unknown"}`);
+    logger.info(
+      templateId === null
+        ? `Trigger "${triggerKey}" disabled (send nothing) by ${adminUserId ?? "unknown"}`
+        : `Trigger "${triggerKey}" rebound to template ${templateId} by ${adminUserId ?? "unknown"}`,
+    );
     return {
       triggerKey,
       label: definition.label,
       reassignable: true,
       isBound: true,
-      resolvedTemplate: serialize(target),
+      disabled: templateId === null,
+      resolvedTemplate: target ? serialize(target) : null,
     };
   }
 
@@ -354,7 +392,16 @@ export class CommunicationTemplateService {
     const resolver = triggerKeyUsed ? TEST_DATA_RESOLVERS[triggerKeyUsed] : undefined;
     const resolvedFromRealData = resolver ? resolver(adminUser) : {};
 
-    const variableNames = template.variables?.length ? template.variables : Object.keys(resolvedFromRealData);
+    // Union of the declared list, whatever the resolver knows about, and
+    // what's actually referenced in the body — the declared list alone can
+    // be stale/incomplete relative to the real template content.
+    const variableNames = Array.from(
+      new Set([
+        ...(template.variables ?? []),
+        ...Object.keys(resolvedFromRealData),
+        ...extractEjsVariableNames(template.body),
+      ]),
+    );
     const values: Record<string, string> = {};
     for (const name of variableNames) {
       values[name] =
@@ -384,9 +431,22 @@ export class CommunicationTemplateService {
       safeValues[key] = typeof value === "string" ? value : String(value ?? "");
     }
 
+    // Guard against variables the body references but the admin never saw
+    // in the modal (declared-variables metadata can be stale) — fall back
+    // to a visible placeholder instead of crashing the render. `with()`
+    // (which ejs.render compiles to) probes this object for symbol keys
+    // like Symbol.unscopables, so those must pass through untouched —
+    // only string keys get the placeholder treatment.
+    const renderData = new Proxy(safeValues, {
+      get: (target, prop) => {
+        if (typeof prop === "symbol") return (target as Record<PropertyKey, unknown>)[prop];
+        return prop in target ? target[prop] : `[missing: ${prop}]`;
+      },
+    });
+
     let html: string;
     try {
-      html = ejs.render(template.body, safeValues);
+      html = ejs.render(template.body, renderData as Record<string, unknown>);
     } catch (err: any) {
       throw new ErrorHandler(`Template failed to render: ${err.message}`, 400);
     }
