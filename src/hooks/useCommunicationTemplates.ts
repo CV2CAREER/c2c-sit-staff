@@ -42,6 +42,8 @@ export type EmailTrigger = {
   label: string;
   reassignable: boolean;
   isBound: boolean;
+  /** true = this trigger is set to send nothing at all */
+  disabled: boolean;
   resolvedTemplate: CommunicationTemplate | null;
 };
 
@@ -167,7 +169,7 @@ export function useCommunicationTemplates({
   });
 
   const rebindTrigger = useMutation({
-    mutationFn: async ({ triggerKey, templateId }: { triggerKey: string; templateId: string }) => {
+    mutationFn: async ({ triggerKey, templateId }: { triggerKey: string; templateId: string | null }) => {
       const response = await axiosInstance.patch<ApiSuccess<EmailTrigger>>(
         endpoints.ADMIN_EMAIL_TRIGGER_BINDING(triggerKey),
         { templateId },

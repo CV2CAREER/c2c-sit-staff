@@ -6,28 +6,30 @@ import { MenuItem, Select } from "@mui/material";
 import { Lock, RotateCcw } from "lucide-react";
 import type { CommunicationTemplate, EmailTrigger } from "@/hooks/useCommunicationTemplates";
 
+const DISABLED_VALUE = "__disabled__";
+
 interface TriggersTabProps {
   triggers: EmailTrigger[];
   templates: CommunicationTemplate[];
   isLoading: boolean;
-  onRebind: (triggerKey: string, templateId: string) => Promise<unknown>;
+  onRebind: (triggerKey: string, templateId: string | null) => Promise<unknown>;
   onReset: (triggerKey: string) => Promise<unknown>;
 }
 
 export function TriggersTab({ triggers, templates, isLoading, onRebind, onReset }: TriggersTabProps) {
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
-  const handleRebind = async (triggerKey: string, templateId: string) => {
-    if (!templateId) return;
+  const handleRebind = async (triggerKey: string, templateId: string | null) => {
+    if (templateId === "") return;
     setPendingKey(triggerKey);
-    const toastId = toast.loading("Rebinding trigger...");
+    const toastId = toast.loading(templateId === null ? "Disabling trigger..." : "Rebinding trigger...");
     try {
       await onRebind(triggerKey, templateId);
       toast.dismiss(toastId);
-      toast.success("Trigger rebound.");
+      toast.success(templateId === null ? "Trigger disabled — it will send nothing." : "Trigger rebound.");
     } catch (e: any) {
       toast.dismiss(toastId);
-      toast.error(e?.message || "Failed to rebind trigger.");
+      toast.error(e?.message || "Failed to update trigger.");
     } finally {
       setPendingKey(null);
     }
@@ -60,8 +62,9 @@ export function TriggersTab({ triggers, templates, isLoading, onRebind, onReset 
     <div className="flex flex-col gap-2">
       <p className="text-xs text-gray-500">
         Each row is a real trigger event in the codebase. Rebinding it makes a different template take
-        over sending for that event — the trigger key itself never changes. Locked rows carry
-        account-security or payout emails and can't be reassigned.
+        over sending for that event, or pick "— Send nothing —" to turn it off entirely — the trigger
+        key itself never changes either way. Locked rows carry account-security or payout emails and
+        can't be reassigned or disabled.
       </p>
       <div className="grid gap-2">
         {triggers.map((trigger) => {
@@ -75,8 +78,12 @@ export function TriggersTab({ triggers, templates, isLoading, onRebind, onReset 
                 <h4 className="font-semibold text-gray-900">{trigger.label}</h4>
                 <p className="text-xs text-gray-500 font-mono mt-0.5">{trigger.triggerKey}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Currently: {trigger.resolvedTemplate?.name ?? "—"}
-                  {trigger.isBound && <span className="text-primary"> (custom)</span>}
+                  {trigger.disabled ? (
+                    <span className="text-red-600 font-medium">Disabled — sends nothing</span>
+                  ) : (
+                    <>Currently: {trigger.resolvedTemplate?.name ?? "—"}</>
+                  )}
+                  {trigger.isBound && !trigger.disabled && <span className="text-primary"> (custom)</span>}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -86,16 +93,24 @@ export function TriggersTab({ triggers, templates, isLoading, onRebind, onReset 
                       size="small"
                       className="h-9 min-w-[200px]"
                       displayEmpty
-                      value={trigger.resolvedTemplate?.id ?? ""}
+                      value={trigger.disabled ? DISABLED_VALUE : trigger.resolvedTemplate?.id ?? ""}
                       disabled={isPending}
-                      renderValue={() => trigger.resolvedTemplate?.name ?? "Choose a template"}
-                      onChange={(e) => void handleRebind(trigger.triggerKey, e.target.value as string)}
+                      renderValue={() =>
+                        trigger.disabled ? "— Send nothing —" : trigger.resolvedTemplate?.name ?? "Choose a template"
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value as string;
+                        void handleRebind(trigger.triggerKey, v === DISABLED_VALUE ? null : v);
+                      }}
                     >
                       {templates.map((t) => (
                         <MenuItem key={t.id} value={t.id}>
                           {t.name}
                         </MenuItem>
                       ))}
+                      <MenuItem value={DISABLED_VALUE}>
+                        <em>— Send nothing —</em>
+                      </MenuItem>
                     </Select>
                     {trigger.isBound && (
                       <button
