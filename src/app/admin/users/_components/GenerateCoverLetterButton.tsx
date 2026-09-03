@@ -35,6 +35,8 @@ export default function GenerateCoverLetterButton({
   const {
     generateCoverLetter,
     isGenerating,
+    previewCoverLetter,
+    isPreviewing,
     saveCoverLetter,
     isSaving,
     savingFormat,
@@ -51,6 +53,11 @@ export default function GenerateCoverLetterButton({
     publicId: string;
     name: string;
   } | null>(null);
+  // "review" = Reject/Download/Continue gate; "confirm" = the actual Save
+  // as DOC/PDF step. Keeps generating something and it becoming visible to
+  // the client as two distinct, deliberate actions.
+  const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
+  const [isRejecting, setIsRejecting] = useState(false);
 
   const handleGenerate = async () => {
     if (!jobContent.trim()) {
@@ -62,11 +69,44 @@ export default function GenerateCoverLetterButton({
       const data = await generateCoverLetter({ userId, resumeUploadId, jobLink, jobContent });
       setCoverLetter(data?.coverLetter ?? "");
       setIsInputOpen(false);
+      setReviewStage("review");
       setIsResultOpen(true);
       toast.success("Cover letter generated");
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Failed to generate cover letter";
+      toast.error(message);
+    }
+  };
+
+  const handleReject = () => {
+    setIsRejecting(true);
+    const toastId = toast.loading("Rejecting cover letter...");
+    setIsResultOpen(false);
+    setCoverLetter("");
+    setReviewStage("review");
+    toast.dismiss(toastId);
+    toast.success("Cover letter rejected");
+    setIsRejecting(false);
+  };
+
+  const handleDownloadPreview = async () => {
+    const toastId = toast.loading("Preparing preview...");
+    try {
+      const { blob, filename } = await previewCoverLetter({
+        userId,
+        resumeUploadId,
+        coverLetter,
+        format: "pdf",
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      toast.dismiss(toastId);
+    } catch (error: any) {
+      toast.dismiss(toastId);
+      const message = error?.response?.data?.message || "Failed to generate preview";
       toast.error(message);
     }
   };
@@ -187,27 +227,56 @@ export default function GenerateCoverLetterButton({
           </div>
 
           <DialogFooter className="shrink-0">
-            <Button
-              variant="outline"
-              disabled={isSaving}
-              onClick={() => setIsResultOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-              disabled={isSaving}
-              onClick={() => handleSave("docx")}
-            >
-              {isSaving && savingFormat === "docx" ? "Saving..." : "Save as DOC"}
-            </Button>
-            <Button
-              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-              disabled={isSaving}
-              onClick={() => handleSave("pdf")}
-            >
-              {isSaving && savingFormat === "pdf" ? "Saving..." : "Save as PDF"}
-            </Button>
+            {reviewStage === "review" ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isRejecting || isPreviewing}
+                  onClick={handleReject}
+                >
+                  {isRejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={handleDownloadPreview}
+                >
+                  {isPreviewing ? "Preparing..." : "Download"}
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={() => setReviewStage("confirm")}
+                >
+                  Continue →
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => setIsResultOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isSaving}
+                  onClick={() => handleSave("docx")}
+                >
+                  {isSaving && savingFormat === "docx" ? "Saving..." : "Save as DOC"}
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isSaving}
+                  onClick={() => handleSave("pdf")}
+                >
+                  {isSaving && savingFormat === "pdf" ? "Saving..." : "Save as PDF"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

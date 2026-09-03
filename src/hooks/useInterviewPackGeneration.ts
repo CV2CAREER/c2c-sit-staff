@@ -132,6 +132,23 @@ type SaveInterviewPackResponse = {
   upload: { document: InterviewPackDocument };
 };
 
+type PreviewInterviewPackPayload = {
+  userId: string;
+  resumeUploadId: string;
+  interviewPack: string;
+  format: SaveInterviewPackFormat;
+};
+
+// Pulls the filename the backend set via Content-Disposition — falls back to
+// a generic name if it's ever missing rather than failing the download.
+const filenameFromContentDisposition = (
+  header: string | undefined,
+  fallback: string,
+): string => {
+  const match = header?.match(/filename="?([^";]+)"?/);
+  return match?.[1] || fallback;
+};
+
 /**
  * Drives the 4-stage "Generate Interview Pack" flow — start (or transparently
  * resume) a process, then run one stage at a time so the frontend can show
@@ -190,12 +207,30 @@ export function useInterviewPackGeneration() {
     return response.data.data.url;
   };
 
+  // Renders a not-yet-saved interview pack to a real file so an admin can
+  // check it before deciding to save — nothing here touches the client's
+  // Document History.
+  const previewMutation = useMutation({
+    mutationFn: async (payload: PreviewInterviewPackPayload) => {
+      const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_INTERVIEW_PACK, payload, {
+        responseType: "blob",
+      });
+      const filename = filenameFromContentDisposition(
+        response.headers["content-disposition"],
+        `Interview_Pack_Preview.${payload.format}`,
+      );
+      return { blob: response.data as Blob, filename };
+    },
+  });
+
   return {
     startInterviewPack: startMutation.mutateAsync,
     isStarting: startMutation.isPending,
     runInterviewPackStage: runStageMutation.mutateAsync,
     isRunningStage: runStageMutation.isPending,
     getInterviewPackProcess,
+    previewInterviewPack: previewMutation.mutateAsync,
+    isPreviewing: previewMutation.isPending,
     saveInterviewPack: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
     savingFormat: saveMutation.variables?.format,

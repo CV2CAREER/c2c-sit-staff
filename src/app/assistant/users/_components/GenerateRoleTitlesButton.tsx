@@ -53,6 +53,12 @@ export default function GenerateRoleTitlesButton({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [result, setResult] = useState<RoleTitleGenerationResult | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
+  // "review" = Reject/Continue gate; "confirm" = the actual Save step. Keeps
+  // generating something and it becoming visible to the client as two
+  // distinct, deliberate actions. No Download here — RTR doesn't produce a
+  // rendered file, just a reviewable table.
+  const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Cycle the loading copy every couple of seconds while generation runs —
   // purely cosmetic, generation itself is a single request.
@@ -75,6 +81,7 @@ export default function GenerateRoleTitlesButton({
         return;
       }
       setResult(data);
+      setReviewStage("review");
       setIsReviewOpen(true);
       toast.success("Role title recommendations generated");
     } catch (error: any) {
@@ -82,6 +89,17 @@ export default function GenerateRoleTitlesButton({
         error?.response?.data?.message || "Failed to generate role title recommendations";
       toast.error(message);
     }
+  };
+
+  const handleReject = () => {
+    setIsRejecting(true);
+    const toastId = toast.loading("Rejecting role title recommendations...");
+    setIsReviewOpen(false);
+    setResult(null);
+    setReviewStage("review");
+    toast.dismiss(toastId);
+    toast.success("Role title recommendations rejected");
+    setIsRejecting(false);
   };
 
   const handleSave = async () => {
@@ -216,20 +234,42 @@ export default function GenerateRoleTitlesButton({
           </div>
 
           <DialogFooter className="shrink-0">
-            <Button
-              variant="outline"
-              disabled={isSaving}
-              onClick={() => setIsReviewOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-              disabled={isSaving}
-              onClick={handleSave}
-            >
-              {isSaving ? "Saving..." : "Save to RTR"}
-            </Button>
+            {reviewStage === "review" ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isRejecting}
+                  onClick={handleReject}
+                >
+                  {isRejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isRejecting}
+                  onClick={() => setReviewStage("confirm")}
+                >
+                  Continue →
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => setIsReviewOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isSaving}
+                  onClick={handleSave}
+                >
+                  {isSaving ? "Saving..." : "Save to RTR"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

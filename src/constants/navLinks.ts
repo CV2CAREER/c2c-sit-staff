@@ -36,6 +36,8 @@ import {
   DollarSign,
   Megaphone,
   Target,
+  LayoutDashboard,
+  TrendingUp,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
@@ -121,6 +123,18 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     children: [
       { name: "Job Discovery", href: "/admin/job-preference", icon: Binoculars },
       { name: "Applications", href: "/admin/job-applications", icon: FileUser },
+    ],
+  },
+  {
+    name: "Placement Management",
+    groupId: 9,
+    icon: Target,
+    access: ["admin"],
+    children: [
+      { name: "Overview", href: "/admin/placement-management/overview", icon: LayoutDashboard },
+      { name: "Placement Performance", href: "/admin/placement-management/performance", icon: TrendingUp },
+      { name: "Assignments", href: "/admin/placement-management/assignments", icon: ClipboardList },
+      { name: "Exceptions", href: "/admin/placement-management/exceptions", icon: AlertTriangle },
     ],
   },
   {

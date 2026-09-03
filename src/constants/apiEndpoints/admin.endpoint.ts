@@ -1,6 +1,15 @@
 export const ADMIN_STATS = '/api/v1/admin/analytics';
+export const ADMIN_PIPELINE_STATS = '/api/v1/admin/pipeline-stats';
+export const ADMIN_PIPELINE_LISTS = '/api/v1/admin/pipeline-lists';
+export const ADMIN_PLACEMENT_ASSIGNMENTS = '/api/v1/admin/placement-assignments';
+export const ADMIN_PLACEMENT_ASSIGNMENTS_BULK = '/api/v1/admin/placement-assignments/bulk-assign';
+export const ADMIN_PLACEMENT_CLIENT_COMMENTS = (credId: string) => `/api/v1/admin/placement-assignments/${credId}/comments`;
+export const ADMIN_PLACEMENT_ASSIGNMENT_DETAIL = (credId: string) => `/api/v1/admin/placement-assignments/${credId}`;
+export const ADMIN_PLACEMENT_EXCEPTIONS = '/api/v1/admin/placement-exceptions';
+export const ADMIN_PLACEMENT_PERFORMANCE = '/api/v1/admin/placement-performance';
+export const ADMIN_PLACEMENT_OVERVIEW = '/api/v1/admin/placement-overview';
 export const ADMIN_APPLICATION_STATS = '/api/v1/admin/analytics'; // Both maps to analytics in v1
-export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/in-flight/staff'; // Closest match for staff list
+export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/client-allocation';
 export const ADMIN_CLIENT_MILESTONE_STATS =
   '/api/v1/admin/analytics/milestones'; // Note: Might need backend update
 export const ADMIN_ONBOARDED_CLIENTS = '/api/v1/admin/analytics/onboarded'; // Note: Might need backend update
@@ -101,12 +110,16 @@ export const ADMIN_DOCUMENT_REVIEW =
   '/api/v1/admin/documents/upload-cv-cover-letter'; // /v1/admin/documents/upload-cv-cover-letter
 export const ADMIN_GENERATE_COVER_LETTER =
   '/api/v1/admin/documents/generate-cover-letter';
+export const ADMIN_PREVIEW_COVER_LETTER =
+  '/api/v1/admin/documents/preview-cover-letter';
 export const ADMIN_SAVE_COVER_LETTER =
   '/api/v1/admin/documents/save-cover-letter';
 export const ADMIN_GENERATE_ROLE_TITLES =
   '/api/v1/admin/documents/generate-role-titles';
 export const ADMIN_GENERATE_CV_VARIANT =
   '/api/v1/admin/documents/generate-cv-variant';
+export const ADMIN_PREVIEW_CV_VARIANT =
+  '/api/v1/admin/documents/preview-cv-variant';
 export const ADMIN_SAVE_CV_VARIANT =
   '/api/v1/admin/documents/save-cv-variant';
 export const ADMIN_START_INTERVIEW_PACK =
@@ -115,6 +128,8 @@ export const ADMIN_RUN_INTERVIEW_PACK_STAGE =
   '/api/v1/admin/documents/generate-interview-pack/run-stage';
 export const ADMIN_GET_INTERVIEW_PACK_PROCESS = (processId: string) =>
   `/api/v1/admin/documents/generate-interview-pack/${processId}`;
+export const ADMIN_PREVIEW_INTERVIEW_PACK =
+  '/api/v1/admin/documents/preview-interview-pack';
 export const ADMIN_SAVE_INTERVIEW_PACK =
   '/api/v1/admin/documents/save-interview-pack';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
