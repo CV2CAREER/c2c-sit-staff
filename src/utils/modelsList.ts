@@ -97,6 +97,7 @@ import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
 import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
+import { SocialVerification } from '../models/v1/social-verification.model';
 
 export const modelList = [
   User,
@@ -200,4 +201,5 @@ export const modelList = [
   JustCallAppointmentLog,
   SendGridEvent,
   SendGridEventLog,
+  SocialVerification,
 ];
