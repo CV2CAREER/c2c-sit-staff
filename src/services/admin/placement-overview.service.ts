@@ -3,6 +3,7 @@ import { Credentials } from "../../models/v1/credentials.model";
 import { User } from "../../models/v1/user.model";
 import { ManualApplication } from "../../models/v1/manual-application.model";
 import { getServiceLogger } from "../../utils/createLogger";
+import { Role } from "../../utils/enum";
 import { calculateCampaignFields, parseDate } from "../../utils/campaign-calculator";
 import { placementExceptionsService } from "./placement-exceptions.service";
 import { placementPerformanceService, PerformanceRange } from "./placement-performance.service";
@@ -94,6 +95,7 @@ interface ClientRow {
   spc: string | null;
   days: number | null;
   createdAt: Date;
+  isTestAccount: boolean;
 }
 
 class PlacementOverviewService {
@@ -104,7 +106,7 @@ class PlacementOverviewService {
     const [credentials, exceptions, performance] = await Promise.all([
       Credentials.findAll({
         where: { isDeleted: false, Active: true },
-        include: [{ model: User, as: "client", attributes: ["id", "firstName", "lastName"], required: false }],
+        include: [{ model: User, as: "client", attributes: ["id", "firstName", "lastName", "role"], required: false }],
       }),
       placementExceptionsService.getExceptions(),
       placementPerformanceService.getPerformance(range),
@@ -132,6 +134,7 @@ class PlacementOverviewService {
           spc: trimOrNull(c.AssignedCompletedName),
           days,
           createdAt: c.createdAt,
+          isTestAccount: c.client?.role === Role.TEST,
         };
       });
     const clientIds = clients.map((c) => c.clientId);
@@ -217,11 +220,16 @@ class PlacementOverviewService {
     let expiringCount = 0;
     let jobs15Count = 0;
     let nosub5Count = 0;
+    let testCount = 0;
 
     clients.forEach((c) => {
       if (!c.dpc || !c.vpc || !c.spc) {
         push(c.clientId, "Controller role unassigned");
         unassignedCount++;
+      }
+      if (c.isTestAccount) {
+        push(c.clientId, "Possible test account");
+        testCount++;
       }
       if (c.dpc && (lqaByDpc.get(c.dpc) ?? 0) >= DPC_LQA_MAX) {
         push(c.clientId, "DPC failing LQA");
@@ -252,7 +260,7 @@ class PlacementOverviewService {
     const crackChips: RuleChip[] = [
       { id: "never", label: "Zero discovery", available: false, count: 0 },
       { id: "duplicate", label: "Under more than one DPC", available: false, count: 0 },
-      { id: "test", label: "Possible test account", available: false, count: 0 },
+      { id: "test", label: "Possible test account", available: true, count: testCount },
       { id: "unassigned", label: "Controller role unassigned", available: true, count: unassignedCount },
       { id: "lqa", label: "DPC failing LQA", available: true, count: lqaCount },
       { id: "expiring", label: "Expiring soon and flagged", available: true, count: expiringCount },
@@ -272,7 +280,7 @@ class PlacementOverviewService {
       crackRows.length === 0
         ? "No client breaks a live-data rule today."
         : `${availableChips.map((c) => `${c.count} ${c.label.toLowerCase()}`).join(" · ")}. ` +
-          "Zero discovery, duplicate DPC and test account rules need a report upload this app doesn't have — shown as unavailable.";
+          "Zero discovery and duplicate DPC rules need a report upload this app doesn't have — shown as unavailable.";
 
     return [crackChips, crackRows, crackNote];
   }
