@@ -4,6 +4,14 @@ import {
   getAdminAnalytics,
   getAdminPipelineStats,
   getAdminPipelineLists,
+  getPlacementAssignments,
+  bulkAssignPlacement,
+  getPlacementAssignmentDetail,
+  getPlacementExceptions,
+  getPlacementPerformance,
+  getPlacementOverview,
+  getClientComments,
+  addClientComment,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -487,6 +495,62 @@ adminRouterV1.get(
   isUserAuthenticated,
   readAccess,
   getAdminPipelineLists,
+);
+adminRouterV1.get(
+  "/placement-assignments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignments,
+);
+adminRouterV1.post(
+  "/placement-assignments/bulk-assign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  bulkAssignPlacement,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getClientComments,
+);
+adminRouterV1.post(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  addClientComment,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignmentDetail,
+);
+adminRouterV1.get(
+  "/placement-exceptions",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementExceptions,
+);
+adminRouterV1.get(
+  "/placement-performance",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementPerformance,
+);
+adminRouterV1.get(
+  "/placement-overview",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementOverview,
 );
 adminRouterV1.get(
   "/campaign",

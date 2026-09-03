@@ -78,6 +78,7 @@ import { EmailTemplate } from "../models/v1/email-template.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 import { PreferenceQuestion } from '../models/v1/preference-question.model';
@@ -180,6 +181,7 @@ export const modelList = [
   InterviewPackProcess,
   TourCount,
   CredentialsTour,
+  CredentialsComment,
   ClientJourneyStep,
   AiVettingComparison,
   PreferenceQuestion,
