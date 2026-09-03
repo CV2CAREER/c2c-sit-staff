@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,9 +9,8 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_DAILY_LOG } from "@/constants/apiEndpoints/admin.endpoint";
-import axiosInstance from "@/services/api-client";
 
 interface DailyLog {
   id: string;
@@ -129,26 +128,14 @@ function renderCell(key: string, row: DailyLog) {
 }
 
 export default function CECDailyLogPage() {
+  const { data: serverRows, stats, isLoading } = useCecTracker(ADMIN_CEC_DAILY_LOG, "cec-daily-log", { total: 0, callsLogged: 0, critical: 0, validatedMigrations: 0, surveyIn5mins: 0 });
   const [data, setData] = useState<DailyLog[]>([]);
-  const [stats, setStats] = useState({ total: 0, callsLogged: 0, critical: 0, validatedMigrations: 0, surveyIn5mins: 0 });
   const [selected, setSelected] = useState<DailyLog | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
   const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_DAILY_LOG, "cec-daily-log");
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [clientsRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${ADMIN_CEC_DAILY_LOG}/clients-with-logs`),
-        axiosInstance.get(`${ADMIN_CEC_DAILY_LOG}/stats`),
-      ]);
-      if (clientsRes.status === "fulfilled") setData(clientsRes.value.data?.data?.rows || []);
-      if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
-    } catch (err) { console.error("[CEC Daily Log] fetch error:", err); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (serverRows.length) setData(serverRows as DailyLog[]); }, [serverRows]);
 
   const filteredData = (() => {
     let rows = data;
@@ -219,7 +206,7 @@ export default function CECDailyLogPage() {
       .map((text) => ({ text, style: getPillStyle(text) }));
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
         <CECTrackerHeader title="CEC Daily Log" subtitle="One row per client call — prep, sentiment movement, survey and referral." />

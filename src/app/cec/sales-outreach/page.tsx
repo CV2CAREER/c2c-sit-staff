@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
 import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
-import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_SALES_OUTREACH } from "@/constants/apiEndpoints/admin.endpoint";
-import axiosInstance from "@/services/api-client";
 
 interface SalesOutreach {
   id: string;
@@ -59,26 +58,14 @@ function renderCell(key: string, row: SalesOutreach) {
 }
 
 export default function CECSalesOutreachPage() {
+  const { data: serverRows, stats, isLoading } = useCecTracker(ADMIN_CEC_SALES_OUTREACH, "cec-sales-outreach", { segments: 0, reached: 0 });
   const [data, setData] = useState<SalesOutreach[]>([]);
-  const [stats, setStats] = useState({ segments: 0, reached: 0 });
   const [selected, setSelected] = useState<SalesOutreach | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
   const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_SALES_OUTREACH, "cec-sales-outreach");
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [dataRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${ADMIN_CEC_SALES_OUTREACH}/clients-with-logs`),
-        axiosInstance.get(`${ADMIN_CEC_SALES_OUTREACH}/stats`),
-      ]);
-      if (dataRes.status === "fulfilled") setData(dataRes.value.data?.data?.rows || []);
-      if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
-    } catch (err) { console.error("[CEC SalesOutreach] fetch error:", err); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (serverRows.length) setData(serverRows as SalesOutreach[]); }, [serverRows]);
 
   const handleRowClick = (row: SalesOutreach) => { setSelected(row); setDrawerOpen(true); };
 
@@ -123,7 +110,7 @@ export default function CECSalesOutreachPage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
         <CECTrackerHeader title="Sales Outreach Tracker" subtitle="Persona x state x sentiment grid, with availability and reach." />

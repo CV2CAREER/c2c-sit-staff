@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
@@ -17,6 +17,33 @@ const toApiError = (error: unknown): ApiError => {
     statusCode: 500,
   };
 };
+
+export function useCecTracker<T extends Record<string, any>>(apiBase: string, queryKey: string, defaultStats: T) {
+  const rowsQuery = useQuery({
+    queryKey: [queryKey, "rows"],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`${apiBase}/clients-with-logs`);
+      return (res.data?.data?.rows ?? []) as Record<string, any>[];
+    },
+    staleTime: 30_000,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: [queryKey, "stats"],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`${apiBase}/stats`);
+      return (res.data?.data ?? defaultStats) as T;
+    },
+    staleTime: 30_000,
+  });
+
+  return {
+    data: rowsQuery.data ?? [],
+    stats: statsQuery.data ?? defaultStats,
+    isLoading: rowsQuery.isLoading || statsQuery.isLoading,
+    refetch: () => { void rowsQuery.refetch(); void statsQuery.refetch(); },
+  };
+}
 
 export function useCecMutations(apiBase: string, queryKey: string) {
   const queryClient = useQueryClient();

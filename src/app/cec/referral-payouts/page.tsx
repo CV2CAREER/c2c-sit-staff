@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,9 +9,8 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_REFERRAL_PAYOUTS } from "@/constants/apiEndpoints/admin.endpoint";
-import axiosInstance from "@/services/api-client";
 
 interface ReferralPayout {
   id: string;
@@ -79,26 +78,14 @@ function renderCell(key: string, row: ReferralPayout) {
 }
 
 export default function CECReferralPayoutsPage() {
+  const { data: serverRows, stats, isLoading } = useCecTracker(ADMIN_CEC_REFERRAL_PAYOUTS, "cec-referral-payouts", { payments: 0, totalPaid: 0, outreachDone: 0, noOutreach: 0 });
   const [data, setData] = useState<ReferralPayout[]>([]);
-  const [stats, setStats] = useState({ payments: 0, totalPaid: 0, outreachDone: 0, noOutreach: 0 });
   const [selected, setSelected] = useState<ReferralPayout | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
   const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_REFERRAL_PAYOUTS, "cec-referral-payouts");
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [dataRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${ADMIN_CEC_REFERRAL_PAYOUTS}/clients-with-logs`),
-        axiosInstance.get(`${ADMIN_CEC_REFERRAL_PAYOUTS}/stats`),
-      ]);
-      if (dataRes.status === "fulfilled") setData(dataRes.value.data?.data?.rows || []);
-      if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
-    } catch (err) { console.error("[CEC ReferralPayouts] fetch error:", err); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (serverRows.length) setData(serverRows as ReferralPayout[]); }, [serverRows]);
 
   const filteredData = (() => {
     let rows = data;
@@ -149,7 +136,7 @@ export default function CECReferralPayoutsPage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
         <CECTrackerHeader title="Referral Payouts" subtitle="Referral rewards paid out, with outreach follow-up state." />

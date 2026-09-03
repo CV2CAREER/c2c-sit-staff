@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
-import { useCecMutations } from "@/hooks/api/cec/cec-tracker";
+import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_AMBASSADOR_SCOUTING } from "@/constants/apiEndpoints/admin.endpoint";
-import axiosInstance from "@/services/api-client";
 
 interface AmbassadorScout {
   id: string;
@@ -42,26 +41,14 @@ function renderCell(key: string, row: AmbassadorScout) {
 }
 
 export default function CECAmbassadorScoutingPage() {
+  const { data: serverRows, stats, isLoading } = useCecTracker(ADMIN_CEC_AMBASSADOR_SCOUTING, "cec-ambassador-scouting", { countries: 0, nominations: 0 });
   const [data, setData] = useState<AmbassadorScout[]>([]);
-  const [stats, setStats] = useState({ countries: 0, nominations: 0 });
   const [selected, setSelected] = useState<AmbassadorScout | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
   const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_AMBASSADOR_SCOUTING, "cec-ambassador-scouting");
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [dataRes, statsRes] = await Promise.allSettled([
-        axiosInstance.get(`${ADMIN_CEC_AMBASSADOR_SCOUTING}/clients-with-logs`),
-        axiosInstance.get(`${ADMIN_CEC_AMBASSADOR_SCOUTING}/stats`),
-      ]);
-      if (dataRes.status === "fulfilled") setData(dataRes.value.data?.data?.rows || []);
-      if (statsRes.status === "fulfilled") setStats(statsRes.value.data?.data || stats);
-    } catch (err) { console.error("[CEC AmbassadorScout] fetch error:", err); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (serverRows.length) setData(serverRows as AmbassadorScout[]); }, [serverRows]);
 
   const handleRowClick = (row: AmbassadorScout) => { setSelected(row); setDrawerOpen(true); };
 
@@ -106,7 +93,7 @@ export default function CECAmbassadorScoutingPage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <section style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
         <CECTrackerHeader title="Ambassador Program Scouting" subtitle="Country pipelines and nominations." />
