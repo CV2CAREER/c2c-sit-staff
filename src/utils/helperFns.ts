@@ -209,6 +209,8 @@ export const getRedirectPathBasedonUserRole = (userRole: UserRoles): string => {
       return "/coach/dashboard";
     case UserRoles.CSE:
       return "/cse/dashboard";
+    case UserRoles.CEC:
+      return "/cec/dashboard";
     default:
       return "/login";
   }
