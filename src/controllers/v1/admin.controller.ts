@@ -11,6 +11,11 @@ import { adminUserExportApplicationService } from "../../services/admin/admin-us
 import { subscriptionTierAggregatorApplicationService } from "../../services/admin/subscription-tier-aggregator.application.service";
 import { pipelineStatsService, isPipelineRangeKey } from "../../services/admin/pipeline-stats.service";
 import { pipelineListsService } from "../../services/admin/pipeline-lists.service";
+import { placementAssignmentsService, AssignmentRoleKey } from "../../services/admin/placement-assignments.service";
+import { placementCommentsService } from "../../services/admin/placement-comments.service";
+import { placementExceptionsService } from "../../services/admin/placement-exceptions.service";
+import { placementPerformanceService, PerformanceRange } from "../../services/admin/placement-performance.service";
+import { placementOverviewService } from "../../services/admin/placement-overview.service";
 import { FeatureService } from "../../services/feature.service";
 import { Location } from "../../models/v1/location.model";
 import { Feature } from "../../models/v1/feature.model";
@@ -418,6 +423,151 @@ export const getAdminPipelineLists = catchAsyncError(
     const lists = await pipelineListsService.getPipelineLists();
 
     res.apiSuccess(lists, "Admin pipeline lists retrieved successfully");
+  },
+);
+
+export const getPlacementAssignments = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    logger.info(`Processing placement-assignments request for admin ${user.email}`);
+
+    const assignments = await placementAssignmentsService.getAssignments();
+
+    res.apiSuccess(assignments, "Placement assignments retrieved successfully");
+  },
+);
+
+const VALID_ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc"];
+
+export const bulkAssignPlacement = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const { credIds, role, controllerName, controllerEmail } = req.body;
+
+    if (!Array.isArray(credIds) || credIds.length === 0) {
+      throw new ErrorHandler("credIds must be a non-empty array", 400);
+    }
+    if (!VALID_ROLE_KEYS.includes(role)) {
+      throw new ErrorHandler("role must be one of dpc, vpc, spc", 400);
+    }
+
+    logger.info(
+      `Processing bulk placement assignment for admin ${user.email} (role=${role}, count=${credIds.length})`,
+    );
+
+    const result = await placementAssignmentsService.bulkAssign({
+      credIds,
+      role,
+      controllerName: controllerName || null,
+      controllerEmail: controllerEmail || null,
+      host: req.get("host") || "",
+      triggeredBy: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+    });
+
+    res.apiSuccess(result, "Bulk assignment applied successfully");
+  },
+);
+
+export const getPlacementAssignmentDetail = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const { credId } = req.params;
+    if (!credId) {
+      throw new ErrorHandler("credId is required", 400);
+    }
+
+    const detail = await placementAssignmentsService.getAssignmentDetail(credId);
+    if (!detail) {
+      throw new ErrorHandler("Client not found", 404);
+    }
+
+    res.apiSuccess(detail, "Assignment detail retrieved successfully");
+  },
+);
+
+export const getPlacementExceptions = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    logger.info(`Processing placement-exceptions request for admin ${user.email}`);
+
+    const exceptions = await placementExceptionsService.getExceptions();
+
+    res.apiSuccess(exceptions, "Placement exceptions retrieved successfully");
+  },
+);
+
+const VALID_RANGES: PerformanceRange[] = ["1d", "5d"];
+
+export const getPlacementPerformance = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const range = (req.query.range as string) || "1d";
+    if (!VALID_RANGES.includes(range as PerformanceRange)) {
+      throw new ErrorHandler("range must be one of 1d, 5d", 400);
+    }
+
+    logger.info(`Processing placement-performance request for admin ${user.email} (range=${range})`);
+
+    const performance = await placementPerformanceService.getPerformance(range as PerformanceRange);
+
+    res.apiSuccess(performance, "Placement performance retrieved successfully");
+  },
+);
+
+export const getPlacementOverview = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const range = (req.query.range as string) || "1d";
+    if (!VALID_RANGES.includes(range as PerformanceRange)) {
+      throw new ErrorHandler("range must be one of 1d, 5d", 400);
+    }
+
+    logger.info(`Processing placement-overview request for admin ${user.email} (range=${range})`);
+
+    const overview = await placementOverviewService.getOverview(range as PerformanceRange);
+
+    res.apiSuccess(overview, "Placement overview retrieved successfully");
+  },
+);
+
+export const getClientComments = catchAsyncError(
+  async (req: Request, res: Response) => {
+    ensureAdmin(req);
+
+    const { credId } = req.params;
+    if (!credId) {
+      throw new ErrorHandler("credId is required", 400);
+    }
+
+    const comments = await placementCommentsService.list(credId);
+
+    res.apiSuccess(comments, "Client comments retrieved successfully");
+  },
+);
+
+export const addClientComment = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const { credId } = req.params;
+    const { comment } = req.body;
+    if (!credId) {
+      throw new ErrorHandler("credId is required", 400);
+    }
+    if (!comment || typeof comment !== "string" || !comment.trim()) {
+      throw new ErrorHandler("comment is required", 400);
+    }
+
+    const authorName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
+    const created = await placementCommentsService.add(credId, user.id, authorName, comment);
+
+    res.apiSuccess(created, "Comment added successfully");
   },
 );
 
