@@ -171,7 +171,8 @@ export enum UserRoles {
   ASSISTANT = "assistant",
   TEST = "test",
   TPC = "tpc",
-  PC = "pc"
+  PC = "pc",
+  CEC = "cec"
 }
 
 export enum Referral {

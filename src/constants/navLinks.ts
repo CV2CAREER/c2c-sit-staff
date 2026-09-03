@@ -36,11 +36,14 @@ import {
   ClipboardList,
   AlertTriangle,
   ShieldCheck,
+  Bug,
+  DollarSign,
+  Megaphone,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
 
-export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "sales" | "technology" | "business" | "client";
+export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "sales" | "technology" | "business" | "client" | "cec";
 
 export type NavAction = "switch-admin" | "switch-persona-target";
 
@@ -181,6 +184,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Coach", role: "coach", href: "/coach/dashboard", icon: User },
       { name: "Customer", role: "cse", href: "/cse/dashboard", icon: User },
       { name: "Placement Controller", role: "assistant", href: "/assistant/dashboard", icon: User },
+      { name: "CEC", role: "cec", href: "/cec/dashboard", icon: User },
     ],
   },
 ];
@@ -252,6 +256,26 @@ export const SALES_NAV_LINKS: NavLink[] = [
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
 ];
 
+export const CEC_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/cec/dashboard", icon: House },
+  {
+    name: "Trackers",
+    groupId: 1,
+    icon: NotebookPen,
+    access: ["cec"],
+    children: [
+      { name: "Daily Log", href: "/cec/daily-log", icon: ClipboardList },
+      { name: "Issue Burndown", href: "/cec/issue-burndown", icon: Bug },
+      { name: "Complaints", href: "/cec/complaints", icon: AlertTriangle },
+      { name: "Referral Payouts", href: "/cec/referral-payouts", icon: DollarSign },
+      { name: "Sales Outreach", href: "/cec/sales-outreach", icon: Megaphone },
+      { name: "Ambassador Scouting", href: "/cec/ambassador-scouting", icon: Target },
+    ],
+  },
+  { name: "Personal Info", href: "/cec/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
+];
+
 export const CSE_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/cse/dashboard", icon: House },
   { name: "Personal Info", href: "/cse/profile", icon: User },
@@ -265,4 +289,5 @@ export const NAV_LINKS_BY_ROLE: Record<string, NavLink[]> = {
   sales: SALES_NAV_LINKS,
   cse: CSE_NAV_LINKS,
   partner: PARTNER_NAV_LINKS,
+  cec: CEC_NAV_LINKS,
 };

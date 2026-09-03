@@ -13,10 +13,11 @@ export const ROLE_ROUTES: Record<string, string> = {
   customer: "/cse/dashboard",
   assistant: "/assistant/dashboard",
   tpc: "/assistant/dashboard",
-  client: "/login", // Fallback for client (no client dashboard yet)
+  client: "/login",
   guest: "/login",
   test: "/assistant/dashboard",
   pc: "/assistant/dashboard",
+  cec: "/cec/dashboard",
 };
 
 export function getRoleRoute(role: StaffRole | string): string {
