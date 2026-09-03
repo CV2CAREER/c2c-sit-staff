@@ -35,6 +35,7 @@ import {
   TrendingUp,
   ClipboardList,
   AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
@@ -91,6 +92,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Jobsite Credentials", href: "/admin/jobsite-credentials", icon: KeyRound },
       { name: "Unsubscribed Users", href: "/admin/unsubscribed-users", icon: Users },
       { name: "Referral Mgt.", href: "/admin/referral-management", icon: UserRoundPlus },
+      { name: "Social Verification", href: "/admin/social-verification", icon: ShieldCheck },
       { name: "Promotional Mgt.", href: "/admin/promotion", icon: Star },
       { name: "Blog", href: "/admin/blog", icon: Newspaper },
     ],
