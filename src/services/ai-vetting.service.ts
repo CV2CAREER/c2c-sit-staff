@@ -93,25 +93,29 @@ const normalizeStates = (locations: string[] | undefined | null, states: string[
 const buildClientProfile = (profile: Profile): string => {
     const hasAllLocations =
       (profile.locations || []).some(l => l.trim().toLowerCase().startsWith('all ')) ||
-      (profile.state || []).some(s => s.trim().toLowerCase().startsWith('all '));
+      (profile.state || []).some(s => s.trim().toLowerCase().startsWith('all ')) ||
+      (profile.municipals || []).some(m => m.trim().toLowerCase().startsWith('all ')) ||
+      (profile.city || []).some(c => c.trim().toLowerCase().startsWith('all '));
     const locations = hasAllLocations ? [] : normalizeLocations(profile.locations);
     const states = hasAllLocations ? [] : normalizeStates(profile.locations, profile.state);
     const cities = hasAllLocations ? [] : normalizeLocations(profile.city);
+    const municipals = hasAllLocations ? [] : normalizeLocations(profile.municipals);
     let inferred: string | null = null;
     let displayStates = states;
     if (!hasAllLocations && states.length === 0) {
-      inferred = inferStateFromLocations(locations, cities);
+      inferred = inferStateFromLocations([...locations, ...municipals], cities);
       if (inferred) displayStates = [inferred];
     }
     const statesLine = inferred
-      ? `${safeList(displayStates)} (inferred from ${locations.length} locations in ${inferred})`
+      ? `${safeList(displayStates)} (inferred from ${locations.length + municipals.length} locations in ${inferred})`
       : safeList(displayStates);
+    const allLocations = [...locations, ...municipals];
     return [
       `- Target Titles: ${safeList(profile.titles)}`,
       `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
       `- Target Keywords: ${safeList(profile.keywords)}`,
       `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
-      `- Target Locations: ${safeList(locations)}`,
+      `- Target Locations: ${safeList(allLocations)}`,
       `- Target Cities: ${safeList(cities)}`,
       `- Target States: ${statesLine}`,
       `- Target Country: ${profile.country || "Not specified"}`,
