@@ -5,6 +5,7 @@ import { BCRYPT_SALT_ROUNDS, CLIENT_APP_DOMAIN } from "../../config/env";
 import { AuditTrail } from "../../models/v1/audit-trail.model";
 import OTPToken from "../../models/v1/otpToken.model";
 import { User } from "../../models/v1/user.model";
+import { fieldEncryption } from "../../utils/field-encryption";
 import { sendNewOTPEmail } from "../../services/email.service";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
@@ -151,6 +152,13 @@ interface BulkAddUsersResponse {
     skipped: number;
   };
   generatedAt: string;
+}
+
+interface PrecheckEmailResponse {
+  exists: boolean;
+  existingUserId?: string;
+  existingRole?: string;
+  existingName?: string;
 }
 
 const logger = getServiceLogger("admin-user-service");
@@ -411,15 +419,17 @@ class AdminUserApplicationService {
     const sequelize = getSequelize();
     const existingRows = await sequelize.query<{ email: string }>(
       `
-        SELECT LOWER(email) AS email
+        SELECT LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) AS email
         FROM users
-        WHERE LOWER(email) IN (:emails)
+        WHERE "emailEncrypted" IS NOT NULL
+          AND LOWER(safe_pgp_sym_decrypt("emailEncrypted", :key)) IN (:emails)
           AND "deletedAt" IS NULL;
       `,
       {
         type: QueryTypes.SELECT,
         replacements: {
-          emails: users.map((user) => user.email),
+          key: fieldEncryption.getKey(),
+          emails: users.map((user) => user.email.toLowerCase()),
         },
       },
     );
@@ -470,7 +480,7 @@ class AdminUserApplicationService {
             targetKey: createdUser.id,
             before: null,
             after: {
-              email: createdUser.email,
+              email: userInput.email,
               role: createdUser.role,
             },
             metadata: {
@@ -483,7 +493,7 @@ class AdminUserApplicationService {
 
         created.push({
           userId: createdUser.id,
-          email: createdUser.email,
+          email: userInput.email,
           role: createdUser.role,
           firstName: createdUser.firstName,
           lastName: createdUser.lastName,
@@ -502,7 +512,7 @@ class AdminUserApplicationService {
         try {
           const actor = await User.findOne({
             where: { id: actorUserId },
-            attributes: ["firstName", "lastName"],
+            attributes: ["firstName", "lastName", "email"],
           });
           const actorName = actor
             ? `${actor.firstName} ${actor.lastName}`
@@ -701,6 +711,32 @@ class AdminUserApplicationService {
         skipped: skipped.length,
       },
       generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async precheckEmail(rawEmail: string): Promise<PrecheckEmailResponse> {
+    const email = normalizeEmail(rawEmail);
+    if (!email || !EMAIL_REGEX.test(email)) {
+      throw new ErrorHandler("A valid email is required.", 400);
+    }
+
+    const existing = await User.findOne({
+      where: { email: { [Op.iLike]: email }, deletedAt: null },
+      attributes: ["id", "role", "firstName", "lastName", "email"],
+    });
+
+    if (!existing) return { exists: false };
+
+    const name = [existing.firstName, existing.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    return {
+      exists: true,
+      existingUserId: existing.id,
+      existingRole: existing.role,
+      existingName: name || undefined,
     };
   }
 

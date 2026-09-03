@@ -41,7 +41,7 @@ export class ChatService {
         attributes: ['id', 'sessionId', 'messages', 'clientId', 'createdAt', 'updatedAt'],
         include: [{
           association: 'client',
-          attributes: ['id', 'email', 'firstName', 'lastName']
+          attributes: ['id', 'firstName', 'lastName', 'email']
         }],
         order: [['createdAt', 'DESC']],
         limit,
@@ -72,7 +72,7 @@ export class ChatService {
       const chat = await Chat.findByPk(id, {
         include: [{
           association: 'client',
-          attributes: ['id', 'email', 'firstName', 'lastName']
+          attributes: ['id', 'firstName', 'lastName', 'email']
         }],
         raw: true,
         nest: true

@@ -15,6 +15,7 @@ export enum CustomerClass {
 }
 
 export enum ApplicationStatus {
+  NOT_STARTED = "Not Started",
   COMMENCED = "Commenced",
   HOLD = "Hold",
   EXPIRED = "Expired",
@@ -72,6 +73,16 @@ export enum AcceptedRole {
   PARTNER = "partner",
   TEST = "test",
 }
+
+// Snapshot of what the user picked in the "Sign up as" field at registration —
+// kept separate from `role`, which can be resolved/remapped after signup (e.g. ambassador -> guest).
+export enum SignUpAs {
+  JOB_SEEKER = "Job_Seeker",
+  EMPLOYEE = "Employee",
+  CHANNEL_PARTNER = "Channel_Partner",
+  AMBASSADOR = "Ambassador",
+}
+
 
 export enum Gender {
   MALE = "Male",
@@ -250,6 +261,9 @@ export enum SlackEventType {
   MISSING_INFO_SENT = "MISSING_INFO_SENT",
   MISSING_INFO_BULK_REMINDER = "MISSING_INFO_BULK_REMINDER",
   MISSING_INFO_TEMPLATE_PUBLISHED = "MISSING_INFO_TEMPLATE_PUBLISHED",
+  MISSING_INFO_CANCELLED = "MISSING_INFO_CANCELLED",
+  MISSING_INFO_DECLINED = "MISSING_INFO_DECLINED",
+  MISSING_INFO_REUSE = "MISSING_INFO_REUSE",
   ADMIN_ACTION = "ADMIN_ACTION",
   CRON_EXECUTION = "CRON_EXECUTION",
   ERROR_ALERT = "ERROR_ALERT",
@@ -416,4 +430,36 @@ export enum JobsiteCredentialRejectionReason {
   TWO_FA_BLOCKING = "2FA blocking delegated access",
   EMAIL_REJECTED_BY_JOBSITE = "Email rejected by jobsite",
   EMAIL_ALREADY_IN_USE = "Email already in use",
+}
+
+// Client Journey — the 7-phase client-facing progress model that replaces
+// the old flat `Progress` enum above. `Progress`/`progress` on User is kept
+// for backfilling legacy accounts only; new writes use ClientJourneyStep.
+export enum ClientJourneyPhase {
+  GETTING_STARTED = "getting-started",
+  WELCOME = "welcome",
+  TOOLKIT = "toolkit",
+  FINAL_CHECKS = "final-checks",
+  CAMPAIGN_LIVE = "campaign-live",
+  CAMPAIGN_REVIEW = "campaign-review",
+  CAMPAIGN_ENDED = "campaign-ended",
+}
+
+export enum ClientJourneyStepStatus {
+  DONE = "done",
+  SKIPPED = "skipped",
+}
+
+// Who performed the update that completed/reopened a step — "system" covers
+// automatic backend triggers (payment webhook, doc approval, etc.) where no
+// real actor is available to attribute the change to.
+export enum ClientJourneyActorType {
+  CLIENT = "client",
+  SYSTEM = "system",
+  ADMIN = "admin",
+}
+
+export enum ClientJourneySource {
+  AUTOMATIC = "automatic",
+  MANUAL = "manual",
 }

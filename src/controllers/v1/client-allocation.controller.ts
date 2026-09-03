@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import { getSequelize } from "../../utils/sequelize";
+import { fieldEncryption } from "../../utils/field-encryption";
+import { User } from "../../models/v1/user.model";
+import { Op } from "sequelize";
 
 const logger = getServiceLogger("client-allocation-controller");
 
@@ -26,20 +29,18 @@ async function getActivePCs() {
     
     // Only get users with 'assistant' role (Placement Controllers)
     // You can add more roles here if needed, like 'pc', 'placement_controller'
-    const sql = `
-      SELECT id, "firstName", "lastName", email, role
-      FROM users
-      WHERE role IN ('assistant', 'pc', 'placement_controller')
-        AND "isActive" = true
-      ORDER BY "firstName", "lastName"
-    `;
-    
-    const [results] = await sequelize.query(sql);
+    const results = await User.findAll({
+      where: {
+        role: { [Op.in]: ["assistant", "pc", "placement_controller"] },
+        isActive: true,
+      },
+      order: [["firstName", "ASC"], ["lastName", "ASC"]],
+    });
     logger.info(`Found ${results.length} active Placement Controllers`);
     
-    return (results as any[]).map((user: any) => ({
+    return results.map((user: any) => ({
       name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      email: user.email || '',
+      email: (user as any).email || '',
       role: user.role,
       id: user.id
     })).filter((pc: any) => pc.name && pc.name.trim() !== '');
@@ -142,21 +143,26 @@ export const getClientAllocation = catchAsyncError(
     
     // Get all clients with their assigned PC
     // credentials.id is the value stored as applications.client_id
+    // AssignedPCName/AssignedPCEmail plaintext columns are always blanked on
+    // save (see Credentials.captureAndClearPlaintext) — read the live value
+    // from the encrypted columns instead, same as findCredentialsByAssignedEmail.
     const credentialsQuery = `
       SELECT
         id,
         "seekExternalCredentials"->>'Full_Name' as full_name,
-        "AssignedPCName",
-        "AssignedPCEmail"
+        pgp_sym_decrypt("AssignedPCNameEncrypted", :key) as "AssignedPCName",
+        pgp_sym_decrypt("AssignedPCEmailEncrypted", :key) as "AssignedPCEmail"
       FROM credentials
       WHERE "deletedAt" IS NULL
         AND "isDeleted" = false
         AND "seekExternalCredentials"->>'Active' = 'true'
         AND "seekExternalCredentials"->>'Full_Name' IS NOT NULL
-      ORDER BY "AssignedPCName" NULLS LAST, full_name
+      ORDER BY pgp_sym_decrypt("AssignedPCNameEncrypted", :key) NULLS LAST, full_name
     `;
-    
-    const [credentials] = await sequelize.query(credentialsQuery);
+
+    const [credentials] = await sequelize.query(credentialsQuery, {
+      replacements: { key: fieldEncryption.getKey() },
+    });
     logger.info(`Found ${credentials.length} active clients`);
     
     if (credentials.length === 0) {
@@ -205,10 +211,8 @@ export const getClientAllocation = catchAsyncError(
         const entry = pcClientMap.get(assignedPCName)!;
         entry.names.push(clientName);
         entry.ids.push(credentialId);
-        logger.debug(`Allocated: ${clientName} (credentialId=${credentialId}) → ${assignedPCName}`);
       } else {
         unAllocatedClients.push(clientName);
-        logger.debug(`Unallocated: ${clientName}`);
       }
     }
 

@@ -3,6 +3,7 @@ import db from "@/database/postgres";
 import { getConnectedRedis } from "@/config/redis";
 import catchAsyncError from "@/utils/catchAsyncError";
 import ErrorHandler from "@/utils/errorHandler";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { getServiceLogger } from "@/utils/createLogger";
 import { Op } from "sequelize";
 
@@ -24,7 +25,7 @@ const getQueueKey = (queue: string, environment: string) => {
 export const getUsers = catchAsyncError(async (req: Request, res: Response) => {
   const credentials = await db.credentials.findMany({
     where: { deletedAt: null },
-    attributes: ["seekEmail", "clientId"],
+    attributes: ["clientId"],
   });
 
   const customerIds = credentials
@@ -125,12 +126,7 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
 
     const uniqueEmails = [...new Set(emailEntries.map((e) => e.email))];
 
-    const credentials: any[] = await db.credentials.findMany({
-      where: {
-        seekEmail: { [Op.in]: uniqueEmails },
-      },
-      attributes: ["id", "seekEmail", "clientId"],
-    });
+    const credentials: any[] = await fieldEncryption.findCredentialsBySeekEmail(uniqueEmails);
 
     const uniqueClientIds = [
       ...new Set(
@@ -142,7 +138,7 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
       where: {
         id: { [Op.in]: uniqueClientIds },
       },
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     const credentialByEmail = new Map(
@@ -195,11 +191,16 @@ export const getTable = catchAsyncError(async (req: Request, res: Response) => {
     const results: any[] = [];
 
     for (const item of processData) {
-      const cred = await db.credentials.findUnique({
-        where: {
-          [Op.or]: [{ id: item.client_id }, { seekEmail: item.email }],
-        },
+      let cred = await db.credentials.findUnique({
+        where: { id: item.client_id },
       });
+
+      if (!cred && item.email) {
+        const matched = await fieldEncryption.findCredentialsBySeekEmail([item.email]);
+        if (matched.length) {
+          cred = await db.credentials.findUnique({ where: { id: matched[0].id } });
+        }
+      }
 
       if (!cred) continue;
 
@@ -337,7 +338,7 @@ export const getLoadBalancer = catchAsyncError(async (req: Request, res: Respons
         const client = JSON.parse(data);
         const cred = await db.credentials.findUnique({
           where: { id: client.id },
-          attributes: ["clientId", "seekEmail"],
+          attributes: ["clientId"],
         });
 
         if (!cred) continue;

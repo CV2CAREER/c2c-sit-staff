@@ -2,7 +2,9 @@ import { Router } from "express";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import {
+  activateClientSupportDocumentController,
   deleteClientSupportDocumentController,
+  deleteClientSupportDocumentsBulkController,
   getClientSupportDocumentUrlController,
   getClientSupportDocumentsController,
   saveAiRoleTitleRecommendationsController,
@@ -32,6 +34,18 @@ clientSupportDocumentRouterV1.get(
 clientSupportDocumentRouterV1.get(
   "/:id/download-url",
   getClientSupportDocumentUrlController,
+);
+
+clientSupportDocumentRouterV1.patch(
+  "/:id/activate",
+  activateClientSupportDocumentController,
+);
+
+// Bulk delete must be registered before /:id so "bulk" isn't matched as an id
+clientSupportDocumentRouterV1.delete(
+  "/bulk",
+  authorizeRoles("admin"),
+  deleteClientSupportDocumentsBulkController,
 );
 
 clientSupportDocumentRouterV1.delete(

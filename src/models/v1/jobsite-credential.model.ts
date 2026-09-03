@@ -13,6 +13,7 @@ import {
   AfterCreate,
   BeforeSave,
   BeforeUpdate,
+  AfterUpdate,
   AfterFind,
 } from "sequelize-typescript";
 import { User } from "./user.model";
@@ -21,6 +22,9 @@ import {
   JobsiteCredentialRejectionReason,
 } from "../../utils/enum";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("jobsite-credential.model");
 
 @Table({
   tableName: "jobsite_credentials",
@@ -43,13 +47,21 @@ export class JobsiteCredential extends Model {
 
   // The client-supplied application email. Never the client's real
   // mailbox password — that is never requested or stored.
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  generatedPassword?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get generatedPassword(): string | undefined {
+    return this.getDataValue("generatedPassword") as string | undefined;
+  }
+  set generatedPassword(value: string | undefined) {
+    this.setDataValue("generatedPassword", value);
+  }
 
   @AllowNull(false)
   @Default(JobsiteCredentialStatus.PENDING)
@@ -136,6 +148,8 @@ export class JobsiteCredential extends Model {
       pii._pii_generatedPassword ?? null,
       options.transaction,
     );
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_generatedPassword) instance.setDataValue('generatedPassword', pii._pii_generatedPassword);
   }
 
   @BeforeUpdate
@@ -157,13 +171,23 @@ export class JobsiteCredential extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const decrypted = await fieldEncryption.getDecryptedJobsiteCredential(instance.id);
         if (!decrypted) return;
         if (decrypted.email) instance.setDataValue('email', decrypted.email);
         if (decrypted.generatedPassword) instance.setDataValue('generatedPassword', decrypted.generatedPassword);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt fields for jobsite credential ${instance.id}: ${error?.message || error}`);
+      }
     }));
+  }
+
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: JobsiteCredential) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_generatedPassword) instance.setDataValue('generatedPassword', pii._pii_generatedPassword);
   }
 }
 

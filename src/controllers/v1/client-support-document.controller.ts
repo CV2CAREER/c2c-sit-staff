@@ -9,7 +9,9 @@ import {
   ClientSupportDocumentCategory,
 } from "../../models/v1/client-support-document.model";
 import {
+  activateClientSupportDocument,
   deleteClientSupportDocument,
+  deleteClientSupportDocumentsBulk,
   getClientSupportDocument,
   listClientSupportDocuments,
   saveAiRoleTitleRecommendations,
@@ -193,6 +195,28 @@ export const getClientSupportDocumentUrlController = catchAsyncError(
   },
 );
 
+/** PATCH — activate a support document, sharing it with the client. */
+export const activateClientSupportDocumentController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.apiError(new ErrorHandler("Document id is required", 400));
+    }
+
+    try {
+      const document = await activateClientSupportDocument(id, req.user?.id);
+      return res.apiSuccess(document, "Document activated successfully", 200);
+    } catch (error: any) {
+      const statusCode = error instanceof ErrorHandler ? error.statusCode : 500;
+      logger.error(`Failed to activate client support document ${id}: ${error.message}`);
+      return res.apiError(
+        new ErrorHandler(error.message || "Failed to activate document", statusCode),
+      );
+    }
+  },
+);
+
 /** DELETE — soft-delete the record and remove the object from storage. */
 export const deleteClientSupportDocumentController = catchAsyncError(
   async (req: Request, res: Response) => {
@@ -205,6 +229,21 @@ export const deleteClientSupportDocumentController = catchAsyncError(
     await deleteClientSupportDocument(id, req.user?.id);
 
     return res.apiSuccess({}, "Document deleted successfully", 200);
+  },
+);
+
+/** DELETE — bulk soft-delete client support documents. */
+export const deleteClientSupportDocumentsBulkController = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.apiError(new ErrorHandler("ids must be a non-empty array", 400));
+    }
+
+    const result = await deleteClientSupportDocumentsBulk(ids, req.user?.id);
+
+    return res.apiSuccess(result, "Documents deleted successfully", 200);
   },
 );
 

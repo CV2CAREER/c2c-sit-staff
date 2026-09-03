@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Op } from "sequelize";
 import ErrorHandler from "@/utils/errorHandler";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
+import { MissingInfoResponse } from "@/models/v1/missing-info-response.model";
 import { MissingInfoTemplate } from "@/models/v1/missing-info-template.model";
 import { MissingInfoTemplateField } from "@/models/v1/missing-info-template-field.model";
 import { User } from "@/models/v1/user.model";
@@ -10,6 +11,7 @@ import { sendMail } from "@/config/sendGrid";
 import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
 import { JustCallTriggerService } from "@/services/justcall.service";
 import { SlackService } from "@/services/slack.service";
+import { fieldEncryption } from "@/utils/field-encryption";
 import { auditTrailApplicationService } from "./audit-trail.application.service";
 import {
   SlackChannel,
@@ -33,6 +35,8 @@ export class MissingInfoRequestStaffService {
       channel: "email" | "whatsapp";
     },
     user: any,
+    host?: string,
+    protocol?: string,
   ) {
     const template = await MissingInfoTemplate.findByPk(data.templateId, {
       include: [{ model: MissingInfoTemplateField, as: "fields" }],
@@ -84,45 +88,66 @@ export class MissingInfoRequestStaffService {
     setImmediate(async () => {
       try {
         if (data.channel === "email") {
-          const fieldLabels = fields
-            .filter((f: any) => f.isVisible)
-            .map((f: any) => f.fieldLabel)
-            .join(", ");
+          let clientEmail = client.email as string | null | undefined;
 
-          await Promise.allSettled([
-            sendMail({
-              email: client.email,
-              subject: `Action Required: Information needed for your application`,
-              templateName: "client-missing-info-v2.ejs",
-              templateData: {
-                name: client.firstName || "there",
-                templateName: template.name,
-                fieldLabels,
-                refereeCount: template.type === "referee_block"
-                  ? Math.max(...fields.map((f: any) => f.refereeBlockIndex || 0))
-                  : null,
-                personalMessage: data.personalMessage || null,
-                updateMissingInfoUrl,
-                currentYear: new Date().getFullYear(),
-              },
-            }),
-            sendMail({
-              email: TEAM_EMAIL,
-              subject: `Missing Info Request Sent — ${client.firstName} ${client.lastName || ""}`,
-              templateName: "admin-missing-info-v2.ejs",
-              templateData: {
-                clientName: `${client.firstName || ""} ${client.lastName || ""}`.trim(),
-                clientEmail: client.email,
-                templateName: template.name,
-                category: template.category.replace(/_/g, " "),
-                fieldCount: fields.length,
-                updateMissingInfoUrl,
-                triggeredBy: staffName,
-                channel: "email",
-                currentYear: new Date().getFullYear(),
-              },
-            }),
-          ]);
+          if (!clientEmail) {
+            try {
+              const decrypted = await fieldEncryption.getDecryptedUsersBatch([data.clientId]);
+              const contact = decrypted.get(data.clientId);
+              if (contact?.email) {
+                clientEmail = contact.email;
+                logger.info(`Initial send: resolved email via field_encryption fallback for ${data.clientId}`);
+              }
+            } catch (decErr: any) {
+              logger.warn(`Initial send: field_encryption fallback failed for ${data.clientId}: ${decErr?.message || decErr}`);
+            }
+          }
+
+          if (!clientEmail) {
+            logger.error(
+              `Initial send email skipped for client ${data.clientId} — no resolvable email found`,
+            );
+          } else {
+            const fieldLabels = fields
+              .filter((f: any) => f.isVisible)
+              .map((f: any) => f.fieldLabel)
+              .join(", ");
+
+            await Promise.allSettled([
+              sendMail({
+                email: clientEmail,
+                subject: `Action Required: Information needed for your application`,
+                templateName: "client-missing-info-v2.ejs",
+                templateData: {
+                  name: client.firstName || "there",
+                  templateName: template.name,
+                  fieldLabels,
+                  refereeCount: template.type === "referee_block"
+                    ? Math.max(...fields.map((f: any) => f.refereeBlockIndex || 0))
+                    : null,
+                  personalMessage: data.personalMessage || null,
+                  updateMissingInfoUrl,
+                  currentYear: new Date().getFullYear(),
+                },
+              }),
+              sendMail({
+                email: TEAM_EMAIL,
+                subject: `Missing Info Request Sent — ${client.firstName} ${client.lastName || ""}`,
+                templateName: "admin-missing-info-v2.ejs",
+                templateData: {
+                  clientName: `${client.firstName || ""} ${client.lastName || ""}`.trim(),
+                  clientEmail: clientEmail,
+                  templateName: template.name,
+                  category: template.category.replace(/_/g, " "),
+                  fieldCount: fields.length,
+                  updateMissingInfoUrl,
+                  triggeredBy: staffName,
+                  channel: "email",
+                  currentYear: new Date().getFullYear(),
+                },
+              }),
+            ]);
+          }
         }
 
         if (data.channel === "whatsapp") {
@@ -143,6 +168,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — ${client.firstName} ${client.lastName || ""} was sent "${template.name}" via ${data.channel === "whatsapp" ? "WhatsApp" : "Email"}.`,
             `Please confirm delivery and follow up if unopened after 48h.`,
@@ -219,7 +246,7 @@ export class MissingInfoRequestStaffService {
     const { rows, count } = await MissingInfoRequest.findAndCountAll({
       where,
       include: [
-        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
         { model: MissingInfoTemplate, attributes: ["id", "name"] },
       ],
       order: [["createdAt", "DESC"]],
@@ -284,7 +311,75 @@ export class MissingInfoRequestStaffService {
     return stats;
   }
 
-  static async bulkSendReminder(requestIds: string[], user: any) {
+  static async getRequestResponses(requestId: string) {
+    const request = await MissingInfoRequest.findByPk(requestId, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "type"],
+          include: [{ model: MissingInfoTemplateField, as: "fields" }] },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    const responses = await MissingInfoResponse.findAll({
+      where: { requestId },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const template = (request as any).template;
+    const templateFields = template?.fields || [];
+
+    const fieldMap = new Map<string, { fieldLabel: string; fieldType: string; isRefereeBlock: boolean; refereeBlockIndex: number | null }>();
+    for (const f of templateFields) {
+      fieldMap.set(f.id, {
+        fieldLabel: f.fieldLabel,
+        fieldType: f.fieldType,
+        isRefereeBlock: f.isRefereeBlock ?? false,
+        refereeBlockIndex: f.refereeBlockIndex ?? null,
+      });
+    }
+
+    const formattedResponses = responses.map((r: any) => {
+      const fieldInfo = fieldMap.get(r.fieldId) || { fieldLabel: r.fieldLabel || r.fieldName || "Unknown", fieldType: "text", isRefereeBlock: false, refereeBlockIndex: null };
+      return {
+        id: r.id,
+        fieldId: r.fieldId,
+        fieldName: r.fieldName,
+        fieldLabel: fieldInfo.fieldLabel,
+        fieldType: fieldInfo.fieldType,
+        isRefereeBlock: fieldInfo.isRefereeBlock,
+        refereeBlockIndex: fieldInfo.refereeBlockIndex,
+        fieldValue: r.fieldValue,
+        createdAt: r.createdAt,
+      };
+    });
+
+    return {
+      request: {
+        id: request.id,
+        token: request.token,
+        status: request.status,
+        channel: request.channel,
+        personalMessage: request.personalMessage,
+        requestedAt: request.requestedAt,
+        requestedByName: request.requestedByName,
+        template: template ? { id: template.id, name: template.name, type: template.type } : null,
+        client: (request as any).targetUser
+          ? {
+              id: (request as any).targetUser.id,
+              name: `${(request as any).targetUser.firstName || ""} ${(request as any).targetUser.lastName || ""}`.trim(),
+              email: (request as any).targetUser.email,
+            }
+          : null,
+      },
+      responses: formattedResponses,
+    };
+  }
+
+  static async bulkSendReminder(requestIds: string[], user: any, host?: string, protocol?: string) {
     if (!requestIds || requestIds.length === 0) {
       throw new ErrorHandler("No request IDs provided", 400);
     }
@@ -333,13 +428,28 @@ export class MissingInfoRequestStaffService {
               });
             }
 
-            if (req.channel === "email" && req.targetUser?.email) {
+            let bulkEmail = req.targetUser?.email as string | null | undefined;
+
+            if (req.channel === "email" && !bulkEmail) {
+              try {
+                const decrypted = await fieldEncryption.getDecryptedUsersBatch([req.targetUserId]);
+                const contact = decrypted.get(req.targetUserId);
+                if (contact?.email) {
+                  bulkEmail = contact.email;
+                  logger.info(`Bulk reminder: resolved email via field_encryption fallback for ${req.targetUserId}`);
+                }
+              } catch (decErr: any) {
+                logger.warn(`Bulk reminder: field_encryption fallback failed for ${req.targetUserId}: ${decErr?.message || decErr}`);
+              }
+            }
+
+            if (req.channel === "email" && bulkEmail) {
               await sendMail({
-                email: req.targetUser.email,
+                email: bulkEmail,
                 subject: `Reminder: Information needed for your application`,
                 templateName: "client-missing-info-v2.ejs",
                 templateData: {
-                  name: req.targetUser.firstName || "there",
+                  name: req.targetUser?.firstName || "there",
                   templateName: req.template?.name || "Missing Information",
                   fieldLabels: "",
                   refereeCount: null,
@@ -348,6 +458,10 @@ export class MissingInfoRequestStaffService {
                   currentYear: new Date().getFullYear(),
                 },
               });
+            } else if (req.channel === "email" && !bulkEmail) {
+              logger.warn(
+                `Bulk reminder email skipped for request ${req.id} — target user ${req.targetUserId} has no resolvable email`,
+              );
             }
 
             totalProcessed++;
@@ -379,6 +493,8 @@ export class MissingInfoRequestStaffService {
           channel: SlackChannel.TOWN_CRIER,
           teamMentions: "CSM",
           trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
           body: [
             `RC follow-up — Reminder sent to ${clientSummaries.join(", ")}.`,
             `${totalProcessed} clients, ${totalProcessed} templates. Please confirm delivery.`,
@@ -405,5 +521,418 @@ export class MissingInfoRequestStaffService {
       totalProcessing: requests.length,
       message: "Reminders are being processed in the background.",
     };
+  }
+
+  static async getClientRequests(targetUserId: string) {
+    const { rows } = await MissingInfoRequest.findAndCountAll({
+      where: { targetUserId },
+      include: [
+        { model: MissingInfoTemplate, attributes: ["id", "name", "category", "type"] },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: 500,
+    });
+
+    const requestIds = rows.map((r) => r.id);
+    const counts: Record<string, number> = {};
+    if (requestIds.length > 0) {
+      const responseRows = await MissingInfoResponse.findAll({
+        where: { requestId: requestIds },
+        attributes: ["requestId"],
+      });
+      for (const rr of responseRows) {
+        counts[rr.requestId] = (counts[rr.requestId] || 0) + 1;
+      }
+    }
+
+    const now = new Date();
+    return rows.map((req: any) => {
+      const createdAt = new Date(req.createdAt);
+      const ageDays = Math.max(0, Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)));
+      return {
+        id: req.id,
+        token: req.token,
+        missingInfoType: req.missingInfoType,
+        templateId: req.templateId,
+        templateName: req.template?.name ?? null,
+        templateCategory: req.template?.category ?? null,
+        templateType: req.template?.type ?? null,
+        status: req.status,
+        channel: req.channel,
+        requestedById: req.requestedById,
+        requestedByName: req.requestedByName,
+        requestedAt: req.requestedAt,
+        createdAt: req.createdAt,
+        fulfilledAt: req.fulfilledAt ?? null,
+        ageDays,
+        reminderCount: req.reminderCount ?? 0,
+        lastReminderAt: req.lastReminderAt ?? null,
+        reusedFromRequestId: req.reusedFromRequestId ?? null,
+        responseCount: counts[req.id] || 0,
+      };
+    });
+  }
+
+  static async cancelRequest(id: string, user: any, host?: string, protocol?: string) {
+    const request = await MissingInfoRequest.findByPk(id, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name"] },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    if (!["pending", "viewed", "in_progress"].includes(request.status)) {
+      throw new ErrorHandler("Only open requests can be cancelled", 409);
+    }
+
+    await request.update({ status: "cancelled" });
+
+    const staffName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+    const clientName = `${(request as any).targetUser?.firstName || ""} ${(request as any).targetUser?.lastName || ""}`.trim();
+    const templateName = (request as any).template?.name ?? null;
+
+    setImmediate(async () => {
+      try {
+        await SlackService.notify({
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          type: SlackEventType.MISSING_INFO_CANCELLED,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
+          body: [
+            `Missing info request cancelled — ${clientName} (${templateName || request.missingInfoType}).`,
+            `Cancelled by ${staffName}. No further action needed.`,
+          ].join("\n"),
+        });
+
+        await auditTrailApplicationService.log({
+          action: "missing_info_request.cancelled",
+          actorUserId: user?.id || user?.userId || "unknown",
+          targetType: "MissingInfoRequest",
+          targetKey: request.id,
+          after: { status: "cancelled" },
+          metadata: { clientName, templateName, cancelledBy: staffName },
+        });
+      } catch (err) {
+        logger.error("Background notification failed for cancelRequest:", err);
+      }
+    });
+
+    return { id: request.id, status: "cancelled" };
+  }
+
+  static async declineRequest(id: string, user: any, host?: string, protocol?: string) {
+    const request = await MissingInfoRequest.findByPk(id, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "category"] },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    if (!["pending", "viewed", "in_progress"].includes(request.status)) {
+      throw new ErrorHandler("Only open requests can be declined", 409);
+    }
+
+    await request.update({ status: "declined" });
+
+    const staffName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+    const clientName = `${(request as any).targetUser?.firstName || ""} ${(request as any).targetUser?.lastName || ""}`.trim();
+    const templateName = (request as any).template?.name ?? null;
+    const clientEmail = (request as any).targetUser?.email ?? null;
+
+    setImmediate(async () => {
+      try {
+        await SlackService.notify({
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          type: SlackEventType.MISSING_INFO_DECLINED,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
+          body: [
+            `Missing info request declined — ${clientName} (${templateName || request.missingInfoType}).`,
+            `The client chose not to provide this. Staff have been notified.`,
+          ].join("\n"),
+        });
+
+        if (TEAM_EMAIL) {
+          await sendMail({
+            email: TEAM_EMAIL,
+            subject: `Client declined a missing info request — ${clientName}`,
+            templateName: "admin-missing-info-v2.ejs",
+            templateData: {
+              clientName,
+              clientEmail: clientEmail || "—",
+              templateName: templateName || "Missing Information",
+              category: (request as any).template?.category?.replace(/_/g, " ") || "—",
+              fieldCount: 0,
+              updateMissingInfoUrl: request.missingInfoUrl || "—",
+              triggeredBy: staffName,
+              channel: "declined",
+              currentYear: new Date().getFullYear(),
+            },
+          });
+        }
+
+        await auditTrailApplicationService.log({
+          action: "missing_info_request.declined",
+          actorUserId: user?.id || user?.userId || "unknown",
+          targetType: "MissingInfoRequest",
+          targetKey: request.id,
+          after: { status: "declined" },
+          metadata: { clientName, templateName, declinedBy: staffName },
+        });
+      } catch (err) {
+        logger.error("Background notification failed for declineRequest:", err);
+      }
+    });
+
+    return { id: request.id, status: "declined" };
+  }
+
+  static async reusePriorSubmission(requestId: string, clientId: string, user: any, host?: string, protocol?: string) {
+    const source = await MissingInfoRequest.findByPk(requestId, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name", "type"] },
+      ],
+    });
+
+    if (!source) {
+      throw new ErrorHandler("Source request not found", 404);
+    }
+
+    if (source.status !== "submitted") {
+      throw new ErrorHandler("Only submitted requests can be reused", 409);
+    }
+
+    if (source.targetUserId !== clientId) {
+      throw new ErrorHandler("Source request does not belong to this client", 409);
+    }
+
+    const sourceResponses = await MissingInfoResponse.findAll({ where: { requestId } });
+    const staffName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+    const clientName = `${(source as any).targetUser?.firstName || ""} ${(source as any).targetUser?.lastName || ""}`.trim();
+    const templateName = (source as any).template?.name ?? null;
+    const token = crypto.randomUUID();
+
+    const newRequest = await MissingInfoRequest.create({
+      targetUserId: clientId,
+      requestedById: user?.id || user?.userId || "unknown",
+      requestedByName: staffName,
+      missingInfoType: source.missingInfoType,
+      missingInfoUrl: `${CLIENT_APP_DOMAIN}/missing-info/${token}/disclaimer`,
+      jobURL: null,
+      jobApplicationId: null,
+      templateId: source.templateId,
+      token,
+      status: "submitted",
+      channel: source.channel,
+      fulfilledAt: new Date(),
+      reusedFromRequestId: requestId,
+      personalMessage: null,
+    });
+
+    for (const r of sourceResponses) {
+      await MissingInfoResponse.create({
+        requestId: newRequest.id,
+        fieldId: r.fieldId,
+        fieldName: r.fieldName,
+        fieldLabel: r.fieldLabel,
+        fieldValue: r.fieldValue,
+      });
+    }
+
+    setImmediate(async () => {
+      try {
+        await SlackService.notify({
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          type: SlackEventType.MISSING_INFO_REUSE,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
+          body: [
+            `Missing info reused — ${clientName}: "${templateName || source.missingInfoType}" reused from a prior submission (${requestId}).`,
+            `Reused by ${staffName}. New request is pre-filled as submitted.`,
+          ].join("\n"),
+        });
+
+        await auditTrailApplicationService.log({
+          action: "missing_info_request.reused",
+          actorUserId: user?.id || user?.userId || "unknown",
+          targetType: "MissingInfoRequest",
+          targetKey: newRequest.id,
+          after: { status: "submitted", reusedFromRequestId: requestId },
+          metadata: {
+            clientName,
+            templateName,
+            sourceRequestId: requestId,
+            copiedResponses: sourceResponses.length,
+            reusedBy: staffName,
+          },
+        });
+      } catch (err) {
+        logger.error("Background notification failed for reusePriorSubmission:", err);
+      }
+    });
+
+    return {
+      id: newRequest.id,
+      status: "submitted",
+      sourceRequestId: requestId,
+      copiedResponses: sourceResponses.length,
+    };
+  }
+
+  static async sendSingleReminder(id: string, user: any, host?: string, protocol?: string) {
+    const request = await MissingInfoRequest.findByPk(id, {
+      include: [
+        { model: User, as: "targetUser", attributes: ["id", "firstName", "lastName", "email", "whatsappNumber"] },
+        { model: MissingInfoTemplate, attributes: ["id", "name"] },
+      ],
+    });
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    if (!["pending", "viewed", "in_progress"].includes(request.status)) {
+      throw new ErrorHandler("Only open requests can be reminded", 409);
+    }
+
+    let fieldLabels = "";
+    if (request.templateId) {
+      const fields = await MissingInfoTemplateField.findAll({
+        where: { templateId: request.templateId, isVisible: true },
+        order: [["sortOrder", "ASC"]],
+      });
+      fieldLabels = fields.map((f: any) => f.fieldLabel).join(", ");
+    }
+
+    const newCount = (request.reminderCount || 0) + 1;
+    await request.update({ reminderCount: newCount, lastReminderAt: new Date() });
+
+    const staffName = user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown";
+    const clientName = `${(request as any).targetUser?.firstName || ""} ${(request as any).targetUser?.lastName || ""}`.trim();
+    const templateName = (request as any).template?.name ?? null;
+
+    setImmediate(async () => {
+      try {
+        if (request.channel === "whatsapp" && (request as any).targetUser?.whatsappNumber) {
+          await JustCallTriggerService.sendMsg({
+            action: "notify-missing-info",
+            payload: {
+              name: (request as any).targetUser.firstName,
+              phone: ((request as any).targetUser.whatsappNumber ?? "").replace("+", ""),
+            },
+          });
+        }
+
+        let clientEmail = (request as any).targetUser?.email as string | null | undefined;
+
+        if (request.channel === "email" && !clientEmail) {
+          try {
+            const decrypted = await fieldEncryption.getDecryptedUsersBatch([request.targetUserId]);
+            const contact = decrypted.get(request.targetUserId);
+            if (contact?.email) {
+              clientEmail = contact.email;
+              logger.info(`Resolved target user email via field_encryption fallback: ${request.targetUserId}`);
+            }
+          } catch (decErr: any) {
+            logger.warn(`field_encryption fallback failed for ${request.targetUserId}: ${decErr?.message || decErr}`);
+          }
+        }
+
+        if (request.channel === "email" && clientEmail) {
+          await sendMail({
+            email: clientEmail,
+            subject: `Reminder: Information needed for your application`,
+            templateName: "client-missing-info-v2.ejs",
+            templateData: {
+              name: (request as any).targetUser?.firstName || "there",
+              templateName: templateName || "Missing Information",
+              fieldLabels,
+              refereeCount: null,
+              personalMessage: (request as any).personalMessage || null,
+              updateMissingInfoUrl: request.missingInfoUrl,
+              currentYear: new Date().getFullYear(),
+            },
+          });
+        } else if (request.channel === "email" && !clientEmail) {
+          logger.warn(
+            `Reminder email skipped for request ${request.id} — target user ${request.targetUserId} has no resolvable email (channel=${request.channel})`,
+          );
+        }
+
+        await SlackService.notify({
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SENDGRID,
+          severity: SlackSeverity.INFO,
+          type: SlackEventType.MISSING_INFO_SENT,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          trigger: staffName,
+          ...(host ? { host } : {}),
+          ...(protocol ? { protocol } : {}),
+          body: [
+            `RC follow-up — Reminder sent to ${clientName} for "${templateName || request.missingInfoType}".`,
+            `${newCount} reminder${newCount > 1 ? "s" : ""} sent in total. Please confirm delivery.`,
+          ].join("\n"),
+        });
+
+        await auditTrailApplicationService.log({
+          action: "missing_info_request.reminder_sent",
+          actorUserId: user?.id || user?.userId || "unknown",
+          targetType: "MissingInfoRequest",
+          targetKey: request.id,
+          after: { reminderCount: newCount },
+          metadata: { clientName, templateName, sentBy: staffName },
+        });
+      } catch (err) {
+        logger.error("Background notification failed for sendSingleReminder:", err);
+      }
+    });
+
+    return { id: request.id, reminderCount: newCount, message: "Reminder queued for delivery" };
+  }
+
+  static async logCopyAudit(id: string, user: any) {
+    const request = await MissingInfoRequest.findByPk(id);
+
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+
+    await auditTrailApplicationService.log({
+      action: "missing_info_request.copied",
+      actorUserId: user?.id || user?.userId || "unknown",
+      targetType: "MissingInfoRequest",
+      targetKey: request.id,
+      metadata: {
+        copiedAt: new Date().toISOString(),
+        copiedBy: user?.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "Unknown",
+      },
+    });
+
+    return { id: request.id, logged: true };
   }
 }

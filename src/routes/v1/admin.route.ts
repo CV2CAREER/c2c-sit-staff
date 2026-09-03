@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminPipelineStats,
+  getAdminPipelineLists,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -15,6 +17,7 @@ import {
   downloadAdminUsersExport,
   postAdminUsersExport,
   postAdminUsers,
+  postAdminPrecheckEmail,
   patchAdminUserPersona,
   postAdminSendUserOtp,
   postAdminVerifyUserOtp,
@@ -48,7 +51,7 @@ import {
   putCampaignSheet,
 } from "../../controllers/v1/campaign-sheets.controller";
 import { updateKeywordsController } from "../../controllers/v1/update-keywords.controller";
-import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController } from "../../controllers/v1/admin-plan.controller";
+import { updateUserPlanByFeatureController, confirmUserProgressController, activateCoralPlanController, deactivateCoralPlanController, generateAmbassadorLinkController, getUserPlanSummaryController, extendUserPlanController } from "../../controllers/v1/admin-plan.controller";
 import { discoveryQueueController } from "../../controllers/v1/loadbalancer.controller";
 
 import { getSamplesController } from "../../controllers/v1/samples.controller";
@@ -58,6 +61,7 @@ import { aiPromptQueueController } from "@/controllers/v1/ai-prompt-queue.contro
 
 import { aiSimulationController } from "@/controllers/v1/ai-simulation.controller";
 import { aiPromptVcsController } from "@/controllers/v1/ai-prompt-vcs.controller";
+import vcsPromptRouterV1 from "./vcs-prompt.route";
 import { supportAiPromptController } from "@/controllers/v1/support-ai-prompt.controller";
 import applicationRouterV1 from "./application.route";
 import interviewPrepRouterV1 from "./interview-prep.route";
@@ -95,7 +99,7 @@ import clientSampleRouterV1 from "./client-sample.route";
 import trainingTrackerRouterV1 from "./training-tracker.route";
 import crTrackingRouterV1 from "./cr-tracking.route";
 import crEOTRouterV1 from "./cr-eot.route";
-import adminAiRouterV1 from "./admin-ai.route";
+import adminAiVettingRouterV1 from "./admin-ai-vetting.route";
 import adminDocumentRouterV1 from "./admin-document.route";
 import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
@@ -139,16 +143,16 @@ adminRouterV1.put(
 adminRouterV1.use("/applications", applicationRouterV1);
 adminRouterV1.use("/interview-prep", interviewPrepRouterV1);
 adminRouterV1.use(
-  "/ai",
+  "/ai-vetting",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminAiRouterV1,
+  adminAiVettingRouterV1,
 );
 adminRouterV1.use(
   "/prompts",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminAiRouterV1,
+  vcsPromptRouterV1,
 );
 adminRouterV1.use(
   "/training-tracker",
@@ -471,6 +475,20 @@ adminRouterV1.get(
   getAdminAnalytics,
 );
 adminRouterV1.get(
+  "/pipeline-stats",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineStats,
+);
+adminRouterV1.get(
+  "/pipeline-lists",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineLists,
+);
+adminRouterV1.get(
   "/campaign",
   checkBlacklistedTokens,
   isUserAuthenticated,
@@ -611,6 +629,13 @@ adminRouterV1.post(
   writeAccess,
   postAdminUsers,
 );
+adminRouterV1.post(
+  "/users/precheck-email",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postAdminPrecheckEmail,
+);
 adminRouterV1.patch(
   "/users/persona",
   checkBlacklistedTokens,
@@ -639,6 +664,20 @@ adminRouterV1.patch(
   isUserAuthenticated,
   writeAccess,
   updateUserPlanByFeatureController,
+);
+adminRouterV1.get(
+  "/users/:userId/plan",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getUserPlanSummaryController,
+);
+adminRouterV1.patch(
+  "/users/:userId/plan/extend",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  extendUserPlanController,
 );
 adminRouterV1.post(
   "/users/:userId/activate-coral",

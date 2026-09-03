@@ -68,7 +68,7 @@ export class VaChatService {
 
         const credentials = await Credentials.findOne({
           where: { clientId: userId, isDeleted: false },
-          attributes: ["seekEmail", "currentCity", "SeekAggregator", "onboardingDate"],
+          attributes: ["currentCity", "SeekAggregator", "onboardingDate"],
           raw: true,
         });
 

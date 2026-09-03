@@ -21,6 +21,9 @@ import { User } from "./user.model";
 import { CredentialsTour } from "./credentials-tour.model";
 import { SeekExternalCredentials } from "../../types/credentials.types";
 import { fieldEncryption } from "../../utils/field-encryption";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("credentials.model");
 
 @Table({
   tableName: "credentials",
@@ -52,13 +55,21 @@ export class Credentials extends Model {
     }
   }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(64))
-  seekEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get seekEmail(): string | undefined {
+    return this.getDataValue("seekEmail") as string | undefined;
+  }
+  set seekEmail(value: string | undefined) {
+    this.setDataValue("seekEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(64))
-  seekPassword?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get seekPassword(): string | undefined {
+    return this.getDataValue("seekPassword") as string | undefined;
+  }
+  set seekPassword(value: string | undefined) {
+    this.setDataValue("seekPassword", value);
+  }
 
   @AllowNull(true)
   @Column(DataType.STRING(32))
@@ -121,29 +132,53 @@ export class Credentials extends Model {
   @Column(DataType.DATE)
   deletedAt?: Date;
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedPCName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedPCName(): string | undefined {
+    return this.getDataValue("AssignedPCName") as string | undefined;
+  }
+  set AssignedPCName(value: string | undefined) {
+    this.setDataValue("AssignedPCName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedPCEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedPCEmail(): string | undefined {
+    return this.getDataValue("AssignedPCEmail") as string | undefined;
+  }
+  set AssignedPCEmail(value: string | undefined) {
+    this.setDataValue("AssignedPCEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedVetName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedVetName(): string | undefined {
+    return this.getDataValue("AssignedVetName") as string | undefined;
+  }
+  set AssignedVetName(value: string | undefined) {
+    this.setDataValue("AssignedVetName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedVetEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedVetEmail(): string | undefined {
+    return this.getDataValue("AssignedVetEmail") as string | undefined;
+  }
+  set AssignedVetEmail(value: string | undefined) {
+    this.setDataValue("AssignedVetEmail", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedCompletedName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedCompletedName(): string | undefined {
+    return this.getDataValue("AssignedCompletedName") as string | undefined;
+  }
+  set AssignedCompletedName(value: string | undefined) {
+    this.setDataValue("AssignedCompletedName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING(128))
-  AssignedCompletedEmail?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get AssignedCompletedEmail(): string | undefined {
+    return this.getDataValue("AssignedCompletedEmail") as string | undefined;
+  }
+  set AssignedCompletedEmail(value: string | undefined) {
+    this.setDataValue("AssignedCompletedEmail", value);
+  }
 
   @AllowNull(true)
   @Default('FLIGHT')
@@ -189,6 +224,12 @@ export class Credentials extends Model {
 
   @BeforeSave
   static captureAndClearPlaintext(instance: Credentials) {
+    // instance.changed() must be read here, before the setDataValue calls
+    // below blank these fields — @BeforeUpdate runs after @BeforeSave, so by
+    // then these fields always look unchanged (both old and new value are
+    // null), which was silently skipping re-encryption on every unassign
+    // (setting an already-decrypted field to null never reached the DB).
+    (instance as any)._pii_changedFields = instance.changed() || [];
     (instance as any)._pii_seekEmail = instance.getDataValue('seekEmail');
     (instance as any)._pii_seekPassword = instance.getDataValue('seekPassword');
     (instance as any)._pii_AssignedPCName = instance.getDataValue('AssignedPCName');
@@ -230,9 +271,9 @@ export class Credentials extends Model {
 
   @BeforeUpdate
   static async encryptSensitiveFieldsOnUpdate(instance: Credentials, options: any) {
-    const changed = instance.changed();
-    if (!changed) return;
     const pii = instance as any;
+    const changed: string[] = pii._pii_changedFields || [];
+    if (!changed.length) return;
     if (changed.some(f => ['seekPassword'].includes(f))) {
       await fieldEncryption.encryptCredentialFields(
         instance.id,
@@ -240,7 +281,8 @@ export class Credentials extends Model {
         options.transaction,
       );
     }
-    if (changed.some(f => ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'].includes(f))) {
+    const extendedFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'];
+    if (changed.some(f => extendedFields.includes(f))) {
       await fieldEncryption.encryptCredentialExtendedFields(
         instance.id,
         pii._pii_seekEmail ?? null,
@@ -251,6 +293,7 @@ export class Credentials extends Model {
         pii._pii_AssignedCompletedName ?? null,
         pii._pii_AssignedCompletedEmail ?? null,
         options.transaction,
+        changed.filter(f => extendedFields.includes(f)),
       );
     }
   }
@@ -260,22 +303,31 @@ export class Credentials extends Model {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
     await Promise.all(list.map(async (instance) => {
+      if (!instance?.id) return;
       try {
         const pw = await fieldEncryption.getDecryptedSeekPassword(instance.id);
         if (pw !== null) instance.setDataValue('seekPassword', pw);
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt seek password for credential ${instance.id}: ${error?.message || error}`);
+      }
       try {
         const ext = await fieldEncryption.getDecryptedCredentialExtended(instance.id);
         if (ext) {
-          if (ext.seekEmail) instance.setDataValue('seekEmail', ext.seekEmail);
-          if (ext.AssignedPCName) instance.setDataValue('AssignedPCName', ext.AssignedPCName);
-          if (ext.AssignedPCEmail) instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
-          if (ext.AssignedVetName) instance.setDataValue('AssignedVetName', ext.AssignedVetName);
-          if (ext.AssignedVetEmail) instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
-          if (ext.AssignedCompletedName) instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
-          if (ext.AssignedCompletedEmail) instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+          // Always overwrite with the decrypted value (or null) — never leave the
+          // stale plaintext column as the dataValue. Otherwise a plaintext column
+          // populated outside the model hooks would surface in the UI even after
+          // the encrypted assignment was cleared.
+          instance.setDataValue('seekEmail', ext.seekEmail);
+          instance.setDataValue('AssignedPCName', ext.AssignedPCName);
+          instance.setDataValue('AssignedPCEmail', ext.AssignedPCEmail);
+          instance.setDataValue('AssignedVetName', ext.AssignedVetName);
+          instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
+          instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
+          instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
         }
-      } catch {}
+      } catch (error: any) {
+        logger.warn(`Failed to decrypt extended fields for credential ${instance.id}: ${error?.message || error}`);
+      }
     }));
   }
 }

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { getServiceLogger } from "../utils/createLogger";
 import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
+import { fieldEncryption } from "../utils/field-encryption";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
@@ -45,7 +46,7 @@ export async function submitJobsiteCredential(
     }
 
     const client = await User.findByPk(clientId, {
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     if (!client) {
@@ -149,7 +150,7 @@ export async function addJobsiteCredentialManually(
     }
 
     const client = await User.findByPk(clientId, {
-      attributes: ["id", "firstName", "lastName", "email"],
+      attributes: ["id", "firstName", "lastName"],
     });
 
     if (!client) {
@@ -210,7 +211,7 @@ export async function acceptJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -298,6 +299,7 @@ async function sendAcceptedNotification(
 export async function unapproveJobsiteCredential(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -306,7 +308,7 @@ export async function unapproveJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -350,7 +352,7 @@ export async function unapproveJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendUnapprovedNotification(credential, statusFrom, statusTo);
+        await sendUnapprovedNotification(credential, statusFrom, statusTo, host);
       } catch (err) {
         logger.error("Background unapproved Slack notification error:", err);
       }
@@ -369,10 +371,12 @@ async function sendUnapprovedNotification(
   credential: JobsiteCredential,
   statusFrom: JobsiteCredentialStatus,
   statusTo: JobsiteCredentialStatus,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -392,6 +396,7 @@ async function sendUnapprovedNotification(
 export async function sendTestEmail(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -400,7 +405,7 @@ export async function sendTestEmail(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],
@@ -431,7 +436,7 @@ export async function sendTestEmail(
 
     setImmediate(async () => {
       try {
-        await sendTestEmailMessage(credential, adminId);
+        await sendTestEmailMessage(credential, adminId, host);
       } catch (err) {
         logger.error("Background test email send error:", err);
       }
@@ -448,6 +453,7 @@ export async function sendTestEmail(
 async function sendTestEmailMessage(
   credential: JobsiteCredential,
   adminId: string,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const currentYear = new Date().getFullYear();
@@ -489,6 +495,7 @@ async function sendTestEmailMessage(
   }
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -507,6 +514,7 @@ async function sendTestEmailMessage(
 export async function approveJobsiteCredential(
   credentialId: string,
   adminId: string,
+  host: string,
 ): Promise<JobsiteCredential> {
   try {
     const credential = await JobsiteCredential.findOne({
@@ -515,6 +523,12 @@ export async function approveJobsiteCredential(
         {
           model: User,
           as: "client",
+          // "email" must be requested here — the User model's email is a
+          // virtual field only populated by its @AfterFind hook's batch
+          // decrypt, which is itself gated on "email" being in this
+          // attributes list (a perf guard against decrypting on every
+          // unrelated User fetch). Without it, sendActiveNotifications
+          // below sent client.email as undefined, which SendGrid rejects.
           attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
@@ -555,7 +569,7 @@ export async function approveJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendActiveNotifications(credential, adminId);
+        await sendActiveNotifications(credential, adminId, host);
       } catch (err) {
         logger.error("Background active notification error:", err);
       }
@@ -573,6 +587,7 @@ export async function approveJobsiteCredential(
 async function sendActiveNotifications(
   credential: JobsiteCredential,
   adminId: string,
+  host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -617,6 +632,7 @@ async function sendActiveNotifications(
   }
 
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.INFO,
@@ -631,7 +647,8 @@ export async function rejectJobsiteCredential(
   credentialId: string,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note?: string,
+  host: string,
+  note: string | undefined,
 ): Promise<JobsiteCredential> {
   try {
     if (
@@ -650,6 +667,10 @@ export async function rejectJobsiteCredential(
         {
           model: User,
           as: "client",
+          // "email" must be requested here — see approveJobsiteCredential's
+          // identical fix above for why (the AfterFind decrypt hook is
+          // gated on it being in this list). This function's own
+          // jobsite-credential-failed email also sends client.email.
           attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
@@ -684,7 +705,7 @@ export async function rejectJobsiteCredential(
 
     setImmediate(async () => {
       try {
-        await sendRejectedNotifications(credential, adminId, reason, note);
+        await sendRejectedNotifications(credential, adminId, reason, host, note);
       } catch (err) {
         logger.error("Background reject notification error:", err);
       }
@@ -702,7 +723,8 @@ async function sendRejectedNotifications(
   credential: JobsiteCredential,
   adminId: string,
   reason: JobsiteCredentialRejectionReason,
-  note?: string,
+  host: string,
+  note: string | undefined,
 ): Promise<void> {
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
@@ -754,6 +776,7 @@ async function sendRejectedNotifications(
 
   // Slack → TOWN_CRIER
   await SlackService.notify({
+    host,
     node: SlackNode.USER_MANAGEMENT,
     provider: SlackProvider.SYSTEM,
     severity: SlackSeverity.ERROR,
@@ -880,10 +903,10 @@ export async function importJobsiteCredentialsFromCsv(
     }
 
     try {
-      const client = await User.findOne({
-        where: { email: clientEmail.trim() },
+      const clientUserId = await fieldEncryption.findUserByEmail(clientEmail.trim());
+      const client = clientUserId ? await User.findByPk(clientUserId, {
         attributes: ["id"],
-      });
+      }) : null;
 
       if (!client) {
         result.skipped.push({
@@ -944,7 +967,6 @@ export async function getMyJobsiteCredential(
     // (and audited) exclusively through revealJobsiteCredentialPassword.
     const credential = await JobsiteCredential.findOne({
       where: { clientId },
-      attributes: { exclude: ["generatedPassword"] },
       order: [["createdAt", "DESC"]],
     });
 
@@ -966,7 +988,6 @@ async function attachSpc<T extends { clientId: string }>(
 ): Promise<T & { spcName: string | null; spcEmail: string | null }> {
   const assignment = await Credentials.findOne({
     where: { clientId: credential.clientId },
-    attributes: ["AssignedCompletedName", "AssignedCompletedEmail"],
   });
 
   return {
@@ -985,7 +1006,6 @@ export async function getClientJobsiteCredential(
     // audited action, not a side effect of loading this page.
     const credential = await JobsiteCredential.findOne({
       where: { clientId },
-      attributes: { exclude: ["generatedPassword"] },
       order: [["createdAt", "DESC"]],
     });
 
@@ -1010,7 +1030,7 @@ export async function getAllJobsiteCredentials(): Promise<
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName"],
           required: true,
         },
       ],

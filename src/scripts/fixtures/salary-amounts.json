@@ -1,0 +1,181 @@
+[
+  {
+    "label": "Anually",
+    "options": [
+      {
+        "label": "0",
+        "value": 0
+      },
+      {
+        "label": "40K",
+        "value": 40
+      },
+      {
+        "label": "50K",
+        "value": 50
+      },
+      {
+        "label": "60K",
+        "value": 60
+      },
+      {
+        "label": "70K",
+        "value": 70
+      },
+      {
+        "label": "80K",
+        "value": 80
+      },
+      {
+        "label": "90K",
+        "value": 90
+      },
+      {
+        "label": "100K",
+        "value": 100
+      },
+      {
+        "label": "120K",
+        "value": 120
+      },
+      {
+        "label": "150K",
+        "value": 150
+      },
+      {
+        "label": "200K",
+        "value": 200
+      },
+      {
+        "label": "250K",
+        "value": 250
+      },
+      {
+        "label": "300K",
+        "value": 300
+      }
+    ]
+  },
+  {
+    "label": "Monthly",
+    "options": [
+      {
+        "label": "0",
+        "value": 0
+      },
+      {
+        "label": "2K",
+        "value": 2
+      },
+      {
+        "label": "3K",
+        "value": 3
+      },
+      {
+        "label": "4K",
+        "value": 4
+      },
+      {
+        "label": "5K",
+        "value": 5
+      },
+      {
+        "label": "6K",
+        "value": 6
+      },
+      {
+        "label": "7K",
+        "value": 7
+      },
+      {
+        "label": "8K",
+        "value": 8
+      },
+      {
+        "label": "9K",
+        "value": 9
+      },
+      {
+        "label": "10K",
+        "value": 10
+      },
+      {
+        "label": "12K",
+        "value": 12
+      },
+      {
+        "label": "15K",
+        "value": 15
+      },
+      {
+        "label": "20K",
+        "value": 20
+      },
+      {
+        "label": "25K",
+        "value": 25
+      },
+      {
+        "label": "30K",
+        "value": 30
+      }
+    ]
+  },
+  {
+    "label": "Hourly",
+    "options": [
+      {
+        "label": "0",
+        "value": 0
+      },
+      {
+        "label": "15",
+        "value": 15
+      },
+      {
+        "label": "20",
+        "value": 20
+      },
+      {
+        "label": "25",
+        "value": 25
+      },
+      {
+        "label": "30",
+        "value": 30
+      },
+      {
+        "label": "35",
+        "value": 35
+      },
+      {
+        "label": "40",
+        "value": 40
+      },
+      {
+        "label": "45",
+        "value": 45
+      },
+      {
+        "label": "60",
+        "value": 60
+      },
+      {
+        "label": "75",
+        "value": 75
+      },
+      {
+        "label": "100",
+        "value": 100
+      },
+      {
+        "label": "125",
+        "value": 125
+      },
+      {
+        "label": "175",
+        "value": 175
+      }
+    ]
+  }
+]

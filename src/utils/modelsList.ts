@@ -65,9 +65,12 @@ import { CommunicationTemplate } from '../models/v1/communication-template.model
 import { ClientContent } from '../models/v1/client-content.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
+import { VCSPromptUsageLog } from '../models/v1/vcs-prompt-usage-log.model';
+import { VCSPromptSimulationRun } from '../models/v1/vcs-prompt-simulation.model';
 import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
 import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
+import { MissingInfoResponse } from '../models/v1/missing-info-response.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
@@ -75,6 +78,24 @@ import { EmailTemplate } from "../models/v1/email-template.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
+import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
+import { PreferenceQuestion } from '../models/v1/preference-question.model';
+import { DropdownOption } from '../models/v1/dropdown-option.model';
+import { JustCallEvent } from '../models/v1/justcall-event.model';
+import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
+import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
+import { JustCallMessageEventLog } from '../models/v1/justcall-message-log.model';
+import { JustCallWhatsAppMessage } from '../models/v1/justcall-whatsapp-message.model';
+import { JustCallWhatsAppMessageLog } from '../models/v1/justcall-whatsapp-message-log.model';
+import { JustCallSalesDialerCall } from '../models/v1/justcall-sales-dialer-call.model';
+import { JustCallSalesDialerCallLog } from '../models/v1/justcall-sales-dialer-call-log.model';
+import { JustCallContact } from '../models/v1/justcall-contact.model';
+import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
+import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
+import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
+import { SendGridEvent } from '../models/v1/sendgrid-event.model';
+import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 
 export const modelList = [
   User,
@@ -147,13 +168,34 @@ export const modelList = [
   CvRevamp,
   VCSPrompt,
   VCS,
+  VCSPromptUsageLog,
+  VCSPromptSimulationRun,
   MissingInfoRequest,
   MissingInfoTemplate,
   MissingInfoTemplateField,
+  MissingInfoResponse,
   ClientSupportDocument,
   EmailLog,
   EmailTemplate,
   InterviewPackProcess,
   TourCount,
   CredentialsTour,
+  ClientJourneyStep,
+  AiVettingComparison,
+  PreferenceQuestion,
+  DropdownOption,
+  JustCallEvent,
+  JustCallEventLog,
+  JustCallMessageEvent,
+  JustCallMessageEventLog,
+  JustCallWhatsAppMessage,
+  JustCallWhatsAppMessageLog,
+  JustCallSalesDialerCall,
+  JustCallSalesDialerCallLog,
+  JustCallContact,
+  JustCallContactLog,
+  JustCallAppointment,
+  JustCallAppointmentLog,
+  SendGridEvent,
+  SendGridEventLog,
 ];

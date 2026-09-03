@@ -82,6 +82,9 @@ export const COOKIE_SECRET = process.env.COOKIE_SECRET;
 // JUST CALL
 export const JUSTCALL_API_KEY = process.env.JUSTCALL_API_KEY!;
 export const JUSTCALL_API_SECRET = process.env.JUSTCALL_API_SECRET!;
+// Optional: value expected on the `x-webhook-secret` header of inbound JustCall
+// webhook events. Leave unset to accept events without verification.
+export const JUSTCALL_WEBHOOK_SECRET = process.env.JUSTCALL_WEBHOOK_SECRET;
 
 // SLACK
 export const SLACK_USERS_TOKEN = process.env.SLACK_USERS_TOKEN;
@@ -92,6 +95,10 @@ export const SLACK_ADMIN_CHANNEL_ID = process.env.SLACK_ADMIN_CHANNEL_ID;
 export const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY!;
 export const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL!;
 export const SENDGRID_FROM_NAME = 'CVtoCAREER PTY LTD';
+// Base64 "Verification Key" from SendGrid's Event Webhook page, once
+// "Signed Event Webhook" is toggled on. Optional: if unset, incoming events
+// are accepted without signature verification.
+export const SENDGRID_WEBHOOK_PUBLIC_KEY = process.env.SENDGRID_WEBHOOK_PUBLIC_KEY;
 
 // PASSWORD HASH
 export const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS!);
@@ -114,6 +121,8 @@ export const JWT_VERIFICATION_SECRET_KEY_EXPIRY = parseInt(
 // EMAIL
 export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
 export const PRODUCT_OWNER_EMAIL = process.env.PRODUCT_OWNER_EMAIL || process.env.TEAM_EMAIL!;
+// BCC'd on every customer-facing email (not internal/admin notifications) — see sendMail() in config/sendGrid.ts
+export const CUSTOMER_EMAIL_BCC = process.env.CUSTOMER_EMAIL_BCC;
 
 // ACCESS TOKEN SECRET
 export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;

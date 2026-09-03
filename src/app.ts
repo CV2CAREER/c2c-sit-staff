@@ -21,6 +21,13 @@ import { getServiceLogger } from "./utils/createLogger";
 import centralAppErrors from "./middlewares/centralAppErrors";
 import responseFormatter from "./middlewares/responseFormatter";
 import deployWebhookRouterV1 from "./routes/v1/deploy-webhook.route";
+import justCallWebhookRouterV1 from "./routes/v1/justcall-webhook.route";
+import justCallMessageWebhookRouterV1 from "./routes/v1/justcall-message-webhook.route";
+import justCallWhatsAppWebhookRouterV1 from "./routes/v1/justcall-whatsapp-webhook.route";
+import justCallSalesDialerWebhookRouterV1 from "./routes/v1/justcall-sales-dialer-webhook.route";
+import justCallContactWebhookRouterV1 from "./routes/v1/justcall-contact-webhook.route";
+import justCallAppointmentWebhookRouterV1 from "./routes/v1/justcall-appointment-webhook.route";
+import sendGridWebhookRouterV1 from "./routes/v1/sendgrid-webhook.route";
 import { swaggerSpec } from "./config/swagger";
 import swaggerUi from "swagger-ui-express";
 import adminRouterV1 from "./routes/v1/admin.route";
@@ -31,7 +38,6 @@ import resourcesRouterV1 from "./routes/v1/resources.route";
 import unsubscribedUserRouterV1 from "./routes/v1/unsubscribed-user.route";
 import referralRouterV1 from "./routes/v1/referral.route";
 import promotionRouterV1 from "./routes/v1/promotion.route";
-import blogRouterV1 from "./routes/v1/blog.route";
 import trainingTrackerRouterV1 from "./routes/v1/training-tracker.route";
 import salesOperationRouterV1 from "./routes/v1/sales-operation.route";
 import crTrackingRouterV1 from "./routes/v1/cr-tracking.route";
@@ -55,6 +61,8 @@ import clientSupportDocumentRouterV1 from "./routes/v1/client-support-document.r
 import viewAsUserRouterV1 from "./routes/v1/view-as-user.route";
 import communicationTemplateRouterV1 from "./routes/v1/communication-template.route";
 import missingInfoTemplateRouterV1 from "./routes/v1/missing-info-template.route";
+import preferenceQuestionRouterV1 from "./routes/v1/preference-question.route";
+import dropdownOptionRouterV1 from "./routes/v1/dropdown-option.route";
 import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
 
 // Assistant routes
@@ -67,6 +75,7 @@ import placementRouterV1 from "./routes/v1/placement.route";
 import coachRouterV1 from "./routes/v1/coach.route"
 import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route"
 import jobsiteCredentialRouterV1 from "./routes/v1/jobsite-credential.route"
+import clientJourneyRouterV1 from "./routes/v1/client-journey.route"
 
 export const app = express();
 
@@ -194,6 +203,13 @@ app.get("/api/ping", async (req, res) => {
 app.use("/api/v1", requestLogger);
 app.use("/api/v1/user", userRouterV1);
 app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
+app.use("/api/v1/justcallWebhook", justCallWebhookRouterV1);
+app.use("/api/v1/justcallMessageWebhook", justCallMessageWebhookRouterV1);
+app.use("/api/v1/justcallWhatsappWebhook", justCallWhatsAppWebhookRouterV1);
+app.use("/api/v1/justcallSalesDialerWebhook", justCallSalesDialerWebhookRouterV1);
+app.use("/api/v1/justcallContactWebhook", justCallContactWebhookRouterV1);
+app.use("/api/v1/justcallAppointmentWebhook", justCallAppointmentWebhookRouterV1);
+app.use("/api/v1/sendgridWebhook", sendGridWebhookRouterV1);
 app.use("/api/v1/admin", adminRouterV1);
 app.use("/api/v1/slack-manage", slackManageRouterV1);
 app.use("/api/v1/audit-trail", auditTrailRouterV1);
@@ -204,7 +220,6 @@ app.use("/api/v1/resources", resourcesRouterV1);
 app.use("/api/v1/unsubscribed-users", unsubscribedUserRouterV1);
 app.use("/api/v1/referrals", referralRouterV1);
 app.use("/api/v1/promotions", promotionRouterV1);
-app.use("/api/v1/blog", blogRouterV1);
 app.use("/api/v1/training-tracker", trainingTrackerRouterV1);
 app.use("/api/v1/sales-operation", salesOperationRouterV1);
 app.use("/api/v1/cr-tracking/eot", crEOTRouterV1);
@@ -224,6 +239,8 @@ app.use("/api/v1/admin/client-support-documents", clientSupportDocumentRouterV1)
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
 app.use("/api/v1/communication-template", communicationTemplateRouterV1);
 app.use("/api/v1/missing-info-templates", missingInfoTemplateRouterV1);
+app.use("/api/v1/preference-questions", preferenceQuestionRouterV1);
+app.use("/api/v1/admin/dropdown-options", dropdownOptionRouterV1);
 app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
@@ -239,6 +256,7 @@ app.use("/api/v1/schedules", scheduleRouterV1);
 app.use("/api/v1/availabilities", availabilityRouterV1);
 app.use("/api/v1/client-availabilities", clientAvailabilityRouterV1);
 app.use("/api/v1/jobsite-credentials", jobsiteCredentialRouterV1);
+app.use("/api/v1/client-journey", clientJourneyRouterV1);
 app.use("/api/v1/sessions", sessionsRouterV1);
 
 // 15. Swagger Documentation

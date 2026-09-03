@@ -166,7 +166,7 @@ export async function deleteAvailability(
         {
           association: "user",
           required: true,
-          attributes: ["id", "email", "firstName"],
+          attributes: ["id", "firstName"],
         },
       ],
     });

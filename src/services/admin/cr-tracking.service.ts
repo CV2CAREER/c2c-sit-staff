@@ -166,7 +166,7 @@ export class CRTrackingService {
         CRTrackingHistory.findAll({
           where: whereClause,
           include: [
-            { association: "performer", attributes: ["id", "email", "firstName", "lastName"] }
+            { association: "performer", attributes: ["id", "firstName", "lastName", "email"] }
           ],
           order: [['createdAt', 'DESC']],
           offset,

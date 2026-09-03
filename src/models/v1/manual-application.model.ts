@@ -89,6 +89,16 @@ export class ManualApplication extends Model {
   @Column(DataType.STRING(700))
   Country!: string;
 
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.STRING(700))
+  Salary?: string;
+
+  @AllowNull(true)
+  @Default('N/A')
+  @Column(DataType.TEXT)
+  Skills?: string;
+
   @ForeignKey(() => User)
   @AllowNull(true)
   @Column(DataType.STRING)

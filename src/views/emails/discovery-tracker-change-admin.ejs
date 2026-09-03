@@ -49,7 +49,7 @@
           <p><strong>Record ID:</strong> <%= recordId %></p>
           <p>
             <strong>Job Title:</strong>
-            <% if (jobUrl) { %>
+            <% if (typeof jobUrl !== 'undefined' && jobUrl) { %>
               <a href="<%= jobUrl %>" style="color: #004174;"><%= jobTitle %></a><br />
               <a href="<%= jobUrl %>" style="color: #6b7280; font-size: 12px; word-break: break-all;"><%= jobUrl %></a>
             <% } else { %>
@@ -57,7 +57,7 @@
             <% } %>
           </p>
           <p><strong>Advertiser:</strong> <%= advertiser %></p>
-          <% if (changedFields) { %>
+          <% if (typeof changedFields !== 'undefined' && changedFields) { %>
           <p><strong>Fields Changed:</strong> <%= changedFields %></p>
           <% } %>
           <p><strong>Triggered By:</strong> <%= triggeredBy %></p>

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { User } from "../models/v1/user.model";
 import ErrorHandler from "../utils/errorHandler";
+import { fieldEncryption } from "../utils/field-encryption";
 import { Role } from "../utils/enum";
 import { getServiceLogger } from "../utils/createLogger";
 import { CLIENT_APP_DOMAIN, VIEW_AS_USER_JWT_SECRET } from "../config/env";
@@ -36,10 +37,10 @@ export const viewAsUserService = async (
     throw new ErrorHandler("Target user email is required.", 400);
   }
 
-  const targetUser = await User.findOne({
-    where: { email: targetEmail.trim().toLowerCase() },
-    attributes: ["id", "email", "role"],
-  });
+  const targetUserId = await fieldEncryption.findUserByEmail(targetEmail.trim().toLowerCase());
+  const targetUser = targetUserId ? await User.findByPk(targetUserId, {
+    attributes: ["id", "role", "email"],
+  }) : null;
 
   if (!targetUser) {
     logger.warn(`Target user not found: ${targetEmail}`);

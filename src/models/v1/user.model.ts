@@ -17,7 +17,9 @@ import {
   BeforeSave,
   AfterCreate,
   BeforeUpdate,
+  AfterUpdate,
   AfterFind,
+  BeforeFind,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import {
@@ -28,6 +30,7 @@ import {
   Progress,
   RevenueStatus,
   Role,
+  SignUpAs,
   SampleDispatchedStatus,
   SocialPlatform,
 } from "../../utils/enum";
@@ -38,8 +41,37 @@ import {
 } from "../../types/user.types";
 import { ResumeReview, ServiceHistory } from "../../types/userdocument.types";
 import { fieldEncryption } from "../../utils/field-encryption";
-import { Profile } from "./profile.model";
-import { Referrer } from "./referrer.model";
+import { getServiceLogger } from "../../utils/createLogger";
+
+const logger = getServiceLogger("user.model");
+
+const PII_CONTACT_FIELDS = ["email", "phoneNumber", "whatsappNumber"];
+const PII_BANK_FIELDS = ["bankName", "bsbCode", "bankAccountNo", "bankAccountName"];
+
+const wantsField = (attributes: any, fieldName: string): boolean => {
+  if (!attributes) return true;
+  if (Array.isArray(attributes)) {
+    return attributes.some((a) => (typeof a === "string" ? a === fieldName : false));
+  }
+  if (typeof attributes === "object") {
+    const { include, exclude } = attributes as any;
+    if (Array.isArray(include)) {
+      return include.some((a) => (typeof a === "string" ? a === fieldName : false));
+    }
+    if (Array.isArray(exclude)) {
+      return !exclude.includes(fieldName);
+    }
+  }
+  return true;
+};
+
+const wantsContactDecrypt = (attributes: any): boolean =>
+  PII_CONTACT_FIELDS.some((f) => wantsField(attributes, f));
+
+const wantsBankDecrypt = (attributes: any): boolean =>
+  PII_BANK_FIELDS.some((f) => wantsField(attributes, f));
+
+import { Profile } from "./profile.model";import { Referrer } from "./referrer.model";
 import { Partner } from "./partner.model";
 import { SalesConsultant } from "./sales-consultant.model";
 import { CustomerService } from "./customer-service.model";
@@ -47,6 +79,7 @@ import { Location } from "./location.model";
 import { Aggregator } from "./aggregator.model";
 import { Credentials } from "./credentials.model";
 import { Plan } from "./plan.model";
+import { ClientJourneyStep } from "./client-journey-step.model";
 
 @Table({
   tableName: "users",
@@ -80,9 +113,13 @@ export class User extends Model {
   @Column(DataType.STRING)
   zohoId?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  email!: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get email(): string {
+    return this.getDataValue("email") as string;
+  }
+  set email(value: string) {
+    this.setDataValue("email", value);
+  }
 
   @AllowNull(false)
   @Column(DataType.STRING)
@@ -114,13 +151,21 @@ export class User extends Model {
   @Column(DataType.ENUM(...Object.values(CustomerClass)))
   customerClass!: CustomerClass;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  phoneNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get phoneNumber(): string | undefined {
+    return this.getDataValue("phoneNumber") as string | undefined;
+  }
+  set phoneNumber(value: string | undefined) {
+    this.setDataValue("phoneNumber", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  whatsappNumber?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get whatsappNumber(): string | undefined {
+    return this.getDataValue("whatsappNumber") as string | undefined;
+  }
+  set whatsappNumber(value: string | undefined) {
+    this.setDataValue("whatsappNumber", value);
+  }
 
   // Stored as JSONB for flexibility (previously Mixed)
   @AllowNull(true)
@@ -187,7 +232,7 @@ export class User extends Model {
   resetTokenVerified!: boolean;
 
   @AllowNull(false)
-  @Default(ApplicationStatus.HOLD)
+  @Default(ApplicationStatus.NOT_STARTED)
   @Column(DataType.ENUM(...Object.values(ApplicationStatus)))
   applicationStatus!: ApplicationStatus;
 
@@ -292,6 +337,12 @@ export class User extends Model {
   @Column(DataType.ENUM(...Object.values(Role)))
   role!: Role;
 
+  // What the user actually picked in the "Sign up as" field at registration —
+  // unlike `role`, this is never remapped afterwards (e.g. ambassador stays Ambassador here).
+  @AllowNull(true)
+  @Column(DataType.ENUM(...Object.values(SignUpAs)))
+  signUpAs?: SignUpAs;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)
@@ -313,21 +364,37 @@ export class User extends Model {
   @Column(DataType.TEXT)
   accessToken?: string;
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankName(): string | undefined {
+    return this.getDataValue("bankName") as string | undefined;
+  }
+  set bankName(value: string | undefined) {
+    this.setDataValue("bankName", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bsbCode?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bsbCode(): string | undefined {
+    return this.getDataValue("bsbCode") as string | undefined;
+  }
+  set bsbCode(value: string | undefined) {
+    this.setDataValue("bsbCode", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountNo?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountNo(): string | undefined {
+    return this.getDataValue("bankAccountNo") as string | undefined;
+  }
+  set bankAccountNo(value: string | undefined) {
+    this.setDataValue("bankAccountNo", value);
+  }
 
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  bankAccountName?: string;
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get bankAccountName(): string | undefined {
+    return this.getDataValue("bankAccountName") as string | undefined;
+  }
+  set bankAccountName(value: string | undefined) {
+    this.setDataValue("bankAccountName", value);
+  }
 
   @AllowNull(false)
   @Default(SampleDispatchedStatus.PENDING)
@@ -422,6 +489,10 @@ export class User extends Model {
   // Aggregator relationship
   @HasMany(() => Aggregator, "userId")
   aggregators?: Aggregator[];
+  
+  // Client journey step-completion relationship
+  @HasMany(() => ClientJourneyStep, "userId")
+  journeySteps?: ClientJourneyStep[];
 
   // Credentials relationship
   @HasOne(() => Credentials, "clientId")
@@ -531,26 +602,64 @@ export class User extends Model {
     }
   }
 
+  @AfterUpdate
+  static restorePlaintextOnUpdate(instance: User) {
+    const pii = instance as any;
+    if (pii._pii_email) instance.setDataValue('email', pii._pii_email);
+    if (pii._pii_phoneNumber) instance.setDataValue('phoneNumber', pii._pii_phoneNumber);
+    if (pii._pii_whatsappNumber) instance.setDataValue('whatsappNumber', pii._pii_whatsappNumber);
+    if (pii._pii_bankName) instance.setDataValue('bankName', pii._pii_bankName);
+    if (pii._pii_bsbCode) instance.setDataValue('bsbCode', pii._pii_bsbCode);
+    if (pii._pii_bankAccountNo) instance.setDataValue('bankAccountNo', pii._pii_bankAccountNo);
+    if (pii._pii_bankAccountName) instance.setDataValue('bankAccountName', pii._pii_bankAccountName);
+  }
+
+  @BeforeFind
+  static async captureRequestedAttributes(options: any) {
+    (options as any).__requestedAttributes = options?.attributes;
+  }
+
   @AfterFind
-  static async decryptSensitiveFields(instances: User[] | User | null) {
+  static async decryptSensitiveFields(instances: User[] | User | null, options: any) {
     if (!instances) return;
     const list = Array.isArray(instances) ? instances : [instances];
-    await Promise.all(list.map(async (instance) => {
+    const ids = list.filter(i => i?.id).map(i => i.id);
+    if (!ids.length) return;
+
+    const attributes = (options as any)?.__requestedAttributes;
+
+    let contactMap = new Map();
+    let bankMap = new Map();
+    if (wantsContactDecrypt(attributes)) {
       try {
-        const decrypted = await fieldEncryption.getDecryptedUser(instance.id);
-        if (decrypted?.email) instance.setDataValue('email', decrypted.email);
-        if (decrypted?.phoneNumber) instance.setDataValue('phoneNumber', decrypted.phoneNumber);
-        if (decrypted?.whatsappNumber) instance.setDataValue('whatsappNumber', decrypted.whatsappNumber);
-      } catch {}
+        contactMap = await fieldEncryption.getDecryptedUsersBatch(ids);
+      } catch (error: any) {
+        logger.warn(`Failed to batch-decrypt contact fields: ${error?.message || error}`);
+      }
+    }
+    if (wantsBankDecrypt(attributes)) {
       try {
-        const bank = await fieldEncryption.getDecryptedUserBank(instance.id);
-        if (bank?.bankName) {
-          instance.setDataValue('bankName', bank.bankName);
-          instance.setDataValue('bsbCode', bank.bsbCode);
-          instance.setDataValue('bankAccountNo', bank.bankAccountNo);
-          instance.setDataValue('bankAccountName', bank.bankAccountName);
-        }
-      } catch {}
-    }));
+        bankMap = await fieldEncryption.getDecryptedUsersBankBatch(ids);
+      } catch (error: any) {
+        logger.warn(`Failed to batch-decrypt bank fields: ${error?.message || error}`);
+      }
+    }
+
+    for (const instance of list) {
+      if (!instance?.id) continue;
+      const contact = contactMap.get(instance.id);
+      if (contact) {
+        if (contact.email) instance.setDataValue('email', contact.email);
+        if (contact.phoneNumber) instance.setDataValue('phoneNumber', contact.phoneNumber);
+        if (contact.whatsappNumber) instance.setDataValue('whatsappNumber', contact.whatsappNumber);
+      }
+      const bank = bankMap.get(instance.id);
+      if (bank?.bankName) {
+        instance.setDataValue('bankName', bank.bankName);
+        instance.setDataValue('bsbCode', bank.bsbCode);
+        instance.setDataValue('bankAccountNo', bank.bankAccountNo);
+        instance.setDataValue('bankAccountName', bank.bankAccountName);
+      }
+    }
   }
 }

@@ -17,6 +17,7 @@ import {
   ROLE_TITLE_HEADERS,
   type RoleTitleRow,
 } from "../../utils/roleTitleCsv";
+import { xlsxBufferToCsv } from "../../utils/roleTitleXlsx";
 import { getServiceLogger } from "../../utils/createLogger";
 import ErrorHandler from "../../utils/errorHandler";
 import { SlackService } from "../slack.service";
@@ -67,7 +68,7 @@ const notifyUpload = (
     let uploadedByLabel = "system";
     if (uploadedBy) {
       const uploader = await User.findByPk(uploadedBy, {
-        attributes: ["id", "firstName", "lastName"],
+        attributes: ["id", "firstName", "lastName", "email"],
       }).catch(() => null);
 
       uploadedByLabel = uploader
@@ -77,11 +78,12 @@ const notifyUpload = (
 
     const fileLines = documents
       .map((doc) => {
-        // Role Title CSVs carry their parsed rows, so the alert can say how
-        // many titles were shared and that they still need client sign-off.
+        // Role Title CSV/XLSX uploads carry parsed rows the client confirms
+        // one by one; a PDF in this same category has no rows to confirm, so
+        // it's just a shared file like any other support document.
         const suffix =
-          doc.category ===
-          ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
+          doc.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+          (doc.roleTitles?.length ?? 0) > 0
             ? ` — Role Titles — ${doc.roleTitles?.length ?? 0} titles, awaiting client confirmation`
             : "";
 
@@ -112,10 +114,13 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
       logger.error(`❌ Slack notification failed: ${err}`);
     }
 
+    // Only true when there are actual rows for the client to confirm — a PDF
+    // upload in this category has none, so it shouldn't claim "needs your
+    // confirmation" in the email subject.
     const hasRoleTitles = documents.some(
       (doc) =>
-        doc.category ===
-        ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS,
+        doc.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+        (doc.roleTitles?.length ?? 0) > 0,
     );
     const fileList = documents.map((doc) => doc.filename).join(", ");
     const typeList = Array.from(
@@ -178,7 +183,14 @@ Next steps: Review the uploads at ${staffUrl}/admin-dashboard/users/${client.id}
 
 /** Allowed extensions per category — mirrors the staff UI. */
 const ALLOWED_EXTENSIONS: Record<ClientSupportDocumentCategory, string[]> = {
-  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: ["csv"],
+  // csv/xlsx carry structured role-title rows (extracted below); pdf is a
+  // plain document the client just views/downloads, same as the other
+  // support categories — no row extraction happens for it.
+  [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]: [
+    "csv",
+    "xlsx",
+    "pdf",
+  ],
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: [
     "png",
     "jpg",
@@ -202,23 +214,72 @@ export interface UploadSupportDocumentsInput {
   /** Staff user performing the upload. */
   uploadedBy?: string;
   files: IncomingSupportFile[];
+  /**
+   * Manual admin uploads go live immediately (default true) — an admin
+   * already reviewed the file before picking it. AI-generated content
+   * (saveAiRoleTitleRecommendations below) passes false so it starts
+   * inactive until a staff member reviews and activates it.
+   */
+  isActive?: boolean;
 }
 
 const extensionOf = (filename: string) =>
   path.extname(filename).replace(/^\./, "").toLowerCase();
 
+interface RoleTitleExtractionResult {
+  rows: RoleTitleRow[];
+  rowCount: number;
+  extractionMethod: "csv" | "xlsx";
+}
+
+/**
+ * Dispatches Role Title Recommendations content validation by file type.
+ * Both are deterministic — XLSX is converted to CSV text first, then run
+ * through the same header/value rules as a real CSV upload.
+ */
+const extractRoleTitles = async (
+  buffer: Buffer,
+  extension: string,
+  originalFilename: string,
+): Promise<RoleTitleExtractionResult> => {
+  if (extension === "xlsx") {
+    const { errors, rowCount, rows } = validateRoleTitleCsv(
+      xlsxBufferToCsv(buffer),
+    );
+    if (errors.length) {
+      throw new ErrorHandler(
+        `${originalFilename} was rejected. ${errors.join(" ")}`,
+        400,
+      );
+    }
+    return { rows, rowCount, extractionMethod: "xlsx" };
+  }
+
+  const { errors, rowCount, rows } = validateRoleTitleCsv(
+    buffer.toString("utf8"),
+  );
+  if (errors.length) {
+    throw new ErrorHandler(
+      `${originalFilename} was rejected. ${errors.join(" ")}`,
+      400,
+    );
+  }
+  return { rows, rowCount, extractionMethod: "csv" };
+};
+
 /**
  * Uploads each file to Firebase Storage under the client's folder and records
- * it against the client. Role Title CSVs are content-validated first; a file
- * that fails validation is rejected and never reaches storage.
+ * it against the client. Role Title files are content-validated/extracted
+ * first; a file that fails validation is rejected and never reaches storage.
  */
 export const uploadClientSupportDocuments = async ({
   clientId,
   uploadedBy,
   files,
+  isActive = true,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "email", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName", "email"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -246,20 +307,17 @@ export const uploadClientSupportDocuments = async ({
     let roleTitles: RoleTitleRow[] | undefined;
 
     if (
-      file.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
+      file.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS &&
+      extension !== "pdf"
     ) {
-      const { errors, rowCount, rows } = validateRoleTitleCsv(
-        buffer.toString("utf8"),
+      const { rows, rowCount, extractionMethod } = await extractRoleTitles(
+        buffer,
+        extension,
+        file.originalFilename,
       );
 
-      if (errors.length) {
-        throw new ErrorHandler(
-          `${file.originalFilename} was rejected. ${errors.join(" ")}`,
-          400,
-        );
-      }
-
       metadata.rowCount = rowCount;
+      metadata.extractionMethod = extractionMethod;
       roleTitles = rows;
     }
 
@@ -279,6 +337,7 @@ export const uploadClientSupportDocuments = async ({
       size: uploadResult.size,
       metadata,
       roleTitles,
+      isActive,
       uploadedBy,
       uploadedAt: new Date(),
       updatedBy: uploadedBy,
@@ -291,7 +350,14 @@ export const uploadClientSupportDocuments = async ({
     created.push(record);
   }
 
-  notifyUpload(client, created, uploadedBy);
+  // Manual uploads are active immediately, so the client is notified right
+  // away. AI-generated documents (isActive: false) stay silent here —
+  // activateClientSupportDocument fires the same notification once a staff
+  // member actually activates it, so the client isn't told about something
+  // they can't see yet.
+  if (isActive) {
+    notifyUpload(client, created, uploadedBy);
+  }
 
   return created;
 };
@@ -358,7 +424,7 @@ export const saveAiRoleTitleRecommendations = async (
   }
 
   const client = await User.findByPk(clientId, {
-    attributes: ["id", "email", "firstName", "lastName"],
+    attributes: ["id", "firstName", "lastName", "email"],
   });
   if (!client) {
     throw new ErrorHandler("Client not found", 404);
@@ -385,6 +451,9 @@ export const saveAiRoleTitleRecommendations = async (
           mimetype: "text/csv",
         },
       ],
+      // AI-generated — starts inactive until a staff member reviews and
+      // activates it, unlike a manual CSV/XLSX/PDF upload.
+      isActive: false,
     });
 
     // Attach the richer AI metadata (candidate name, qa flags, per-role
@@ -434,6 +503,45 @@ export const getClientSupportDocument = async (
 };
 
 /**
+ * Activates a support document. New uploads are created active already;
+ * this only matters for legacy rows created inactive under the old gated
+ * flow, and fires the client notification (email + Slack) for those.
+ */
+export const activateClientSupportDocument = async (
+  id: string,
+  activatedBy?: string,
+): Promise<ClientSupportDocument> => {
+  const document = await ClientSupportDocument.findByPk(id);
+
+  if (!document || document.isDeleted) {
+    throw new ErrorHandler("Document not found", 404);
+  }
+
+  if (document.isActive) {
+    logger.info(`Client support document ${id} was already active`);
+    return document;
+  }
+
+  await document.update({ isActive: true, updatedBy: activatedBy });
+
+  const client = await User.findByPk(document.clientId, {
+    attributes: ["id", "firstName", "lastName", "email"],
+  });
+
+  if (client) {
+    notifyUpload(client, [document], activatedBy);
+  } else {
+    logger.warn(
+      `Activated client support document ${id} but client ${document.clientId} was not found — skipped client notification`,
+    );
+  }
+
+  logger.info(`Activated client support document ${id}`);
+
+  return document;
+};
+
+/**
  * Soft-deletes the record and removes the underlying object from storage.
  */
 export const deleteClientSupportDocument = async (
@@ -459,4 +567,30 @@ export const deleteClientSupportDocument = async (
   await document.destroy();
 
   logger.info(`Deleted client support document ${id}`);
+};
+
+/**
+ * Bulk soft-delete client support documents, removing each underlying
+ * object from storage on a best-effort basis. Continues past per-document
+ * failures instead of aborting the whole batch.
+ */
+export const deleteClientSupportDocumentsBulk = async (
+  ids: string[],
+  deletedBy?: string,
+): Promise<{ deletedCount: number; failedCount: number; failures: { id: string; reason: string }[] }> => {
+  const failures: { id: string; reason: string }[] = [];
+  let deletedCount = 0;
+
+  for (const id of ids) {
+    try {
+      await deleteClientSupportDocument(id, deletedBy);
+      deletedCount++;
+    } catch (error: any) {
+      failures.push({ id, reason: error?.message || "Failed to delete document" });
+    }
+  }
+
+  logger.info(`Bulk deleted ${deletedCount} client support document(s)`);
+
+  return { deletedCount, failedCount: failures.length, failures };
 };

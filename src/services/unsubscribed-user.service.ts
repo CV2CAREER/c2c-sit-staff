@@ -85,7 +85,7 @@ export class UnsubscribedUserService {
     try {
       // Get user details
       const user = await User.findByPk(userId, {
-        attributes: ['id', 'email', 'firstName']
+        attributes: ['id', 'firstName']
       });
 
       if (!user) {
