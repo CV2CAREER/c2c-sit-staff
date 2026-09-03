@@ -15,9 +15,10 @@
     "sync:pricing:mongo": "tsx scripts/sync-pricing-from-mongo.ts",
     "sync:cr-options:mongo": "tsx scripts/sync-cr-options-from-mongo.ts",
     "sync:admin-ai:mongo": "tsx scripts/sync-admin-ai-from-mongo.ts",
-    "sync:schema": "tsx scripts/sync-schema.ts",
-    "sync:schema:dry": "tsx scripts/sync-schema.ts --dry-run",
-    "check-all": "",
+    "fix:seek-sub-start-date": "tsx scripts/fix-seek-sub-start-date-format.ts",
+    "backfill:campaign:sub-end-date": "tsx scripts/backfill-campaign-sub-end-date.ts",
+    "cleanup:justcall-duplicates": "tsx scripts/cleanup-justcall-duplicate-events.ts",
+    "check-all": "npm run audit && npm run build",
     "prepare": "node scripts/setup-hooks.js"
   },
   "keywords": [],
@@ -45,7 +46,7 @@
     "esbuild": "^0.28.1",
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
-    "firebase-admin": "^10.3.0",
+    "firebase-admin": "^13.7.0",
     "formidable": "^3.5.4",
     "google-auth-library": "^10.6.2",
     "googleapis": "^171.4.0",
@@ -63,24 +64,38 @@
     "office-text-extractor": "^4.0.0",
     "pdfkit": "^0.19.1",
     "pg": "^8.16.3",
-    "sequelize": "^6.37.8",
+    "sequelize": "^6.37.7",
     "sequelize-typescript": "^2.1.6",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "ua-parser-js": "^2.0.4",
-    "uuid": "^11.1.0",
+    "uuid": "^11.1.1",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "overrides": {
     "fast-xml-parser": "^5.5.6",
     "minimatch": "^10.2.1",
     "@tootallnate/once": "3.0.1",
     "file-type": ">=18.5.0",
-    "office-text-extractor": {
-      "file-type": ">=18.5.0"
+    "gaxios": {
+      "uuid": "^11.1.1"
     },
-    "browserslist": "^4.28.8"
+    "google-gax": {
+      "uuid": "^11.1.1"
+    },
+    "sequelize": {
+      "uuid": "^11.1.1"
+    },
+    "teeny-request": {
+      "uuid": "^11.1.1"
+    },
+    "office-text-extractor": {
+      "file-type": ">=18.5.0",
+      "js-yaml": "^4.3.1"
+    },
+    "qs": "^6.16.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -110,7 +125,7 @@
     "husky": "^9.1.1",
     "nodemon": "^3.1.11",
     "sequelize-cli": "^6.3.0",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.11",
     "typescript": "^5.8.3"
   }
 }
