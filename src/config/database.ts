@@ -18,6 +18,7 @@ import { NODE_ENV } from './env';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
+import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -68,6 +69,7 @@ export const connectDB = async (): Promise<void> => {
         await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
         await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
+        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
