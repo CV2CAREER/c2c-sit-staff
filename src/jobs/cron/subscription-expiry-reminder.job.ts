@@ -12,6 +12,10 @@ import {
   SlackProvider,
   SlackSeverity,
 } from "../../utils/enum";
+import {
+  calculateCampaignFields,
+  parseDate as parseCampaignDate,
+} from "../../utils/campaign-calculator";
 
 const logger = getServiceLogger("subscription-expiry-reminder-job");
 
@@ -22,28 +26,6 @@ const MILESTONES: Array<{ from: number; to: number; label: string; emoji: string
   { from: 1,  to: 7,  label: "1–7 days",      emoji: "🚨",  severity: SlackSeverity.INFO },
   { from: 0,  to: 0,  label: "0 days (today)", emoji: "🔴",  severity: SlackSeverity.INFO },
 ];
-
-// SeekSubEndDate is stored inside credentials.seekExternalCredentials as a
-// "DD-MM-YYYY" string, e.g. "17-06-2027". Returns null when absent/unparseable.
-function parseSeekSubEndDate(value: unknown): Date | null {
-  if (typeof value !== "string") return null;
-
-  const match = value.trim().match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (!match) return null;
-
-  const [, day, month, year] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-
-  if (
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() !== Number(month) - 1 ||
-    date.getDate() !== Number(day)
-  ) {
-    return null;
-  }
-
-  return date;
-}
 
 // Whole days between today and the end date (0 = expires today, negative = past).
 function daysUntil(endDate: Date): number {
@@ -61,14 +43,23 @@ interface ExpiringClient {
   daysRemaining: number;
 }
 
-// Loads only the clients whose SeekSubEndDate falls inside the milestone window.
-// The date lives in a JSONB blob as "DD-MM-YYYY", so the comparison is done in
-// Postgres — pulling every credentials row into Node times the statement out.
-// The CASE guard keeps to_date() from erroring on malformed values.
-async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
-  const minDays = Math.min(...MILESTONES.map((m) => m.from));
-  const maxDays = Math.max(...MILESTONES.map((m) => m.to));
+// The campaign management page displays a *recomputed* CampaignEnd
+// (SeekSubStartDate + SeekSubDurDays + GraceDuration) via
+// `withRecomputedFields` in campaign.service.ts — the stored
+// seekExternalCredentials.SeekSubEndDate is a stale write-time snapshot that
+// doesn't reflect later grace-period adjustments. Reading the stored value
+// here let the reminder fire on a different date than the one admins see on
+// the page. The reminder now uses the same calculator the page uses, so the
+// countdown stays in lock-step with the source of truth.
+//
+// A widened SQL predicate keeps this a cheap query — Postgres filters the
+// bulk of the table on the raw stored end date, and JS applies the exact
+// milestone match after per-row recompute. The buffer covers grace periods
+// that shift the recomputed CampaignEnd forward from the stored SeekSubEndDate.
+const SQL_LOOKAHEAD_DAYS = 90;
+const SQL_LOOKBEHIND_DAYS = 30;
 
+async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
   const endDateExpr = `
     to_date(
       CASE
@@ -83,22 +74,28 @@ async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
     where: {
       clientId: { [Op.ne]: null },
       [Op.and]: literal(
-        `${endDateExpr} BETWEEN CURRENT_DATE + ${minDays} AND CURRENT_DATE + ${maxDays}`,
+        `${endDateExpr} BETWEEN CURRENT_DATE - ${SQL_LOOKBEHIND_DAYS} AND CURRENT_DATE + ${SQL_LOOKAHEAD_DAYS}`,
       ),
     },
-    attributes: ["clientId", "seekExternalCredentials"],
+    attributes: ["clientId", "SeekSubStartDate", "createdAt", "seekExternalCredentials"],
     raw: true,
   });
 
   return credentials.flatMap((credential) => {
     const jsonb = ((credential as any).seekExternalCredentials || {}) as Record<string, any>;
-    const endDate = parseSeekSubEndDate(jsonb.SeekSubEndDate);
+    const computed = calculateCampaignFields({
+      SeekSubStartDate: (credential as any).SeekSubStartDate,
+      createdAt: (credential as any).createdAt,
+      SeekSubDurDays: jsonb.SeekSubDurDays,
+      GraceDuration: jsonb.GraceDuration,
+    });
+    const endDate = parseCampaignDate(computed.CampaignEnd);
     if (!endDate) return [];
 
     return [
       {
         clientId: credential.clientId as string,
-        jsonb,
+        jsonb: { ...jsonb, CampaignEnd: computed.CampaignEnd },
         endDate,
         daysRemaining: daysUntil(endDate),
       },
@@ -179,7 +176,7 @@ async function notifyMilestone(
     trigger: `Subscription expiry reminder — ${label}`,
     type: SlackEventType.SYSTEM_JOB,
     channel: SlackChannel.TOWN_CRIER,
-    teamMentions: "CSM",
+    teamMentions: "CSM,WFC",
     body,
   });
 
