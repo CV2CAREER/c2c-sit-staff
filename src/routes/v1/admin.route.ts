@@ -2,6 +2,19 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminPipelineStats,
+  getAdminPipelineLists,
+  getPlacementAssignments,
+  bulkAssignPlacement,
+  getPlacementAssignmentDetail,
+  getPlacementExceptions,
+  getPlacementPerformance,
+  getPlacementOverview,
+  getClientComments,
+  addClientComment,
+  getUserSegments,
+  createUserSegment,
+  deleteUserSegment,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -471,6 +484,97 @@ adminRouterV1.get(
   isUserAuthenticated,
   readAccess,
   getAdminAnalytics,
+);
+adminRouterV1.get(
+  "/pipeline-stats",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineStats,
+);
+adminRouterV1.get(
+  "/pipeline-lists",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineLists,
+);
+adminRouterV1.get(
+  "/placement-assignments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignments,
+);
+adminRouterV1.post(
+  "/placement-assignments/bulk-assign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  bulkAssignPlacement,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getClientComments,
+);
+adminRouterV1.post(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  addClientComment,
+);
+adminRouterV1.get(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getUserSegments,
+);
+adminRouterV1.post(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  createUserSegment,
+);
+adminRouterV1.delete(
+  "/user-segments/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  deleteUserSegment,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignmentDetail,
+);
+adminRouterV1.get(
+  "/placement-exceptions",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementExceptions,
+);
+adminRouterV1.get(
+  "/placement-performance",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementPerformance,
+);
+adminRouterV1.get(
+  "/placement-overview",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementOverview,
 );
 adminRouterV1.get(
   "/campaign",
