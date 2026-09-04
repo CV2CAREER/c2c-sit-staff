@@ -12,6 +12,9 @@ import {
   getPlacementOverview,
   getClientComments,
   addClientComment,
+  getUserSegments,
+  createUserSegment,
+  deleteUserSegment,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -523,6 +526,27 @@ adminRouterV1.post(
   isUserAuthenticated,
   writeAccess,
   addClientComment,
+);
+adminRouterV1.get(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getUserSegments,
+);
+adminRouterV1.post(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  createUserSegment,
+);
+adminRouterV1.delete(
+  "/user-segments/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  deleteUserSegment,
 );
 adminRouterV1.get(
   "/placement-assignments/:credId",

@@ -19,6 +19,7 @@ import { DataTypes } from 'sequelize';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
+import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
 
 
@@ -74,6 +75,7 @@ export const connectDB = async (): Promise<void> => {
         await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
         await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
+        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
         // SPR-19-07-005: mirror sync for the shared social_verifications
         // table so admin BE boots cleanly regardless of whether customer BE
         // ran first. Remove after first deploy.

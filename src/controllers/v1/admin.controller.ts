@@ -13,6 +13,7 @@ import { pipelineStatsService, isPipelineRangeKey } from "../../services/admin/p
 import { pipelineListsService } from "../../services/admin/pipeline-lists.service";
 import { placementAssignmentsService, AssignmentRoleKey } from "../../services/admin/placement-assignments.service";
 import { placementCommentsService } from "../../services/admin/placement-comments.service";
+import { userSegmentFilterService } from "../../services/admin/user-segment-filter.service";
 import { placementExceptionsService } from "../../services/admin/placement-exceptions.service";
 import { placementPerformanceService, PerformanceRange } from "../../services/admin/placement-performance.service";
 import { placementOverviewService } from "../../services/admin/placement-overview.service";
@@ -568,6 +569,52 @@ export const addClientComment = catchAsyncError(
     const created = await placementCommentsService.add(credId, user.id, authorName, comment);
 
     res.apiSuccess(created, "Comment added successfully");
+  },
+);
+
+export const getUserSegments = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const segments = await userSegmentFilterService.list(user.id);
+
+    res.apiSuccess(segments, "Segments retrieved successfully");
+  },
+);
+
+export const createUserSegment = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const { name, filters } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      throw new ErrorHandler("name is required", 400);
+    }
+    if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+      throw new ErrorHandler("filters is required", 400);
+    }
+
+    const created = await userSegmentFilterService.create(user.id, name, filters);
+
+    res.apiSuccess(created, "Segment saved successfully");
+  },
+);
+
+export const deleteUserSegment = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const user = ensureAdmin(req);
+
+    const { id } = req.params;
+    if (!id) {
+      throw new ErrorHandler("id is required", 400);
+    }
+
+    const removed = await userSegmentFilterService.remove(user.id, id);
+    if (!removed) {
+      throw new ErrorHandler("Segment not found", 404);
+    }
+
+    res.apiSuccess(null, "Segment deleted successfully");
   },
 );
 
