@@ -529,7 +529,7 @@ export async function approveJobsiteCredential(
           // attributes list (a perf guard against decrypting on every
           // unrelated User fetch). Without it, sendActiveNotifications
           // below sent client.email as undefined, which SendGrid rejects.
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["id", "firstName", "lastName", "email", "isAmbassador"],
           required: true,
         },
       ],
@@ -601,6 +601,7 @@ async function sendActiveNotifications(
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isAmbassador: !!(client as any).isAmbassador,
         frontendUrl,
         currentYear,
       },
