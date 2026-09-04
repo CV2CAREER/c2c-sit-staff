@@ -423,6 +423,14 @@ export enum JobsiteCredentialStatus {
   FAILED = "failed",
 }
 
+// Who initiated the jobsite credential row — used to distinguish self-serve
+// client submissions from staff-added rows (staff single-add + CSV import).
+// Ambassador pending-approval comms differ between the two.
+export enum JobsiteCredentialSource {
+  CUSTOMER = "customer",
+  STAFF = "staff",
+}
+
 // Jobsite Credential Rejection Reason Enum — closed list, never free text
 export enum JobsiteCredentialRejectionReason {
   DELEGATION_NOT_GRANTED = "Delegation not granted",

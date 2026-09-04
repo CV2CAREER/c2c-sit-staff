@@ -20,6 +20,7 @@ import { User } from "./user.model";
 import {
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
+  JobsiteCredentialSource,
 } from "../../utils/enum";
 import { fieldEncryption } from "../../utils/field-encryption";
 import { getServiceLogger } from "../../utils/createLogger";
@@ -67,6 +68,15 @@ export class JobsiteCredential extends Model {
   @Default(JobsiteCredentialStatus.PENDING)
   @Column(DataType.ENUM(...Object.values(JobsiteCredentialStatus)))
   status!: JobsiteCredentialStatus;
+
+  // SPR-19-07-012: who put this row here — the client themselves or staff
+  // acting on their behalf. Ambassador pending-approval email branches on
+  // this so a staff-added row reads as "we added this for you" instead of
+  // "you submitted this and need to grant forwarding access."
+  @AllowNull(false)
+  @Default(JobsiteCredentialSource.CUSTOMER)
+  @Column(DataType.ENUM(...Object.values(JobsiteCredentialSource)))
+  source!: JobsiteCredentialSource;
 
   @AllowNull(true)
   @Column(DataType.ENUM(...Object.values(JobsiteCredentialRejectionReason)))

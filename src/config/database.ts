@@ -105,6 +105,27 @@ export const connectDB = async (): Promise<void> => {
           );
         }
 
+        // SPR-19-07-012: add source enum on jobsite_credentials — remove
+        // after first deploy. Mirrors the customer BE safety net (shared
+        // DB); whichever repo boots first wins, the other no-ops.
+        try {
+          const jcCols = await queryInterface.describeTable("jobsite_credentials");
+          if (!("source" in jcCols)) {
+            await queryInterface.addColumn("jobsite_credentials", "source", {
+              type: DataTypes.ENUM("customer", "staff"),
+              allowNull: false,
+              defaultValue: "customer",
+            });
+            logger.info(
+              `${ENVIRONMENTNAME}: added jobsite_credentials.source column`,
+            );
+          }
+        } catch (err: any) {
+          logger.error(
+            `${ENVIRONMENTNAME}: failed to add jobsite_credentials.source column: ${err.message}`,
+          );
+        }
+
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
 

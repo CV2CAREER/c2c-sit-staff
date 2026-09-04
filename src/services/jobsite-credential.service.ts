@@ -4,6 +4,7 @@ import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
 import { fieldEncryption } from "../utils/field-encryption";
 import {
+  JobsiteCredentialSource,
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
   SlackChannel,
@@ -57,6 +58,7 @@ export async function submitJobsiteCredential(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.CUSTOMER,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -105,6 +107,7 @@ async function sendSubmittedNotifications(
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isStaffAdded: credential.source === JobsiteCredentialSource.STAFF,
         frontendUrl,
         currentYear,
       },
@@ -161,6 +164,7 @@ export async function addJobsiteCredentialManually(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.STAFF,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -933,6 +937,7 @@ export async function importJobsiteCredentialsFromCsv(
         clientId: client.id,
         email: applicationEmail.trim(),
         status: JobsiteCredentialStatus.PENDING,
+        source: JobsiteCredentialSource.STAFF,
       } as any);
 
       await JobsiteCredentialAudit.create({
