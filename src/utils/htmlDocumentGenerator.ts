@@ -413,10 +413,11 @@ const drawGroupsFlowing = (
     doc.moveDown(0.4 * scale);
   };
 
-  groups.forEach((group) => {
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
     if (group.kind === "skills-row") {
       drawPillRowFlowing(doc, group.blocks.map(blockText), design);
-      return;
+      continue;
     }
 
     const block = group.block;
@@ -424,7 +425,7 @@ const drawGroupsFlowing = (
 
     if (!block.runs.length) {
       doc.fontSize(fontSize).text(" ");
-      return;
+      continue;
     }
 
     if (block.kind === "section") doc.moveDown(0.7 * scale);
@@ -433,15 +434,24 @@ const drawGroupsFlowing = (
 
     let extraIndent = 0;
     if (block.kind === "subsection") {
-      // The accent bar is a `rect()` fill, not a `.text()` call — it isn't
-      // subject to pdfkit's automatic page-break-and-flow, so without this
-      // check it can land on the last sliver of the current page while the
-      // heading text it belongs to auto-flows onto the next one, leaving an
-      // orphaned colored mark with no text next to it.
-      const estimatedHeight = doc.heightOfString(blockText(block), {
-        width: doc.page.width - contentLeft - doc.page.margins.right - 10,
-      });
-      if (doc.y + estimatedHeight > doc.page.height - doc.page.margins.bottom) {
+      // An entry heading (job title, education entry, ...) rendering alone at
+      // the bottom of a page — with its company/date line and first bullet
+      // pushed to the next page by pdfkit's own auto-pagination — reads as
+      // broken. Measure the heading plus whatever immediately follows it (any
+      // non-bullet lines, e.g. company/date, plus the first bullet) as one
+      // unit, and force a page break before the heading if that whole unit
+      // doesn't fit, so a heading is never left orphaned from its own content.
+      const width = doc.page.width - contentLeft - doc.page.margins.right - 10;
+      let lookaheadHeight = doc.heightOfString(blockText(block), { width });
+      for (let j = groupIndex + 1; j < groups.length; j++) {
+        const nextGroup = groups[j];
+        if (nextGroup.kind === "skills-row") break;
+        const nextBlock = nextGroup.block;
+        if (nextBlock.kind === "subsection" || nextBlock.kind === "section") break;
+        lookaheadHeight += measureBlockHeight(doc, nextBlock, design, width);
+        if (nextBlock.type === "bullet" || nextBlock.type === "ordered") break;
+      }
+      if (doc.y + lookaheadHeight > doc.page.height - doc.page.margins.bottom) {
         doc.addPage();
       }
       const barY = doc.y + 1;
@@ -454,40 +464,58 @@ const drawGroupsFlowing = (
     const prefix = block.type === "bullet" ? "•  " : block.type === "ordered" ? "1. " : "";
     const align = opts.forceCenter && (block.kind === "title" || block.kind === "meta") ? "center" : block.align;
 
-    block.runs.forEach((run, runIndex) => {
-      let color = TEXT_COLORS.textDark;
-      let size = fontSize;
-      let bold = run.bold;
+    let color = TEXT_COLORS.textDark;
+    let bold = block.runs.every((r) => r.bold);
+    if (block.kind === "title") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    } else if (block.kind === "section") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    } else if (block.kind === "subsection") {
+      color = TEXT_COLORS.textDark;
+      bold = true;
+    } else if (block.kind === "meta") {
+      color = TEXT_COLORS.textMuted;
+    } else if (block.kind === "label") {
+      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+      bold = true;
+    }
 
-      if (block.kind === "title") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-        size = fontSize;
-      } else if (block.kind === "section") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-      } else if (block.kind === "subsection") {
-        color = TEXT_COLORS.textDark;
-        bold = true;
-      } else if (block.kind === "meta") {
-        color = TEXT_COLORS.textMuted;
-      } else if (block.kind === "label") {
-        color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-        bold = true;
-      }
-
+    if (align && align !== "left" && block.runs.length > 1) {
+      // pdfkit's `continued: true` (used below to mix per-run bold/underline
+      // on one line) is broken when combined with align "center"/"right" —
+      // each continued call recomputes its own aligned position independently
+      // instead of flowing after the previous one, so multi-run lines (e.g.
+      // a centered header's "Email: x · Phone: y · ..." contact line) render
+      // stacked on top of each other instead of side by side. See
+      // github.com/foliojs/pdfkit issues #240, #774, #1206 — unfixed upstream.
+      // Draw non-left multi-run lines as one plain string instead; per-run
+      // bold/underline/strike distinctions are lost for this case, but that's
+      // the only way pdfkit renders them correctly positioned.
       doc
-        .font(pdfFontFor(design.font_family, bold, run.italic))
-        .fontSize(size)
+        .font(pdfFontFor(design.font_family, bold, false))
+        .fontSize(fontSize)
         .fillColor(color)
-        .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
-          continued: runIndex < block.runs.length - 1,
-          underline: run.underline,
-          strike: run.strike,
-          align,
-          indent,
-        });
-    });
+        .text(prefix + block.runs.map((r) => r.text).join(""), { align, indent });
+    } else {
+      // title/section/subsection/label force every run bold regardless of
+      // its own `run.bold`; "meta" and unstyled kinds keep each run's own.
+      const forcedBold = block.kind === "title" || block.kind === "section" || block.kind === "subsection" || block.kind === "label";
+      block.runs.forEach((run, runIndex) => {
+        doc
+          .font(pdfFontFor(design.font_family, forcedBold || run.bold, run.italic))
+          .fontSize(fontSize)
+          .fillColor(color)
+          .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+            continued: runIndex < block.runs.length - 1,
+            underline: run.underline,
+            strike: run.strike,
+            align,
+            indent,
+          });
+      });
+    }
 
     doc.fillColor(TEXT_COLORS.textDark).font(fonts.regular);
 
@@ -498,7 +526,7 @@ const drawGroupsFlowing = (
       doc.moveDown(0.15 * scale);
       drawRule(design.accent_color, 0.75);
     }
-  });
+  }
 };
 
 // -- Explicit-position rendering (modern's two columns + the contemporary banner) --
@@ -632,38 +660,56 @@ const drawBlockAt = (
   doc.x = region.x + indent;
   doc.y = y;
 
-  block.runs.forEach((run, runIndex) => {
-    let color = TEXT_COLORS.textDark;
-    let bold = run.bold;
-    if (block.kind === "title") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    } else if (block.kind === "section") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    } else if (block.kind === "subsection") {
-      color = TEXT_COLORS.textDark;
-      bold = true;
-    } else if (block.kind === "meta") {
-      color = TEXT_COLORS.textMuted;
-    } else if (block.kind === "label") {
-      color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
-      bold = true;
-    }
+  let color = TEXT_COLORS.textDark;
+  let bold = block.runs.every((r) => r.bold);
+  if (block.kind === "title") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  } else if (block.kind === "section") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  } else if (block.kind === "subsection") {
+    color = TEXT_COLORS.textDark;
+    bold = true;
+  } else if (block.kind === "meta") {
+    color = TEXT_COLORS.textMuted;
+  } else if (block.kind === "label") {
+    color = opts.restrained ? TEXT_COLORS.textDark : design.accent_color;
+    bold = true;
+  }
 
+  if (align && align !== "left" && block.runs.length > 1) {
+    // Same pdfkit continued+align bug as drawGroupsFlowing above — draw
+    // non-left multi-run lines as one plain string instead of per-run
+    // continued calls.
     doc
-      .font(pdfFontFor(design.font_family, bold, run.italic))
+      .font(pdfFontFor(design.font_family, bold, false))
       .fontSize(fontSize)
       .fillColor(color)
-      .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+      .text(prefix + block.runs.map((r) => r.text).join(""), {
         width: region.width - indent,
-        continued: runIndex < block.runs.length - 1,
-        underline: run.underline,
-        strike: run.strike,
         align,
         indent: 0,
       });
-  });
+  } else {
+    // title/section/subsection/label force every run bold regardless of its
+    // own `run.bold`; "meta" and unstyled kinds keep each run's own.
+    const forcedBold = block.kind === "title" || block.kind === "section" || block.kind === "subsection" || block.kind === "label";
+    block.runs.forEach((run, runIndex) => {
+      doc
+        .font(pdfFontFor(design.font_family, forcedBold || run.bold, run.italic))
+        .fontSize(fontSize)
+        .fillColor(color)
+        .text(runIndex === 0 ? `${prefix}${run.text}` : run.text, {
+          width: region.width - indent,
+          continued: runIndex < block.runs.length - 1,
+          underline: run.underline,
+          strike: run.strike,
+          align,
+          indent: 0,
+        });
+    });
+  }
 
   y = doc.y;
   doc.fillColor(TEXT_COLORS.textDark).font(fonts.regular);
@@ -748,8 +794,25 @@ const renderTwoColumns = (
     let y = startY;
     doc.switchToPage(page);
 
-    groups.forEach((group) => {
-      const height = measureGroupHeight(doc, group, design, width, scale);
+    groups.forEach((group, index) => {
+      let height = measureGroupHeight(doc, group, design, width, scale);
+
+      // Same fix as drawGroupsFlowing's single-column path: an entry heading
+      // (job title, education entry, ...) landing alone at the bottom of a
+      // column, with its company/date line and first bullet pushed to the
+      // next page, reads as broken. Fold whatever immediately follows the
+      // heading (non-bullet lines, then the first bullet) into this same
+      // fit check, so the heading only breaks to a new page along with them.
+      if (group.kind === "single" && group.block.kind === "subsection") {
+        for (let j = index + 1; j < groups.length; j++) {
+          const nextGroup = groups[j];
+          if (nextGroup.kind === "skills-row") break;
+          if (nextGroup.block.kind === "subsection" || nextGroup.block.kind === "section") break;
+          height += measureGroupHeight(doc, nextGroup, design, width, scale);
+          if (nextGroup.block.type === "bullet" || nextGroup.block.type === "ordered") break;
+        }
+      }
+
       if (y + height > geometry.contentBottom) {
         page += 1;
         if (page < doc.bufferedPageRange().count) {

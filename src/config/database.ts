@@ -15,10 +15,12 @@ import { NODE_ENV } from './env';
 // import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
 // import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
 // import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
+import { DataTypes } from 'sequelize';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
+import { SocialVerification } from '../models/v1/social-verification.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -54,6 +56,10 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
+        // aiPromptSection added to vcs_prompts — force:false only CREATEs
+        // missing tables, it won't ALTER an existing one to add a column, so
+        // this needs alter:true specifically. Remove after first deploy.
+        // await VCSPrompt.sync({ alter: true });
         // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
         // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
         // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy
@@ -70,6 +76,34 @@ export const connectDB = async (): Promise<void> => {
         await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
         await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
+        // SPR-19-07-005: mirror sync for the shared social_verifications
+        // table so admin BE boots cleanly regardless of whether customer BE
+        // ran first. Remove after first deploy.
+        await SocialVerification.sync({ force: false });
+
+        // SPR-19-07-005: add users.socialVerificationExempt column as a
+        // safety net if customer BE hasn't run first. Uses addColumn instead
+        // of User.sync({ alter: true }) because the users table has columns
+        // referenced by DB views/rules — a full alter fails with
+        // "cannot alter type of a column used by a view or rule".
+        // Remove after first deploy.
+        try {
+          const userCols = await queryInterface.describeTable("users");
+          if (!("socialVerificationExempt" in userCols)) {
+            await queryInterface.addColumn("users", "socialVerificationExempt", {
+              type: DataTypes.BOOLEAN,
+              allowNull: false,
+              defaultValue: false,
+            });
+            logger.info(
+              `${ENVIRONMENTNAME}: added users.socialVerificationExempt column`,
+            );
+          }
+        } catch (err: any) {
+          logger.error(
+            `${ENVIRONMENTNAME}: failed to add users.socialVerificationExempt column: ${err.message}`,
+          );
+        }
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
