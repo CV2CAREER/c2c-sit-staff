@@ -1,477 +1,307 @@
-"use client"
-import React, { useEffect } from "react";
-import { useAdminAnalytics } from "@/app/admin/users/hooks/analytics-endpoint";
+"use client";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
 import {
-  LucideIcon,
-  ShieldUser,
-  User,
-  Users,
-  BadgePercent,
-  TestTubeDiagonal,
-  Cog
-} from "lucide-react";
-import { IDateFilter } from "@/types/common";
-import { Card, CardContent } from "@/components/ui/card";
+  useUserSegments,
+  useCreateUserSegment,
+  useDeleteUserSegment,
+} from "@/app/admin/users/hooks/user-segments";
+import {
+  PERSONA_OPTIONS,
+  STATE_OPTIONS,
+  GROUP_OPTIONS,
+  LOYALTY_OPTIONS,
+  UserFilterState,
+  EMPTY_FILTERS,
+  hasActiveFacetFilters,
+  personaForUser,
+  stateForUser,
+  groupForUser,
+  loyaltyForUser,
+  matchesFacets,
+} from "@/app/admin/users/hooks/user-filters";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SlidersHorizontal, Bookmark, Lock, Plus, Trash2, Loader2, ChevronDown } from "lucide-react";
 
-interface UsersCountData {
-  adminPersonnaCount: number;
-  guestPersonnaCount: number;
-  clientPersonnaCount: number;
-  coachesPersonnaCount: number;
-  partnersPersonnaCount: number;
-  salesPersonnaCount: number;
-  csePersonnaCount: number;
-  testPersonnaCount: number;
-  PCPersonaCount: number;
-  businessCount: number;
-  technologyCount: number,
-  loyalistsPersonnaCount: number;
-  ambassadorCount: number;
-  totalActiveUsersCount: number;
-  bronzePlanCount: number;
-  emeraldPlanCount: number;
-  coralPlanCount: number;
-  silverPlanCount: number;
-  platinumPlanCount: number;
-  goldPlanCount: number;
-  totalPlanCount: number;
+interface SavedSegment {
+  id: string;
+  name: string;
+  filters: UserFilterState;
+  locked?: boolean;
 }
 
-interface cardsDataProps {
-  title: string,
-  value: number,
-  icon: {
-    name: LucideIcon,
-    bgColor: string,
-    color: string,
+// Two fixed presets, matching the reference design's "LOCKED" segments —
+// not user-removable, not stored in the DB. Anything else the user saves
+// goes through useCreateUserSegment/useDeleteUserSegment (user_segment_filters
+// table), so it's personal to them but persists across devices/browsers.
+const LOCKED_SEGMENTS: SavedSegment[] = [
+  {
+    id: "locked-dormant-clients",
+    name: "Dormant clients",
+    locked: true,
+    filters: { persona: null, state: "dormant", group: "customer", loyalty: null },
   },
-}
+  {
+    id: "locked-new-guests",
+    name: "New guests",
+    locked: true,
+    filters: { persona: "guest", state: null, group: null, loyalty: "newcomer" },
+  },
+];
 
 interface UserDataCardsProps {
-  setUserType: (data: any) => void;
-  userType: {
-    user: string,
-    usersDataState: string;
-    plan: string;
-  }
-  scrollTotable: any
-  dateFilterData: IDateFilter;
-  setDateFilterData: React.Dispatch<React.SetStateAction<IDateFilter>>;
+  filters: UserFilterState;
+  setFilters: (filters: UserFilterState) => void;
+  scrollTotable: () => void;
 }
 
-const UserDataCards = ({
-  setUserType,
-  userType,
-  scrollTotable,
-  dateFilterData,
-  setDateFilterData
-}: UserDataCardsProps) => {
-  const analytics = useAdminAnalytics({
-    enabled: true,
-    startDate: dateFilterData.startDate || undefined,
-    endDate: dateFilterData.endDate || undefined,
-  });
+const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProps) => {
+  // Shares its React Query cache with UsersDataTable's own useGetAllUsers({
+  // active: true }) call — same queryKey, so this is not a second network
+  // request when the table is on the "Active Users" tab.
+  const allUsers = useGetAllUsers({ enabled: true, active: true });
+  const users: any[] = allUsers.users || [];
+  const isLoading = allUsers.isLoading;
 
-  // Transform the API data to match your component's expected structure
-  const transformApiData = (apiData: any): UsersCountData => {
-    
-    if (!apiData) {
-      return {
-        adminPersonnaCount: 0,
-        guestPersonnaCount: 0,
-        clientPersonnaCount: 0,
-        coachesPersonnaCount: 0,
-        partnersPersonnaCount: 0,
-        salesPersonnaCount: 0,
-        csePersonnaCount: 0,
-        testPersonnaCount: 0,
-        PCPersonaCount: 0,
-        businessCount: 0,
-        technologyCount: 0,
-        loyalistsPersonnaCount: 0,
-        ambassadorCount: 0,
-        totalActiveUsersCount: 0,
-        bronzePlanCount: 0,
-        emeraldPlanCount: 0,
-        coralPlanCount: 0,
-        silverPlanCount: 0,
-        platinumPlanCount: 0,
-        goldPlanCount: 0,
-        totalPlanCount: 0,
-      };
-    }
+  const queryClient = useQueryClient();
+  const segmentsQuery = useUserSegments();
+  const createSegment = useCreateUserSegment();
+  const deleteSegment = useDeleteUserSegment();
+  const customSegments: SavedSegment[] = segmentsQuery.segments;
 
-    // Check if the data is already in the correct format (has adminPersonnaCount)
-    if (apiData.adminPersonnaCount !== undefined) {
-      return apiData;
-    }
+  const [isAddingSegment, setIsAddingSegment] = useState(false);
+  const [segmentName, setSegmentName] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    // Check if data is nested in a 'data' property
-    if (apiData.data && apiData.data.adminPersonnaCount !== undefined) {
-      return apiData.data;
-    }
-
-    // Check if data has subscriptionTiers structure (from your analytics)
-    if (apiData) {
-
-      const tiers = apiData.subscriptionTiers?.tiers || [];
-      const bronzeTier = tiers.find((t: any) => t.key === "bronze");
-      const silverTier = tiers.find((t: any) => t.key === "silver");
-      const goldTier = tiers.find((t: any) => t.key === "gold");
-      const platinumTier = tiers.find((t: any) => t.key === "platinum");
-      const coralTier = tiers.find((t: any) => t.key === "coral");
-      const emeraldTier = tiers.find((t: any) => t.key === "emerald");
-      
-      // ALWAYS use userRoleCounts if available, never fall back only if absolutely needed
-      const useUserRoles = !!apiData.userRoleCounts;
-      
-      const adminCount = apiData.userRoleCounts.admin;
-      const guestCount = useUserRoles ? apiData.userRoleCounts.guest : 0;
-      const clientCount = useUserRoles ? apiData.userRoleCounts.client : apiData.breakdown?.users?.successful ?? 0;
-      const coachCount = useUserRoles ? apiData.userRoleCounts.coach : 0;
-      const partnerCount = useUserRoles ? apiData.userRoleCounts.partner : 0;
-      const salesCount = useUserRoles ? apiData.userRoleCounts.sales : 0;
-      const cseCount = useUserRoles ? apiData.userRoleCounts.cse : 0;
-      const testCount = useUserRoles ? apiData.userRoleCounts.test : apiData.breakdown?.applications?.failed ?? 0;
-      const pcCount = useUserRoles ? apiData.userRoleCounts.assistant : 0;
-      const businessCount = useUserRoles ? apiData.userRoleCounts.business : 0;
-      const techCount = useUserRoles ? apiData.userRoleCounts.technology : 0;
-      const loyalistCount = 0;
-      const ambassadorCount = apiData.userRoleCounts?.ambassador ?? 0;
-
-      return {
-        adminPersonnaCount: adminCount,
-        guestPersonnaCount: guestCount,
-        clientPersonnaCount: clientCount,
-        coachesPersonnaCount: coachCount,
-        partnersPersonnaCount: partnerCount,
-        salesPersonnaCount: salesCount,
-        csePersonnaCount: cseCount,
-        testPersonnaCount: testCount,
-        PCPersonaCount: pcCount,
-        businessCount,
-        technologyCount: techCount,
-        loyalistsPersonnaCount: loyalistCount,
-        ambassadorCount,
-        totalActiveUsersCount:
-          adminCount + guestCount + clientCount + coachCount +
-          partnerCount + salesCount + cseCount + testCount +
-          pcCount + businessCount + techCount + loyalistCount,
-        bronzePlanCount: bronzeTier?.users ?? 0,
-        emeraldPlanCount: emeraldTier?.users ?? 0,
-        coralPlanCount: coralTier?.users ?? 0,
-        silverPlanCount: silverTier?.users ?? 0,
-        platinumPlanCount: platinumTier?.users ?? 0,
-        goldPlanCount: goldTier?.users ?? 0,
-        totalPlanCount: apiData.subscriptionTiers?.totals?.activeSubscriptions ?? 0,
-      };
-    }
-
-    // If none of the above, return zeros and log the structure
-    return {
-      adminPersonnaCount: 0,
-      guestPersonnaCount: 0,
-      clientPersonnaCount: 0,
-      coachesPersonnaCount: 0,
-      partnersPersonnaCount: 0,
-      salesPersonnaCount: 0,
-      csePersonnaCount: 0,
-      testPersonnaCount: 0,
-      PCPersonaCount: 0,
-      businessCount: 0,
-      technologyCount: 0,
-      loyalistsPersonnaCount: 0,
-      ambassadorCount: 0,
-      totalActiveUsersCount: 0,
-      bronzePlanCount: 0,
-      emeraldPlanCount: 0,
-      coralPlanCount: 0,
-      silverPlanCount: 0,
-      platinumPlanCount: 0,
-      goldPlanCount: 0,
-      totalPlanCount: 0,
-    };
+  const closeAddForm = () => {
+    setIsAddingSegment(false);
+    setSegmentName("");
   };
 
-  const personas: UsersCountData | undefined = analytics.data
-    ? transformApiData(analytics.data)
-    : undefined;
+  const saveCurrentAsSegment = async () => {
+    const name = segmentName.trim();
+    if (!name || createSegment.isPending) return;
+    try {
+      await createSegment.mutateAsync({ name, filters });
+      queryClient.invalidateQueries({ queryKey: ["user-segments"] });
+      closeAddForm();
+      toast.success(`Segment "${name}" saved`);
+    } catch {
+      toast.error("Failed to save segment");
+    }
+  };
 
+  const removeSegment = async (id: string, name: string) => {
+    setDeletingId(id);
+    try {
+      await deleteSegment.mutateAsync({ id });
+      queryClient.invalidateQueries({ queryKey: ["user-segments"] });
+      toast.success(`Segment "${name}" deleted`);
+    } catch {
+      toast.error("Failed to delete segment");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  const isLoading = analytics.isLoading;
-  const isError = analytics.isError;
-  const error = analytics.error;
+  // A pill's count reflects the OTHER currently-selected facets (standard
+  // faceted-search behaviour) — e.g. with State:Active picked, the Persona
+  // pills show how many ACTIVE users are in each persona, not the global total.
+  const countFor = (key: keyof UserFilterState, matches: (user: any) => boolean): number =>
+    users.filter((u) => matchesFacets(u, filters, key) && matches(u)).length;
 
-  const userTypes = ["Admins", "Clients", "Coaches", "Guests", "Partners", "Sales", "CSE", "Test Users", "Total Users", "Loyalists", "Ambassadors"]
-  const userPlans = ["Bronze", "Coral", "Emerald", "Silver", "Platinum", "Gold"]
+  const segmentCount = (segFilters: UserFilterState): number =>
+    users.filter((u) => matchesFacets(u, segFilters)).length;
 
-  const cardsData: cardsDataProps[] = [
-    {
-      title: "Admins",
-      value: personas?.adminPersonnaCount || 0,
-      icon: {
-        name: ShieldUser,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "PC",
-      value: personas?.PCPersonaCount || 0,
-      icon: {
-        name: ShieldUser,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Clients",
-      value: personas?.clientPersonnaCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Coaches",
-      value: personas?.coachesPersonnaCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Guests",
-      value: personas?.guestPersonnaCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Partners",
-      value: personas?.partnersPersonnaCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Sales",
-      value: personas?.salesPersonnaCount || 0,
-      icon: {
-        name: BadgePercent,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "CSE",
-      value: personas?.csePersonnaCount || 0,
-      icon: {
-        name: Cog,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Total Technology",
-      value: personas?.technologyCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Total Business",
-      value: personas?.businessCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Test Users",
-      value: personas?.testPersonnaCount || 0,
-      icon: {
-        name: TestTubeDiagonal,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Total Users",
-      value: personas?.totalActiveUsersCount || 0,
-      icon: {
-        name: Users,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Loyalists",
-      value: personas?.loyalistsPersonnaCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-lightblue",
-        color: "text-blue",
-      },
-    },
-    {
-      title: "Ambassadors",
-      value: personas?.ambassadorCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-teal-100",
-        color: "text-teal-700",
-      },
-    },
-    {
-      title: "Bronze",
-      value: personas?.bronzePlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-orange-200",
-        color: "text-orange-700",
-      },
-    },
-    {
-      title: "Emerald",
-      value: personas?.emeraldPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-green-200",
-        color: "text-green-700",
-      },
-    },
-    {
-      title: "Coral",
-      value: personas?.coralPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-red-200",
-        color: "text-red-700",
-      },
-    },
-    {
-      title: "Silver",
-      value: personas?.silverPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-gray-200",
-        color: "text-gray-700",
-      },
-    },
-    {
-      title: "Platinum",
-      value: personas?.platinumPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-indigo-200",
-        color: "text-indigo-700",
-      },
-    },
-    {
-      title: "Gold",
-      value: personas?.goldPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-yellow-200",
-        color: "text-yellow-700",
-      },
-    },
-    {
-      title: "Total Plan",
-      value: personas?.totalPlanCount || 0,
-      icon: {
-        name: User,
-        bgColor: "bg-purple-200",
-        color: "text-purple-700",
-      },
-    },
-  ];
+  const toggle = (key: keyof UserFilterState, value: string) => {
+    setFilters({ ...filters, [key]: filters[key] === value ? null : value });
+    scrollTotable();
+  };
 
-  if (isError) {
-    return (
-      <div className="p-4">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-          <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
-          <p className="text-red-600">Failed to load user counts. Please try again.</p>
-          <p className="text-red-500 text-sm mt-1">{error?.message || "Unknown error"}</p>
-          <button
-            onClick={() => analytics.refetch?.()}
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-          >
-            Retry
-          </button>
-        </div>
+  const facetMatcher: Record<keyof UserFilterState, (user: any) => string | null> = {
+    persona: personaForUser,
+    state: stateForUser,
+    group: groupForUser,
+    loyalty: loyaltyForUser,
+  };
+
+  // <details> gives every section a native, accessible dropdown/disclosure —
+  // open by default (unchanged desktop look), but collapsible so a long
+  // stack of facets doesn't make the sidebar towering on mobile.
+  const renderSection = (
+    title: string,
+    subtitle: string,
+    key: keyof UserFilterState,
+    options: { key: string; label: string }[],
+  ) => (
+    <details className="group" open>
+      <summary className="mb-2 flex cursor-pointer list-none items-center gap-1.5 text-xs font-bold text-gray-900 [&::-webkit-details-marker]:hidden">
+        {title}
+        <span className="text-[11px] font-normal text-gray-400">{subtitle}</span>
+        <ChevronDown
+          size={13}
+          className="ml-auto shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const count = isLoading ? 0 : countFor(key, (u) => facetMatcher[key](u) === opt.key);
+          const isActive = filters[key] === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => toggle(key, opt.key)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                isActive
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : count === 0
+                    ? "border-gray-100 bg-gray-50 text-gray-300"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-primary/40 hover:bg-primary/5"
+              }`}
+            >
+              {opt.label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                  isActive ? "bg-white/20" : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
-    );
-  }
+    </details>
+  );
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {isLoading ? (
-            Array(17).fill(0).map((_, idx) => (
-              <div
-                key={idx}
-                className="flex items-center min-w-0 h-24 gap-2 bg-gray-50 p-3 rounded-xl animate-pulse"
+    <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] lg:sticky lg:top-4">
+      <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-gray-100 p-4">
+        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-900">
+          <SlidersHorizontal size={15} className="text-primary" />
+          Filters
+        </CardTitle>
+        {hasActiveFacetFilters(filters) && (
+          <button
+            type="button"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Clear all
+          </button>
+        )}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5 p-4">
+        {renderSection("Persona", "who they are", "persona", PERSONA_OPTIONS)}
+        {renderSection("State", "recent activity", "state", STATE_OPTIONS)}
+        {renderSection("User Group", "side of the house", "group", GROUP_OPTIONS)}
+        {renderSection("Loyalty", "first time or back", "loyalty", LOYALTY_OPTIONS)}
+
+        <details className="group border-t border-gray-100 pt-4" open>
+          <summary className="mb-2 flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-gray-900">
+              <Bookmark size={13} className="text-primary" />
+              Saved segments
+              <ChevronDown
+                size={13}
+                className="shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+              />
+            </p>
+            {!isAddingSegment && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsAddingSegment(true);
+                }}
+                disabled={!hasActiveFacetFilters(filters)}
+                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
               >
-                <div className="bg-gray-300 w-10 h-10 rounded-full" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-3 w-24 bg-gray-300 rounded" />
-                  <div className="h-5 w-32 bg-gray-400 rounded" />
-                </div>
-              </div>
-            ))
-          ) : (
-            cardsData.map((card, idx) => {
-              const LIcon = card.icon.name;
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center min-w-0 gap-2 bg-gray-50 p-3 rounded-xl hover:cursor-pointer hover:bg-primary/5 transition-colors"
-                  onClick={() => {
-                    if(userTypes.includes(card.title)){
-                      setUserType({
-                        ...userType,
-                        user: card.title === "Total Users" ? "all"
-                          : card.title === "Test Users" ? "test"
-                          : card.title === "Ambassadors" ? "ambassador"
-                          : card.title.toLowerCase()
-                      })
-                    }
-                    if(userPlans.includes(card.title)){
-                      setUserType({
-                        ...userType,
-                        plan: card.title.toLowerCase()
-                      })
-                    }
-                    scrollTotable()
-                  }}
+                <Plus size={12} /> Save
+              </button>
+            )}
+          </summary>
+
+          {isAddingSegment && (
+            <div className="mb-2 rounded-lg border border-gray-900 p-2">
+              <input
+                autoFocus
+                value={segmentName}
+                onChange={(e) => setSegmentName(e.target.value)}
+                placeholder="Name this segment"
+                className="mb-2 w-full rounded-md border border-gray-200 px-2.5 py-1.5 text-xs focus:border-primary focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveCurrentAsSegment();
+                  if (e.key === "Escape") closeAddForm();
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={saveCurrentAsSegment}
+                  disabled={!segmentName.trim() || createSegment.isPending}
+                  className="flex-1 rounded-md bg-gray-900 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
-                  <div className={`${card.icon.bgColor} w-fit p-2 rounded-full`}>
-                    <LIcon className={card.icon.color} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-500 mb-1 break-words leading-tight">{card.title}</p>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-none">{card.value}</h1>
-                  </div>
-                </div>
-              );
-            })
+                  {createSegment.isPending ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAddForm}
+                  className="flex-1 rounded-md border border-gray-200 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+
+          <div className="flex flex-col gap-1.5">
+            {[...LOCKED_SEGMENTS, ...customSegments].map((seg) => (
+              <div
+                key={seg.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/60 px-2.5 py-1.5 text-xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilters(seg.filters);
+                    scrollTotable();
+                  }}
+                  className="flex-1 truncate text-left font-medium text-gray-700 hover:text-primary"
+                >
+                  {seg.name}
+                </button>
+                <span className="text-[10.5px] text-gray-400">
+                  {isLoading ? "…" : segmentCount(seg.filters)}
+                </span>
+                {seg.locked ? (
+                  <span className="flex items-center gap-0.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase text-gray-400">
+                    <Lock size={9} /> Locked
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeSegment(seg.id, seg.name)}
+                    disabled={deletingId === seg.id}
+                    className="text-gray-300 hover:text-red-500 disabled:cursor-not-allowed disabled:text-gray-200"
+                  >
+                    {deletingId === seg.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={12} />
+                    )}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
+      </CardContent>
+    </Card>
   );
 };
 

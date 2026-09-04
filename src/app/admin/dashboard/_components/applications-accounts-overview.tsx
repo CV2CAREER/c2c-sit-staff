@@ -2,7 +2,19 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdminQueries } from "@/hooks/api/admin.api";
-import { ClipboardList, Users } from "lucide-react";
+import {
+  ClipboardList,
+  Users,
+  ShieldUser,
+  ShieldCheck,
+  GraduationCap,
+  User,
+  Handshake,
+  BadgePercent,
+  Cog,
+  Award,
+  type LucideIcon,
+} from "lucide-react";
 
 const PERIODS = [
   { key: "today" as const, label: "Today" },
@@ -14,33 +26,36 @@ const PERIODS = [
 
 type PeriodKey = "all" | (typeof PERIODS)[number]["key"];
 
+// Role counts come from the same admin-analytics payload as the rest of this
+// card (`userRoleCounts`, keyed by the backend Role enum plus the
+// isAmbassador-derived "ambassador" bucket) — no separate fetch needed.
+const ROLE_ROWS: { key: string; label: string; color: string; icon: LucideIcon }[] = [
+  { key: "client", label: "Clients", color: "#1EB62D", icon: Users },
+  { key: "assistant", label: "PC", color: "#008ED3", icon: ShieldUser },
+  { key: "admin", label: "Admins", color: "#7C3AED", icon: ShieldCheck },
+  { key: "coach", label: "Coaches", color: "#B26A22", icon: GraduationCap },
+  { key: "guest", label: "Guests", color: "#0EA5E9", icon: User },
+  { key: "partner", label: "Partners", color: "#EC4899", icon: Handshake },
+  { key: "sales", label: "Sales", color: "#F59E0B", icon: BadgePercent },
+  { key: "cse", label: "CSE", color: "#10B981", icon: Cog },
+  { key: "ambassador", label: "Ambassadors", color: "#C23434", icon: Award },
+];
+
 export default function ApplicationsAccountsOverview() {
   const {
     totalApplicationsCard,
-    successfulApplicationsCard,
-    failedApplicationsCard,
     applicationsCountDomain,
     applicationsPeriodBreakdownDomain,
     overallStatsDomain,
-    totalUsersCountDomain,
-    totalGuestsCountDomain,
-    dashboardAggregatorsCountDomain,
   } = useAdminQueries({
     fetchApplicationsCount: true,
     fetchApplicationsPeriodBreakdown: true,
     fetchOverallStats: true,
-    fetchTotalUsersCount: true,
-    fetchTotalGuestsCount: true,
-    fetchAggregatorsCount: true,
   });
 
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodKey>("all");
 
-  const allTimeStat = {
-    total: totalApplicationsCard.data ?? 0,
-    successful: successfulApplicationsCard.data ?? 0,
-    failed: failedApplicationsCard.data ?? 0,
-  };
+  const allTimeStat = { total: totalApplicationsCard.data ?? 0 };
   const periodBreakdown = applicationsPeriodBreakdownDomain.data;
   const isPeriodLoading = applicationsPeriodBreakdownDomain.isLoading;
 
@@ -48,40 +63,28 @@ export default function ApplicationsAccountsOverview() {
     selectedPeriod === "all" ? applicationsCountDomain.isLoading : isPeriodLoading;
   const activeStat = selectedPeriod === "all" ? allTimeStat : periodBreakdown?.[selectedPeriod];
   const totalApplications = activeStat?.total ?? 0;
-  const successCount = activeStat?.successful ?? 0;
-  const failedCount = activeStat?.failed ?? 0;
-  const successRate = totalApplications > 0 ? (successCount / totalApplications) * 100 : 0;
   const periodLabel =
     selectedPeriod === "all" ? "All time" : PERIODS.find((p) => p.key === selectedPeriod)?.label ?? "All time";
 
-  const isAccountsLoading =
-    totalUsersCountDomain.isLoading ||
-    totalGuestsCountDomain.isLoading ||
-    overallStatsDomain.isLoading ||
-    dashboardAggregatorsCountDomain.isLoading;
+  const isAccountsLoading = overallStatsDomain.isLoading;
 
-  const totalUsers = totalUsersCountDomain.data ?? 0;
-  const guests = totalGuestsCountDomain.data ?? 0;
-  const activeSubscriptions = overallStatsDomain.data?.subscriptionTiers?.totals?.activeSubscriptions ?? 0;
-  const inactiveSubscriptions = Math.max(totalUsers - activeSubscriptions, 0);
-  const aggregators = dashboardAggregatorsCountDomain.data ?? { total: 0, active: 0 };
-  const loyalists = overallStatsDomain.data?.loyalists ?? 0;
-  const returnees = overallStatsDomain.data?.returnees ?? 0;
+  const roleCounts: Record<string, number> = overallStatsDomain.data?.userRoleCounts ?? {};
+  // Ambassador is a flag on top of another role (e.g. a client can also be an
+  // ambassador), so it's excluded from the total to avoid double-counting.
+  const totalUsers = ROLE_ROWS.filter((r) => r.key !== "ambassador").reduce(
+    (sum, r) => sum + (roleCounts[r.key] ?? 0),
+    0,
+  );
 
-  const activeSharePct = totalUsers > 0 ? (activeSubscriptions / totalUsers) * 100 : 0;
-  const guestSharePct = totalUsers > 0 ? (guests / totalUsers) * 100 : 0;
-
-  const accountRows = [
-    { label: "Active subscriptions", value: activeSubscriptions.toLocaleString(), color: "#1EB62D" },
-    { label: "Inactive subscriptions", value: inactiveSubscriptions.toLocaleString(), color: "#C7D3DE" },
-    { label: "Guests", value: guests.toLocaleString(), color: "#88D0FF" },
-    { label: "Aggregators active", value: `${aggregators.active} / ${aggregators.total}`, color: "#008ED3" },
-    { label: "Returnees", value: returnees.toLocaleString(), color: "#B26A22" },
-    { label: "Loyalists", value: loyalists.toLocaleString(), color: "#7C3AED" },
-  ];
+  const accountRows = ROLE_ROWS.map((r) => ({
+    label: r.label,
+    value: (roleCounts[r.key] ?? 0).toLocaleString(),
+    color: r.color,
+    icon: r.icon,
+  }));
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
       {/* Applications */}
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
         <CardHeader className="border-b border-gray-100 p-4">
@@ -92,63 +95,26 @@ export default function ApplicationsAccountsOverview() {
             Applications
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                {periodLabel}
-              </p>
-              {isApplicationsLoading ? (
-                <div className="mt-2 h-9 w-24 animate-pulse rounded bg-gray-200" />
-              ) : (
-                <div className="mt-2 flex items-baseline gap-3">
-                  <h2 className="text-4xl font-semibold text-gray-900">
-                    {totalApplications.toLocaleString()}
-                  </h2>
-                  <span className="text-xs text-gray-500">
-                    {totalApplications === 0 ? "no activity yet" : "total applications"}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                Success rate
-              </p>
-              {isApplicationsLoading ? (
-                <div className="mt-2 ml-auto h-7 w-16 animate-pulse rounded bg-gray-200" />
-              ) : (
-                <>
-                  <div
-                    className="mt-1 text-2xl font-semibold"
-                    style={{ color: successRate >= 50 ? "#1EB62D" : "#C23434" }}
-                  >
-                    {successRate.toFixed(1)}%
-                  </div>
-                  <p className="text-[11px] text-gray-500">
-                    {successCount.toLocaleString()} of {totalApplications.toLocaleString()}
-                  </p>
-                </>
-              )}
-            </div>
+        <CardContent className="px-4 py-3">
+          <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-primary/[0.06] to-transparent p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/70">
+              {periodLabel}
+            </p>
+            {isApplicationsLoading ? (
+              <div className="mt-2 h-9 w-24 animate-pulse rounded bg-gray-200" />
+            ) : (
+              <div className="mt-1 flex items-baseline gap-3">
+                <h2 className="text-4xl font-semibold text-gray-900">
+                  {totalApplications.toLocaleString()}
+                </h2>
+                <span className="text-xs text-gray-500">
+                  {totalApplications === 0 ? "no activity yet" : "total applications"}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full bg-[#1EB62D]" style={{ width: `${successRate}%` }} />
-            <div className="h-full flex-1 bg-[#E4A0A0]" />
-          </div>
-          <div className="mt-2.5 flex gap-5 text-[11.5px] text-gray-600">
-            <span className="flex items-center">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#1EB62D]" />
-              Successful {successCount.toLocaleString()}
-            </span>
-            <span className="flex items-center">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#E4A0A0]" />
-              Failed {failedCount.toLocaleString()}
-            </span>
-          </div>
-
-          <div className="mt-5 grid grid-cols-5 gap-2 border-t border-gray-100 pt-4">
+          <div className="mt-4 grid grid-cols-5 gap-2">
             {PERIODS.map((period) => {
               const isSelected = selectedPeriod === period.key;
               return (
@@ -156,19 +122,25 @@ export default function ApplicationsAccountsOverview() {
                   key={period.key}
                   type="button"
                   onClick={() => setSelectedPeriod(isSelected ? "all" : period.key)}
-                  className={`rounded-lg py-1.5 text-center transition-colors ${
-                    isSelected ? "bg-primary/10" : "hover:bg-gray-50"
+                  className={`rounded-lg border py-2 text-center transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary shadow-sm"
+                      : "border-gray-100 bg-gray-50/60 hover:border-primary/30 hover:bg-white"
                   }`}
                 >
-                  <p className={`text-[11px] ${isSelected ? "text-primary" : "text-gray-500"}`}>
+                  <p className={`text-[11px] ${isSelected ? "text-white/80" : "text-gray-500"}`}>
                     {period.label}
                   </p>
                   {isPeriodLoading ? (
-                    <div className="mx-auto mt-1.5 h-4 w-8 animate-pulse rounded bg-gray-200" />
+                    <div
+                      className={`mx-auto mt-1.5 h-4 w-8 animate-pulse rounded ${
+                        isSelected ? "bg-white/30" : "bg-gray-200"
+                      }`}
+                    />
                   ) : (
                     <p
                       className={`mt-1 text-sm font-semibold ${
-                        isSelected ? "text-primary" : "text-gray-900"
+                        isSelected ? "text-white" : "text-gray-900"
                       }`}
                     >
                       {(periodBreakdown?.[period.key]?.total ?? 0).toLocaleString()}
@@ -178,9 +150,9 @@ export default function ApplicationsAccountsOverview() {
               );
             })}
           </div>
-          <p className="mt-2 text-center text-[10.5px] text-gray-400">
+          <p className="mt-2.5 text-center text-[10.5px] text-gray-400">
             {selectedPeriod === "all"
-              ? "Tap a period to see its success / fail rate"
+              ? "Tap a period to see it as the headline total"
               : "Tap again to return to all time"}
           </p>
         </CardContent>
@@ -193,46 +165,67 @@ export default function ApplicationsAccountsOverview() {
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Users size={18} />
             </span>
-            Accounts
+            Users
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4">
-          {isAccountsLoading ? (
-            <div className="h-9 w-24 animate-pulse rounded bg-gray-200" />
-          ) : (
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-semibold text-gray-900">
-                {totalUsers.toLocaleString()}
-              </h2>
-              <span className="text-xs text-gray-500">users</span>
-            </div>
-          )}
+        <CardContent className="px-4 py-3">
+          <div className="rounded-xl border border-primary/10 bg-gradient-to-br from-primary/[0.06] to-transparent p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-primary/70">
+              Total
+            </p>
+            {isAccountsLoading ? (
+              <div className="mt-2 h-9 w-24 animate-pulse rounded bg-gray-200" />
+            ) : (
+              <div className="mt-1 flex items-baseline gap-3">
+                <h2 className="text-4xl font-semibold text-gray-900">
+                  {totalUsers.toLocaleString()}
+                </h2>
+                <span className="text-xs text-gray-500"></span>
+              </div>
+            )}
 
-          <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full bg-[#1EB62D]" style={{ width: `${activeSharePct}%` }} />
-            <div className="h-full bg-[#88D0FF]" style={{ width: `${guestSharePct}%` }} />
+            <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/70">
+              {ROLE_ROWS.filter((r) => r.key !== "ambassador").map((r) => {
+                const count = roleCounts[r.key] ?? 0;
+                const sharePct = totalUsers > 0 ? (count / totalUsers) * 100 : 0;
+                return (
+                  <div
+                    key={r.key}
+                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    style={{ width: `${sharePct}%`, background: r.color }}
+                  />
+                );
+              })}
+            </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-            {accountRows.map((row) => (
-              <div
-                key={row.label}
-                className="flex items-center justify-between gap-2 border-b border-gray-50 pb-1.5 text-[12.5px]"
-              >
-                <span className="flex items-center text-gray-600">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+            {accountRows.map((row) => {
+              const Icon = row.icon;
+              return (
+                <div
+                  key={row.label}
+                  className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/60 p-2"
+                >
                   <span
-                    className="mr-1.5 inline-block h-2 w-2 rounded-sm"
-                    style={{ background: row.color }}
-                  />
-                  {row.label}
-                </span>
-                {isAccountsLoading ? (
-                  <span className="h-3.5 w-8 animate-pulse rounded bg-gray-200" />
-                ) : (
-                  <span className="font-semibold text-gray-900">{row.value}</span>
-                )}
-              </div>
-            ))}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: `${row.color}1A`, color: row.color }}
+                  >
+                    <Icon size={14} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[10.5px] text-gray-500">{row.label}</p>
+                    {isAccountsLoading ? (
+                      <div className="mt-0.5 h-3.5 w-6 animate-pulse rounded bg-gray-200" />
+                    ) : (
+                      <p className="text-sm font-semibold leading-tight text-gray-900">
+                        {row.value}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

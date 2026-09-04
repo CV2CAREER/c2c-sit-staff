@@ -1,7 +1,4 @@
 "use client";
-import OverallClientMilestoneChart from "./_components/overall-clients-milestones";
-import OnboardedClientsChart from "./_components/onboarded-clients";
-import JobsitesChart from "./_components/jobsites";
 import InFlightClients from "./_components/inflight-clients";
 import CustomDateFilter from "@/components/DateFilterComponent/CustomDateFilter";
 import PipelineOverview from "./_components/pipeline-overview";
@@ -30,9 +27,6 @@ export default function DashboardPage() {
       <ControllerWorkload />
       <PipelineQueues />
       <InFlightClients />
-      <OverallClientMilestoneChart />
-      <OnboardedClientsChart />
-      <JobsitesChart />
     </section>
   );
 }
