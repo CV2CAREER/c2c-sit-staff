@@ -18,14 +18,14 @@ const PIPELINE_CARDS = [
   {
     key: "paidNotInFlight" as const,
     label: "Paid · Not In-Flight",
-    sub: "on hold, campaign still active",
+    sub: "Phase 1-4, on hold 14+ days",
     color: "#C23434",
     icon: PauseCircle,
   },
   {
     key: "onboarding" as const,
     label: "Onboarding",
-    sub: "no active plan yet",
+    sub: "Phase 1-4, on hold under 14 days",
     color: "#B26A22",
     icon: GraduationCap,
   },

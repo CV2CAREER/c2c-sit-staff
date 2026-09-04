@@ -26,13 +26,23 @@ import { modifyTableActionsColAndRows, tableColumns } from "../../users/_compone
 
 import { useAdminQueries, useAdminMutations } from "@/hooks/api/admin.api";
 import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
+import {
+  UserFilterState,
+  PERSONA_OPTIONS,
+  STATE_OPTIONS,
+  GROUP_OPTIONS,
+  LOYALTY_OPTIONS,
+  personaForUser,
+  stateForUser,
+  groupForUser,
+  loyaltyForUser,
+  matchesFacets,
+} from "@/app/admin/users/hooks/user-filters";
 import { moveTo, StyledDataGridPro, usersGridSx } from "@/utils/table";
 // import { applyDateSort } from "@/utils/dateSort";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import CRUDDropDown from "./crud-dropdown";
 import { FaSearch } from "react-icons/fa";
-import SearchInput from "@/components/ui/search";
 import { CvDataPointsManager } from "./CvDataPoints/CvDataPointsManager";
 import DispatchClient from "@/components/modals/DispatchClient";
 import { Combobox } from "@/components/ui/combobox";
@@ -42,10 +52,18 @@ import CustomModal from "@/components/CustomModal/CustomModal";
 import { IDateFilter } from "@/types/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PencilLine, Users2, Archive, Database, SendHorizontal, Settings2, CalendarRange, User, Search } from "lucide-react";
-import DateFilter from "@/components/reusable/DateFilter";
+import { PencilLine, Users2, Archive } from "lucide-react";
 
 
+
+// Label lookups for the active-filter chips and summary panel — mirrors the
+// sidebar's own option labels exactly (imported from the same source of
+// truth) so the chips above the table always agree with what's highlighted
+// in the sidebar.
+const personaLabel = (key: string): string => PERSONA_OPTIONS.find((o) => o.key === key)?.label ?? key;
+const stateLabel = (key: string): string => STATE_OPTIONS.find((o) => o.key === key)?.label ?? key;
+const groupLabel = (key: string): string => GROUP_OPTIONS.find((o) => o.key === key)?.label ?? key;
+const loyaltyLabel = (key: string): string => LOYALTY_OPTIONS.find((o) => o.key === key)?.label ?? key;
 
 const UsersTableToolbar = () => (
   <GridToolbarContainer>
@@ -65,18 +83,14 @@ const UsersTableToolbar = () => (
  */
 interface UsersDataTableProps {
   route?: any
-  userType: {
-    user: string;
-    usersDataState: string;
-    plan: string;
-  };
-  setUserType: (data: any) => void;
+  filters: UserFilterState;
+  setFilters: (filters: UserFilterState) => void;
   tableRef: any
   dateFilterData: IDateFilter;
   setDateFilterData: React.Dispatch<React.SetStateAction<IDateFilter>>;
 }
 
-const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, tableRef, dateFilterData, setDateFilterData, route = "admin"}) => {
+const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tableRef, dateFilterData, setDateFilterData, route = "admin"}) => {
   /*---- State ----*/
   const [usersDataState, setUsersDataState] = useState<
     "active" | "recycle"
@@ -89,10 +103,9 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
   const [editMode, setEditMode] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isDispatchModalOpen, setIsDispatchModalOpen] = useState<boolean>(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [tableData, setTableData] = useState<readonly UsersTableColType[]>([]);
   const [progressBeingHandled, setProgressBeingHandled] = useState<{
     value: string;
@@ -110,18 +123,15 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     data: { plan: string };
   }>({ type: 'plan_selected', data: { plan: '' } });
 
-  // New GET /v1/user/all endpoint replacing old API call
-  const allUsers = useGetAllUsers({ 
+  // Fetches the full active-or-recycled set once; search/role/plan/date are
+  // applied client-side below (see filteredRows) so those filters are
+  // instant instead of round-tripping to the backend on every change. This
+  // also drops the old hardcoded page:1/limit:50, which silently capped this
+  // table at its first 50 matching rows.
+  const allUsers = useGetAllUsers({
     enabled: true,
-    page: 1,
-    limit: 50,
     active: usersDataState === "active" ? true : undefined,
     recycle: usersDataState === "recycle" ? true : undefined,
-    q: searchQuery,
-    userType: userType?.user !== "all" ? userType?.user?.toLowerCase() : undefined,
-    plan: userType?.plan !== "all" ? userType?.plan?.toLowerCase() : undefined,
-    startDate: dateFilterData.startDate ?? undefined,
-    endDate: dateFilterData.endDate ?? undefined,
   });
 
   // Legacy query removed - all filtering now handled by useGetAllUsers
@@ -142,11 +152,64 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     }
   };
 
+  // Client-side facet/date filtering, run in-browser over the already
+  // fetched active-or-recycled set so it's instant. Facet matching
+  // (persona/state/group/loyalty) lives in user-filters.ts, shared with the
+  // sidebar so a pill's count and what actually gets filtered can't drift apart.
+  const filteredRows: GridRowsProp<UsersTableColType> = React.useMemo(() => {
+    const startTime = dateFilterData.startDate ? new Date(dateFilterData.startDate).getTime() : undefined;
+    const endTime = dateFilterData.endDate ? new Date(dateFilterData.endDate).getTime() : undefined;
+
+    return rows.filter((user: any) => {
+      if (!matchesFacets(user, filters)) return false;
+      if (startTime !== undefined || endTime !== undefined) {
+        const created = user.createdAt ? new Date(user.createdAt).getTime() : NaN;
+        if (Number.isNaN(created)) return false;
+        if (startTime !== undefined && created < startTime) return false;
+        if (endTime !== undefined && created > endTime) return false;
+      }
+      return true;
+    });
+  }, [rows, filters, dateFilterData.startDate, dateFilterData.endDate]);
+
   useEffect(() => {
     if (!selectedUser) {
-      setTableData(rows);
+      setTableData(filteredRows);
     }
-  }, [rows, selectedUser]);
+  }, [filteredRows, selectedUser]);
+
+  // Summary panel stats — headline count is the fully filtered set (facets +
+  // search + date), "of X users" is the base active-or-recycled population
+  // before any of that. Active/Staff/Newcomers and the persona breakdown bar
+  // describe the currently filtered set, same as the reference design.
+  const summary = React.useMemo(() => {
+    const total = rows.length;
+    const count = filteredRows.length;
+    const activeCount = filteredRows.filter((u: any) => stateForUser(u) === "active").length;
+    const staffCount = filteredRows.filter((u: any) => groupForUser(u) === "staff").length;
+    const newcomerCount = filteredRows.filter((u: any) => loyaltyForUser(u) === "newcomer").length;
+
+    const personaBreakdown = PERSONA_OPTIONS.map((opt) => ({
+      ...opt,
+      count: filteredRows.filter((u: any) => personaForUser(u) === opt.key).length,
+    })).filter((p) => p.count > 0);
+
+    const titleParts = [
+      filters.persona ? personaLabel(filters.persona) : null,
+      filters.state ? stateLabel(filters.state) : null,
+    ].filter(Boolean) as string[];
+
+    return {
+      total,
+      count,
+      basePct: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+      activePct: count > 0 ? Math.round((activeCount / count) * 100) : 0,
+      staffCount,
+      newcomerCount,
+      personaBreakdown,
+      title: titleParts.length ? titleParts.join(" · ") : "All Users",
+    };
+  }, [rows, filteredRows, filters.persona, filters.state]);
 
   const runProgressAPIDefault = async (value: string, userId: string, user: any, metadata?: {}) => {
     try {
@@ -432,99 +495,174 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
     }
   };
 
+  // Users with a real name sort alphabetically first; anyone with no
+  // first/middle/last name at all (falls back to email, or "Unnamed User")
+  // is pushed to the end instead of being interleaved by that fallback text.
+  const clientOptions = React.useMemo(() => {
+    const named: { value: string; label: string }[] = [];
+    const unnamed: { value: string; label: string }[] = [];
+    rows.forEach((user: any) => {
+      const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ").trim();
+      const entry = { value: user.id, label: fullName || user.email || "Unnamed User" };
+      (fullName ? named : unnamed).push(entry);
+    });
+    named.sort((a, b) => a.label.localeCompare(b.label));
+    unnamed.sort((a, b) => a.label.localeCompare(b.label));
+    return [...named, ...unnamed];
+  }, [rows]);
+
   useEffect(() => {
     if (selectedUser && rows.length > 0) {
       const filteredRows = rows.filter((row: any) => row.id === selectedUser.value);
-      
+
       // Only update if different to prevent re-renders
       setTableData(prev => {
         const isSame =
           prev.length === filteredRows.length &&
           prev.every((row, i) => row.id === filteredRows[i].id);
-          
+
         return isSame ? prev : filteredRows;
       });
     }
   }, [selectedUser, rows]);
 
-
   return (
     <section className="flex flex-col gap-4">
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="flex flex-col gap-4 p-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                <User size={14} className="text-primary" />
-                Client
-              </span>
-              <Combobox
-                list={rows
-                  .map((user: any) => ({
-                  value: user.id,
-                  label: [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ").trim() || user.email || "Unnamed User",
-                }))
-                  .sort((a, b) => a.label.localeCompare(b.label)) // <- alphabetical magic
-                }
-                placeholder="Client Name"
-                selectedItem={selectedUser}
-                setSelectedItem={setSelectedUser}
-                noItemsMessage="No client found"
-                btnTriggerStyles="w-full justify-between"
-                // loadingMore={shouldFetchMoreUsers}
-                // setLoadingMore={setShouldFetchMoreUsers}
-              />
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {summary.title}
+              </p>
+              <div className="mt-1 flex items-baseline gap-2">
+                <h2 className="text-4xl font-semibold text-gray-900">{summary.count.toLocaleString()}</h2>
+                <span className="text-xs text-gray-500">
+                  of {summary.total.toLocaleString()} users · {summary.basePct}% of base
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                <Search size={14} className="text-primary" />
-                Search
-              </span>
-              <SearchInput
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                className="h-9 w-full rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                <CalendarRange size={14} className="text-primary" />
-                Date Filter
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <DateFilter onFilterDataChange={setDateFilterData} />
+            <div className="flex gap-6 text-right">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Active</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900">{summary.activePct}%</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Staff</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900">{summary.staffCount.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Newcomers</p>
+                <p className="mt-1 text-xl font-semibold text-gray-900">{summary.newcomerCount.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 lg:flex-row lg:items-center lg:justify-between">
+          {summary.personaBreakdown.length > 0 && (
+            <>
+              <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-gray-100">
+                {summary.personaBreakdown.map((p) => (
+                  <div
+                    key={p.key}
+                    className="h-full"
+                    style={{ width: `${(p.count / summary.count) * 100}%`, background: p.color }}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                {summary.personaBreakdown.map((p) => (
+                  <span key={p.key} className="flex items-center text-[11.5px] text-gray-600">
+                    <span
+                      className="mr-1.5 inline-block h-2 w-2 rounded-full"
+                      style={{ background: p.color }}
+                    />
+                    {p.label} {p.count.toLocaleString()}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {(filters.persona || filters.state || filters.group || filters.loyalty) && (
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <span className="text-xs font-semibold text-gray-500">Active filters</span>
+          {filters.persona && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+              Persona: {personaLabel(filters.persona)}
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, persona: null })}
+                className="text-white/60 hover:text-white"
+              >
+                <FiX size={12} />
+              </button>
+            </span>
+          )}
+          {filters.state && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+              State: {stateLabel(filters.state)}
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, state: null })}
+                className="text-white/60 hover:text-white"
+              >
+                <FiX size={12} />
+              </button>
+            </span>
+          )}
+          {filters.group && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+              Group: {groupLabel(filters.group)}
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, group: null })}
+                className="text-white/60 hover:text-white"
+              >
+                <FiX size={12} />
+              </button>
+            </span>
+          )}
+          {filters.loyalty && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
+              Loyalty: {loyaltyLabel(filters.loyalty)}
+              <button
+                type="button"
+                onClick={() => setFilters({ ...filters, loyalty: null })}
+                className="text-white/60 hover:text-white"
+              >
+                <FiX size={12} />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
+        <CardHeader className="flex-col gap-4 border-b border-gray-100 p-4 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-900">{renderTitle()}</CardTitle>
+            {tableName === "USERS" && (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                {tableData.length} records
+              </span>
+            )}
+          </div>
+
+          {tableName === "USERS" && (
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Quick Actions</span>
-              <Settings2 size={16} className="hidden text-gray-400 sm:block" />
-              <CRUDDropDown columnHeaders={columnHeaders} />
+              <div className="w-full sm:w-56">
+                <Combobox
+                  list={clientOptions}
+                  placeholder="Client Name"
+                  selectedItem={selectedUser}
+                  setSelectedItem={setSelectedUser}
+                  noItemsMessage="No client found"
+                  btnTriggerStyles="w-full justify-between"
+                />
+              </div>
 
-              {route === "admin" && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => setTableName("CVDATAPOINTS")}
-                  >
-                    <Database size={16} /> View CV Data Points
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => setIsDispatchModalOpen(true)}
-                  >
-                    <SendHorizontal size={16} /> Send Client info to PC
-                  </Button>
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
               <label className="flex shrink-0 cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
                 <Checkbox checked={editMode} onClick={() => setEditMode(prev=>!prev)} />
                 <PencilLine size={16} className="text-primary" />
@@ -537,10 +675,6 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 onValueChange={(value) => {
                   const nextState = value === "active" ? "active" : "recycle";
                   setUsersDataState(nextState);
-                  setUserType({
-                    ...userType,
-                    usersDataState: nextState,
-                  });
                 }}
               >
                 <TabsList className="w-fit flex-nowrap rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
@@ -561,20 +695,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({userType, setUserType, t
                 </TabsList>
               </Tabs>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 space-y-0 border-b border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-lg font-bold text-gray-900">{renderTitle()}</CardTitle>
-            {tableName === "USERS" && (
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-                {tableData.length} records
-              </span>
-            )}
-          </div>
+          )}
         </CardHeader>
         <CardContent className="p-4">
           {renderTable()}

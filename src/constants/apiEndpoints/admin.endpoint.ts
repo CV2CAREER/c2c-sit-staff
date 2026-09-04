@@ -8,6 +8,8 @@ export const ADMIN_PLACEMENT_ASSIGNMENT_DETAIL = (credId: string) => `/api/v1/ad
 export const ADMIN_PLACEMENT_EXCEPTIONS = '/api/v1/admin/placement-exceptions';
 export const ADMIN_PLACEMENT_PERFORMANCE = '/api/v1/admin/placement-performance';
 export const ADMIN_PLACEMENT_OVERVIEW = '/api/v1/admin/placement-overview';
+export const ADMIN_USER_SEGMENTS = '/api/v1/admin/user-segments';
+export const ADMIN_USER_SEGMENT_DETAIL = (id: string) => `/api/v1/admin/user-segments/${id}`;
 export const ADMIN_APPLICATION_STATS = '/api/v1/admin/analytics'; // Both maps to analytics in v1
 export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/client-allocation';
 export const ADMIN_CLIENT_MILESTONE_STATS =
