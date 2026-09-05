@@ -86,21 +86,26 @@ export const sendStandardSlackNotification = async (
       channel = params.channel ?? SlackChannel.TOWN_CRIER;
     }
 
-    // Add mentions if teammate mentions are requested — only tag real people in production,
-    // so local/pre-production runs never ping anyone on Slack.
-    let mentions;
-    if (NODE_ENV === 'prod' && params.teamMentions === 'CSM') {
-      const csmSlackMentions = await getSlackUserIdsFromQueue('CSM');
-      mentions =
-        (csmSlackMentions ?? []).length > 0
-          ? csmSlackMentions?.map((id) => `<@${id}>`).join(' ')
-          : '';
-    } else if (NODE_ENV === 'prod' && params.teamMentions === 'DEVOPS') {
-      const devopsSlackMentions = await getSlackUserIdsFromQueue('DEVOPS');
-      mentions =
-        (devopsSlackMentions ?? []).length > 0
-          ? devopsSlackMentions?.map((id) => `<@${id}>`).join(' ')
-          : '';
+    // Add mentions if team mentions are requested — only tag real people
+    // in production so local/pre-production runs never ping anyone. Split
+    // on comma and loop against the whitelist so callers can request
+    // multiple teams (e.g. "CSM,WFC") without silent no-ops from the
+    // prior if/else exact-match implementation.
+    let mentions = '';
+    if (NODE_ENV === 'prod' && params.teamMentions) {
+      const teams = params.teamMentions
+        .split(',')
+        .map((t) => t.trim().toUpperCase())
+        .filter((t) => ['CSM', 'DEVOPS', 'WFC', 'SPC'].includes(t));
+
+      const mentionParts: string[] = [];
+      for (const team of teams) {
+        const ids = await getSlackUserIdsFromQueue(team);
+        if ((ids ?? []).length > 0) {
+          mentionParts.push(...(ids as string[]).map((id) => `<@${id}>`));
+        }
+      }
+      mentions = mentionParts.join(' ');
     }
 
     const finalMessage = mentions
