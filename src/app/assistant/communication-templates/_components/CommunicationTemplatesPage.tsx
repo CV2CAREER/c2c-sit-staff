@@ -4,10 +4,11 @@ import { Accordion, AccordionDetails, AccordionSummary, MenuItem, Select } from 
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { FaEdit, FaSearch, FaTrashAlt, FaUndo } from "react-icons/fa";
-import { FaCheck, FaChevronDown, FaEye, FaFileExport, FaPlus } from "react-icons/fa6";
+import { FaCheck, FaChevronDown, FaEye, FaFileExport, FaPaperPlane, FaPlus } from "react-icons/fa6";
 import { ArrowLeft, Layers, Mail, ShieldCheck, Sparkles, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import FilterSelect from "./FilterSelect";
+import { TriggersTab } from "./TriggersTab";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader/PageHeader";
 import {
@@ -47,6 +48,7 @@ export default function CommunicationTemplatesPage() {
   const [typeFilter, setTypeFilter] = useState<EmailTemplateType | "">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTypes, setExpandedTypes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"templates" | "triggers">("templates");
 
   const [selectedTemplate, setSelectedTemplate] = useState<CommunicationTemplate | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -55,7 +57,7 @@ export default function CommunicationTemplatesPage() {
   const [createEditOpen, setCreateEditOpen] = useState(false);
   const [missingInfoOpen, setMissingInfoOpen] = useState(false);
 
-  const { usersDomain, templatesDomain, actions } = useCommunicationTemplates({ recycleBin });
+  const { usersDomain, templatesDomain, triggersDomain, actions } = useCommunicationTemplates({ recycleBin });
   const templates = templatesDomain.data;
   const loading = templatesDomain.isLoading;
 
@@ -172,6 +174,19 @@ export default function CommunicationTemplatesPage() {
     }
   };
 
+  const handleTestSend = async (template: CommunicationTemplate) => {
+    const toastId = toast.loading("Sending test email...");
+    try {
+      const { variables, triggerKeyUsed } = await actions.resolveTestSend(template.id);
+      const result = await actions.sendTestEmail({ templateId: template.id, values: variables, triggerKeyUsed });
+      toast.dismiss(toastId);
+      toast.success(`Test email sent to ${result.recipientEmail}`);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.message || "Failed to send test email.");
+    }
+  };
+
   const handleNotify = async (payload: { userId: string; missingInfoType: string; missingInfoUrl: string; mode: "email" | "whatsapp" }) => {
     const method = payload.mode === "email" ? "Email" : "WhatsApp";
     const toastId = toast.loading(`Sending ${method} notification...`);
@@ -240,7 +255,35 @@ export default function CommunicationTemplatesPage() {
         </div>
       </div>
 
+      {/* Tab switcher */}
+      <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab("templates")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === "templates" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          Templates
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("triggers")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === "triggers" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          Triggers
+        </button>
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col gap-5">
+        {activeTab === "triggers" ? (
+          <TriggersTab
+            triggers={triggersDomain.data}
+            templates={templatesDomain.data}
+            isLoading={triggersDomain.isLoading}
+            onRebind={(triggerKey, templateId) => actions.rebindTrigger({ triggerKey, templateId })}
+            onReset={(triggerKey) => actions.resetTrigger(triggerKey)}
+          />
+        ) : (
+        <>
         {/* Toolbar */}
         <div className="flex-col md:flex-row flex md:items-center md:justify-between gap-3">
           <div className="flex w-full md:w-fit justify-between items-center gap-4">
@@ -381,6 +424,14 @@ export default function CommunicationTemplatesPage() {
                                 <FaEdit />
                               </button>
                               <button
+                                title="Send Test Email"
+                                className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                                disabled={recycleBin}
+                                onClick={() => void handleTestSend(template)}
+                              >
+                                <FaPaperPlane />
+                              </button>
+                              <button
                                 title="Export as .html"
                                 className="p-2 text-gray-600 hover:text-gray-100 rounded-full hover:bg-blue-500 transition-colors"
                                 onClick={() => handleExport(template)}
@@ -424,6 +475,8 @@ export default function CommunicationTemplatesPage() {
               </div>
             )}
           </div>
+        )}
+        </>
         )}
       </div>
 

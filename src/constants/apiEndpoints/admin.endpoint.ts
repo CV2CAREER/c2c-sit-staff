@@ -310,6 +310,13 @@ export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
 export const ADMIN_TEMPLATES = '/api/v1/admin/templates';
 export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO =
   '/api/v1/communication-template/notify-missing-info';
+export const ADMIN_EMAIL_TRIGGERS = '/api/v1/admin/templates/triggers';
+export const ADMIN_EMAIL_TRIGGER_BINDING = (triggerKey: string) =>
+  `/api/v1/admin/templates/triggers/${encodeURIComponent(triggerKey)}`;
+export const ADMIN_TEMPLATE_TEST_SEND_RESOLVE = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send/resolve`;
+export const ADMIN_TEMPLATE_TEST_SEND = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send`;
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
