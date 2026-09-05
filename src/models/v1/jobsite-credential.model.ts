@@ -69,10 +69,10 @@ export class JobsiteCredential extends Model {
   @Column(DataType.ENUM(...Object.values(JobsiteCredentialStatus)))
   status!: JobsiteCredentialStatus;
 
-  // SPR-19-07-012: who put this row here — the client themselves or staff
-  // acting on their behalf. Ambassador pending-approval email branches on
-  // this so a staff-added row reads as "we added this for you" instead of
-  // "you submitted this and need to grant forwarding access."
+  // Who put this row here — the client themselves or staff acting on
+  // their behalf. Ambassador pending-approval email branches on this so
+  // a staff-added row reads as "we added this for you" instead of "you
+  // submitted this and need to grant forwarding access."
   @AllowNull(false)
   @Default(JobsiteCredentialSource.CUSTOMER)
   @Column(DataType.ENUM(...Object.values(JobsiteCredentialSource)))

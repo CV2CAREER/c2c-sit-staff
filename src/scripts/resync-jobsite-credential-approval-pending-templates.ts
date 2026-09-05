@@ -1,12 +1,13 @@
 /**
- * SPR-19-07-012 + SPR-19-07-013 prod cutover.
+ * Prod cutover for the jobsite-credential pending + approved email
+ * templates.
  *
- * Staff BE's `seedEmailTemplates()` skips existing DB rows by default
- * (admin-editable body protection) and is not called on server boot, so a
- * fresh deploy will NOT refresh the DB copy of these two templates —
+ * `seedEmailTemplates()` skips existing DB rows by default (admin-
+ * editable body protection) and is not called on server boot, so a fresh
+ * deploy will NOT refresh the DB copy of these two templates —
  * `sendMail` reads `template.body` from the DB, not disk. Without this
  * cutover the pending + approved emails will keep going out with the OLD
- * copy in prod even after code deploys.
+ * copy even after code deploys.
  *
  * This script is a scoped one-off that only touches these two keys and
  * only touches `body` + `variables` — `name`, `type`, and any admin
@@ -16,7 +17,7 @@
  *   npx tsx src/scripts/resync-jobsite-credential-approval-pending-templates.ts
  *
  * Remove this script + the manual step from the runbook after the next
- * global template resync, or after adopting a boot-time seed on staff BE.
+ * global template resync, or after adopting a boot-time seed here.
  */
 
 import dotenv from "dotenv";
