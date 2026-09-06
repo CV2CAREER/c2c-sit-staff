@@ -5,8 +5,6 @@ export interface DiscoverySource {
   route: string;
   permission_outcome: string | null;
   evidence: string | null;
-  api_key: string | null;
-  app_id: string | null;
   cadence_minutes: number;
   enabled: boolean;
   last_fetched_at: string | null;
