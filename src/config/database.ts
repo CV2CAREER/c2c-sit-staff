@@ -105,6 +105,24 @@ export const connectDB = async (): Promise<void> => {
           );
         }
 
+        // SPR-19-16-021: mirror sync for users.hear_about_us so admin BE
+        // boots cleanly regardless of whether customer BE ran first.
+        // Remove after first deploy.
+        try {
+          const userColsForHearAboutUs = await queryInterface.describeTable("users");
+          if (!("hear_about_us" in userColsForHearAboutUs)) {
+            await queryInterface.addColumn("users", "hear_about_us", {
+              type: DataTypes.STRING,
+              allowNull: true,
+            });
+            logger.info(`${ENVIRONMENTNAME}: added users.hear_about_us column`);
+          }
+        } catch (err: any) {
+          logger.error(
+            `${ENVIRONMENTNAME}: failed to add users.hear_about_us column: ${err.message}`,
+          );
+        }
+
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
 
