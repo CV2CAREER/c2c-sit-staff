@@ -439,7 +439,7 @@ export const getPlacementAssignments = catchAsyncError(
   },
 );
 
-const VALID_ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc"];
+const VALID_ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc", "interimdpc", "interimspc"];
 
 export const bulkAssignPlacement = catchAsyncError(
   async (req: Request, res: Response) => {
@@ -451,7 +451,7 @@ export const bulkAssignPlacement = catchAsyncError(
       throw new ErrorHandler("credIds must be a non-empty array", 400);
     }
     if (!VALID_ROLE_KEYS.includes(role)) {
-      throw new ErrorHandler("role must be one of dpc, vpc, spc", 400);
+      throw new ErrorHandler(`role must be one of ${VALID_ROLE_KEYS.join(", ")}`, 400);
     }
 
     logger.info(

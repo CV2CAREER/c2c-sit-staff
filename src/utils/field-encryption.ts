@@ -339,6 +339,10 @@ export const fieldEncryption = {
     // to null) — for these, null means "clear it", not "leave unchanged".
     // Anything not in this set keeps its previous behavior: null = untouched.
     touchedFields: string[] = [],
+    interimDPCName: string | null = null,
+    interimDPCEmail: string | null = null,
+    interimSPCName: string | null = null,
+    interimSPCEmail: string | null = null,
   ): Promise<void> {
     const touched = (field: string) => touchedFields.includes(field);
     const opts = {
@@ -347,6 +351,8 @@ export const fieldEncryption = {
         seekEmail: seekEmail ?? null, assignedPCName: assignedPCName ?? null, assignedPCEmail: assignedPCEmail ?? null,
         assignedVetName: assignedVetName ?? null, assignedVetEmail: assignedVetEmail ?? null,
         assignedCompletedName: assignedCompletedName ?? null, assignedCompletedEmail: assignedCompletedEmail ?? null,
+        interimDPCName: interimDPCName ?? null, interimDPCEmail: interimDPCEmail ?? null,
+        interimSPCName: interimSPCName ?? null, interimSPCEmail: interimSPCEmail ?? null,
       },
       type: QueryTypes.UPDATE as QueryTypes,
       transaction,
@@ -359,7 +365,11 @@ export const fieldEncryption = {
         "AssignedVetNameEncrypted" = CASE WHEN :assignedVetName IS NOT NULL THEN pgp_sym_encrypt(:assignedVetName, :key) ${touched('AssignedVetName') ? 'WHEN :assignedVetName IS NULL THEN NULL' : ''} ELSE "AssignedVetNameEncrypted" END,
         "AssignedVetEmailEncrypted" = CASE WHEN :assignedVetEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedVetEmail, :key) ${touched('AssignedVetEmail') ? 'WHEN :assignedVetEmail IS NULL THEN NULL' : ''} ELSE "AssignedVetEmailEncrypted" END,
         "AssignedCompletedNameEncrypted" = CASE WHEN :assignedCompletedName IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedName, :key) ${touched('AssignedCompletedName') ? 'WHEN :assignedCompletedName IS NULL THEN NULL' : ''} ELSE "AssignedCompletedNameEncrypted" END,
-        "AssignedCompletedEmailEncrypted" = CASE WHEN :assignedCompletedEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedEmail, :key) ${touched('AssignedCompletedEmail') ? 'WHEN :assignedCompletedEmail IS NULL THEN NULL' : ''} ELSE "AssignedCompletedEmailEncrypted" END
+        "AssignedCompletedEmailEncrypted" = CASE WHEN :assignedCompletedEmail IS NOT NULL THEN pgp_sym_encrypt(:assignedCompletedEmail, :key) ${touched('AssignedCompletedEmail') ? 'WHEN :assignedCompletedEmail IS NULL THEN NULL' : ''} ELSE "AssignedCompletedEmailEncrypted" END,
+        "InterimDPCNameEncrypted" = CASE WHEN :interimDPCName IS NOT NULL THEN pgp_sym_encrypt(:interimDPCName, :key) ${touched('InterimDPCName') ? 'WHEN :interimDPCName IS NULL THEN NULL' : ''} ELSE "InterimDPCNameEncrypted" END,
+        "InterimDPCEmailEncrypted" = CASE WHEN :interimDPCEmail IS NOT NULL THEN pgp_sym_encrypt(:interimDPCEmail, :key) ${touched('InterimDPCEmail') ? 'WHEN :interimDPCEmail IS NULL THEN NULL' : ''} ELSE "InterimDPCEmailEncrypted" END,
+        "InterimSPCNameEncrypted" = CASE WHEN :interimSPCName IS NOT NULL THEN pgp_sym_encrypt(:interimSPCName, :key) ${touched('InterimSPCName') ? 'WHEN :interimSPCName IS NULL THEN NULL' : ''} ELSE "InterimSPCNameEncrypted" END,
+        "InterimSPCEmailEncrypted" = CASE WHEN :interimSPCEmail IS NOT NULL THEN pgp_sym_encrypt(:interimSPCEmail, :key) ${touched('InterimSPCEmail') ? 'WHEN :interimSPCEmail IS NULL THEN NULL' : ''} ELSE "InterimSPCEmailEncrypted" END
       WHERE id = :credentialId
     `, opts);
   },

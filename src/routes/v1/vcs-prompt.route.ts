@@ -15,6 +15,7 @@ import {
 import {
   listVcsPromptUsageLogs,
   listVcsPromptUsageSummary,
+  listVcsPromptLastUsed,
 } from "../../controllers/v1/vcs-prompt-usage.controller";
 import {
   runVcsPromptSimulation,
@@ -25,6 +26,7 @@ import {
 const vcsPromptRouterV1 = Router();
 
 vcsPromptRouterV1.get("/usage/summary", listVcsPromptUsageSummary);
+vcsPromptRouterV1.get("/usage/last-used", listVcsPromptLastUsed);
 vcsPromptRouterV1.get("/usage", listVcsPromptUsageLogs);
 vcsPromptRouterV1.get("/simulations", listAllVcsPromptSimulationRuns);
 
