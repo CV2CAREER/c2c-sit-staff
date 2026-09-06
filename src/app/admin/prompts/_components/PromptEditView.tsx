@@ -194,7 +194,14 @@ const PromptEditView = ({
       <CardContent className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}
+              title={
+                status === "draft"
+                  ? "This key has an unsaved/unpushed draft"
+                  : "This is the version production is currently reading"
+              }
+            >
               {statusLabel}
             </span>
             <span className="text-xs text-gray-500">{byline}</span>
@@ -206,6 +213,7 @@ const PromptEditView = ({
               className="gap-1.5"
               onClick={handleDiscard}
               disabled={!isDirty || isSaving}
+              title="Revert the prompt text and metadata below back to the last saved version"
             >
               <RotateCcw size={14} />
               Discard changes
@@ -216,6 +224,7 @@ const PromptEditView = ({
               className="gap-1.5"
               onClick={handleSaveDraft}
               disabled={!isDirty || isSaving}
+              title="Save these changes as a draft — production keeps using the live version until you push"
             >
               <Save size={14} />
               {isSavingDraft || isSavingMetadata ? "Saving..." : "Save draft"}
@@ -230,7 +239,7 @@ const PromptEditView = ({
                   ? "Save a draft before pushing to live"
                   : isDirty
                     ? "Save your changes first"
-                    : undefined
+                    : "Promote this draft to be the live version everyone's calls read"
               }
             >
               <UploadCloud size={14} />
@@ -243,12 +252,14 @@ const PromptEditView = ({
           <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b border-gray-100 bg-transparent p-0">
             <TabsTrigger
               value="edit"
+              title="Edit the raw prompt template and its metadata"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               Edit
             </TabsTrigger>
             <TabsTrigger
               value="simulate"
+              title="Test this prompt against sample input without affecting production"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               <FlaskConical size={13} />
@@ -256,6 +267,7 @@ const PromptEditView = ({
             </TabsTrigger>
             <TabsTrigger
               value="history"
+              title="Review past AI calls made with this prompt"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               <History size={13} />
@@ -299,6 +311,7 @@ const PromptEditView = ({
             size="sm"
             className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={onRequestDelete}
+            title="Soft-delete this key — it moves to the Recycle Bin and can be restored later"
           >
             <Trash2 size={14} />
             Delete Prompt

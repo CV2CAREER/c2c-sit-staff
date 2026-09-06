@@ -15,16 +15,32 @@ import {
   useRestoreVcsPrompt,
   VcsPrompt,
 } from "../hooks/use-vcs-prompts";
+import { useVcsPromptLastUsed } from "../hooks/use-vcs-prompt-usage";
 import {
   getEnabledStatus,
   EnabledStatus,
   ENABLED_STATUS_BADGE_CLASS,
   ENABLED_STATUS_LABEL,
 } from "./promptStatus";
+import { getPromptUsedByLabel } from "./promptUsedBy";
 import RecentlyEditedList from "./RecentlyEditedList";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+const formatRelativeTime = (value: string | null | undefined) => {
+  if (!value) return "Never";
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffSec = Math.round(diffMs / 1000);
+  if (diffSec < 60) return diffSec <= 5 ? "Just now" : `${diffSec}s ago`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min${diffMin === 1 ? "" : "s"} ago`;
+  const diffHour = Math.round(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
+  const diffDay = Math.round(diffHour / 24);
+  if (diffDay < 30) return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
+  return formatDate(value);
+};
 
 type FilterValue = "all" | EnabledStatus;
 
@@ -38,7 +54,14 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
 
   const { data: vcsData, isLoading } = useVcsPrompts();
   const { data: deletedData, isLoading: isDeletedLoading } = useDeletedVcsPrompts(true);
+  const { data: lastUsedData } = useVcsPromptLastUsed();
   const { mutateAsync: restorePrompt, isPending: isRestoring } = useRestoreVcsPrompt();
+
+  const lastUsedByKey = useMemo(() => {
+    const map = new Map<string, string | null>();
+    (lastUsedData?.data || []).forEach((row) => map.set(row.key, row.lastUsedAt));
+    return map;
+  }, [lastUsedData]);
 
   const nonDeleted = useMemo(() => vcsData?.data || [], [vcsData]);
   const deleted = useMemo(() => deletedData?.data || [], [deletedData]);
@@ -92,6 +115,23 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
           </span>
         );
       },
+    },
+    {
+      field: "usedBy",
+      headerName: "Used By",
+      width: 220,
+      valueGetter: (_value, row) => getPromptUsedByLabel((row as VcsPrompt).key),
+    },
+    {
+      field: "lastUsedAt",
+      headerName: "Last Used",
+      width: 160,
+      valueGetter: (_value, row) => lastUsedByKey.get((row as VcsPrompt).key) ?? null,
+      renderCell: (params) => (
+        <span title={params.value ? formatDate(params.value as string) : undefined}>
+          {formatRelativeTime(params.value as string | null)}
+        </span>
+      ),
     },
     {
       field: "updatedAt",
@@ -251,7 +291,7 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
           </CardContent>
         </Card>
 
-        <RecentlyEditedList prompts={nonDeleted} onSelect={onEdit} />
+        {/* <RecentlyEditedList prompts={nonDeleted} onSelect={onEdit} /> */}
       </div>
     </div>
   );

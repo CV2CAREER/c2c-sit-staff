@@ -239,6 +239,7 @@ export const ADMIN_VCS_PROMPT_BY_ID = (id: string) =>
 export const ADMIN_VCS_PROMPT_RESTORE = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_PERMANENT = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_USAGE_SUMMARY = '/api/v1/admin/prompts/usage/summary';
+export const ADMIN_VCS_PROMPT_USAGE_LAST_USED = '/api/v1/admin/prompts/usage/last-used';
 export const ADMIN_VCS_PROMPT_USAGE_LOGS = '/api/v1/admin/prompts/usage';
 export const ADMIN_VCS_PROMPT_VERSIONS = (vcsId: string) =>
   `/api/v1/admin/prompts/${vcsId}/versions`;

@@ -644,7 +644,7 @@ export const useUsersMutations = () => {
         credId: string;
         vaEmail: string | null;
         host?: string;
-        variant?: 'DPC' | 'VPC' | 'SPC';
+        variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
       }
     >({
       method: 'POST',

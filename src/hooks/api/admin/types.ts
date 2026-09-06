@@ -86,7 +86,7 @@ export interface PipelineLists {
   generatedAt: string;
 }
 
-export type AssignmentRoleKey = "dpc" | "vpc" | "spc";
+export type AssignmentRoleKey = "dpc" | "vpc" | "spc" | "interimdpc" | "interimspc";
 
 export interface AssignmentRoleValue {
   name: string | null;
@@ -101,6 +101,8 @@ export interface AssignmentRow {
   dpc: AssignmentRoleValue;
   vpc: AssignmentRoleValue;
   spc: AssignmentRoleValue;
+  interimdpc: AssignmentRoleValue;
+  interimspc: AssignmentRoleValue;
   industry: string | null;
   subEnd: string | null;
   days: number | null;
