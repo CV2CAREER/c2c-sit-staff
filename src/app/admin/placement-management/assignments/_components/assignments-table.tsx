@@ -13,8 +13,14 @@ import { GridToolbar } from "@mui/x-data-grid-pro";
 import type { GridColDef, GridRenderCellParams, GridRowSelectionModel } from "@mui/x-data-grid-pro";
 import ClientAssignmentDrawer from "../../_components/client-assignment-drawer";
 
-const ROLE_LABELS: Record<AssignmentRoleKey, string> = { dpc: "DPC", vpc: "VPC", spc: "SPC" };
-const ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc"];
+const ROLE_LABELS: Record<AssignmentRoleKey, string> = {
+  dpc: "DPC",
+  vpc: "VPC",
+  spc: "SPC",
+  interimdpc: "Interim DPC",
+  interimspc: "Interim SPC",
+};
+const ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc", "interimdpc", "interimspc"];
 // Same per-controller cap the Pipeline coverage card implicitly assumes
 // "overload" looks like — flagged here rather than enforced, same as the
 // reference console.
@@ -64,7 +70,7 @@ export default function AssignmentsTable() {
     const q = query.trim().toLowerCase();
     if (q) {
       pool = pool.filter((r) =>
-        [r.name, r.dpc.name, r.vpc.name, r.spc.name, r.industry]
+        [r.name, r.dpc.name, r.vpc.name, r.spc.name, r.interimdpc.name, r.interimspc.name, r.industry]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -258,7 +264,7 @@ export default function AssignmentsTable() {
           </div>
           <p className="mt-1 pl-11 text-xs text-gray-500">
             {allowEditing
-              ? "Click a client or a DPC / VPC / SPC name to open the assign panel · tick rows to assign in bulk"
+              ? "Click a client or a DPC / VPC / SPC / Interim DPC / Interim SPC name to open the assign panel · tick rows to assign in bulk"
               : "Read-only — switch on Allow Editing to change assignments"}
           </p>
         </CardHeader>
@@ -300,7 +306,7 @@ export default function AssignmentsTable() {
               <span className="hidden h-5 w-px shrink-0 bg-[#004174]/15 md:block" />
               <span className="shrink-0 whitespace-nowrap text-xs text-[#55697D]">Assign</span>
               <Select value={bulkRole} onValueChange={(v) => setBulkRole(v as AssignmentRoleKey)}>
-                <SelectTrigger className="h-[34px] w-[90px] shrink-0 border-primary/20 bg-white px-2.5 text-xs text-[#12202D] shadow-none">
+                <SelectTrigger className="h-[34px] w-[130px] shrink-0 border-primary/20 bg-white px-2.5 text-xs text-[#12202D] shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

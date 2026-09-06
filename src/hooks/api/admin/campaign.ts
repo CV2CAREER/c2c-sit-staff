@@ -378,10 +378,8 @@ export const useCampaignMutations = () => {
       mutationKey: ["admin-toggle-campaign-flight"],
       onSuccess: () => {
         invalidateCampaignQueries();
-        toast.success("Flight status toggled successfully");
       },
       onError: () => {
-        toast.error("Failed to toggle flight status");
       },
     }),
     generateKeywordRoleTitlesMutation: useMutateData<any, { id: string; keywords?: boolean; roleTitles?: boolean; increment?: boolean; existing?: any }>({

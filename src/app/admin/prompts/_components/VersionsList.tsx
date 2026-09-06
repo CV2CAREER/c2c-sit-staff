@@ -117,6 +117,13 @@ const VersionsList = ({
                   <span className="text-sm font-bold text-gray-900">v{version.version}</span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${VERSION_STATUS_BADGE_CLASS[version.status]}`}
+                    title={
+                      version.status === "live"
+                        ? "This is the version currently used in production"
+                        : version.status === "draft"
+                          ? "Unsaved/unpushed changes — not used in production"
+                          : "A previous live version, no longer active"
+                    }
                   >
                     {VERSION_STATUS_LABEL[version.status]}
                   </span>
@@ -135,6 +142,7 @@ const VersionsList = ({
                   variant="outline"
                   className="gap-1.5"
                   onClick={() => onView(version)}
+                  title="Show this version side-by-side in the diff view above"
                 >
                   <Eye size={13} />
                   View
@@ -146,6 +154,7 @@ const VersionsList = ({
                     className="gap-1.5"
                     disabled={isBusy}
                     onClick={() => setConfirmAction({ type: "rollback" })}
+                    title="Promote the most recently retired version back to live"
                   >
                     <RotateCcw size={13} />
                     Roll back
@@ -158,6 +167,7 @@ const VersionsList = ({
                     className="gap-1.5"
                     disabled={isBusy}
                     onClick={() => setConfirmAction({ type: "restore", version })}
+                    title="Make this version live again — the current live version will be retired"
                   >
                     <RotateCcw size={13} />
                     Restore
