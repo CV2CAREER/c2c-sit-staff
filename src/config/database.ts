@@ -18,6 +18,8 @@ import { NODE_ENV } from './env';
 import { DataTypes } from 'sequelize';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
+import { EmailTemplateTrigger } from '../models/v1/email-template-trigger.model';
+import { EmailTestSendLog } from '../models/v1/email-test-send-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
@@ -74,6 +76,8 @@ export const connectDB = async (): Promise<void> => {
         // await JustCallAppointmentLog.sync({ force: false }); // new table (FK -> justcall_appointments) — remove after first deploy
         await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
         await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
+        await EmailTemplateTrigger.sync({ force: false }); // new table (FK -> email_templates) — remove after first deploy
+        await EmailTestSendLog.sync({ force: false }); // new table (FK -> email_templates, users) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
         await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
         // SPR-19-07-005: mirror sync for the shared social_verifications
