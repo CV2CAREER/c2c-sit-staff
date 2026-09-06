@@ -19,7 +19,13 @@ import { DataTypes } from 'sequelize';
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
+import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
+import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+import { DiscoveryJob } from '../models/v1/discovery-job.model';
+import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+import { DiscoveryRun } from '../models/v1/discovery-run.model';
+import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -74,10 +80,34 @@ export const connectDB = async (): Promise<void> => {
         await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
         await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
+        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
         // SPR-19-07-005: mirror sync for the shared social_verifications
         // table so admin BE boots cleanly regardless of whether customer BE
         // ran first. Remove after first deploy.
         await SocialVerification.sync({ force: false });
+        await DiscoverySourceRegister.sync({ force: false });
+        await DiscoveryJob.sync({ force: false });
+        await DiscoveryMatch.sync({ force: false });
+        await DiscoveryRun.sync({ force: false });
+        await DiscoverySchedule.sync({ force: false });
+
+        // Add discovery_method column to manual_applications if missing
+        try {
+          await newSequelize.query(`
+            ALTER TABLE manual_applications 
+            ADD COLUMN IF NOT EXISTS discovery_method VARCHAR(255) DEFAULT 'staff'
+          `);
+        } catch (colErr: any) {
+          logger.warn(`discovery_method column check: ${colErr.message}`);
+        }
+
+        // Seed discovery source register on first boot
+        try {
+          const { seedDiscoverySourceRegister } = await import('../scripts/seed-discovery-config');
+          await seedDiscoverySourceRegister();
+        } catch (seedErr: any) {
+          logger.warn(`Discovery seed skipped: ${seedErr.message}`);
+        }
 
         // SPR-19-07-005: add users.socialVerificationExempt column as a
         // safety net if customer BE hasn't run first. Uses addColumn instead

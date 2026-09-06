@@ -28,6 +28,7 @@ import justCallSalesDialerWebhookRouterV1 from "./routes/v1/justcall-sales-diale
 import justCallContactWebhookRouterV1 from "./routes/v1/justcall-contact-webhook.route";
 import justCallAppointmentWebhookRouterV1 from "./routes/v1/justcall-appointment-webhook.route";
 import sendGridWebhookRouterV1 from "./routes/v1/sendgrid-webhook.route";
+import sendGridInboundParseRouter from "./routes/v1/sendgrid-inbound-parse.route";
 import { swaggerSpec } from "./config/swagger";
 import swaggerUi from "swagger-ui-express";
 import adminRouterV1 from "./routes/v1/admin.route";
@@ -211,6 +212,7 @@ app.use("/api/v1/justcallSalesDialerWebhook", justCallSalesDialerWebhookRouterV1
 app.use("/api/v1/justcallContactWebhook", justCallContactWebhookRouterV1);
 app.use("/api/v1/justcallAppointmentWebhook", justCallAppointmentWebhookRouterV1);
 app.use("/api/v1/sendgridWebhook", sendGridWebhookRouterV1);
+app.use("/api/v1/sendgridWebhook", sendGridInboundParseRouter);
 app.use("/api/v1/admin", adminRouterV1);
 app.use("/api/v1/slack-manage", slackManageRouterV1);
 app.use("/api/v1/audit-trail", auditTrailRouterV1);

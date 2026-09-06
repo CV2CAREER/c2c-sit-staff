@@ -171,6 +171,23 @@ export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
 export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
 export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;
 
+// ADZUNA API (AI Discovery Agent)
+export const ADZUNA_API_KEY = process.env.ADZUNA_API_KEY || '';
+export const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID || '';
+
+// JOOBLE API (AI Discovery Agent)
+export const JOOBLE_API_KEY = process.env.JOOBLE_API_KEY || '';
+
+// DISCOVERY EMAIL ALERT IMAP
+export const DISCOVERY_IMAP_HOST = process.env.DISCOVERY_IMAP_HOST || '';
+export const DISCOVERY_IMAP_PORT = parseInt(process.env.DISCOVERY_IMAP_PORT || '993', 10);
+export const DISCOVERY_IMAP_USER = process.env.DISCOVERY_IMAP_USER || '';
+export const DISCOVERY_IMAP_PASS = process.env.DISCOVERY_IMAP_PASS || '';
+export const DISCOVERY_IMAP_SECURE = process.env.DISCOVERY_IMAP_SECURE !== 'false';
+
+// DISCOVERY INBOUND PARSE (SendGrid)
+export const DISCOVERY_PARSE_DOMAIN = process.env.DISCOVERY_PARSE_DOMAIN || '';
+
 // VIEW AS USER
 export const CLIENT_APP_DOMAIN =
   process.env.CLIENT_APP_DOMAIN || 'http://localhost:3001';

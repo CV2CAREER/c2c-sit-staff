@@ -79,6 +79,7 @@ import { InterviewPackProcess } from "../models/v1/interview-pack-process.model"
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
+import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 import { PreferenceQuestion } from '../models/v1/preference-question.model';
@@ -98,6 +99,11 @@ import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.mo
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
+import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+import { DiscoveryJob } from '../models/v1/discovery-job.model';
+import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+import { DiscoveryRun } from '../models/v1/discovery-run.model';
+import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 
 export const modelList = [
   User,
@@ -183,6 +189,7 @@ export const modelList = [
   TourCount,
   CredentialsTour,
   CredentialsComment,
+  UserSegmentFilter,
   ClientJourneyStep,
   AiVettingComparison,
   PreferenceQuestion,
@@ -202,4 +209,9 @@ export const modelList = [
   SendGridEvent,
   SendGridEventLog,
   SocialVerification,
+  DiscoverySourceRegister,
+  DiscoveryJob,
+  DiscoveryMatch,
+  DiscoveryRun,
+  DiscoverySchedule,
 ];
