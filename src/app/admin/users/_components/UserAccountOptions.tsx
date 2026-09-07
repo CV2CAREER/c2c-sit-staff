@@ -8,11 +8,11 @@ import toast from "react-hot-toast";
 import FurtherUserAccountActions from "./FurtherUserAccountActions";
 import { useMutateData } from "@/hooks/useApi";
 import { useQueryClient } from "@tanstack/react-query";
-import { ADMIN_USER_PLAN_UPGRADE, ADMIN_ACTIVATE_CORAL, ADMIN_DEACTIVATE_CORAL, ADMIN_GENERATE_AMBASSADOR_LINK } from "@/constants/apiEndpoints/admin.endpoint";
+import { ADMIN_USER_PLAN_UPGRADE, ADMIN_ACTIVATE_CORAL, ADMIN_DEACTIVATE_CORAL, ADMIN_GENERATE_AMBASSADOR_LINK, ADMIN_ASSIGN_REFERRER } from "@/constants/apiEndpoints/admin.endpoint";
 import axiosInstance from "@/services/api-client";
 import {
     Crown, PowerOff, ShieldCheck, Link2, Upload, ArrowUp,
-    CalendarDays, Clock, CheckCircle2, AlertTriangle, ChevronDown, Sparkles, Copy, Check
+    CalendarDays, Clock, CheckCircle2, AlertTriangle, ChevronDown, Sparkles, Copy, Check, Users
 } from "lucide-react";
 
 const UserAccountOptions = ({ userId }: { userId: string }) => {
@@ -31,6 +31,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
     const [showCoralModal, setShowCoralModal] = useState(false)
     const [showDeactivateModal, setShowDeactivateModal] = useState(false)
     const [showLinkModal, setShowLinkModal] = useState(false)
+    const [showReferrerModal, setShowReferrerModal] = useState(false)
     const [ambassadorLink, setAmbassadorLink] = useState<string>("")
     const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined)
     const [selectedFeatureId, setSelectedFeatureId] = useState<string | undefined>(undefined)
@@ -131,6 +132,13 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                     </>
                 )}
 
+                <button
+                    onClick={() => setShowReferrerModal(true)}
+                    className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                    <Users className="w-4 h-4" />
+                    Assign Referrer
+                </button>
                 <button className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
                     <Upload className="w-4 h-4" />
                     Export
@@ -150,6 +158,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
             {showCoralModal && <ActivateCoralModal isOpen={showCoralModal} toggleOpen={setShowCoralModal} userId={userId} />}
             {showDeactivateModal && <DeactivateCoralModal isOpen={showDeactivateModal} toggleOpen={setShowDeactivateModal} userId={userId} />}
             {showLinkModal && <AmbassadorLinkModal isOpen={showLinkModal} toggleOpen={setShowLinkModal} link={ambassadorLink} />}
+            {showReferrerModal && <AssignReferrerModal isOpen={showReferrerModal} toggleOpen={setShowReferrerModal} userId={userId} />}
         </div>
     )
 }
@@ -386,6 +395,149 @@ const AmbassadorLinkModal = ({ isOpen, toggleOpen, link }: {
             >
                 Done
             </Button>
+        </AppModal>
+    );
+};
+
+// ─── Assign Referrer Modal ────────────────────────────────────────────────────
+
+const AssignReferrerModal = ({ isOpen, toggleOpen, userId }: {
+    isOpen: boolean; toggleOpen: (value: boolean) => void; userId: string;
+}) => {
+    const queryClient = useQueryClient();
+    const [referrer, setReferrer] = useState("");
+    const [referralNumber, setReferralNumber] = useState("");
+    const [freeBeforeReferral, setFreeBeforeReferral] = useState(false);
+    const [confirmed, setConfirmed] = useState(false);
+
+    const assignReferrerMutation = useMutateData<any, { referrer: string; referralNumber: string; freeBeforeReferral: boolean }>({
+        method: "POST",
+        url: ADMIN_ASSIGN_REFERRER(userId),
+        mutationKey: ["admin-assign-referrer", userId],
+        onSuccess: (res: any) => {
+            const msg = res?.message || "Referrer assigned successfully";
+            toast.success(msg);
+            queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
+            queryClient.invalidateQueries({ queryKey: ["user-referrals", userId] });
+        },
+        onError: () => {
+            toast.error("Failed to assign referrer");
+        },
+    });
+
+    const handleSubmit = () => {
+        const trimmed = referrer.trim();
+        if (!trimmed) {
+            toast.error("Referrer is required");
+            return;
+        }
+        if (!confirmed) {
+            toast.error("Please confirm the free-plan-before-referral status");
+            return;
+        }
+        assignReferrerMutation.mutate(
+            {
+                referrer: trimmed,
+                referralNumber: referralNumber.trim(),
+                freeBeforeReferral,
+            },
+            {
+                onSuccess: () => {
+                    toggleOpen(false);
+                    setReferrer("");
+                    setReferralNumber("");
+                    setFreeBeforeReferral(false);
+                    setConfirmed(false);
+                },
+                onError(error: any) {
+                    if (error?.response?.data?.message) toast.error(error.response.data.message);
+                },
+            },
+        );
+    };
+
+    return (
+        <AppModal isOpen={isOpen} onClose={() => toggleOpen(false)} title="Assign Referrer">
+            <div className="text-center mb-5">
+                <div className="mx-auto w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3">
+                    <Users className="w-6 h-6 text-career-blue-800" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Assign Referrer</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Attach a referrer relationship to this client for tracking and rewards.
+                </p>
+            </div>
+
+            <div className="flex flex-col gap-3 mb-5">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                        Referrer <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        value={referrer}
+                        onChange={(e) => setReferrer(e.target.value)}
+                        placeholder="Email, referrer code, or user ID"
+                        className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-career-blue-800/25 focus:border-career-blue-800"
+                    />
+                    <p className="text-[11px] text-gray-500">
+                        Who referred this client. Free-text so ops can enter an email, code, or user identifier.
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-700">Referral number</label>
+                    <input
+                        type="text"
+                        value={referralNumber}
+                        onChange={(e) => setReferralNumber(e.target.value)}
+                        placeholder="Optional — invoice or campaign code"
+                        className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-career-blue-800/25 focus:border-career-blue-800"
+                    />
+                </div>
+
+                <label className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={freeBeforeReferral}
+                        onChange={(e) => setFreeBeforeReferral(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-career-blue-800 focus:ring-career-blue-800/25"
+                    />
+                    <span className="text-sm text-gray-700 leading-snug">
+                        This client was on a <strong>free plan</strong> at the time of referral.
+                    </span>
+                </label>
+
+                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 cursor-pointer hover:bg-amber-100/60 transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={confirmed}
+                        onChange={(e) => setConfirmed(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-400/25"
+                    />
+                    <span className="text-sm text-amber-800 leading-snug">
+                        I have verified the free-plan-before-referral status above with the client record.
+                    </span>
+                </label>
+            </div>
+
+            <div className="flex gap-3">
+                <Button
+                    className="flex-1 h-10 rounded-lg bg-career-blue-800 text-white hover:bg-career-blue-900 text-sm font-medium disabled:opacity-60"
+                    onClick={handleSubmit}
+                    disabled={assignReferrerMutation.isPending}
+                >
+                    {assignReferrerMutation.isPending ? "Assigning…" : "Assign / Update / Allow"}
+                </Button>
+                <Button
+                    variant="outline"
+                    className="flex-1 h-10 rounded-lg border-gray-200 text-gray-700 text-sm font-medium"
+                    onClick={() => toggleOpen(false)}
+                    disabled={assignReferrerMutation.isPending}
+                >
+                    Cancel
+                </Button>
+            </div>
         </AppModal>
     );
 };

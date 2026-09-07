@@ -3,88 +3,30 @@ import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
 
-export type CvVariantStyle = "modern" | "classic" | "contemporary";
-
-export type CvVariantTextRun = {
-  text: string;
-  is_new: boolean;
-};
-
-export type CvVariantHeader = {
-  name: string;
-  headline: CvVariantTextRun;
-  contact_line: string;
-  work_rights_line: { text: string | null; is_new: boolean; flag: string | null };
-};
-
-export type CvVariantExperienceSubSection = {
-  label: string;
-  bullets: CvVariantTextRun[];
-};
-
-export type CvVariantExperience = {
-  title: string;
-  company: string;
-  location: string | null;
-  dates: string;
-  flags: string[];
-  bullets: CvVariantTextRun[];
-  sub_sections: CvVariantExperienceSubSection[];
-};
-
-export type CvVariantEducation = {
-  qualification: string;
-  institution: string;
-  dates: string;
-  detail: { text: string | null; is_new: boolean };
-  flags: string[];
-};
-
-export type CvVariantCertification = CvVariantTextRun & {
-  flag: string | null;
-};
-
-export type CvVariantAdditionalSection = {
-  heading: string;
-  items: CvVariantTextRun[];
-};
-
-export type CvVariantDesign = {
-  accent_color: string;
-  font_family: "sans" | "serif";
-  density: "compact" | "standard" | "spacious";
-  /** Which structural PDF/DOCX layout renders — see htmlDocumentGenerator.ts on the backend. Always present on a generated result (the backend defaults it), so no separate `style_variant` plumbing is needed when passing `design` through to save. */
-  style_variant: CvVariantStyle;
-};
-
-/**
- * The AI prompt behind this (edited via Admin > Prompts, and known to drift
- * — see cvVariantFormat.ts) can return a differently-shaped object at any
- * time, so this is a *hint* at the fields we render specially, not a
- * contract on what the API returns. `Record<string, unknown>` lets any other
- * shape through so the generic renderer can still turn it into a readable
- * document instead of the app breaking on a missing field.
- */
-export type CvVariantResult = Record<string, unknown> & Partial<{
-  client_name: string;
-  style_variant: CvVariantStyle;
-  style_reasoning: string;
-  top_level_flags: string[];
-  design: CvVariantDesign;
-  header: CvVariantHeader;
-  summary: { runs: CvVariantTextRun[] };
-  skills: CvVariantTextRun[];
-  experience: CvVariantExperience[];
-  education: CvVariantEducation[];
-  certifications: CvVariantCertification[];
-  additional_sections: CvVariantAdditionalSection[];
-}>;
-
 export type SaveCvVariantFormat = "pdf" | "docx";
+
+export type ConfirmedAnswer = { question: string; answer: string };
+
+// A "Please confirm: ..." question pulled from the AI's generated CV. When
+// the AI supplies a short set of likely answers, `options` lets the admin
+// pick one instead of typing a free-text answer.
+export type ConfirmQuestion = { question: string; options?: string[] };
 
 type GenerateCvVariantPayload = {
   userId: string;
   resumeUploadId: string;
+  confirmedAnswers?: ConfirmedAnswer[];
+};
+
+// The AI now authors a complete, self-styled HTML document directly (its own
+// colors/layout/fonts) — there's no structured JSON to type here anymore,
+// see cvVariantHtmlRenderer.ts on the backend for how this gets rendered.
+// `confirmQuestions` are pulled from the document's own "Please Confirm"
+// section (see extractConfirmQuestions on the backend) so the admin can
+// resolve them before ever seeing the review/save step.
+type GenerateCvVariantResponse = {
+  html: string;
+  confirmQuestions: ConfirmQuestion[];
 };
 
 type SaveCvVariantPayload = {
@@ -92,7 +34,6 @@ type SaveCvVariantPayload = {
   resumeUploadId: string;
   cvVariant: string;
   format: SaveCvVariantFormat;
-  design?: CvVariantDesign;
 };
 
 type CvVariantDocument = {
@@ -105,6 +46,23 @@ type SaveCvVariantResponse = {
   upload: { document: CvVariantDocument };
 };
 
+type PreviewCvVariantPayload = {
+  userId: string;
+  resumeUploadId: string;
+  cvVariant: string;
+  format: SaveCvVariantFormat;
+};
+
+// Pulls the filename the backend set via Content-Disposition — falls back to
+// a generic name if it's ever missing rather than failing the download.
+const filenameFromContentDisposition = (
+  header: string | undefined,
+  fallback: string,
+): string => {
+  const match = header?.match(/filename="?([^";]+)"?/);
+  return match?.[1] || fallback;
+};
+
 /**
  * Generate/save/download actions behind the "Generate CV Variant" column —
  * mirrors useCoverLetterGeneration's hook shape.
@@ -114,7 +72,7 @@ export function useCvVariantGeneration() {
 
   const generateMutation = useMutation({
     mutationFn: async (payload: GenerateCvVariantPayload) => {
-      const response = await axiosInstance.post<ApiSuccess<CvVariantResult>>(
+      const response = await axiosInstance.post<ApiSuccess<GenerateCvVariantResponse>>(
         endpoints.ADMIN_GENERATE_CV_VARIANT,
         payload,
       );
@@ -145,9 +103,27 @@ export function useCvVariantGeneration() {
     return response.data.data.url;
   };
 
+  // Renders a not-yet-saved CV variant to a real file so an admin can check
+  // it before deciding to save — nothing here touches the client's
+  // Document History or onboarding progress.
+  const previewMutation = useMutation({
+    mutationFn: async (payload: PreviewCvVariantPayload) => {
+      const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_CV_VARIANT, payload, {
+        responseType: "blob",
+      });
+      const filename = filenameFromContentDisposition(
+        response.headers["content-disposition"],
+        `CV_Variant_Preview.${payload.format}`,
+      );
+      return { blob: response.data as Blob, filename };
+    },
+  });
+
   return {
     generateCvVariant: generateMutation.mutateAsync,
     isGenerating: generateMutation.isPending,
+    previewCvVariant: previewMutation.mutateAsync,
+    isPreviewing: previewMutation.isPending,
     saveCvVariant: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
     savingFormat: saveMutation.variables?.format,

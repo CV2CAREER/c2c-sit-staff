@@ -42,6 +42,14 @@ export const tableColumns: GridColDef[] = [
   { field: "whatsappNumber", headerName: "Whatsapp Number", width: 150 },
   { field: "country", headerName: "Country", width: 150 },
   { field: "heritage", headerName: "Heritage", width: 150 },
+  {
+    field: "hearAboutUs",
+    headerName: "Hear About Us",
+    width: 170,
+    // SPR-19-16-021/022: nullable, no backfill — pre-deployment accounts
+    // have no value.
+    valueGetter: (value) => value ?? "Not Recorded",
+  },
   { field: "applicationStatus", headerName: "Application Status", width: 200 },
   { field: "prepSessionStatus", headerName: "Prep Session Status", width: 200 },
   { field: "isUserSubscribed", headerName: "Subscribed", width: 100 },

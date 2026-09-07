@@ -98,6 +98,10 @@ export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_GENERATE_AMBASSADOR_LINK = (userId: string) =>
   `/api/v1/admin/ambassador/generate-link/${userId}`;
+export const ADMIN_ASSIGN_REFERRER = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/referrer`;
+export const ADMIN_APPROVE_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/approve`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';
@@ -112,12 +116,16 @@ export const ADMIN_DOCUMENT_REVIEW =
   '/api/v1/admin/documents/upload-cv-cover-letter'; // /v1/admin/documents/upload-cv-cover-letter
 export const ADMIN_GENERATE_COVER_LETTER =
   '/api/v1/admin/documents/generate-cover-letter';
+export const ADMIN_PREVIEW_COVER_LETTER =
+  '/api/v1/admin/documents/preview-cover-letter';
 export const ADMIN_SAVE_COVER_LETTER =
   '/api/v1/admin/documents/save-cover-letter';
 export const ADMIN_GENERATE_ROLE_TITLES =
   '/api/v1/admin/documents/generate-role-titles';
 export const ADMIN_GENERATE_CV_VARIANT =
   '/api/v1/admin/documents/generate-cv-variant';
+export const ADMIN_PREVIEW_CV_VARIANT =
+  '/api/v1/admin/documents/preview-cv-variant';
 export const ADMIN_SAVE_CV_VARIANT =
   '/api/v1/admin/documents/save-cv-variant';
 export const ADMIN_START_INTERVIEW_PACK =
@@ -126,6 +134,8 @@ export const ADMIN_RUN_INTERVIEW_PACK_STAGE =
   '/api/v1/admin/documents/generate-interview-pack/run-stage';
 export const ADMIN_GET_INTERVIEW_PACK_PROCESS = (processId: string) =>
   `/api/v1/admin/documents/generate-interview-pack/${processId}`;
+export const ADMIN_PREVIEW_INTERVIEW_PACK =
+  '/api/v1/admin/documents/preview-interview-pack';
 export const ADMIN_SAVE_INTERVIEW_PACK =
   '/api/v1/admin/documents/save-interview-pack';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
@@ -305,6 +315,13 @@ export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
 export const ADMIN_TEMPLATES = '/api/v1/admin/templates';
 export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO =
   '/api/v1/communication-template/notify-missing-info';
+export const ADMIN_EMAIL_TRIGGERS = '/api/v1/admin/templates/triggers';
+export const ADMIN_EMAIL_TRIGGER_BINDING = (triggerKey: string) =>
+  `/api/v1/admin/templates/triggers/${encodeURIComponent(triggerKey)}`;
+export const ADMIN_TEMPLATE_TEST_SEND_RESOLVE = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send/resolve`;
+export const ADMIN_TEMPLATE_TEST_SEND = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send`;
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
@@ -316,3 +333,11 @@ export const ADMIN_SALES_OPERATION = '/api/v1/sales-operation';
 
 // Jobsite v2 Endpoints
 export const ADMIN_JOBSITE = '/api/v1/jobsite';
+
+// CEC Tracker Endpoints
+export const ADMIN_CEC_DAILY_LOG = '/api/v1/admin/cec/daily-log';
+export const ADMIN_CEC_ISSUE_BURNDOWN = '/api/v1/admin/cec/issue-burndown';
+export const ADMIN_CEC_COMPLAINTS = '/api/v1/admin/cec/complaints';
+export const ADMIN_CEC_REFERRAL_PAYOUTS = '/api/v1/admin/cec/referral-payouts';
+export const ADMIN_CEC_SALES_OUTREACH = '/api/v1/admin/cec/sales-outreach';
+export const ADMIN_CEC_AMBASSADOR_SCOUTING = '/api/v1/admin/cec/ambassador-scouting';
