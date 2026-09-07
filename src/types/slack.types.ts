@@ -20,6 +20,9 @@ export interface StandardSlackNotification {
   type: SlackEventType;
   body: string;
   channel?: SlackChannel | string;
+  // Comma-separated list of team codes to @-mention in production posts.
+  // Whitelist enforced at send time in slack-helpers so unknown values
+  // no-op instead of leaking raw text into the message.
   teamMentions?: string;
   trigger?: string;
   location?: SlackLocation; // Enum for routing
@@ -42,6 +45,9 @@ export interface SlackJobPayload {
   body: string;
   host: string;
   channel?: SlackChannel | string;
+  // Comma-separated list of team codes to @-mention in production posts.
+  // Whitelist enforced at send time in slack-helpers so unknown values
+  // no-op instead of leaking raw text into the message.
   teamMentions?: string;
   location?: SlackLocation;
 }

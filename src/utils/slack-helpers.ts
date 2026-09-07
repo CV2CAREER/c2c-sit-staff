@@ -86,16 +86,18 @@ export const sendStandardSlackNotification = async (
       channel = params.channel ?? SlackChannel.TOWN_CRIER;
     }
 
-    // Add mentions if teammate mentions are requested — only tag real people in production,
-    // so local/pre-production runs never ping anyone on Slack.
-    // teamMentions is a comma-separated list of team tags; unknown tags are
-    // dropped by the whitelist so a typo can't page an unexpected channel.
-    let mentions;
+    // Add mentions if team mentions are requested — only tag real people
+    // in production so local/pre-production runs never ping anyone. Split
+    // on comma and loop against the whitelist so callers can request
+    // multiple teams (e.g. "CSM,WFC"); unknown tags are dropped so a typo
+    // can't page an unexpected channel.
+    let mentions = '';
     if (NODE_ENV === 'prod' && params.teamMentions) {
       const teams = params.teamMentions
         .split(',')
         .map((t) => t.trim().toUpperCase())
         .filter((t) => ['CSM', 'DEVOPS', 'WFC', 'SPC'].includes(t));
+
       const mentionParts: string[] = [];
       for (const team of teams) {
         const slackMentions = await getSlackUserIdsFromQueue(team);
@@ -103,7 +105,7 @@ export const sendStandardSlackNotification = async (
           mentionParts.push(...(slackMentions ?? []).map((id) => `<@${id}>`));
         }
       }
-      mentions = mentionParts.length > 0 ? mentionParts.join(' ') : '';
+      mentions = mentionParts.join(' ');
     }
 
     const finalMessage = mentions
