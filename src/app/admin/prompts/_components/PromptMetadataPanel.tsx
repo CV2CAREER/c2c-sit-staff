@@ -29,12 +29,8 @@ interface PromptMetadataPanelProps {
   promptText: string;
   category: string;
   model: string;
-  temperature: string;
-  maxTokens: string;
   onCategoryChange: (value: string) => void;
   onModelChange: (value: string) => void;
-  onTemperatureChange: (value: string) => void;
-  onMaxTokensChange: (value: string) => void;
 }
 
 const Field = ({
@@ -62,12 +58,8 @@ const PromptMetadataPanel = ({
   promptText,
   category,
   model,
-  temperature,
-  maxTokens,
   onCategoryChange,
   onModelChange,
-  onTemperatureChange,
-  onMaxTokensChange,
 }: PromptMetadataPanelProps) => {
   const variables = useMemo(() => parseVariables(promptText), [promptText]);
 
@@ -127,32 +119,6 @@ const PromptMetadataPanel = ({
           placeholder="Not configured"
         />
       </Field>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Field
-          label="Temp"
-          hint="How random the AI's output is. Lower is more focused and repeatable, higher is more varied."
-        >
-          <Input
-            type="number"
-            step="0.1"
-            min="0"
-            max="2"
-            value={temperature}
-            onChange={(e) => onTemperatureChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-        <Field label="Max tokens" hint="The maximum length of the AI's response for this prompt.">
-          <Input
-            type="number"
-            min="1"
-            value={maxTokens}
-            onChange={(e) => onMaxTokensChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-      </div>
     </CardContent>
     </Card>
   );

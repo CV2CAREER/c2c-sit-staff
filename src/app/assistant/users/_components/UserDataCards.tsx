@@ -41,13 +41,13 @@ const LOCKED_SEGMENTS: SavedSegment[] = [
     id: "locked-dormant-clients",
     name: "Dormant clients",
     locked: true,
-    filters: { persona: null, state: "dormant", group: "customer", loyalty: null },
+    filters: { persona: [], state: ["dormant"], group: ["customer"], loyalty: [] },
   },
   {
     id: "locked-new-guests",
     name: "New guests",
     locked: true,
-    filters: { persona: "guest", state: null, group: null, loyalty: "newcomer" },
+    filters: { persona: ["guest"], state: [], group: [], loyalty: ["newcomer"] },
   },
 ];
 
@@ -116,7 +116,9 @@ const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProp
     users.filter((u) => matchesFacets(u, segFilters)).length;
 
   const toggle = (key: keyof UserFilterState, value: string) => {
-    setFilters({ ...filters, [key]: filters[key] === value ? null : value });
+    const current = filters[key];
+    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+    setFilters({ ...filters, [key]: next });
     scrollTotable();
   };
 
@@ -148,7 +150,7 @@ const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProp
       <div className="flex flex-wrap gap-1.5">
         {options.map((opt) => {
           const count = isLoading ? 0 : countFor(key, (u) => facetMatcher[key](u) === opt.key);
-          const isActive = filters[key] === opt.key;
+          const isActive = filters[key].includes(opt.key);
           return (
             <button
               key={opt.key}
