@@ -41,7 +41,7 @@ const PROMPT_DETAIL_HINTS = [
   },
   {
     label: "Metadata panel",
-    description: "Category, AI model, temperature, and max token settings for this key.",
+    description: "Category and AI model settings for this key.",
   },
   {
     label: "Delete",
