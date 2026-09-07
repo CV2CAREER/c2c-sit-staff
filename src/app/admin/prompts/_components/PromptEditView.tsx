@@ -78,9 +78,7 @@ const PromptEditView = ({
     promptText !== baselinePrompt ||
     aiPromptSection !== baselineAiPromptSection ||
     category !== (vcs.category ?? "") ||
-    model !== (vcs.model ?? "") ||
-    temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") ||
-    maxTokens !== (vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "");
+    model !== (vcs.model ?? "");
 
   const isSaving = isSavingDraft || isSavingMetadata;
 
