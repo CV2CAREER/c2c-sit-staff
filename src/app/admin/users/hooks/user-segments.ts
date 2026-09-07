@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useFetchData, useMutateData } from "@/hooks/useApi";
 import { ADMIN_USER_SEGMENTS, ADMIN_USER_SEGMENT_DETAIL } from "@/constants/apiEndpoints/admin.endpoint";
-import { UserFilterState } from "./user-filters";
+import { UserFilterState, normalizeFilterState } from "./user-filters";
 
 export interface SavedSegmentDTO {
   id: string;
@@ -27,7 +27,10 @@ export const useUserSegments = () => {
 
   return useMemo(
     () => ({
-      segments: (query.data as any)?.data ?? [],
+      segments: ((query.data as any)?.data ?? []).map((seg: SavedSegmentDTO) => ({
+        ...seg,
+        filters: normalizeFilterState(seg.filters),
+      })),
       isLoading: query.isLoading,
       refetch: query.refetch,
     }),

@@ -65,24 +65,12 @@ const PromptEditView = ({
   const [aiPromptSection, setAiPromptSection] = useState(baselineAiPromptSection);
   const [category, setCategory] = useState(vcs.category ?? "");
   const [model, setModel] = useState(vcs.model ?? "");
-  const [temperature, setTemperature] = useState(
-    vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-  );
-  const [maxTokens, setMaxTokens] = useState(
-    vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "",
-  );
 
   useEffect(() => {
     setPromptText(baselinePrompt);
     setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
-    setTemperature(
-      vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-    );
-    setMaxTokens(
-      vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "",
-    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vcs.id]);
 
@@ -101,10 +89,6 @@ const PromptEditView = ({
     setAiPromptSection(baselineAiPromptSection);
     setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
-    setTemperature(
-      vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-    );
-    setMaxTokens(vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "");
   };
 
   const handleSaveDraft = async () => {
@@ -126,21 +110,9 @@ const PromptEditView = ({
         setAiPromptSection(savedDraft.aiPromptSection ?? "");
       }
 
-      const metadataPatch: { category?: string; model?: string; temperature?: number; maxTokens?: number } = {};
+      const metadataPatch: { category?: string; model?: string } = {};
       if (category !== (vcs.category ?? "")) metadataPatch.category = category;
       if (model !== (vcs.model ?? "")) metadataPatch.model = model;
-      if (
-        temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") &&
-        temperature !== ""
-      ) {
-        metadataPatch.temperature = Number(temperature);
-      }
-      if (
-        maxTokens !== (vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "") &&
-        maxTokens !== ""
-      ) {
-        metadataPatch.maxTokens = Number(maxTokens);
-      }
       if (Object.keys(metadataPatch).length > 0) {
         await updateMetadata({ id: vcs.id, ...metadataPatch });
       }
@@ -201,12 +173,8 @@ const PromptEditView = ({
         promptText={promptText}
         category={category}
         model={model}
-        temperature={temperature}
-        maxTokens={maxTokens}
         onCategoryChange={setCategory}
         onModelChange={setModel}
-        onTemperatureChange={setTemperature}
-        onMaxTokensChange={setMaxTokens}
       />
 
       <Card className="flex-1 rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">

@@ -293,8 +293,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
     })).filter((p) => p.count > 0);
 
     const titleParts = [
-      filters.persona ? personaLabel(filters.persona) : null,
-      filters.state ? stateLabel(filters.state) : null,
+      filters.persona.length ? filters.persona.map(personaLabel).join(" or ") : null,
+      filters.state.length ? filters.state.map(stateLabel).join(" or ") : null,
     ].filter(Boolean) as string[];
 
     return {
@@ -641,56 +641,30 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
         </CardContent>
       </Card>
 
-      {(filters.persona || filters.state || filters.group || filters.loyalty) && (
+      {(filters.persona.length > 0 || filters.state.length > 0 || filters.group.length > 0 || filters.loyalty.length > 0) && (
         <div className="flex flex-wrap items-center gap-2 px-1">
           <span className="text-xs font-semibold text-gray-500">Active filters</span>
-          {filters.persona && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
-              Persona: {personaLabel(filters.persona)}
-              <button
-                type="button"
-                onClick={() => setFilters({ ...filters, persona: null })}
-                className="text-white/60 hover:text-white"
+          {[
+            { key: "persona" as const, prefix: "Persona", label: personaLabel },
+            { key: "state" as const, prefix: "State", label: stateLabel },
+            { key: "group" as const, prefix: "Group", label: groupLabel },
+            { key: "loyalty" as const, prefix: "Loyalty", label: loyaltyLabel },
+          ].flatMap(({ key, prefix, label }) =>
+            filters[key].map((value) => (
+              <span
+                key={`${key}-${value}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white"
               >
-                <X size={12} />
-              </button>
-            </span>
-          )}
-          {filters.state && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
-              State: {stateLabel(filters.state)}
-              <button
-                type="button"
-                onClick={() => setFilters({ ...filters, state: null })}
-                className="text-white/60 hover:text-white"
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )}
-          {filters.group && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
-              Group: {groupLabel(filters.group)}
-              <button
-                type="button"
-                onClick={() => setFilters({ ...filters, group: null })}
-                className="text-white/60 hover:text-white"
-              >
-                <X size={12} />
-              </button>
-            </span>
-          )}
-          {filters.loyalty && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">
-              Loyalty: {loyaltyLabel(filters.loyalty)}
-              <button
-                type="button"
-                onClick={() => setFilters({ ...filters, loyalty: null })}
-                className="text-white/60 hover:text-white"
-              >
-                <X size={12} />
-              </button>
-            </span>
+                {prefix}: {label(value)}
+                <button
+                  type="button"
+                  onClick={() => setFilters({ ...filters, [key]: filters[key].filter((v) => v !== value) })}
+                  className="text-white/60 hover:text-white"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )),
           )}
         </div>
       )}
