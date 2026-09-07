@@ -37,6 +37,22 @@ type NotifyPayload = {
   mode?: "email" | "whatsapp";
 };
 
+export type EmailTrigger = {
+  triggerKey: string;
+  label: string;
+  reassignable: boolean;
+  isBound: boolean;
+  /** true = this trigger is set to send nothing at all */
+  disabled: boolean;
+  resolvedTemplate: CommunicationTemplate | null;
+};
+
+type TestSendResolution = {
+  templateId: string;
+  triggerKeyUsed: string | null;
+  variables: Record<string, string>;
+};
+
 type CreateTemplatePayload = {
   key: string;
   name: string;
@@ -82,11 +98,22 @@ export function useCommunicationTemplates({
     },
   });
 
+  const triggersQuery = useFetchData<EmailTrigger[]>({
+    method: "GET",
+    url: endpoints.ADMIN_EMAIL_TRIGGERS,
+    queryKey: ["email-triggers"],
+    enabled: true,
+  });
+
   const invalidateTemplates = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["communication-templates"] }),
       queryClient.invalidateQueries({ queryKey: ["communication-templates-users"] }),
     ]);
+  };
+
+  const invalidateTriggers = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["email-triggers"] });
   };
 
   const createTemplate = useMutation({
@@ -141,6 +168,54 @@ export function useCommunicationTemplates({
     },
   });
 
+  const rebindTrigger = useMutation({
+    mutationFn: async ({ triggerKey, templateId }: { triggerKey: string; templateId: string | null }) => {
+      const response = await axiosInstance.patch<ApiSuccess<EmailTrigger>>(
+        endpoints.ADMIN_EMAIL_TRIGGER_BINDING(triggerKey),
+        { templateId },
+      );
+      return response.data.data;
+    },
+    onSuccess: invalidateTriggers,
+  });
+
+  const resetTrigger = useMutation({
+    mutationFn: async (triggerKey: string) => {
+      const response = await axiosInstance.delete<ApiSuccess<unknown>>(
+        endpoints.ADMIN_EMAIL_TRIGGER_BINDING(triggerKey),
+      );
+      return response.data.data;
+    },
+    onSuccess: invalidateTriggers,
+  });
+
+  const resolveTestSend = useMutation({
+    mutationFn: async (templateId: string) => {
+      const response = await axiosInstance.get<ApiSuccess<TestSendResolution>>(
+        endpoints.ADMIN_TEMPLATE_TEST_SEND_RESOLVE(templateId),
+      );
+      return response.data.data;
+    },
+  });
+
+  const sendTestEmail = useMutation({
+    mutationFn: async ({
+      templateId,
+      values,
+      triggerKeyUsed,
+    }: {
+      templateId: string;
+      values: Record<string, string>;
+      triggerKeyUsed?: string | null;
+    }) => {
+      const response = await axiosInstance.post<ApiSuccess<{ success: boolean; recipientEmail: string }>>(
+        endpoints.ADMIN_TEMPLATE_TEST_SEND(templateId),
+        { values, triggerKeyUsed },
+      );
+      return response.data.data;
+    },
+  });
+
   const clientUsers = useMemo(() => {
     const users = usersQuery.data?.data?.users ?? [];
     return users
@@ -170,18 +245,33 @@ export function useCommunicationTemplates({
       error: templatesQuery.error,
       refetch: templatesQuery.refetch,
     },
+    triggersDomain: {
+      data: triggersQuery.data?.data ?? [],
+      isLoading: triggersQuery.isLoading,
+      isSuccess: triggersQuery.isSuccess,
+      isError: triggersQuery.isError,
+      error: triggersQuery.error,
+      refetch: triggersQuery.refetch,
+    },
     actions: {
       createTemplate: createTemplate.mutateAsync,
       updateTemplate: updateTemplate.mutateAsync,
       softDeleteTemplate: softDeleteTemplate.mutateAsync,
       restoreTemplate: restoreTemplate.mutateAsync,
       notifyMissingInfo: notifyMissingInfo.mutateAsync,
+      rebindTrigger: rebindTrigger.mutateAsync,
+      resetTrigger: resetTrigger.mutateAsync,
+      resolveTestSend: resolveTestSend.mutateAsync,
+      sendTestEmail: sendTestEmail.mutateAsync,
       isMutating:
         createTemplate.isPending ||
         updateTemplate.isPending ||
         softDeleteTemplate.isPending ||
         restoreTemplate.isPending ||
-        notifyMissingInfo.isPending,
+        notifyMissingInfo.isPending ||
+        rebindTrigger.isPending ||
+        resetTrigger.isPending ||
+        sendTestEmail.isPending,
     },
     backendStatus: {
       templatesReady: true,

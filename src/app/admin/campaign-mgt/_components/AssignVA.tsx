@@ -7,7 +7,7 @@ import { useAdminQueries } from '@/hooks/api/admin.api';
 
 interface VACellProps {
     data: null | any;
-    variant?: 'DPC' | 'VPC' | 'SPC';
+    variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
     // Called with the newly selected email (or null for unassign) whenever the
     // dropdown selection changes. The parent (EditModal) owns when this is
     // actually persisted — only on clicking "Update" — so this cell no longer
@@ -21,7 +21,11 @@ export const VACell = ({ data = null, variant = 'DPC', onSelectionChange }: VACe
             ? 'VetEmail'
             : variant === 'SPC'
               ? 'CompletedEmail'
-              : 'VaEmail';
+              : variant === 'InterimDPC'
+                ? 'InterimDPCEmail'
+                : variant === 'InterimSPC'
+                  ? 'InterimSPCEmail'
+                  : 'VaEmail';
     const [selected, setSelected] = useState<any>(null);
     const [unassign, setUnassign] = useState(data?.[emailField]);
 
@@ -45,7 +49,16 @@ export const VACell = ({ data = null, variant = 'DPC', onSelectionChange }: VACe
         }
     }, [vaData, data?.[emailField]]);
 
-    const label = variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
+    const label =
+        variant === 'VPC'
+            ? 'VPC'
+            : variant === 'SPC'
+              ? 'SPC'
+              : variant === 'InterimDPC'
+                ? 'Interim DPC'
+                : variant === 'InterimSPC'
+                  ? 'Interim SPC'
+                  : 'DPC';
 
     const handleChange = (selectedOption: any) => {
         const selectedEmail = selectedOption?.value;
