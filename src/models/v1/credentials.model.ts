@@ -180,6 +180,40 @@ export class Credentials extends Model {
     this.setDataValue("AssignedCompletedEmail", value);
   }
 
+  // Interim backups for DPC/SPC — optional, not counted as a required
+  // assignment slot (see placement-assignments.service.ts's "gaps" logic).
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get InterimDPCName(): string | undefined {
+    return this.getDataValue("InterimDPCName") as string | undefined;
+  }
+  set InterimDPCName(value: string | undefined) {
+    this.setDataValue("InterimDPCName", value);
+  }
+
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get InterimDPCEmail(): string | undefined {
+    return this.getDataValue("InterimDPCEmail") as string | undefined;
+  }
+  set InterimDPCEmail(value: string | undefined) {
+    this.setDataValue("InterimDPCEmail", value);
+  }
+
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get InterimSPCName(): string | undefined {
+    return this.getDataValue("InterimSPCName") as string | undefined;
+  }
+  set InterimSPCName(value: string | undefined) {
+    this.setDataValue("InterimSPCName", value);
+  }
+
+  @Column(DataType.VIRTUAL(DataType.STRING))
+  get InterimSPCEmail(): string | undefined {
+    return this.getDataValue("InterimSPCEmail") as string | undefined;
+  }
+  set InterimSPCEmail(value: string | undefined) {
+    this.setDataValue("InterimSPCEmail", value);
+  }
+
   @AllowNull(true)
   @Default('FLIGHT')
   @Column(DataType.STRING(32))
@@ -238,6 +272,10 @@ export class Credentials extends Model {
     (instance as any)._pii_AssignedVetEmail = instance.getDataValue('AssignedVetEmail');
     (instance as any)._pii_AssignedCompletedName = instance.getDataValue('AssignedCompletedName');
     (instance as any)._pii_AssignedCompletedEmail = instance.getDataValue('AssignedCompletedEmail');
+    (instance as any)._pii_InterimDPCName = instance.getDataValue('InterimDPCName');
+    (instance as any)._pii_InterimDPCEmail = instance.getDataValue('InterimDPCEmail');
+    (instance as any)._pii_InterimSPCName = instance.getDataValue('InterimSPCName');
+    (instance as any)._pii_InterimSPCEmail = instance.getDataValue('InterimSPCEmail');
     instance.setDataValue('seekEmail', null);
     instance.setDataValue('seekPassword', null);
     instance.setDataValue('AssignedPCName', null);
@@ -246,6 +284,10 @@ export class Credentials extends Model {
     instance.setDataValue('AssignedVetEmail', null);
     instance.setDataValue('AssignedCompletedName', null);
     instance.setDataValue('AssignedCompletedEmail', null);
+    instance.setDataValue('InterimDPCName', null);
+    instance.setDataValue('InterimDPCEmail', null);
+    instance.setDataValue('InterimSPCName', null);
+    instance.setDataValue('InterimSPCEmail', null);
   }
 
   @AfterCreate
@@ -266,6 +308,11 @@ export class Credentials extends Model {
       pii._pii_AssignedCompletedName ?? null,
       pii._pii_AssignedCompletedEmail ?? null,
       options.transaction,
+      [],
+      pii._pii_InterimDPCName ?? null,
+      pii._pii_InterimDPCEmail ?? null,
+      pii._pii_InterimSPCName ?? null,
+      pii._pii_InterimSPCEmail ?? null,
     );
   }
 
@@ -281,7 +328,11 @@ export class Credentials extends Model {
         options.transaction,
       );
     }
-    const extendedFields = ['seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail', 'AssignedCompletedName', 'AssignedCompletedEmail'];
+    const extendedFields = [
+      'seekEmail', 'AssignedPCName', 'AssignedPCEmail', 'AssignedVetName', 'AssignedVetEmail',
+      'AssignedCompletedName', 'AssignedCompletedEmail',
+      'InterimDPCName', 'InterimDPCEmail', 'InterimSPCName', 'InterimSPCEmail',
+    ];
     if (changed.some(f => extendedFields.includes(f))) {
       await fieldEncryption.encryptCredentialExtendedFields(
         instance.id,
@@ -294,6 +345,10 @@ export class Credentials extends Model {
         pii._pii_AssignedCompletedEmail ?? null,
         options.transaction,
         changed.filter(f => extendedFields.includes(f)),
+        pii._pii_InterimDPCName ?? null,
+        pii._pii_InterimDPCEmail ?? null,
+        pii._pii_InterimSPCName ?? null,
+        pii._pii_InterimSPCEmail ?? null,
       );
     }
   }
@@ -324,6 +379,10 @@ export class Credentials extends Model {
           instance.setDataValue('AssignedVetEmail', ext.AssignedVetEmail);
           instance.setDataValue('AssignedCompletedName', ext.AssignedCompletedName);
           instance.setDataValue('AssignedCompletedEmail', ext.AssignedCompletedEmail);
+          instance.setDataValue('InterimDPCName', ext.InterimDPCName);
+          instance.setDataValue('InterimDPCEmail', ext.InterimDPCEmail);
+          instance.setDataValue('InterimSPCName', ext.InterimSPCName);
+          instance.setDataValue('InterimSPCEmail', ext.InterimSPCEmail);
         }
       } catch (error: any) {
         logger.warn(`Failed to decrypt extended fields for credential ${instance.id}: ${error?.message || error}`);

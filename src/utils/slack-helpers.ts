@@ -89,8 +89,8 @@ export const sendStandardSlackNotification = async (
     // Add mentions if team mentions are requested — only tag real people
     // in production so local/pre-production runs never ping anyone. Split
     // on comma and loop against the whitelist so callers can request
-    // multiple teams (e.g. "CSM,WFC") without silent no-ops from the
-    // prior if/else exact-match implementation.
+    // multiple teams (e.g. "CSM,WFC"); unknown tags are dropped so a typo
+    // can't page an unexpected channel.
     let mentions = '';
     if (NODE_ENV === 'prod' && params.teamMentions) {
       const teams = params.teamMentions
@@ -100,9 +100,9 @@ export const sendStandardSlackNotification = async (
 
       const mentionParts: string[] = [];
       for (const team of teams) {
-        const ids = await getSlackUserIdsFromQueue(team);
-        if ((ids ?? []).length > 0) {
-          mentionParts.push(...(ids as string[]).map((id) => `<@${id}>`));
+        const slackMentions = await getSlackUserIdsFromQueue(team);
+        if ((slackMentions ?? []).length > 0) {
+          mentionParts.push(...(slackMentions ?? []).map((id) => `<@${id}>`));
         }
       }
       mentions = mentionParts.join(' ');
