@@ -200,7 +200,12 @@ export default function GenerateInterviewPackButton({
       toast.dismiss(toastId);
     } catch (error: any) {
       toast.dismiss(toastId);
-      const message = error?.response?.data?.message || "Failed to generate preview";
+      // A plain Error here (not error.isAxiosError) means the hook already
+      // extracted the real backend message from the blob response body —
+      // trust it. Otherwise fall back to the normal JSON-error shape.
+      const message = error?.isAxiosError
+        ? error?.response?.data?.message || "Failed to generate preview"
+        : error?.message || "Failed to generate preview";
       toast.error(message);
     }
   };
