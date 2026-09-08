@@ -3,8 +3,15 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+
+// The only model any prompt actually runs on today — every queryDigitalOceanAI
+// call site hardcodes this in digital-factory.ts, so a prompt's `model` field
+// isn't read at execution time yet. Add new entries here once a second model
+// is wired into the backend; until then this stays a display/label choice.
+const AVAILABLE_MODELS = ["llama3.3-70b-instruct"];
 
 // No override UI in this phase — type is inferred from the variable name
 // each time the panel renders, not persisted.
@@ -102,11 +109,18 @@ const PromptMetadataPanel = ({
       </Field>
 
       <Field label="Model">
-        <Input
-          value={model}
-          onChange={(e) => onModelChange(e.target.value)}
-          placeholder="Not configured"
-        />
+        <Select value={model || undefined} onValueChange={onModelChange}>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Not configured" />
+          </SelectTrigger>
+          <SelectContent>
+            {AVAILABLE_MODELS.map((m) => (
+              <SelectItem key={m} value={m} className="text-xs">
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
 
       <div className="grid grid-cols-2 gap-2">
