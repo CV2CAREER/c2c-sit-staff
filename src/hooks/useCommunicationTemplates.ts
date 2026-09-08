@@ -53,6 +53,12 @@ type TestSendResolution = {
   variables: Record<string, string>;
 };
 
+type DraftTestSendPayload = {
+  subject?: string;
+  body: string;
+  variables?: string[];
+};
+
 type CreateTemplatePayload = {
   key: string;
   name: string;
@@ -216,6 +222,18 @@ export function useCommunicationTemplates({
     },
   });
 
+  // Sends whatever's currently in the editor — saved or not — so an admin
+  // can see exactly what a client would receive before hitting Save.
+  const sendDraftTestEmail = useMutation({
+    mutationFn: async (payload: DraftTestSendPayload) => {
+      const response = await axiosInstance.post<ApiSuccess<{ success: boolean; recipientEmail: string }>>(
+        endpoints.ADMIN_TEMPLATE_TEST_SEND_DRAFT,
+        payload,
+      );
+      return response.data.data;
+    },
+  });
+
   const clientUsers = useMemo(() => {
     const users = usersQuery.data?.data?.users ?? [];
     return users
@@ -263,6 +281,8 @@ export function useCommunicationTemplates({
       resetTrigger: resetTrigger.mutateAsync,
       resolveTestSend: resolveTestSend.mutateAsync,
       sendTestEmail: sendTestEmail.mutateAsync,
+      sendDraftTestEmail: sendDraftTestEmail.mutateAsync,
+      isSendingDraftTest: sendDraftTestEmail.isPending,
       isMutating:
         createTemplate.isPending ||
         updateTemplate.isPending ||

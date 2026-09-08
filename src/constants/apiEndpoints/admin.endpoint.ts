@@ -323,6 +323,7 @@ export const ADMIN_TEMPLATE_TEST_SEND_RESOLVE = (templateId: string) =>
   `/api/v1/admin/templates/${templateId}/test-send/resolve`;
 export const ADMIN_TEMPLATE_TEST_SEND = (templateId: string) =>
   `/api/v1/admin/templates/${templateId}/test-send`;
+export const ADMIN_TEMPLATE_TEST_SEND_DRAFT = '/api/v1/admin/templates/test-send-draft';
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
