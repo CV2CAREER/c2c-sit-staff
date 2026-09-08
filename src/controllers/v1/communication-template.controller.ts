@@ -120,6 +120,12 @@ export const sendTestEmail = catchAsyncError(async (req: any, res: Response) => 
   return res.apiSuccess(data, "Test email sent", 200);
 });
 
+export const sendDraftTestEmail = catchAsyncError(async (req: any, res: Response) => {
+  logger.info(`Sending draft test email — by ${getActorLabel(req)}`);
+  const data = await CommunicationTemplateService.sendDraftTestEmail(req.body, req.user);
+  return res.apiSuccess(data, "Test email sent", 200);
+});
+
 export const notifyMissingInfo = catchAsyncError(async (req: any, res: Response) => {
   const host = req.headers.host || req.headers.origin || "localhost";
   logger.info(
