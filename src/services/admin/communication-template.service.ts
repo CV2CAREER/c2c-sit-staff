@@ -23,10 +23,15 @@ import {
   SlackChannel,
 } from "@/utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
-import { CLIENT_APP_DOMAIN, TEAM_EMAIL, LOCAL_FRONTEND_URL, EMAIL_TEST_RECIPIENT } from "@/config/env";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL, LOCAL_FRONTEND_URL } from "@/config/env";
 import { EMAIL_TRIGGERS, findTriggerDefinition } from "@/constants/email-triggers";
 
 const logger = getServiceLogger("communication-template-service");
+
+// Fixed test-send destination — every environment sends test emails here
+// instead of depending on EMAIL_TEST_RECIPIENT being configured (it wasn't,
+// which is why test-send 500'd with "EMAIL_TEST_RECIPIENT is not configured").
+const TEST_EMAIL_RECIPIENT = "c2c@yopmail.com";
 
 type TemplatePayload = {
   id?: string;
@@ -141,6 +146,34 @@ const resolveTriggerKeyForTemplate = async (template: EmailTemplate): Promise<st
   const binding = await EmailTemplateTrigger.findOne({ where: { templateId: template.id } });
   if (binding) return binding.triggerKey;
   return findTriggerDefinition(template.key) ? template.key : undefined;
+};
+
+/**
+ * Renders an EJS body against arbitrary values, substituting a visible
+ * `[missing: x]` placeholder for any variable the body references that
+ * wasn't supplied — shared by the by-id and draft test-send paths so both
+ * behave identically. `with()` (which ejs.render compiles to) probes this
+ * object for symbol keys like Symbol.unscopables, so those must pass
+ * through untouched — only string keys get the placeholder treatment.
+ */
+const renderWithPlaceholders = (body: string, values: Record<string, unknown>): string => {
+  const safeValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(values ?? {})) {
+    safeValues[key] = typeof value === "string" ? value : String(value ?? "");
+  }
+
+  const renderData = new Proxy(safeValues, {
+    get: (target, prop) => {
+      if (typeof prop === "symbol") return (target as Record<PropertyKey, unknown>)[prop];
+      return prop in target ? target[prop] : `[missing: ${prop}]`;
+    },
+  });
+
+  try {
+    return ejs.render(body, renderData as Record<string, unknown>);
+  } catch (err: any) {
+    throw new ErrorHandler(`Template failed to render: ${err.message}`, 400);
+  }
 };
 
 const EJS_RESERVED_WORDS = new Set([
@@ -417,39 +450,12 @@ export class CommunicationTemplateService {
     adminUser: Pick<User, "id" | "firstName" | "lastName" | "email">,
     triggerKeyUsed?: string,
   ) {
-    if (!EMAIL_TEST_RECIPIENT) {
-      throw new ErrorHandler("EMAIL_TEST_RECIPIENT is not configured", 500);
-    }
-
     const template = await EmailTemplate.findByPk(templateId);
     if (!template) {
       throw new ErrorHandler("Template not found", 404);
     }
 
-    const safeValues: Record<string, string> = {};
-    for (const [key, value] of Object.entries(values ?? {})) {
-      safeValues[key] = typeof value === "string" ? value : String(value ?? "");
-    }
-
-    // Guard against variables the body references but the admin never saw
-    // in the modal (declared-variables metadata can be stale) — fall back
-    // to a visible placeholder instead of crashing the render. `with()`
-    // (which ejs.render compiles to) probes this object for symbol keys
-    // like Symbol.unscopables, so those must pass through untouched —
-    // only string keys get the placeholder treatment.
-    const renderData = new Proxy(safeValues, {
-      get: (target, prop) => {
-        if (typeof prop === "symbol") return (target as Record<PropertyKey, unknown>)[prop];
-        return prop in target ? target[prop] : `[missing: ${prop}]`;
-      },
-    });
-
-    let html: string;
-    try {
-      html = ejs.render(template.body, renderData as Record<string, unknown>);
-    } catch (err: any) {
-      throw new ErrorHandler(`Template failed to render: ${err.message}`, 400);
-    }
+    const html = renderWithPlaceholders(template.body, values);
 
     // Deliberate deviation from the house "never await sendMail/Slack in the
     // main request path" rule — the entire point of test-send is synchronous
@@ -457,7 +463,7 @@ export class CommunicationTemplateService {
     // without adding polling. See plan doc for the explicit call-out.
     try {
       await sendRawTestEmail({
-        email: EMAIL_TEST_RECIPIENT,
+        email: TEST_EMAIL_RECIPIENT,
         subject: `[TEST] ${template.name}`,
         html,
       });
@@ -465,20 +471,58 @@ export class CommunicationTemplateService {
         templateId: template.id,
         triggerKeyUsed: triggerKeyUsed ?? null,
         sentByAdminId: adminUser.id,
-        recipientEmail: EMAIL_TEST_RECIPIENT,
+        recipientEmail: TEST_EMAIL_RECIPIENT,
         status: EmailTestSendStatus.SENT,
       });
       logger.info(`Test email sent for template ${template.id} by admin ${adminUser.id}`);
-      return { success: true, recipientEmail: EMAIL_TEST_RECIPIENT };
+      return { success: true, recipientEmail: TEST_EMAIL_RECIPIENT };
     } catch (err: any) {
       await EmailTestSendLog.create({
         templateId: template.id,
         triggerKeyUsed: triggerKeyUsed ?? null,
         sentByAdminId: adminUser.id,
-        recipientEmail: EMAIL_TEST_RECIPIENT,
+        recipientEmail: TEST_EMAIL_RECIPIENT,
         status: EmailTestSendStatus.FAILED,
         errorMessage: String(err.message ?? "").slice(0, 512),
       });
+      throw new ErrorHandler(`Test email failed: ${err.message}`, 502);
+    }
+  }
+
+  // Sends the CURRENT DRAFT — whatever's in the editor right now, saved or
+  // not — so an admin can see exactly what a client would receive before
+  // hitting Save. No templateId to look up yet, so this skips
+  // EmailTestSendLog (which requires one) and just logs plainly; everything
+  // else (placeholder-safe render, fixed test recipient, deviation from the
+  // never-await-inline house rule) matches sendTestEmail above.
+  static async sendDraftTestEmail(
+    payload: { subject?: string; body?: string; variables?: unknown },
+    adminUser: Pick<User, "id" | "firstName" | "lastName" | "email">,
+  ) {
+    const body = normalize(payload.body);
+    const subject = normalize(payload.subject) || "Test Email";
+
+    if (!body) {
+      throw new ErrorHandler("Template body is empty — nothing to send", 400);
+    }
+
+    const values = normalizeVariables(payload.variables).reduce<Record<string, string>>((acc, name) => {
+      acc[name] = `Sample ${name}`;
+      return acc;
+    }, {});
+
+    const html = renderWithPlaceholders(body, values);
+
+    try {
+      await sendRawTestEmail({
+        email: TEST_EMAIL_RECIPIENT,
+        subject: `[TEST] ${subject}`,
+        html,
+      });
+      logger.info(`Draft test email sent by admin ${adminUser.id}`);
+      return { success: true, recipientEmail: TEST_EMAIL_RECIPIENT };
+    } catch (err: any) {
+      logger.error(`Draft test email failed for admin ${adminUser.id}: ${err.message}`);
       throw new ErrorHandler(`Test email failed: ${err.message}`, 502);
     }
   }
@@ -544,6 +588,7 @@ export class CommunicationTemplateService {
         id: requestId,
         targetUserId: user.id,
         requestedById: requestingUser.id,
+        requestedByName: triggeredBy,
         missingInfoType,
         missingInfoUrl: updateMissingInfoUrl,
         jobURL: rawUrl

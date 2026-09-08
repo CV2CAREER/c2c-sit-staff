@@ -12,6 +12,7 @@ import {
   rebindEmailTrigger,
   resetEmailTrigger,
   resolveTestSend,
+  sendDraftTestEmail,
   sendTestEmail,
 } from "@/controllers/v1/communication-template.controller";
 
@@ -28,6 +29,7 @@ communicationTemplateRouterV1.patch("/triggers/:triggerKey", authorizeRoles("adm
 communicationTemplateRouterV1.delete("/triggers/:triggerKey", authorizeRoles("admin"), resetEmailTrigger);
 communicationTemplateRouterV1.get("/:id/test-send/resolve", resolveTestSend);
 communicationTemplateRouterV1.post("/:id/test-send", sendTestEmail);
+communicationTemplateRouterV1.post("/test-send-draft", sendDraftTestEmail);
 
 communicationTemplateRouterV1.get("/", getCommunicationTemplates);
 communicationTemplateRouterV1.post("/", authorizeRoles("admin"), createCommunicationTemplate);
