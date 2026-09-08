@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
+import { rethrowWithBlobErrorMessage } from "@/lib/axios-blob-error";
 
 export type SaveCoverLetterFormat = "pdf" | "docx";
 
@@ -92,14 +93,18 @@ export function useCoverLetterGeneration() {
   // Document History.
   const previewMutation = useMutation({
     mutationFn: async (payload: PreviewCoverLetterPayload) => {
-      const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_COVER_LETTER, payload, {
-        responseType: "blob",
-      });
-      const filename = filenameFromContentDisposition(
-        response.headers["content-disposition"],
-        `Cover_Letter_Preview.${payload.format}`,
-      );
-      return { blob: response.data as Blob, filename };
+      try {
+        const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_COVER_LETTER, payload, {
+          responseType: "blob",
+        });
+        const filename = filenameFromContentDisposition(
+          response.headers["content-disposition"],
+          `Cover_Letter_Preview.${payload.format}`,
+        );
+        return { blob: response.data as Blob, filename };
+      } catch (error) {
+        return rethrowWithBlobErrorMessage(error);
+      }
     },
   });
 

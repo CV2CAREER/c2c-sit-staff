@@ -269,7 +269,13 @@ export default function GenerateCvVariantButton({
       link.click();
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to render preview");
+      // A plain Error here (not error.isAxiosError) means the hook already
+      // extracted the real backend message from the blob response body —
+      // trust it. Otherwise fall back to the normal JSON-error shape.
+      const message = error?.isAxiosError
+        ? error?.response?.data?.message || "Failed to render preview"
+        : error?.message || "Failed to render preview";
+      toast.error(message);
     }
   };
 
