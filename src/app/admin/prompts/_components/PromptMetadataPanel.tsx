@@ -36,12 +36,8 @@ interface PromptMetadataPanelProps {
   promptText: string;
   category: string;
   model: string;
-  temperature: string;
-  maxTokens: string;
   onCategoryChange: (value: string) => void;
   onModelChange: (value: string) => void;
-  onTemperatureChange: (value: string) => void;
-  onMaxTokensChange: (value: string) => void;
 }
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -56,12 +52,8 @@ const PromptMetadataPanel = ({
   promptText,
   category,
   model,
-  temperature,
-  maxTokens,
   onCategoryChange,
   onModelChange,
-  onTemperatureChange,
-  onMaxTokensChange,
 }: PromptMetadataPanelProps) => {
   const variables = useMemo(() => parseVariables(promptText), [promptText]);
 
@@ -122,29 +114,6 @@ const PromptMetadataPanel = ({
           </SelectContent>
         </Select>
       </Field>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Temp">
-          <Input
-            type="number"
-            step="0.1"
-            min="0"
-            max="2"
-            value={temperature}
-            onChange={(e) => onTemperatureChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-        <Field label="Max tokens">
-          <Input
-            type="number"
-            min="1"
-            value={maxTokens}
-            onChange={(e) => onMaxTokensChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-      </div>
     </CardContent>
     </Card>
   );
