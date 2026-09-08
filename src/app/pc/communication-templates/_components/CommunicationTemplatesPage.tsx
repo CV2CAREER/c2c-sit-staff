@@ -511,6 +511,8 @@ export default function CommunicationTemplatesPage() {
         duplicateFrom={duplicateSource}
         onSave={handleSave}
         isSaving={actions.isMutating}
+        onSendTest={(payload) => actions.sendDraftTestEmail(payload)}
+        isSendingTest={actions.isSendingDraftTest}
       />
       <MissingInfoModal
         open={missingInfoOpen}

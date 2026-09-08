@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, Sparkles, X } from "lucide-react";
+import { Plus, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -51,6 +51,9 @@ interface CreateOrEditModalProps {
   duplicateFrom?: CommunicationTemplate | null;
   onSave: (values: FormValues) => Promise<void>;
   isSaving: boolean;
+  /** Sends the CURRENT draft (whatever's in the form right now) to the test address. */
+  onSendTest: (payload: { subject: string; body: string; variables: string[] }) => Promise<{ recipientEmail: string }>;
+  isSendingTest: boolean;
 }
 
 export function CreateOrEditModal({
@@ -60,6 +63,8 @@ export function CreateOrEditModal({
   duplicateFrom,
   onSave,
   isSaving,
+  onSendTest,
+  isSendingTest,
 }: CreateOrEditModalProps) {
   const [formValues, setFormValues] = useState<FormValues>(freshValues("customer"));
   const [newVariable, setNewVariable] = useState("");
@@ -126,6 +131,26 @@ export function CreateOrEditModal({
       return;
     }
     await onSave(formValues);
+  };
+
+  const handleSendTest = async () => {
+    if (!formValues.body.trim()) {
+      toast.error("Nothing to send — the email content is empty.");
+      return;
+    }
+    const toastId = toast.loading("Sending test email...");
+    try {
+      const result = await onSendTest({
+        subject: formValues.name || "Test Email",
+        body: formValues.body,
+        variables: formValues.variables,
+      });
+      toast.dismiss(toastId);
+      toast.success(`Test email sent to ${result.recipientEmail}`);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.message || "Failed to send test email.");
+    }
   };
 
   return (
@@ -269,13 +294,25 @@ export function CreateOrEditModal({
           </div>
         </div>
 
-        <DialogFooter className="px-6 pb-6 pt-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
+        <DialogFooter className="px-6 pb-6 pt-2 sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => void handleSendTest()}
+            disabled={isSendingTest}
+          >
+            <Send size={14} />
+            {isSendingTest ? "Sending..." : "Send Test Email"}
           </Button>
-          <Button onClick={() => void handleSave()} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
