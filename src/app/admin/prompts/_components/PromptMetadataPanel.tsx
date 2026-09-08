@@ -3,8 +3,15 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+
+// The only model any prompt actually runs on today — every queryDigitalOceanAI
+// call site hardcodes this in digital-factory.ts, so a prompt's `model` field
+// isn't read at execution time yet. Add new entries here once a second model
+// is wired into the backend; until then this stays a display/label choice.
+const AVAILABLE_MODELS = ["llama3.3-70b-instruct"];
 
 // No override UI in this phase — type is inferred from the variable name
 // each time the panel renders, not persisted.
@@ -29,26 +36,17 @@ interface PromptMetadataPanelProps {
   promptText: string;
   category: string;
   model: string;
+  temperature: string;
+  maxTokens: string;
   onCategoryChange: (value: string) => void;
   onModelChange: (value: string) => void;
+  onTemperatureChange: (value: string) => void;
+  onMaxTokensChange: (value: string) => void;
 }
 
-const Field = ({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-1.5">
-    <label
-      className="text-xs font-semibold uppercase tracking-wide text-gray-500"
-      title={hint}
-    >
-      {label}
-    </label>
+    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</label>
     {children}
   </div>
 );
@@ -58,8 +56,12 @@ const PromptMetadataPanel = ({
   promptText,
   category,
   model,
+  temperature,
+  maxTokens,
   onCategoryChange,
   onModelChange,
+  onTemperatureChange,
+  onMaxTokensChange,
 }: PromptMetadataPanelProps) => {
   const variables = useMemo(() => parseVariables(promptText), [promptText]);
 
@@ -70,14 +72,11 @@ const PromptMetadataPanel = ({
         Prompt Metadata
       </p>
 
-      <Field label="Name" hint="The unique key other parts of the platform use to look up this prompt.">
+      <Field label="Name">
         <Input value={name} readOnly disabled className="font-mono text-xs" />
       </Field>
 
-      <Field
-        label="Category"
-        hint="Free-text grouping label shown on the prompts list — for organizing, not read by the AI."
-      >
+      <Field label="Category">
         <Input
           value={category}
           onChange={(e) => onCategoryChange(e.target.value)}
@@ -85,10 +84,7 @@ const PromptMetadataPanel = ({
         />
       </Field>
 
-      <Field
-        label="Variables"
-        hint="{{placeholders}} found in the prompt text, auto-filled with real data each time this prompt runs."
-      >
+      <Field label="Variables">
         {variables.length === 0 ? (
           <p className="text-xs text-gray-400">No {"{{variables}}"} in this prompt.</p>
         ) : (
@@ -112,13 +108,43 @@ const PromptMetadataPanel = ({
         )}
       </Field>
 
-      <Field label="Model" hint="Which AI model this prompt is sent to. Leave blank to use the platform default.">
-        <Input
-          value={model}
-          onChange={(e) => onModelChange(e.target.value)}
-          placeholder="Not configured"
-        />
+      <Field label="Model">
+        <Select value={model || undefined} onValueChange={onModelChange}>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Not configured" />
+          </SelectTrigger>
+          <SelectContent>
+            {AVAILABLE_MODELS.map((m) => (
+              <SelectItem key={m} value={m} className="text-xs">
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Temp">
+          <Input
+            type="number"
+            step="0.1"
+            min="0"
+            max="2"
+            value={temperature}
+            onChange={(e) => onTemperatureChange(e.target.value)}
+            placeholder="—"
+          />
+        </Field>
+        <Field label="Max tokens">
+          <Input
+            type="number"
+            min="1"
+            value={maxTokens}
+            onChange={(e) => onMaxTokensChange(e.target.value)}
+            placeholder="—"
+          />
+        </Field>
+      </div>
     </CardContent>
     </Card>
   );
