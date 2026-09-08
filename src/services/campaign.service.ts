@@ -1163,7 +1163,8 @@ export const saveManualApplication = async (
   jobData: any,
   user: any,
   host: string,
-  updatedBy?: string
+  updatedBy?: string,
+  discoveryMethod?: string
 ) => {
   logger.info(`Saving manual application for client: ${clientId}`);
 
@@ -1238,6 +1239,7 @@ export const saveManualApplication = async (
     // Discovery details
     DiscoveredBy: fullName || null,
     DiscoveryDate: new Date(),
+    discovery_method: discoveryMethod || 'staff',
 
     // Not submitted yet
     ApplicationSubmittedBy: null,
@@ -2352,6 +2354,7 @@ export const getCampaignClients = async (
   const campaignInstances = await Credentials.findAll({
     where: whereClause,
     order: [['createdAt', 'DESC']],
+    include: [{ model: User, as: 'client', attributes: ['id', 'firstName', 'lastName', 'email'] }],
   });
   const campaigns = campaignInstances.map((c) => c.get({ plain: true }));
 

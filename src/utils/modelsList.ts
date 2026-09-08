@@ -101,6 +101,11 @@ import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.mo
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
+import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+import { DiscoveryJob } from '../models/v1/discovery-job.model';
+import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+import { DiscoveryRun } from '../models/v1/discovery-run.model';
+import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 
 export const modelList = [
   User,
@@ -208,4 +213,9 @@ export const modelList = [
   SendGridEvent,
   SendGridEventLog,
   SocialVerification,
+  DiscoverySourceRegister,
+  DiscoveryJob,
+  DiscoveryMatch,
+  DiscoveryRun,
+  DiscoverySchedule,
 ];
