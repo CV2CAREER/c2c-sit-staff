@@ -30,6 +30,14 @@ export interface ScrapeConfig {
   searchUrl: (keyword: string, location: string) => string;
   cloudflareBlocked?: boolean;
   requiresAuth?: boolean;
+  /** Minimum delay (ms) between requests to this host, per its robots.txt Crawl-delay. */
+  crawlDelayMs?: number;
+  /**
+   * Set when job cards have no real <a href> (JS click-handler navigation,
+   * e.g. Adecco). Forces the adapter to click each card, read the resulting
+   * URL, then go back — one page load per job, so slower and capped.
+   */
+  clickToNavigate?: boolean;
   selectors: ScrapeSelectors;
 }
 
@@ -128,12 +136,14 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     strategy: 'browser',
     searchUrl: (kw, loc) =>
       `https://www.careerone.com.au/jobs/${q(kw)}?location=${q(loc)}`,
+    // Verified against live markup (2026-09-08).
     selectors: {
-      jobCard: '.job-card, .job-listing, article, .search-result-item',
-      title: 'h2 a, .job-title a, .title a',
-      company: '.company-name, .employer',
-      location: '.location, .job-location',
-      link: 'h2 a, .job-title a',
+      jobCard: 'div.job-card-detailed',
+      title: 'a[href*="/jobview/"]',
+      company: 'a.text-title-3.link-hover-default',
+      location: 'a.cursor-default.link-hover-default',
+      link: 'a[href*="/jobview/"]',
+      salary: 'span.text-title-4.text-black',
     },
   },
   monster: {
@@ -159,12 +169,17 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     region: 'gb',
     searchUrl: (kw, loc) =>
       `https://www.reed.co.uk/jobs/${q(kw)}-jobs?location=${q(loc)}&sortby=DatePosted`,
+    // Verified against live markup (2026-09-08): Reed uses stable data-qa
+    // attributes rather than plain classnames, so prefer those over the
+    // hashed CSS-module classes (e.g. index-module_jobCard__DaYuk) which are
+    // build-hash-based and will change on Reed's next deploy.
     selectors: {
-      jobCard: '.job-card, .search-result, article, .result-item',
-      title: 'h3 a, .job-title a, .title a',
-      company: '.company, .employer',
-      location: '.location, .job-location',
-      link: 'h3 a, .job-title a',
+      jobCard: 'article[data-qa="job-card"]',
+      title: 'a[data-qa="job-card-title"]',
+      company: 'a[data-page-component="job_card"][data-element="recruiter"]',
+      location: 'li[data-qa="job-metadata-location"]',
+      link: 'a[data-qa="job-card-title"]',
+      salary: 'li[data-qa="job-metadata-salary"]',
     },
   },
   nhsjobs: {
@@ -175,12 +190,14 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     region: 'gb',
     searchUrl: (kw, loc) =>
       `https://www.jobs.nhs.uk/candidate/search/results?keyword=${q(kw)}&location=${q(loc)}`,
+    // Verified against live markup (2026-09-08) — stable data-test attributes.
     selectors: {
-      jobCard: '.result, .job-card, article, .list-item',
-      title: 'h2 a, .job-title a, .title a',
-      company: '.employer, .organisation, .nhs-organisation',
-      location: '.location, .job-location',
-      link: 'h2 a, .job-title a',
+      jobCard: 'li[data-test="search-result"]',
+      title: 'a[data-test="search-result-job-title"]',
+      company: 'div[data-test="search-result-location"] h3',
+      location: 'div.location-font-size',
+      link: 'a[data-test="search-result-job-title"]',
+      salary: 'li[data-test="search-result-salary"] strong',
     },
   },
   cvlibrary: {
@@ -218,47 +235,27 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
   adecco: {
     slug: 'adecco',
     name: 'Adecco',
-    baseUrl: 'https://www.adecco.com.au',
+    // adecco.com.au has been consolidated into the global site under /en-au —
+    // the old .com.au domain 301s straight to the homepage, dropping any path.
+    baseUrl: 'https://www.adecco.com',
     strategy: 'browser',
-    searchUrl: (kw, loc) =>
-      `https://www.adecco.com.au/search-results?keyword=${q(kw)}&location=${q(loc)}`,
-    selectors: {
-      jobCard: '.job-card, .job-result, article, .result-item',
-      title: 'h2 a, .job-title a, .title a',
-      company: '.company, .employer',
-      location: '.location, .job-location',
-      link: 'h2 a, .job-title a',
-    },
-  },
-  workforceaustralia: {
-    slug: 'workforceaustralia',
-    name: 'WorkforceAustralia',
-    baseUrl: 'https://www.workforceaustralia.gov.au',
-    strategy: 'browser',
-    searchUrl: (kw, loc) =>
-      `https://www.workforceaustralia.gov.au/job-search?keyword=${q(kw)}&location=${q(loc)}`,
-    selectors: {
-      jobCard: '[data-testid="job-card"], .job-card, article, .search-result-item',
-      title: 'h2, h3, .job-title, [data-testid="job-title"]',
-      company: '.employer-name, .company-name, [data-testid="employer"]',
-      location: '.job-location, .location, [data-testid="location"]',
-      link: 'a[href*="/job"], a[href*="detail"]',
-    },
-  },
-  escapecity: {
-    slug: 'escapecity',
-    name: 'EscapeCity',
-    baseUrl: 'https://www.escapecity.com',
-    strategy: 'browser',
-    region: 'global',
     searchUrl: (kw, _loc) =>
-      `https://www.escapecity.com/jobs?q=${q(kw)}`,
+      `https://www.adecco.com/en-au/jobs?keyword=${q(kw)}`,
+    // Verified against live markup (2026-09-08): job cards are
+    // `div[role="button"]` with a client-side click handler and no real
+    // <a href>, so clickToNavigate makes the adapter click each card, read
+    // the resulting URL, then go back — see page-scrape.adapter.ts.
+    clickToNavigate: true,
     selectors: {
-      jobCard: '.job-card, .listing, article',
-      title: 'h2 a, .job-title a',
-      company: '.company, .employer',
-      location: '.location',
-      link: 'h2 a, .job-title a',
+      jobCard: 'div.card.mb2',
+      title: 'p.large.text-01',
+      company: '',
+      // No real location on the list card — p.subtitle.text-01 matches
+      // category/department/employment-type lines instead ("Transport /
+      // Logistics", "Permanent"), not a city. Left blank rather than
+      // mislabeling category data as location; falls back to "Unknown".
+      location: '',
+      link: '', // unused: clickToNavigate gets the URL by clicking, not from an href
     },
   },
   jobbank: {
@@ -267,14 +264,18 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     baseUrl: 'https://www.jobbank.gc.ca',
     strategy: 'browser',
     region: 'ca',
+    // robots.txt: User-agent: * / Crawl-delay: 5 — must wait 5s between requests.
+    crawlDelayMs: 5000,
     searchUrl: (kw, loc) =>
       `https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring=${q(kw)}&locationstring=${q(loc)}`,
+    // Verified against live markup (2026-09-08).
     selectors: {
-      jobCard: '.resultItem, .job-result, article.resultItem',
-      title: 'h2 a, .job-title a, .resultTitle a',
-      company: '.employer, .company, span.employer',
-      location: '.location, .job-location, span.location',
-      link: 'h2 a, .job-title a',
+      jobCard: 'article[id^="article-"]',
+      title: 'h3.title span.noctitle',
+      company: 'li.business',
+      location: 'li.location',
+      link: 'a.resultJobItem',
+      salary: 'li.salary',
     },
   },
   michaelpage: {
@@ -282,14 +283,21 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     name: 'MichaelPage',
     baseUrl: 'https://www.michaelpage.com.au',
     strategy: 'browser',
+    // robots.txt disallows faceted "*/jobs/*/*/*/" search URLs and "/job-apply/",
+    // but this single-segment shape and "/job-detail/" pages aren't covered —
+    // still worth a final compliance read before enabling in production.
     searchUrl: (kw, loc) =>
       `https://www.michaelpage.com.au/jobs/${q(kw)}?location=${q(loc)}`,
+    // Verified against live markup (2026-09-08). No company name is shown on
+    // listing cards (Michael Page doesn't disclose the client), so company
+    // selector is intentionally left blank — adapter falls back to "Unknown".
     selectors: {
-      jobCard: '.job-item, .job-listing, article.job-card',
-      title: 'h2 a, .job-title a, .title a',
-      company: '.company-name, .employer',
-      location: '.location, .job-location',
-      link: 'h2 a, .job-title a',
+      jobCard: 'div.job-tile.search-job-tile',
+      title: 'div.job-title a',
+      company: '',
+      location: 'div.job-location',
+      link: 'div.job-title a',
+      description: 'div.job_advert__job-summary-text',
     },
   },
   randstad: {

@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
-import { 
-  updateUser, 
-  approveUserDocument, 
-  rejectUserDocument, 
+import {
+  updateUser,
+  approveUserDocument,
+  rejectUserDocument,
   deleteUser,
   bulkDeleteUsers,
   restoreUser,
@@ -12,6 +12,7 @@ import {
   bulkPurgeUsers,
   getPendingDocumentsByUserId,
   approveUserAccount,
+  assignReferrer,
   sendUserDetailsToSlack,
   getFeatureTitles,
   getUserPreferences,
@@ -80,6 +81,11 @@ userManagementRouterV1.delete(
 // Approve user account
 userManagementRouterV1.post(
   "/users/:userId/approve", authorizeRoles("admin"), approveUserAccount
+);
+
+// Assign / update / allow a referrer relationship for the client
+userManagementRouterV1.post(
+  "/users/:userId/referrer", authorizeRoles("admin"), assignReferrer
 );
 
 // Send user details sample to Slack

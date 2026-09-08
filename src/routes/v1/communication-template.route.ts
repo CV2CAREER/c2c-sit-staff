@@ -6,8 +6,13 @@ import {
   createCommunicationTemplate,
   deleteCommunicationTemplate,
   getCommunicationTemplates,
+  listEmailTriggers,
   notifyMissingInfo,
   patchCommunicationTemplate,
+  rebindEmailTrigger,
+  resetEmailTrigger,
+  resolveTestSend,
+  sendTestEmail,
 } from "@/controllers/v1/communication-template.controller";
 
 const communicationTemplateRouterV1 = Router();
@@ -17,6 +22,12 @@ communicationTemplateRouterV1.use(
   isUserAuthenticated,
   authorizeRoles("admin", "assistant"),
 );
+
+communicationTemplateRouterV1.get("/triggers", listEmailTriggers);
+communicationTemplateRouterV1.patch("/triggers/:triggerKey", authorizeRoles("admin"), rebindEmailTrigger);
+communicationTemplateRouterV1.delete("/triggers/:triggerKey", authorizeRoles("admin"), resetEmailTrigger);
+communicationTemplateRouterV1.get("/:id/test-send/resolve", resolveTestSend);
+communicationTemplateRouterV1.post("/:id/test-send", sendTestEmail);
 
 communicationTemplateRouterV1.get("/", getCommunicationTemplates);
 communicationTemplateRouterV1.post("/", authorizeRoles("admin"), createCommunicationTemplate);

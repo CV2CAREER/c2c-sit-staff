@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { DiscoveryAdapter, DiscoveryJobDraft } from './discovery-adapter.interface';
 import { ScrapeConfig, getScraperConfig } from './scraper-config';
+import { getNextProxy, proxyPoolEnabled } from './proxy-pool';
 import { getServiceLogger } from '../../../utils/createLogger';
 
 chromium.use(StealthPlugin());
@@ -60,10 +61,10 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
     if (!this.scrapeConfig) {
       return { permitted: false, reason: `No scrape config for source "${this.config.sourceSlug}"` };
     }
-    if (this.scrapeConfig.cloudflareBlocked) {
+    if (this.scrapeConfig.cloudflareBlocked && !proxyPoolEnabled()) {
       return {
         permitted: false,
-        reason: `${this.scrapeConfig.name} blocks datacenter/headless scraping. Requires headed mode + login session or residential proxy.`,
+        reason: `${this.scrapeConfig.name} blocks datacenter/headless scraping. Requires DISCOVERY_PROXY_LIST (residential proxy) to attempt${this.scrapeConfig.requiresAuth ? ', plus a saved login session' : ''}.`,
       };
     }
     return { permitted: true, reason: 'Playwright with stealth enabled.' };
@@ -82,8 +83,12 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
     logger.info(`Scraping ${cfg.name} with Playwright stealth: keywords=${searchKeywords.join(' | ')}, location=${location}`);
 
     try {
+      const proxy = getNextProxy();
+      if (proxy) logger.info(`${cfg.name}: routing through proxy ${proxy.server}`);
+
       this.browser = await chromium.launch({
         headless: !HEADED_MODE,
+        proxy: proxy || undefined,
         args: [
           '--disable-blink-features=AutomationControlled',
           '--no-sandbox',
@@ -148,6 +153,7 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
 
           checkAborted(signal);
           await sleep(3000);
+          await this.dismissCookieConsent(page);
           try {
             for (let i = 0; i < 8; i++) {
               checkAborted(signal);
@@ -170,7 +176,9 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
           checkAborted(signal);
           await sleep(3000);
 
-          let foundOnPage = await this.extractPageJobs(page, cfg);
+          let foundOnPage = cfg.clickToNavigate
+            ? await this.extractPageJobsWithClick(page, cfg, signal)
+            : await this.extractPageJobs(page, cfg);
           let added = 0;
           for (const item of foundOnPage) {
             if (!item.title || allJobs.some((j) => j.title === item.title && j.company === item.company)) continue;
@@ -201,7 +209,7 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
           }
 
           checkAborted(signal);
-          await sleep(randomDelay());
+          await sleep(Math.max(randomDelay(), cfg.crawlDelayMs || 0));
         } catch (error: any) {
           if (error.name === 'AbortError') throw error;
           logger.warn(`  Scrape error for "${keyword}": ${error.message}`);
@@ -222,62 +230,91 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
     return allJobs;
   }
 
+  private async pickText(root: any, selectorList: string | undefined): Promise<string> {
+    if (!selectorList) return '';
+    for (const sel of selectorList.split(',').map((s) => s.trim())) {
+      try {
+        const el = root.locator(sel).first();
+        if ((await el.count()) > 0) {
+          const txt = ((await el.textContent()) || '').trim();
+          if (txt) return txt;
+        }
+      } catch { /* skip */ }
+    }
+    return '';
+  }
+
+  private async pickHref(root: any, selectorList: string | undefined): Promise<string> {
+    if (!selectorList) return '';
+    for (const sel of selectorList.split(',').map((s) => s.trim())) {
+      try {
+        const el = root.locator(sel).first();
+        if ((await el.count()) > 0) {
+          const h = await el.getAttribute('href');
+          if (h) return h;
+        }
+      } catch { /* skip */ }
+    }
+    return '';
+  }
+
+  // Cookie-consent overlays (OneTrust and similar) sit on top of the page
+  // and intercept clicks even though waitForSelector/goto succeed — this
+  // silently breaks clickToNavigate (and any nextPage click) until dismissed.
+  private static readonly CONSENT_SELECTORS = [
+    '#onetrust-accept-btn-handler',
+    'button:has-text("Accept all")',
+    'button:has-text("Accept All")',
+    'button:has-text("Accept cookies")',
+    '#accept-cookies',
+    '.cookie-consent-accept',
+  ];
+
+  private async dismissCookieConsent(page: Page): Promise<void> {
+    for (const sel of PageScrapeAdapter.CONSENT_SELECTORS) {
+      try {
+        const btn = page.locator(sel).first();
+        if ((await btn.count()) > 0 && (await btn.isVisible())) {
+          await btn.click({ timeout: 3000 });
+          logger.info(`  Dismissed cookie consent via ${sel}`);
+          await sleep(500);
+          return;
+        }
+      } catch { /* try next */ }
+    }
+  }
+
+  private async findCards(page: Page, cfg: ScrapeConfig): Promise<any> {
+    for (const sel of cfg.selectors.jobCard.split(',').map((s) => s.trim())) {
+      try {
+        const loc = page.locator(sel);
+        if ((await loc.count()) > 0) return loc;
+      } catch { /* skip */ }
+    }
+    return null;
+  }
+
   // Extract job cards using Playwright locators (Node-side). This avoids
   // page.evaluate entirely, which is immune to the esbuild/tsx keepNames
   // `__name` transform that corrupts serialized evaluate functions.
   private async extractPageJobs(page: Page, cfg: ScrapeConfig): Promise<ExtractedCard[]> {
     const results: ExtractedCard[] = [];
 
-    const pickText = async (root: any, selectorList: string | undefined): Promise<string> => {
-      if (!selectorList) return '';
-      for (const sel of selectorList.split(',').map((s) => s.trim())) {
-        try {
-          const el = root.locator(sel).first();
-          if ((await el.count()) > 0) {
-            const txt = ((await el.textContent()) || '').trim();
-            if (txt) return txt;
-          }
-        } catch { /* skip */ }
-      }
-      return '';
-    };
-
-    const pickHref = async (root: any, selectorList: string | undefined): Promise<string> => {
-      if (!selectorList) return '';
-      for (const sel of selectorList.split(',').map((s) => s.trim())) {
-        try {
-          const el = root.locator(sel).first();
-          if ((await el.count()) > 0) {
-            const h = await el.getAttribute('href');
-            if (h) return h;
-          }
-        } catch { /* skip */ }
-      }
-      return '';
-    };
-
-    // Pick the first job-card selector that matches anything on the page.
-    let cards: any = null;
-    for (const sel of cfg.selectors.jobCard.split(',').map((s) => s.trim())) {
-      try {
-        const loc = page.locator(sel);
-        if ((await loc.count()) > 0) { cards = loc; break; }
-      } catch { /* skip */ }
-    }
+    const cards = await this.findCards(page, cfg);
     if (!cards) return results;
 
     const count = await cards.count();
     for (let i = 0; i < count; i++) {
       try {
         const card = cards.nth(i);
-        let title = await pickText(card, cfg.selectors.title);
+        let title = await this.pickText(card, cfg.selectors.title);
         if (!title) title = ((await card.textContent()) || '').trim();
         if (!title || title.length < 3) continue;
 
-        const company = (await pickText(card, cfg.selectors.company)) || 'Unknown';
-        const location = (await pickText(card, cfg.selectors.location)) || 'Unknown';
+        const company = (await this.pickText(card, cfg.selectors.company)) || 'Unknown';
+        const location = (await this.pickText(card, cfg.selectors.location)) || 'Unknown';
 
-        let link = await pickHref(card, cfg.selectors.jobLink || cfg.selectors.link);
+        let link = await this.pickHref(card, cfg.selectors.jobLink || cfg.selectors.link);
         if (!link) {
           try { link = (await card.getAttribute('href')) || ''; } catch { /* skip */ }
         }
@@ -290,11 +327,67 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
         if (!link) continue;
         if (!link.startsWith('http')) link = cfg.baseUrl.replace(/\/$/, '') + link;
 
-        const salary = await pickText(card, cfg.selectors.salary || '');
-        const description = (await pickText(card, cfg.selectors.description || '')) || title;
+        const salary = await this.pickText(card, cfg.selectors.salary || '');
+        const description = (await this.pickText(card, cfg.selectors.description || '')) || title;
 
         results.push({ title, company, location, link, description, salary });
       } catch { /* skip malformed card */ }
+    }
+    return results;
+  }
+
+  // For boards whose cards are JS click-handlers with no real <a href> (e.g.
+  // Adecco): click each card, read the URL it navigates to, then go back.
+  // One page load per job, so capped and used only where clickToNavigate is set.
+  private readonly MAX_CLICK_CARDS = 20;
+
+  private async extractPageJobsWithClick(page: Page, cfg: ScrapeConfig, signal?: AbortSignal): Promise<ExtractedCard[]> {
+    const results: ExtractedCard[] = [];
+    const listUrl = page.url();
+
+    const initialCards = await this.findCards(page, cfg);
+    if (!initialCards) return results;
+    const count = Math.min(await initialCards.count(), this.MAX_CLICK_CARDS);
+
+    for (let i = 0; i < count; i++) {
+      checkAborted(signal);
+      try {
+        // Re-locate fresh each iteration — navigating away and back can
+        // detach the previous locator's underlying DOM handles.
+        const cards = await this.findCards(page, cfg);
+        if (!cards || (await cards.count()) <= i) break;
+        const card = cards.nth(i);
+
+        let title = await this.pickText(card, cfg.selectors.title);
+        if (!title) title = ((await card.textContent()) || '').trim();
+        if (!title || title.length < 3) continue;
+
+        const company = (await this.pickText(card, cfg.selectors.company)) || 'Unknown';
+        const location = (await this.pickText(card, cfg.selectors.location)) || 'Unknown';
+        const salary = await this.pickText(card, cfg.selectors.salary || '');
+        const description = (await this.pickText(card, cfg.selectors.description || '')) || title;
+
+        await card.scrollIntoViewIfNeeded().catch(() => {});
+        await card.click({ timeout: 5000 });
+        await page.waitForURL((url) => url.toString() !== listUrl, { timeout: 8000 }).catch(() => {});
+        await sleep(1500);
+
+        const link = page.url();
+        if (link && link !== listUrl) {
+          results.push({ title, company, location, link, description, salary });
+        }
+
+        await page.goBack({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+        await sleep(1500);
+      } catch (error: any) {
+        if (error.name === 'AbortError') throw error;
+        // If the click/back cycle left the page in a bad state, bail out of
+        // this keyword's click loop rather than risk an infinite bad loop.
+        logger.warn(`  click-to-navigate: card ${i} failed: ${error.message}`);
+        if (page.url() !== listUrl) {
+          await page.goto(listUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
+        }
+      }
     }
     return results;
   }
@@ -322,6 +415,7 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
       if (!this.browser) {
         this.browser = await chromium.launch({
           headless: !HEADED_MODE,
+          proxy: getNextProxy() || undefined,
           args: [
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
@@ -367,7 +461,7 @@ export class PageScrapeAdapter implements DiscoveryAdapter {
   async health(): Promise<{ ok: boolean; lastRunAt?: Date; error?: string }> {
     if (!this.scrapeConfig) return { ok: false, error: 'No scrape config' };
     try {
-      const browser = await chromium.launch({ headless: !HEADED_MODE });
+      const browser = await chromium.launch({ headless: !HEADED_MODE, proxy: getNextProxy() || undefined });
       const page = await browser.newPage();
       await page.goto(this.scrapeConfig.baseUrl, { timeout: 15000 });
       await browser.close();

@@ -69,6 +69,21 @@ export class Referrer extends Model {
   @Column(DataType.STRING)
   sequentialId?: string;
 
+  // Admin-entered tracking number attached to a referrer relationship at
+  // assignment time. Free-text so ops can store any external ref (invoice
+  // number, campaign code, etc.) without a schema change per program.
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  referralNumber?: string;
+
+  // True when the referred user was on a free plan at the moment the
+  // referrer was assigned. Drives eligibility for retroactive reward
+  // application when the client later upgrades.
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  freeBeforeReferral!: boolean;
+
   @AllowNull(true)
   @Column(DataType.STRING)
   updatedBy?: string;

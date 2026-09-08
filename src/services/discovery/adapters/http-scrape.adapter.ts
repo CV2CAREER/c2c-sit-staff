@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { DiscoveryAdapter, DiscoveryJobDraft } from './discovery-adapter.interface';
 import { ScrapeConfig, getScraperConfig } from './scraper-config';
+import { getNextProxy } from './proxy-pool';
 import { getServiceLogger } from '../../../utils/createLogger';
 
 const logger = getServiceLogger('http-scrape-adapter');
@@ -18,6 +19,18 @@ const HEADERS: Record<string, string> = {
 // Shared bounds (mirrors adzuna.adapter.ts / page-scrape.adapter.ts).
 const MAX_KEYWORDS_PER_FETCH = Math.max(1, Math.min(parseInt(process.env.DISCOVERY_MAX_KEYWORDS || '8', 10), 25));
 const MAX_JOBS_TARGET = 150;
+
+const buildAxiosProxyConfig = (): false | { protocol: string; host: string; port: number; auth?: { username: string; password: string } } => {
+  const proxy = getNextProxy();
+  if (!proxy) return false;
+  const url = new URL(proxy.server);
+  return {
+    protocol: url.protocol.replace(':', ''),
+    host: url.hostname,
+    port: Number(url.port),
+    auth: proxy.username && proxy.password ? { username: proxy.username, password: proxy.password } : undefined,
+  };
+};
 
 export interface HttpScrapeAdapterConfig {
   sourceSlug: string;
@@ -72,7 +85,7 @@ export class HttpScrapeAdapter implements DiscoveryAdapter {
         logger.info(`  GET ${url}`);
 
         try {
-          const res = await axios.get(url, { headers: HEADERS, timeout: 20000, maxRedirects: 5, signal });
+          const res = await axios.get(url, { headers: HEADERS, timeout: 20000, maxRedirects: 5, signal, proxy: buildAxiosProxyConfig() });
           if (res.status !== 200 || !res.data) break;
 
           const parsed = this.parseHtml(res.data, cfg);
@@ -219,7 +232,7 @@ export class HttpScrapeAdapter implements DiscoveryAdapter {
   async health(): Promise<{ ok: boolean; lastRunAt?: Date; error?: string }> {
     if (!this.scrapeConfig) return { ok: false, error: 'No scrape config' };
     try {
-      await axios.get(this.scrapeConfig.baseUrl, { headers: HEADERS, timeout: 10000, maxRedirects: 3 });
+      await axios.get(this.scrapeConfig.baseUrl, { headers: HEADERS, timeout: 10000, maxRedirects: 3, proxy: buildAxiosProxyConfig() });
       return { ok: true, lastRunAt: new Date() };
     } catch (error: any) {
       return { ok: false, error: error.message };

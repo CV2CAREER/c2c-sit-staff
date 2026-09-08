@@ -2016,13 +2016,13 @@ export const assignVAToClient = async (
   vaEmail: string | null,
   host: string,
   updatedBy?: string,
-  variant: 'DPC' | 'VPC' | 'SPC' = 'DPC'
+  variant: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC' = 'DPC'
 ) => {
   logger.info(
     `Processing ${variant} assignment for credId=${credId}, vaEmail=${vaEmail}`
   );
 
-  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC') => {
+  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC') => {
     if (v === 'VPC') {
       return {
         emailField: 'AssignedVetEmail' as const,
@@ -2036,6 +2036,22 @@ export const assignVAToClient = async (
         emailField: 'AssignedCompletedEmail' as const,
         nameField: 'AssignedCompletedName' as const,
         displayLabel: 'SPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'InterimDPC') {
+      return {
+        emailField: 'InterimDPCEmail' as const,
+        nameField: 'InterimDPCName' as const,
+        displayLabel: 'Interim DPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'InterimSPC') {
+      return {
+        emailField: 'InterimSPCEmail' as const,
+        nameField: 'InterimSPCName' as const,
+        displayLabel: 'Interim SPC',
         slackChannel: SlackChannel.VA,
       };
     }
@@ -2547,6 +2563,20 @@ export const landOrLaunchCampaign = async (
   let slackBody: string;
 
   if (credData.capitalized !== 'INFLIGHT') {
+    const computed = calculateCampaignFields({
+      SeekSubStartDate: credData.SeekSubStartDate,
+      createdAt: credData.createdAt,
+      SeekSubDurDays: jsonb.SeekSubDurDays,
+      GraceDuration: jsonb.GraceDuration,
+    });
+
+    if (computed.SeekSubExpired === 'YES') {
+      throw new ErrorHandler(
+        `Cannot launch — ${clientName}'s subscription already expired on ${computed.CampaignEnd}`,
+        400
+      );
+    }
+
     await cred.update({
       capitalized: 'INFLIGHT',
       Active: true,

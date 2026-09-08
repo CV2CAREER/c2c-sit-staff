@@ -182,6 +182,14 @@ export class User extends Model {
   @Column(DataType.STRING)
   country!: string;
 
+  // SPR-19-16-021: "Where did you hear about us?" — written once at
+  // registration on the customer backend, nullable, no backfill (existing
+  // accounts render as "Not Recorded"). Read-only here; this admin surface
+  // only displays/filters/exports it, never edits it.
+  @AllowNull(true)
+  @Column({ type: DataType.STRING, field: "hear_about_us" })
+  hearAboutUs?: string;
+
   // SPR-19-07-005: admin waiver for the social verification gate. Set true
   // when admin exempts a user from the "capture all 7 handles" requirement.
   @AllowNull(false)
