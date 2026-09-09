@@ -12,7 +12,6 @@ import PromptEditView from "../_components/PromptEditView";
 import PromptVersionsView from "../_components/PromptVersionsView";
 import AllSimulationsSection from "../_components/AllSimulationsSection";
 import PageHint from "../_components/PageHint";
-import HintMark from "../_components/HintMark";
 import {
   useVcsPrompts,
   useDeletedVcsPrompts,
@@ -163,7 +162,6 @@ const PromptDetailContent = ({ id }: { id: string }) => {
                 </button>
               ))}
             </div>
-            <HintMark text="Edit changes the current draft. Versions browses and compares every past version of this key." />
             <Button
               variant="outline"
               size="sm"
@@ -173,7 +171,6 @@ const PromptDetailContent = ({ id }: { id: string }) => {
             >
               <Trash2 size={14} />
               Delete
-              <HintMark text="Soft-deletes this key — it moves to the Recycle Bin and can be restored later." />
             </Button>
           </div>
         }
