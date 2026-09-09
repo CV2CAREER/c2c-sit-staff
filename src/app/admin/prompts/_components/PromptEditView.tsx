@@ -200,7 +200,6 @@ const PromptEditView = ({
             >
               <RotateCcw size={14} />
               Discard changes
-              <HintMark text="Reverts the prompt text and metadata below back to the last saved version." />
             </Button>
             <Button
               variant="outline"
@@ -212,7 +211,6 @@ const PromptEditView = ({
             >
               <Save size={14} />
               {isSavingDraft || isSavingMetadata ? "Saving..." : "Save draft"}
-              <HintMark text="Saves these changes as a draft — production keeps using the live version until you push." />
             </Button>
             <Button
               size="sm"
@@ -229,10 +227,6 @@ const PromptEditView = ({
             >
               <UploadCloud size={14} />
               {isPushing ? "Pushing..." : "Push to Live →"}
-              <HintMark
-                text="Promotes the current draft to be the live version — every call to this key starts reading it immediately."
-                className="bg-white/20 text-white hover:bg-white/30"
-              />
             </Button>
           </div>
         </div>
@@ -334,7 +328,6 @@ const PromptEditView = ({
           >
             <Trash2 size={14} />
             Delete Prompt
-            <HintMark text="Soft-deletes this key — it moves to the Recycle Bin and can be restored later." />
           </Button>
         </div>
       </CardContent>
