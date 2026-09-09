@@ -11,6 +11,7 @@ import RecycleBinDialog from "./_components/RecycleBinDialog";
 import UsageAnalyticsSection from "./_components/UsageAnalyticsSection";
 import PromptsTable from "./_components/PromptsTable";
 import PageHint from "./_components/PageHint";
+import HintMark from "./_components/HintMark";
 import { VcsPrompt } from "./hooks/use-vcs-prompts";
 
 const PROMPTS_PAGE_HINTS = [
@@ -67,6 +68,7 @@ const PromptsPage = () => {
             >
               <Activity size={16} />
               Usage Analytics
+              <HintMark text="Toggles a breakdown of call volume, response time, and success rate per prompt version, below the table." />
             </Button>
             <RecycleBinDialog
               onRestored={() => {

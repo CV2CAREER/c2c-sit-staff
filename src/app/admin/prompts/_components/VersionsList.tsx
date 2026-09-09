@@ -19,6 +19,7 @@ import {
   VcsPromptVersion,
 } from "../hooks/use-vcs-prompts";
 import { VERSION_STATUS_BADGE_CLASS, VERSION_STATUS_LABEL } from "./versionStatus";
+import HintMark from "./HintMark";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
@@ -98,7 +99,10 @@ const VersionsList = ({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-bold text-gray-900">Versions</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+          Versions
+          <HintMark text="Every saved version of this key: draft, live, and retired." />
+        </h3>
         {versions.map((version) => {
           const isSelected = selectedIds.includes(version.id);
           return (

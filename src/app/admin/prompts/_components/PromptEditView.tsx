@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PromptMetadataPanel from "./PromptMetadataPanel";
+import HintMark from "./HintMark";
 import SimulateTab from "./SimulateTab";
 import RunHistoryTab from "./RunHistoryTab";
 import {
@@ -63,13 +64,11 @@ const PromptEditView = ({
 
   const [promptText, setPromptText] = useState(baselinePrompt);
   const [aiPromptSection, setAiPromptSection] = useState(baselineAiPromptSection);
-  const [category, setCategory] = useState(vcs.category ?? "");
   const [model, setModel] = useState(vcs.model ?? "");
 
   useEffect(() => {
     setPromptText(baselinePrompt);
     setAiPromptSection(baselineAiPromptSection);
-    setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vcs.id]);
@@ -77,7 +76,6 @@ const PromptEditView = ({
   const isDirty =
     promptText !== baselinePrompt ||
     aiPromptSection !== baselineAiPromptSection ||
-    category !== (vcs.category ?? "") ||
     model !== (vcs.model ?? "");
 
   const isSaving = isSavingDraft || isSavingMetadata;
@@ -85,7 +83,6 @@ const PromptEditView = ({
   const handleDiscard = () => {
     setPromptText(baselinePrompt);
     setAiPromptSection(baselineAiPromptSection);
-    setCategory(vcs.category ?? "");
     setModel(vcs.model ?? "");
   };
 
@@ -108,8 +105,7 @@ const PromptEditView = ({
         setAiPromptSection(savedDraft.aiPromptSection ?? "");
       }
 
-      const metadataPatch: { category?: string; model?: string } = {};
-      if (category !== (vcs.category ?? "")) metadataPatch.category = category;
+      const metadataPatch: { model?: string } = {};
       if (model !== (vcs.model ?? "")) metadataPatch.model = model;
       if (Object.keys(metadataPatch).length > 0) {
         await updateMetadata({ id: vcs.id, ...metadataPatch });
@@ -169,9 +165,7 @@ const PromptEditView = ({
       <PromptMetadataPanel
         name={vcs.key}
         promptText={promptText}
-        category={category}
         model={model}
-        onCategoryChange={setCategory}
         onModelChange={setModel}
       />
 
@@ -180,7 +174,7 @@ const PromptEditView = ({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}
               title={
                 status === "draft"
                   ? "This key has an unsaved/unpushed draft"
@@ -188,6 +182,10 @@ const PromptEditView = ({
               }
             >
               {statusLabel}
+              <HintMark
+                text="DRAFT means there are unsaved changes. LIVE means this is what production is currently reading."
+                className="bg-black/10 text-current hover:bg-black/20"
+              />
             </span>
             <span className="text-xs text-gray-500">{byline}</span>
           </div>
@@ -202,6 +200,7 @@ const PromptEditView = ({
             >
               <RotateCcw size={14} />
               Discard changes
+              <HintMark text="Reverts the prompt text and metadata below back to the last saved version." />
             </Button>
             <Button
               variant="outline"
@@ -213,6 +212,7 @@ const PromptEditView = ({
             >
               <Save size={14} />
               {isSavingDraft || isSavingMetadata ? "Saving..." : "Save draft"}
+              <HintMark text="Saves these changes as a draft — production keeps using the live version until you push." />
             </Button>
             <Button
               size="sm"
@@ -229,6 +229,10 @@ const PromptEditView = ({
             >
               <UploadCloud size={14} />
               {isPushing ? "Pushing..." : "Push to Live →"}
+              <HintMark
+                text="Promotes the current draft to be the live version — every call to this key starts reading it immediately."
+                className="bg-white/20 text-white hover:bg-white/30"
+              />
             </Button>
           </div>
         </div>
@@ -263,8 +267,9 @@ const PromptEditView = ({
           <TabsContent value="edit" className="flex flex-1 flex-col gap-3">
             {LOCKED_SCHEMA_PROMPT_KEYS.has(vcs.key) ? (
               <>
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                   AI Prompt
+                  <HintMark text="Plain-language instructions, merged automatically with the required CV formatting rules every time a CV is generated." />
                 </label>
                 <p className="text-xs text-gray-500">
                   This is the only thing you can change. Write instructions in plain language —
@@ -287,8 +292,9 @@ const PromptEditView = ({
               </>
             ) : (
               <>
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Prompt template
+                  <HintMark text="The raw text sent to the AI, combined with variables like {{name}} each time it's called." />
                 </label>
                 <Textarea
                   value={promptText}
@@ -328,6 +334,7 @@ const PromptEditView = ({
           >
             <Trash2 size={14} />
             Delete Prompt
+            <HintMark text="Soft-deletes this key — it moves to the Recycle Bin and can be restored later." />
           </Button>
         </div>
       </CardContent>

@@ -11,6 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import HintMark from "./HintMark";
 import { useDeleteVcsPrompt } from "../hooks/use-vcs-prompts";
 
 interface DeletePromptDialogProps {
@@ -59,8 +60,9 @@ const DeletePromptDialog = ({
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
+          <Button variant="destructive" onClick={handleDelete} disabled={isPending} className="gap-1.5">
             {isPending ? "Deleting..." : "Delete Prompt"}
+            <HintMark text="Soft-deletes this key — it moves to the Recycle Bin and can be restored later." className="bg-white/20 text-white hover:bg-white/30" />
           </Button>
         </DialogFooter>
       </DialogContent>

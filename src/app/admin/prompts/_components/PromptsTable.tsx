@@ -24,6 +24,7 @@ import {
 } from "./promptStatus";
 import { getPromptUsedByLabel } from "./promptUsedBy";
 import RecentlyEditedList from "./RecentlyEditedList";
+import { columnHeaderHint } from "./HintMark";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -93,18 +94,32 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
   };
 
   const columns: GridColDef[] = [
-    { field: "key", headerName: "Key", flex: 1, minWidth: 220 },
+    {
+      field: "key",
+      headerName: "Key",
+      flex: 1,
+      minWidth: 220,
+      renderHeader: () =>
+        columnHeaderHint("Key", "The lookup key backend services use to fetch this prompt."),
+    },
     {
       field: "version",
       headerName: "Version",
       width: 100,
       valueFormatter: (value) => (value ? `v${value}` : "—"),
+      renderHeader: () =>
+        columnHeaderHint("Version", "The version number of what's currently live for this key."),
     },
     {
       field: "status",
       headerName: "Status",
       width: 120,
       valueGetter: (_value, row) => getEnabledStatus(row),
+      renderHeader: () =>
+        columnHeaderHint(
+          "Status",
+          "Enabled prompts are used when called, Disabled ones are skipped, Archived ones were soft-deleted.",
+        ),
       renderCell: (params) => {
         const status = params.value as EnabledStatus;
         return (
@@ -121,12 +136,16 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
       headerName: "Used By",
       width: 220,
       valueGetter: (_value, row) => getPromptUsedByLabel((row as VcsPrompt).key),
+      renderHeader: () =>
+        columnHeaderHint("Used By", "The feature or service that calls this prompt key."),
     },
     {
       field: "lastUsedAt",
       headerName: "Last Used",
       width: 160,
       valueGetter: (_value, row) => lastUsedByKey.get((row as VcsPrompt).key) ?? null,
+      renderHeader: () =>
+        columnHeaderHint("Last Used", "How recently the AI actually called this prompt in production."),
       renderCell: (params) => (
         <span title={params.value ? formatDate(params.value as string) : undefined}>
           {formatRelativeTime(params.value as string | null)}
@@ -138,18 +157,23 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
       headerName: "Updated",
       width: 180,
       valueFormatter: (value) => formatDate(value as string),
+      renderHeader: () =>
+        columnHeaderHint("Updated", "When this prompt's draft or live version was last changed."),
     },
     {
       field: "updatedBy",
       headerName: "Last edited by",
       width: 160,
       valueFormatter: (value) => (value as string) || "System",
+      renderHeader: () =>
+        columnHeaderHint("Last edited by", "The staff member (or System) who made the most recent change."),
     },
     {
       field: "actions",
       headerName: "",
       width: 70,
       sortable: false,
+      renderHeader: () => columnHeaderHint("", "Edit opens this prompt; the restore icon un-archives a deleted key."),
       renderCell: (params) => {
         const prompt = params.row as VcsPrompt;
         if (prompt.deletedAt) {
