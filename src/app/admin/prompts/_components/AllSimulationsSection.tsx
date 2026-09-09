@@ -16,6 +16,7 @@ import {
   useAllVcsPromptSimulationRuns,
   VcsPromptSimulationRunWithKey,
 } from "../hooks/use-vcs-prompt-simulations";
+import { columnHeaderHint } from "./HintMark";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -28,19 +29,41 @@ const AllSimulationsSection = () => {
   const runs = data?.data?.rows || [];
 
   const columns: GridColDef[] = [
-    { field: "key", headerName: "Key", width: 200, valueFormatter: (v) => v || "—" },
+    {
+      field: "key",
+      headerName: "Key",
+      width: 200,
+      valueFormatter: (v) => v || "—",
+      renderHeader: () => columnHeaderHint("Key", "Which prompt key this simulation run belongs to."),
+    },
     {
       field: "createdAt",
       headerName: "Timestamp",
       width: 170,
       valueFormatter: (value) => formatDate(value as string),
+      renderHeader: () => columnHeaderHint("Timestamp", "When this simulation run happened."),
     },
-    { field: "triggeredBy", headerName: "User", width: 140, valueFormatter: (v) => v || "System" },
-    { field: "version", headerName: "Version", width: 90, valueFormatter: (v) => (v ? `v${v}` : "—") },
+    {
+      field: "triggeredBy",
+      headerName: "User",
+      width: 140,
+      valueFormatter: (v) => v || "System",
+      renderHeader: () =>
+        columnHeaderHint("User", "Who triggered this run — System if it wasn't manual."),
+    },
+    {
+      field: "version",
+      headerName: "Version",
+      width: 90,
+      valueFormatter: (v) => (v ? `v${v}` : "—"),
+      renderHeader: () => columnHeaderHint("Version", "Which version of the prompt was used for this run."),
+    },
     {
       field: "status",
       headerName: "Status",
       width: 100,
+      renderHeader: () =>
+        columnHeaderHint("Status", "Success means the AI call completed; Failed means it errored out."),
       renderCell: (params) =>
         params.value === "success" ? (
           <span className="flex h-full items-center gap-1 text-xs font-medium text-emerald-600">
@@ -59,6 +82,7 @@ const AllSimulationsSection = () => {
       headerName: "Duration",
       width: 100,
       valueFormatter: (value) => formatMs(value as number),
+      renderHeader: () => columnHeaderHint("Duration", "How long the AI call took to respond."),
     },
     {
       field: "output",
@@ -66,6 +90,11 @@ const AllSimulationsSection = () => {
       flex: 1,
       minWidth: 200,
       valueGetter: (_value, row) => row.output || row.errorMessage || "",
+      renderHeader: () =>
+        columnHeaderHint(
+          "Output preview",
+          "The start of what the AI returned (or the error) — click View for the full text.",
+        ),
       renderCell: (params) => (
         <span className="truncate text-xs text-gray-600">
           {(params.value as string).slice(0, 120)}
@@ -77,6 +106,7 @@ const AllSimulationsSection = () => {
       headerName: "",
       width: 70,
       sortable: false,
+      renderHeader: () => columnHeaderHint("", "Opens the full input/output for this run."),
       renderCell: (params) => (
         <button
           type="button"
