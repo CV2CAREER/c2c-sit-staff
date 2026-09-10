@@ -1,0 +1,132 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/sendgridWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive SendGrid Event Webhook events
+      description: |
+        Receives SendGrid's Event Webhook payload - a JSON array, since
+        SendGrid batches many events (possibly for several different emails)
+        into a single POST, unlike JustCall which sends one event per
+        request. Entirely self-contained: `sendgrid_events` holds one
+        current-state row per email send (keyed on SendGrid's own
+        `sg_message_id`), summarizing every event seen for it (delivered,
+        opened, clicked, bounced, etc.); `sendgrid_event_logs` (FK ->
+        sendgrid_events) keeps the full untouched history, one row per
+        individual event. Neither table references `email_logs` (the
+        customer-facing notifications list) at all, so nothing here can ever
+        alter that table or what reads it.
+
+        `sg_event_id` is unique on `sendgrid_event_logs` - SendGrid documents
+        that it can redeliver the same event more than once, so a
+        redelivery is silently skipped (not double-counted, no repeat Slack
+        alert) rather than erroring.
+
+        Configure this URL in SendGrid under Settings > Tracking > Event
+        Webhook, and pick whichever event categories you want sent -
+        Engagement Data (Opened/Clicked/Unsubscribed/Spam Reports/Group
+        Unsubscribes/Group Resubscribes), Deliverability Data
+        (Processed/Dropped/Deferred/Bounced/Delivered), or Account Data.
+
+        If the Event Webhook's "Signed Event Webhook" toggle is enabled and
+        `SENDGRID_WEBHOOK_PUBLIC_KEY` is set in the environment, requests are
+        verified via SendGrid's ECDSA signature (the
+        x-twilio-email-event-webhook-signature/-timestamp headers) against
+        the raw request body - unlike JustCall, which has no signature
+        scheme at all. If the env var is unset, requests are accepted
+        unverified.
+      security: []
+      parameters:
+        - name: x-twilio-email-event-webhook-signature
+          in: header
+          required: false
+          description: Required only if SENDGRID_WEBHOOK_PUBLIC_KEY is configured.
+          schema:
+            type: string
+        - name: x-twilio-email-event-webhook-timestamp
+          in: header
+          required: false
+          description: Required only if SENDGRID_WEBHOOK_PUBLIC_KEY is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+            examples:
+              batch:
+                summary: A batch covering delivered, open, click, bounce, and dropped
+                value:
+                  - email: "robert.williams@gmail.com"
+                    timestamp: 1513299569
+                    smtp-id: "<14c5d75ce93.dfd.64b469@ismtpd-555>"
+                    event: "delivered"
+                    category: ["welcome-email"]
+                    sg_event_id: "sg_event_id_delivered_1"
+                    sg_message_id: "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B88.0"
+                    response: "250 OK"
+                  - email: "robert.williams@gmail.com"
+                    timestamp: 1513299571
+                    event: "open"
+                    sg_event_id: "sg_event_id_open_1"
+                    sg_message_id: "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B88.0"
+                    useragent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+                    ip: "255.255.255.255"
+                  - email: "robert.williams@gmail.com"
+                    timestamp: 1513299575
+                    event: "click"
+                    sg_event_id: "sg_event_id_click_1"
+                    sg_message_id: "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B88.0"
+                    useragent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+                    ip: "255.255.255.255"
+                    url: "https://staff.cvtocareer.com"
+                  - email: "other.recipient@example.com"
+                    timestamp: 1513299580
+                    event: "bounce"
+                    sg_event_id: "sg_event_id_bounce_1"
+                    sg_message_id: "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0B99.0"
+                    reason: "500 unknown recipient"
+                    status: "5.0.0"
+                    type: "bounce"
+                  - email: "unsubscribed.recipient@example.com"
+                    timestamp: 1513299582
+                    event: "dropped"
+                    sg_event_id: "sg_event_id_dropped_1"
+                    sg_message_id: "14c5d75ce93.dfd.64b469.filter0001.16648.5515E0BA0.0"
+                    reason: "Bounced Address"
+                    status: "5.0.0"
+      responses:
+        '200':
+          description: Events processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Events processed
+                  value:
+                    success: true
+                    message: "Events processed"
+                    statusCode: 200
+                    data:
+                      processed: 5
+        '401':
+          description: Invalid or missing signature (only enforced when SENDGRID_WEBHOOK_PUBLIC_KEY is configured)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_signature:
+                  summary: Invalid webhook signature
+                  value:
+                    success: false
+                    message: "Invalid webhook signature"
+                    statusCode: 401

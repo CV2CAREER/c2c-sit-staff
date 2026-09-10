@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import ejs from "ejs";
 import ErrorHandler from "@/utils/errorHandler";
 import { CommunicationTemplate } from "@/models/v1/communication-template.model";
 import {
@@ -6,10 +7,12 @@ import {
   EmailTemplateType,
   EMAIL_TEMPLATE_TYPES,
 } from "@/models/v1/email-template.model";
+import { EmailTemplateTrigger } from "@/models/v1/email-template-trigger.model";
+import { EmailTestSendLog, EmailTestSendStatus } from "@/models/v1/email-test-send-log.model";
 import { MissingInfoRequest } from "@/models/v1/missing-info-request.model";
 import { User } from "@/models/v1/user.model";
 import { getServiceLogger } from "@/utils/createLogger";
-import { sendMail } from "@/config/sendGrid";
+import { sendMail, sendRawTestEmail } from "@/config/sendGrid";
 import { SlackService } from "@/services/slack.service";
 import { JustCallTriggerService } from "@/services/justcall.service";
 import {
@@ -20,9 +23,15 @@ import {
   SlackChannel,
 } from "@/utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
-import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL, LOCAL_FRONTEND_URL } from "@/config/env";
+import { EMAIL_TRIGGERS, findTriggerDefinition } from "@/constants/email-triggers";
 
 const logger = getServiceLogger("communication-template-service");
+
+// Fixed test-send destination — every environment sends test emails here
+// instead of depending on EMAIL_TEST_RECIPIENT being configured (it wasn't,
+// which is why test-send 500'd with "EMAIL_TEST_RECIPIENT is not configured").
+const TEST_EMAIL_RECIPIENT = "c2c@yopmail.com";
 
 type TemplatePayload = {
   id?: string;
@@ -92,6 +101,103 @@ const validateType = (type: string) => {
   if (!EMAIL_TEMPLATE_TYPES.includes(type as EmailTemplateType)) {
     throw new ErrorHandler(`type must be one of: ${EMAIL_TEMPLATE_TYPES.join(", ")}`, 400);
   }
+};
+
+/**
+ * Real-data resolvers for test-send, keyed by trigger. Only implemented for
+ * a handful of proven-reconstructable triggers (v1) — everything else falls
+ * back to placeholder values per template.variables. Deliberately reads
+ * only the acting admin's OWN account; never touches another user's data.
+ */
+const TEST_DATA_RESOLVERS: Record<string, (admin: Pick<User, "firstName" | "email">) => Record<string, unknown>> = {
+  "welcome-email.ejs": (admin) => ({
+    name: admin.firstName,
+    email: admin.email,
+    frontendUrl: LOCAL_FRONTEND_URL,
+    currentYear: new Date().getFullYear(),
+  }),
+  "session-confirmed.ejs": (admin) => ({
+    // Most admins have no real confirmed session to source from — only
+    // `name` is genuinely the admin's own data, the rest are placeholders.
+    name: admin.firstName,
+    coachName: "Sample Coach",
+    date: "Sample date",
+    time: "Sample time",
+    timezone: "UTC",
+    sessionType: "Sample session",
+    meetingLink: "https://example.com",
+    duration: 30,
+    frontendUrl: LOCAL_FRONTEND_URL,
+    currentYear: new Date().getFullYear(),
+  }),
+  "referral-claimed.ejs": (admin) => ({
+    name: admin.firstName,
+    email: admin.email,
+    claimedUserName: "Sample User",
+    frontendUrl: LOCAL_FRONTEND_URL,
+    currentYear: new Date().getFullYear(),
+  }),
+};
+
+/** Which trigger (if any) currently resolves to this template — a custom
+ * binding first, else the implicit default (its own key matching a known
+ * trigger). Used to pick a real-data resolver for test-send previews. */
+const resolveTriggerKeyForTemplate = async (template: EmailTemplate): Promise<string | undefined> => {
+  const binding = await EmailTemplateTrigger.findOne({ where: { templateId: template.id } });
+  if (binding) return binding.triggerKey;
+  return findTriggerDefinition(template.key) ? template.key : undefined;
+};
+
+/**
+ * Renders an EJS body against arbitrary values, substituting a visible
+ * `[missing: x]` placeholder for any variable the body references that
+ * wasn't supplied — shared by the by-id and draft test-send paths so both
+ * behave identically. `with()` (which ejs.render compiles to) probes this
+ * object for symbol keys like Symbol.unscopables, so those must pass
+ * through untouched — only string keys get the placeholder treatment.
+ */
+const renderWithPlaceholders = (body: string, values: Record<string, unknown>): string => {
+  const safeValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(values ?? {})) {
+    safeValues[key] = typeof value === "string" ? value : String(value ?? "");
+  }
+
+  const renderData = new Proxy(safeValues, {
+    get: (target, prop) => {
+      if (typeof prop === "symbol") return (target as Record<PropertyKey, unknown>)[prop];
+      return prop in target ? target[prop] : `[missing: ${prop}]`;
+    },
+  });
+
+  try {
+    return ejs.render(body, renderData as Record<string, unknown>);
+  } catch (err: any) {
+    throw new ErrorHandler(`Template failed to render: ${err.message}`, 400);
+  }
+};
+
+const EJS_RESERVED_WORDS = new Set([
+  "if", "else", "for", "while", "do", "function", "return", "var", "let", "const",
+  "true", "false", "null", "undefined", "typeof", "new", "this", "in", "of", "break",
+  "continue", "switch", "case", "default", "try", "catch", "finally", "throw", "include",
+  "locals", // EJS's own name for the data object passed to render — not a real variable
+]);
+
+/**
+ * template.variables is manually maintained metadata (for the admin's
+ * click-to-insert picker) — it's documentation, not a guarantee of what the
+ * raw EJS body actually references. Scanning the body directly catches
+ * variables that were used but never declared, so test-send can surface
+ * them as editable instead of crashing on render.
+ */
+const extractEjsVariableNames = (body: string): string[] => {
+  const names = new Set<string>();
+  const tagRegex = /<%[-=]?\s*([a-zA-Z_$][\w$]*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagRegex.exec(body))) {
+    if (!EJS_RESERVED_WORDS.has(match[1])) names.add(match[1]);
+  }
+  return Array.from(names);
 };
 
 export class CommunicationTemplateService {
@@ -234,6 +340,193 @@ export class CommunicationTemplateService {
     return { success: true };
   }
 
+  static async listTriggers() {
+    const bindings = await EmailTemplateTrigger.findAll();
+    const bindingByTriggerKey = new Map(bindings.map((b) => [b.triggerKey, b]));
+
+    const results = [];
+    for (const definition of EMAIL_TRIGGERS) {
+      const binding = bindingByTriggerKey.get(definition.key);
+      const disabled = !!binding && binding.templateId === null;
+      const template = disabled
+        ? null
+        : binding
+          ? await EmailTemplate.findByPk(binding.templateId as string)
+          : await EmailTemplate.findOne({ where: { key: definition.key } });
+
+      results.push({
+        triggerKey: definition.key,
+        label: definition.label,
+        reassignable: definition.reassignable,
+        isBound: !!binding,
+        disabled,
+        resolvedTemplate: template ? serialize(template) : null,
+      });
+    }
+    return results;
+  }
+
+  /** `templateId: null` disables the trigger — it sends nothing at all. */
+  static async rebindTrigger(triggerKey: string, templateId: string | null, adminUserId?: string) {
+    const definition = findTriggerDefinition(triggerKey);
+    if (!definition) {
+      throw new ErrorHandler(`Unknown trigger "${triggerKey}"`, 404);
+    }
+    // Server-side gate — the real enforcement point, independent of the UI
+    // hiding the picker for these. Covers disabling too: a trigger that
+    // can't be reassigned also can't be silently turned off.
+    if (!definition.reassignable) {
+      throw new ErrorHandler(`"${definition.label}" cannot be reassigned`, 400);
+    }
+
+    let target: EmailTemplate | null = null;
+    if (templateId !== null) {
+      target = await EmailTemplate.findByPk(templateId);
+      if (!target) {
+        throw new ErrorHandler("Template not found", 404);
+      }
+    }
+
+    const existing = await EmailTemplateTrigger.findOne({ where: { triggerKey } });
+    if (existing) {
+      await existing.update({ templateId, updatedBy: adminUserId });
+    } else {
+      await EmailTemplateTrigger.create({ triggerKey, templateId, updatedBy: adminUserId });
+    }
+
+    logger.info(
+      templateId === null
+        ? `Trigger "${triggerKey}" disabled (send nothing) by ${adminUserId ?? "unknown"}`
+        : `Trigger "${triggerKey}" rebound to template ${templateId} by ${adminUserId ?? "unknown"}`,
+    );
+    return {
+      triggerKey,
+      label: definition.label,
+      reassignable: true,
+      isBound: true,
+      disabled: templateId === null,
+      resolvedTemplate: target ? serialize(target) : null,
+    };
+  }
+
+  static async resetTrigger(triggerKey: string) {
+    await EmailTemplateTrigger.destroy({ where: { triggerKey } });
+    logger.info(`Trigger "${triggerKey}" reset to default`);
+    return { success: true };
+  }
+
+  static async resolveTestSendData(templateId: string, adminUser: Pick<User, "firstName" | "email">) {
+    const template = await EmailTemplate.findByPk(templateId);
+    if (!template) {
+      throw new ErrorHandler("Template not found", 404);
+    }
+
+    const triggerKeyUsed = await resolveTriggerKeyForTemplate(template);
+    const resolver = triggerKeyUsed ? TEST_DATA_RESOLVERS[triggerKeyUsed] : undefined;
+    const resolvedFromRealData = resolver ? resolver(adminUser) : {};
+
+    // Union of the declared list, whatever the resolver knows about, and
+    // what's actually referenced in the body — the declared list alone can
+    // be stale/incomplete relative to the real template content.
+    const variableNames = Array.from(
+      new Set([
+        ...(template.variables ?? []),
+        ...Object.keys(resolvedFromRealData),
+        ...extractEjsVariableNames(template.body),
+      ]),
+    );
+    const values: Record<string, string> = {};
+    for (const name of variableNames) {
+      values[name] =
+        resolvedFromRealData[name] !== undefined ? String(resolvedFromRealData[name]) : `Sample ${name}`;
+    }
+
+    return { templateId: template.id, triggerKeyUsed: triggerKeyUsed ?? null, variables: values };
+  }
+
+  static async sendTestEmail(
+    templateId: string,
+    values: Record<string, unknown>,
+    adminUser: Pick<User, "id" | "firstName" | "lastName" | "email">,
+    triggerKeyUsed?: string,
+  ) {
+    const template = await EmailTemplate.findByPk(templateId);
+    if (!template) {
+      throw new ErrorHandler("Template not found", 404);
+    }
+
+    const html = renderWithPlaceholders(template.body, values);
+
+    // Deliberate deviation from the house "never await sendMail/Slack in the
+    // main request path" rule — the entire point of test-send is synchronous
+    // pass/fail confirmation, which a setImmediate fire-and-forget can't give
+    // without adding polling. See plan doc for the explicit call-out.
+    try {
+      await sendRawTestEmail({
+        email: TEST_EMAIL_RECIPIENT,
+        subject: `[TEST] ${template.name}`,
+        html,
+      });
+      await EmailTestSendLog.create({
+        templateId: template.id,
+        triggerKeyUsed: triggerKeyUsed ?? null,
+        sentByAdminId: adminUser.id,
+        recipientEmail: TEST_EMAIL_RECIPIENT,
+        status: EmailTestSendStatus.SENT,
+      });
+      logger.info(`Test email sent for template ${template.id} by admin ${adminUser.id}`);
+      return { success: true, recipientEmail: TEST_EMAIL_RECIPIENT };
+    } catch (err: any) {
+      await EmailTestSendLog.create({
+        templateId: template.id,
+        triggerKeyUsed: triggerKeyUsed ?? null,
+        sentByAdminId: adminUser.id,
+        recipientEmail: TEST_EMAIL_RECIPIENT,
+        status: EmailTestSendStatus.FAILED,
+        errorMessage: String(err.message ?? "").slice(0, 512),
+      });
+      throw new ErrorHandler(`Test email failed: ${err.message}`, 502);
+    }
+  }
+
+  // Sends the CURRENT DRAFT — whatever's in the editor right now, saved or
+  // not — so an admin can see exactly what a client would receive before
+  // hitting Save. No templateId to look up yet, so this skips
+  // EmailTestSendLog (which requires one) and just logs plainly; everything
+  // else (placeholder-safe render, fixed test recipient, deviation from the
+  // never-await-inline house rule) matches sendTestEmail above.
+  static async sendDraftTestEmail(
+    payload: { subject?: string; body?: string; variables?: unknown },
+    adminUser: Pick<User, "id" | "firstName" | "lastName" | "email">,
+  ) {
+    const body = normalize(payload.body);
+    const subject = normalize(payload.subject) || "Test Email";
+
+    if (!body) {
+      throw new ErrorHandler("Template body is empty — nothing to send", 400);
+    }
+
+    const values = normalizeVariables(payload.variables).reduce<Record<string, string>>((acc, name) => {
+      acc[name] = `Sample ${name}`;
+      return acc;
+    }, {});
+
+    const html = renderWithPlaceholders(body, values);
+
+    try {
+      await sendRawTestEmail({
+        email: TEST_EMAIL_RECIPIENT,
+        subject: `[TEST] ${subject}`,
+        html,
+      });
+      logger.info(`Draft test email sent by admin ${adminUser.id}`);
+      return { success: true, recipientEmail: TEST_EMAIL_RECIPIENT };
+    } catch (err: any) {
+      logger.error(`Draft test email failed for admin ${adminUser.id}: ${err.message}`);
+      throw new ErrorHandler(`Test email failed: ${err.message}`, 502);
+    }
+  }
+
   static async notifyMissingInfo(
     payload: {
       userId: string;
@@ -295,6 +588,7 @@ export class CommunicationTemplateService {
         id: requestId,
         targetUserId: user.id,
         requestedById: requestingUser.id,
+        requestedByName: triggeredBy,
         missingInfoType,
         missingInfoUrl: updateMissingInfoUrl,
         jobURL: rawUrl

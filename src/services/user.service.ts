@@ -15,6 +15,7 @@ import BlacklistedToken from "../models/v1/blacklistedToken.model";
 import jwt from "jsonwebtoken";
 import { Profile } from "../models/v1/profile.model";
 import { Credentials } from "../models/v1/credentials.model";
+import { TourCount } from "../models/v1/tour-count.model";
 import { Aggregator } from "../models/v1/aggregator.model";
 import { Plan } from "../models/v1/plan.model";
 
@@ -610,10 +611,43 @@ export const getAllUsers = async (query: {
     referralCounts.map((r: any) => [r.referrer, parseInt(r.count, 10)]),
   );
 
-  const usersWithReferrals = users.map((u) => ({
-    ...u.toJSON(),
-    referralsCount: referralCountMap.get(u.email) || 0,
-  }));
+  // Attach tour counts — a client's Credentials row is reused across
+  // renewals (same row, TourCount.count incremented each time) rather than
+  // creating a new one, so this is a straight 1:1 join, not a sum/max
+  // across rows. tourCount 0 or 1 = still on their first tour ("Newcomer");
+  // 2+ = has renewed at least once ("Returnee").
+  const userIds = users.map((u) => u.id).filter(Boolean);
+  const credentialsRows = userIds.length
+    ? await Credentials.findAll({
+        where: { clientId: { [Op.in]: userIds } },
+        attributes: ["id", "clientId"],
+        raw: true,
+      })
+    : [];
+  const credentialsIdByClientId = new Map(
+    credentialsRows.map((c: any) => [c.clientId, c.id]),
+  );
+  const credentialsIds = credentialsRows.map((c: any) => c.id);
+  const tourCountRows = credentialsIds.length
+    ? await TourCount.findAll({
+        where: { credentialsId: { [Op.in]: credentialsIds } },
+        attributes: ["credentialsId", "count"],
+        raw: true,
+      })
+    : [];
+  const tourCountByCredentialsId = new Map(
+    tourCountRows.map((t: any) => [t.credentialsId, t.count]),
+  );
+
+  const usersWithReferrals = users.map((u) => {
+    const credentialsId = credentialsIdByClientId.get(u.id);
+    const tourCount = credentialsId ? tourCountByCredentialsId.get(credentialsId) ?? 0 : 0;
+    return {
+      ...u.toJSON(),
+      referralsCount: referralCountMap.get(u.email) || 0,
+      tourCount,
+    };
+  });
 
   logger.info(`Retrieved ${users.length} users from database`);
   return usersWithReferrals;
@@ -625,7 +659,7 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName"],
+    attributes: ["firstName", "lastName", "email"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],

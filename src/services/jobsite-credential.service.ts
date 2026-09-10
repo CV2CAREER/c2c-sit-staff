@@ -4,6 +4,7 @@ import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
 import { fieldEncryption } from "../utils/field-encryption";
 import {
+  JobsiteCredentialSource,
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
   SlackChannel,
@@ -57,6 +58,7 @@ export async function submitJobsiteCredential(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.CUSTOMER,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -105,6 +107,7 @@ async function sendSubmittedNotifications(
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isStaffAdded: credential.source === JobsiteCredentialSource.STAFF,
         frontendUrl,
         currentYear,
       },
@@ -161,6 +164,7 @@ export async function addJobsiteCredentialManually(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.STAFF,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -523,7 +527,13 @@ export async function approveJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName"],
+          // "email" must be requested here — the User model's email is a
+          // virtual field only populated by its @AfterFind hook's batch
+          // decrypt, which is itself gated on "email" being in this
+          // attributes list (a perf guard against decrypting on every
+          // unrelated User fetch). Without it, sendActiveNotifications
+          // below sent client.email as undefined, which SendGrid rejects.
+          attributes: ["id", "firstName", "lastName", "email", "isAmbassador"],
           required: true,
         },
       ],
@@ -595,6 +605,7 @@ async function sendActiveNotifications(
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isAmbassador: !!(client as any).isAmbassador,
         frontendUrl,
         currentYear,
       },
@@ -661,7 +672,11 @@ export async function rejectJobsiteCredential(
         {
           model: User,
           as: "client",
-          attributes: ["id", "firstName", "lastName"],
+          // "email" must be requested here — see approveJobsiteCredential's
+          // identical fix above for why (the AfterFind decrypt hook is
+          // gated on it being in this list). This function's own
+          // jobsite-credential-failed email also sends client.email.
+          attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
       ],
@@ -922,6 +937,7 @@ export async function importJobsiteCredentialsFromCsv(
         clientId: client.id,
         email: applicationEmail.trim(),
         status: JobsiteCredentialStatus.PENDING,
+        source: JobsiteCredentialSource.STAFF,
       } as any);
 
       await JobsiteCredentialAudit.create({

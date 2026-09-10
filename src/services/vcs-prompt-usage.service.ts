@@ -82,6 +82,33 @@ export class VcsPromptUsageService {
     }
   }
 
+  // Last-used timestamp per key, collapsed across every version — this is
+  // what the main prompts grid shows ("Last used"), as opposed to listSummary()
+  // below which breaks performance stats out per (key, version) for the
+  // dedicated analytics tab.
+  static async listLastUsedByKey() {
+    try {
+      const rows = (await VCSPromptUsageLog.findAll({
+        attributes: [
+          "key",
+          [fn("MAX", col("createdAt")), "lastUsedAt"],
+          [fn("COUNT", col("id")), "totalCalls"],
+        ],
+        group: ["key"],
+        raw: true,
+      })) as unknown as Array<{ key: string; lastUsedAt: string; totalCalls: string }>;
+
+      return rows.map((row) => ({
+        key: row.key,
+        lastUsedAt: row.lastUsedAt ?? null,
+        totalCalls: Number(row.totalCalls) || 0,
+      }));
+    } catch (error: any) {
+      logger.error(`Failed to list last-used prompt usage: ${error.message}`);
+      throw error;
+    }
+  }
+
   // Aggregated per-key performance snapshot — the "how fast is the AI" view.
   static async listSummary() {
     try {

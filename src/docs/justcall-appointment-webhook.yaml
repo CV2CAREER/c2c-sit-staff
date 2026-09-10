@@ -1,0 +1,118 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/justcallAppointmentWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive JustCall Calendar/appointment webhook events
+      description: |
+        Receives JustCall appointment.* webhook payloads - JustCall's
+        Calendar/booking feature. Kept on its own endpoint since a booking
+        (calendar, customer, timezone-aware slots, shared_with_agents,
+        external_attendees) isn't tied to any call, message, or contact -
+        a different concept entirely from the other JustCall webhook
+        endpoints. `justcall_appointments` holds one current-state row per
+        appointment, keyed on JustCall's own appointment id - a later
+        delivery for the same appointment (e.g. a reschedule) updates that
+        row instead of creating a duplicate. Every individual delivery is
+        also appended to `justcall_appointment_logs` (FK ->
+        justcall_appointments), so the full history is never lost even
+        though the current-state row gets overwritten.
+
+        Note `data.type` (the appointment's own type, e.g. "Call") is a
+        different field from the webhook's own `type` (e.g.
+        "appointment.scheduled") - both are captured, as `appointmentType`
+        and `eventType` respectively.
+
+        Configure this URL as the webhook target in JustCall for whichever
+        appointment event types you want captured - appointment.scheduled,
+        etc.
+
+        If `JUSTCALL_WEBHOOK_SECRET` is set in the environment, requests must
+        include a matching `x-webhook-secret` header (set this as a custom
+        header on the webhook in JustCall's dashboard) or they are rejected
+        with 401. If it is unset, the endpoint accepts events unauthenticated.
+      security: []
+      parameters:
+        - name: x-webhook-secret
+          in: header
+          required: false
+          description: Required only if JUSTCALL_WEBHOOK_SECRET is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              appointment_scheduled:
+                summary: appointment.scheduled sample payload
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "appointment.scheduled"
+                  data:
+                    id: "111505"
+                    booked_via: "Manual"
+                    calendar_id: "7736"
+                    calendar_name: "Onboarding Call"
+                    calendar_link: "https://app.justcall.io/calendar/1426xxx"
+                    calendar_language: "en"
+                    customer_first_name: "Robert"
+                    customer_last_name: "Zane"
+                    customer_email: "robert.zane@suits.co"
+                    customer_number: "917006003243"
+                    customer_ip_address: "223.233.78.185"
+                    customer_timezone: "America/New_York"
+                    customer_slot: "29 Apr 25 08:45 pm - 29 Apr 25 09:00 pm"
+                    user_timezone: "Asia/Kolkata"
+                    user_slot: "11:15 am - 11:30 am"
+                    slot_duration: "15"
+                    type: "Call"
+                    notes: "Need a walk though of the calling functionality"
+                    created_at: "2025-04-27 10:27:36"
+                    appointment_date: "2025-04-29"
+                    appointment_user_date: "2025-04-29"
+                    appointment_customer_date: "2025-04-29"
+                    appointment_time: "11:15:00"
+                    appointment_user_time: "8:45:00"
+                    appointment_customer_time: "8:45:00"
+                    shared_with_agents:
+                      - id: "343567"
+                        name: "John Doe"
+                        email: "john.doe@suits.co"
+                    external_attendees:
+                      - "Natallie@abc.co"
+                      - "Chris@def.co"
+                      - "Haley@pic.co"
+      responses:
+        '200':
+          description: Appointment event recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Appointment event recorded
+                  value:
+                    success: true
+                    message: "Appointment event recorded"
+                    statusCode: 200
+        '401':
+          description: Missing or invalid x-webhook-secret header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_secret:
+                  summary: Invalid webhook secret
+                  value:
+                    success: false
+                    message: "Invalid webhook secret"
+                    statusCode: 401

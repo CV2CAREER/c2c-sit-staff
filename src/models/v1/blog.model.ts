@@ -8,6 +8,7 @@ import {
   Index
 } from "sequelize-typescript";
 
+
 @Table({ tableName: "blogs", timestamps: true })
 export class Blog extends Model {
   @PrimaryKey

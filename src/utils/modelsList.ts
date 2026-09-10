@@ -75,13 +75,37 @@ import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
+import { EmailTemplateTrigger } from "../models/v1/email-template-trigger.model";
+import { EmailTestSendLog } from "../models/v1/email-test-send-log.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
+import { CredentialsComment } from '../models/v1/credentials-comment.model';
+import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { AiVettingComparison } from '../models/v1/ai-vetting-comparison.model';
 import { PreferenceQuestion } from '../models/v1/preference-question.model';
 import { DropdownOption } from '../models/v1/dropdown-option.model';
+import { JustCallEvent } from '../models/v1/justcall-event.model';
+import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
+import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
+import { JustCallMessageEventLog } from '../models/v1/justcall-message-log.model';
+import { JustCallWhatsAppMessage } from '../models/v1/justcall-whatsapp-message.model';
+import { JustCallWhatsAppMessageLog } from '../models/v1/justcall-whatsapp-message-log.model';
+import { JustCallSalesDialerCall } from '../models/v1/justcall-sales-dialer-call.model';
+import { JustCallSalesDialerCallLog } from '../models/v1/justcall-sales-dialer-call-log.model';
+import { JustCallContact } from '../models/v1/justcall-contact.model';
+import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
+import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
+import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
+import { SendGridEvent } from '../models/v1/sendgrid-event.model';
+import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
+import { SocialVerification } from '../models/v1/social-verification.model';
+import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+import { DiscoveryJob } from '../models/v1/discovery-job.model';
+import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+import { DiscoveryRun } from '../models/v1/discovery-run.model';
+import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 
 export const modelList = [
   User,
@@ -163,11 +187,35 @@ export const modelList = [
   ClientSupportDocument,
   EmailLog,
   EmailTemplate,
+  EmailTemplateTrigger,
+  EmailTestSendLog,
   InterviewPackProcess,
   TourCount,
   CredentialsTour,
+  CredentialsComment,
+  UserSegmentFilter,
   ClientJourneyStep,
   AiVettingComparison,
   PreferenceQuestion,
   DropdownOption,
+  JustCallEvent,
+  JustCallEventLog,
+  JustCallMessageEvent,
+  JustCallMessageEventLog,
+  JustCallWhatsAppMessage,
+  JustCallWhatsAppMessageLog,
+  JustCallSalesDialerCall,
+  JustCallSalesDialerCallLog,
+  JustCallContact,
+  JustCallContactLog,
+  JustCallAppointment,
+  JustCallAppointmentLog,
+  SendGridEvent,
+  SendGridEventLog,
+  SocialVerification,
+  DiscoverySourceRegister,
+  DiscoveryJob,
+  DiscoveryMatch,
+  DiscoveryRun,
+  DiscoverySchedule,
 ];
