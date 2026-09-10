@@ -143,6 +143,8 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   const [dpcEmail, setDpcEmail] = useState<string | null | undefined>(undefined);
   const [vpcEmail, setVpcEmail] = useState<string | null | undefined>(undefined);
   const [spcEmail, setSpcEmail] = useState<string | null | undefined>(undefined);
+  const [interimDpcEmail, setInterimDpcEmail] = useState<string | null | undefined>(undefined);
+  const [interimSpcEmail, setInterimSpcEmail] = useState<string | null | undefined>(undefined);
 
   // Helper: read a field from the client object, falling back to seekExternalCredentials
   // JSONB for fields that are stored there (First_Name, Plan, Country, etc.)
@@ -201,10 +203,20 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   // Placement Controller slots staged via VACell's onSelectionChange — only
   // included if the user actually touched that dropdown this session
   // (undefined = untouched, so it's left out of the request entirely).
-  const pcChanges: { variant: 'DPC' | 'VPC' | 'SPC'; label: string; email: string | null }[] = [
+  const pcChanges: {
+    variant: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
+    label: string;
+    email: string | null;
+  }[] = [
     ...(dpcEmail !== undefined ? [{ variant: 'DPC' as const, label: 'DPC', email: dpcEmail }] : []),
     ...(vpcEmail !== undefined ? [{ variant: 'VPC' as const, label: 'VPC', email: vpcEmail }] : []),
     ...(spcEmail !== undefined ? [{ variant: 'SPC' as const, label: 'SPC', email: spcEmail }] : []),
+    ...(interimDpcEmail !== undefined
+      ? [{ variant: 'InterimDPC' as const, label: 'Interim DPC', email: interimDpcEmail }]
+      : []),
+    ...(interimSpcEmail !== undefined
+      ? [{ variant: 'InterimSPC' as const, label: 'Interim SPC', email: interimSpcEmail }]
+      : []),
   ];
 
   const savePcChanges = async () => {
@@ -791,6 +803,14 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Submission Placement Controller</label>
                 <VACell data={client} variant="SPC" onSelectionChange={setSpcEmail} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Interim Discovery Placement Controller</label>
+                <VACell data={client} variant="InterimDPC" onSelectionChange={setInterimDpcEmail} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Interim Submission Placement Controller</label>
+                <VACell data={client} variant="InterimSPC" onSelectionChange={setInterimSpcEmail} />
               </div>
             </form>
           </Form>

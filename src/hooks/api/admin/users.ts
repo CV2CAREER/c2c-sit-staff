@@ -603,7 +603,18 @@ export const useUsersMutations = () => {
       { userId: string; action: string }
     >({
       method: 'POST',
-      url: endpoints.ADMIN_ACCOUNT_ACTION,
+      // Accept (approve) is the only account action with a real endpoint
+      // today — routes to POST /user-management/users/:userId/approve.
+      // Suspend / restrict still hit ADMIN_ACCOUNT_ACTION (which does not
+      // exist server-side) and will keep failing until those actions are
+      // built out as a separate ticket.
+      url: (params) => {
+        const action = params?.action?.toLowerCase();
+        if ((action === 'accept' || action === 'approve') && params?.userId) {
+          return endpoints.ADMIN_APPROVE_USER_ACCOUNT(params.userId);
+        }
+        return endpoints.ADMIN_ACCOUNT_ACTION;
+      },
       mutationKey: ['admin-account-action'],
       onSuccess: () => {
         invalidateAllUsersQueries();
@@ -644,7 +655,7 @@ export const useUsersMutations = () => {
         credId: string;
         vaEmail: string | null;
         host?: string;
-        variant?: 'DPC' | 'VPC' | 'SPC';
+        variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
       }
     >({
       method: 'POST',

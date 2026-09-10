@@ -158,15 +158,23 @@ export default function TemplatesClient() {
     personalMessage?: string;
     channel: "email" | "whatsapp";
   }) => {
-    const toastId = toast.loading("Sending request...");
+    const client = clients.find((c) => c.id === payload.clientId);
+    const clientName =
+      [client?.firstName, client?.middleName, client?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || client?.email || "the client";
+    const requestType = sendModalTemplate?.name || "Missing-Info";
+
+    const toastId = toast.loading(`Sending "${requestType}" request to ${clientName}...`);
     try {
       await sendRequest(payload);
       toast.dismiss(toastId);
-      toast.success("Request sent successfully.");
+      toast.success(`"${requestType}" request sent to ${clientName}.`);
       setSendModalTemplate(null);
     } catch (e: any) {
       toast.dismiss(toastId);
-      toast.error(e?.response?.data?.message || e?.message || "Failed to send request.");
+      toast.error(e?.response?.data?.message || e?.message || `Failed to send "${requestType}" request to ${clientName}.`);
     }
   };
 

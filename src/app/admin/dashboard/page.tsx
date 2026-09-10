@@ -1,28 +1,13 @@
 "use client";
-import DashboardCards from "./_components/dashboard-cards";
-import OverallClientMilestoneChart from "./_components/overall-clients-milestones";
-import OnboardedClientsChart from "./_components/onboarded-clients";
-import JobsitesChart from "./_components/jobsites";
-import VaAllocation from "./_components/va-allocation";
 import InFlightClients from "./_components/inflight-clients";
 import CustomDateFilter from "@/components/DateFilterComponent/CustomDateFilter";
-import DashboardCardsApplication from "./_components/DashboardCardsApplication";
-import ApplicationPerformanceChart from "./_components/ApplicationsChart";
+import PipelineOverview from "./_components/pipeline-overview";
+import ApplicationsAccountsOverview from "./_components/applications-accounts-overview";
+import CoverageOverview from "./_components/coverage-overview";
+import ControllerWorkload from "./_components/controller-workload";
+import PipelineQueues from "./_components/pipeline-queues";
 
 export default function DashboardPage() {
-
-  // const { data, isLoading } = useFetchData<any>(
-  //   ["fetch-dashboard-performance"],
-  //   "/api/admin/job-management/applications",
-  //   {
-  //     dataCount: true,
-  //   }
-  // );
-
-
-  // console.log("DashboardPPerformanceData", data);
-  // const successfulJobs = data?.data?.successCount || null;
-  // const failedJobs = data?.data?.failedCount || null;
 
   return (
     <section className="flex flex-col gap-4 mt-4">
@@ -36,19 +21,12 @@ export default function DashboardPage() {
         </div>
         {/* <TimeRangeSelector styles="bg-white" /> */}
       </section>
-      <DashboardCards />
-      <VaAllocation />
+      <PipelineOverview />
+      <ApplicationsAccountsOverview />
+      <CoverageOverview />
+      <ControllerWorkload />
+      <PipelineQueues />
       <InFlightClients />
-      <DashboardCardsApplication />
-      <ApplicationPerformanceChart />
-      {/* <ApplicationPerformance
-        loading={isLoading}
-        successData={successfulJobs}
-        failedData={failedJobs}
-      /> */}
-      <OverallClientMilestoneChart />
-      <OnboardedClientsChart />
-      <JobsitesChart />
     </section>
   );
 }

@@ -864,7 +864,7 @@ export function TableDropDownSearch({
   };
   const handleChange = (option: any) => {
     router.push(
-      `/assistant/master-sheet/client/${option.id}?table=${ClientTableInformationEnum.Seek}&mode=switch`
+      `/pc/master-sheet/client/${option.id}?table=${ClientTableInformationEnum.Seek}&mode=switch`
     );
   };
 

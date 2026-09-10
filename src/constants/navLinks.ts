@@ -30,11 +30,20 @@ import {
   FileText,
   KeyRound,
   ListChecks,
+  Target,
+  LayoutDashboard,
+  TrendingUp,
+  ClipboardList,
+  AlertTriangle,
+  ShieldCheck,
+  Bug,
+  DollarSign,
+  Megaphone,
 } from "lucide-react";
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
 
-export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "sales" | "technology" | "business" | "client";
+export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "client" | "guest" | "ambassador" | "cec";
 
 export type NavAction = "switch-admin" | "switch-persona-target";
 
@@ -86,6 +95,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Jobsite Credentials", href: "/admin/jobsite-credentials", icon: KeyRound },
       { name: "Unsubscribed Users", href: "/admin/unsubscribed-users", icon: Users },
       { name: "Referral Mgt.", href: "/admin/referral-management", icon: UserRoundPlus },
+      { name: "Social Verification", href: "/admin/social-verification", icon: ShieldCheck },
       { name: "Promotional Mgt.", href: "/admin/promotion", icon: Star },
       { name: "Blog", href: "/admin/blog", icon: Newspaper },
     ],
@@ -114,7 +124,20 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     access: ["admin", "assistant"],
     children: [
       { name: "Job Discovery", href: "/admin/job-preference", icon: Binoculars },
+      { name: "AI Discovery Agent", href: "/admin/ai-discovery-agent", icon: Bot },
       { name: "Applications", href: "/admin/job-applications", icon: FileUser },
+    ],
+  },
+  {
+    name: "Placement Management",
+    groupId: 9,
+    icon: Target,
+    access: ["admin"],
+    children: [
+      { name: "Overview", href: "/admin/placement-management/overview", icon: LayoutDashboard },
+      { name: "Placement Performance", href: "/admin/placement-management/performance", icon: TrendingUp },
+      { name: "Assignments", href: "/admin/placement-management/assignments", icon: ClipboardList },
+      { name: "Exceptions", href: "/admin/placement-management/exceptions", icon: AlertTriangle },
     ],
   },
   {
@@ -155,29 +178,33 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     access: ["admin"],
     children: [
       { name: "Partner", role: "partner", href: "/partner/dashboard", icon: User },
-      { name: "Sales", role: "sales", href: "/sales/dashboard", icon: User },
-      { name: "Client", role: "client", href: "#", icon: User },
-      { name: "Technology", role: "technology", href: "/technology/dashboard", icon: User },
-      { name: "Business", role: "business", href: "/business/dashboard", icon: User },
+      // Client/Guest/Ambassador have no staff FE dashboards — the switcher
+      // deep-links to the customer FE. Admin still needs to be signed in
+      // there separately; a true impersonation handoff (short-lived token
+      // → customer FE session) is a follow-up feature.
+      { name: "Client", role: "client", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
+      { name: "Guest", role: "guest", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
+      { name: "Ambassador", role: "ambassador", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
       { name: "Coach", role: "coach", href: "/coach/dashboard", icon: User },
-      { name: "Customer", role: "cse", href: "/cse/dashboard", icon: User },
-      { name: "Placement Controller", role: "assistant", href: "/assistant/dashboard", icon: User },
+      { name: "CSE", role: "cse", href: "/cse/dashboard", icon: User },
+      { name: "Placement Controller", role: "assistant", href: "/pc/dashboard", icon: User },
+      { name: "CEC", role: "cec", href: "/cec/dashboard", icon: User },
     ],
   },
 ];
 
 export const ASSISTANT_NAV_LINKS: NavLink[] = [
-  { name: "Home", href: "/assistant/dashboard", icon: House },
-  { name: "Personal Info", href: "/assistant/profile", icon: User },
+  { name: "Home", href: "/pc/dashboard", icon: House },
+  { name: "Personal Info", href: "/pc/profile", icon: User },
   {
     name: "Profiles",
     groupId: 1,
     icon: Users,
     access: ["admin", "assistant"],
     children: [
-      { name: "Users", href: "/assistant/users", icon: Users },
-      { name: "Campaign", href: "/assistant/campaign-mgt", icon: Users },
-      { name: "Client Sample", href: "/assistant/client-sample", icon: Users },
+      { name: "Users", href: "/pc/users", icon: Users },
+      { name: "Campaign", href: "/pc/campaign-mgt", icon: Users },
+      { name: "Client Sample", href: "/pc/client-sample", icon: Users },
     ],
   },
   {
@@ -186,8 +213,8 @@ export const ASSISTANT_NAV_LINKS: NavLink[] = [
     icon: Briefcase,
     access: ["admin", "assistant"],
     children: [
-      { name: "Job Discovery", href: "/assistant/job-preference", icon: Binoculars },
-      { name: "Applications", href: "/assistant/job-applications", icon: FileUser },
+      { name: "Job Discovery", href: "/pc/job-preference", icon: Binoculars },
+      { name: "Applications", href: "/pc/job-applications", icon: FileUser },
     ],
   },
   {
@@ -196,17 +223,17 @@ export const ASSISTANT_NAV_LINKS: NavLink[] = [
     groupId: 8,
     access: ["admin", "assistant"],
     children: [
-      { name: "Train Chatbot", href: "/assistant/communication/chatbot-trainer", icon: Bot },
-      { name: "Chatbot Logs", href: "/assistant/communication/chatbot-logs", icon: Bot },
-      { name: "Human Support", href: "/assistant/communication/human-support", icon: User },
-      { name: "Emails", href: "/assistant/communication-templates", icon: Mail },
-      { name: "Content", href: "/assistant/communication/client-content", icon: FileText },
+      { name: "Train Chatbot", href: "/pc/communication/chatbot-trainer", icon: Bot },
+      { name: "Chatbot Logs", href: "/pc/communication/chatbot-logs", icon: Bot },
+      { name: "Human Support", href: "/pc/communication/human-support", icon: User },
+      { name: "Emails", href: "/pc/communication-templates", icon: Mail },
+      { name: "Content", href: "/pc/communication/client-content", icon: FileText },
       { name: "Missing Information", href: "/admin/missing-info-templates", icon: FileText },
-      { name: "JustCall", href: "/assistant/justcall", icon: Layers },
-      { name: "Slack", href: "/assistant/slack", icon: SiSlack },
+      { name: "JustCall", href: "/pc/justcall", icon: Layers },
+      { name: "Slack", href: "/pc/slack", icon: SiSlack },
     ],
   },
-  { name: "View As User", href: "/assistant/view-as-user", icon: ScanEye, access: ["admin", "assistant"] },
+  { name: "View As User", href: "/pc/view-as-user", icon: ScanEye, access: ["admin", "assistant"] },
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
 ];
 
@@ -233,6 +260,26 @@ export const SALES_NAV_LINKS: NavLink[] = [
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
 ];
 
+export const CEC_NAV_LINKS: NavLink[] = [
+  { name: "Home", href: "/cec/dashboard", icon: House },
+  {
+    name: "Trackers",
+    groupId: 1,
+    icon: NotebookPen,
+    access: ["cec"],
+    children: [
+      { name: "Daily Log", href: "/cec/daily-log", icon: ClipboardList },
+      { name: "Issue Burndown", href: "/cec/issue-burndown", icon: Bug },
+      { name: "Complaints", href: "/cec/complaints", icon: AlertTriangle },
+      { name: "Referral Payouts", href: "/cec/referral-payouts", icon: DollarSign },
+      { name: "Sales Outreach", href: "/cec/sales-outreach", icon: Megaphone },
+      { name: "Ambassador Scouting", href: "/cec/ambassador-scouting", icon: Target },
+    ],
+  },
+  { name: "Personal Info", href: "/cec/profile", icon: User },
+  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
+];
+
 export const CSE_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/cse/dashboard", icon: House },
   { name: "Personal Info", href: "/cse/profile", icon: User },
@@ -246,4 +293,5 @@ export const NAV_LINKS_BY_ROLE: Record<string, NavLink[]> = {
   sales: SALES_NAV_LINKS,
   cse: CSE_NAV_LINKS,
   partner: PARTNER_NAV_LINKS,
+  cec: CEC_NAV_LINKS,
 };

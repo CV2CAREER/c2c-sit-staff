@@ -3,8 +3,17 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import HintMark from "./HintMark";
+import { getPromptUsedByLabel } from "./promptUsedBy";
 
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+
+// The only model any prompt actually runs on today — every queryDigitalOceanAI
+// call site hardcodes this in digital-factory.ts, so a prompt's `model` field
+// isn't read at execution time yet. Add new entries here once a second model
+// is wired into the backend; until then this stays a display/label choice.
+const AVAILABLE_MODELS = ["llama3.3-70b-instruct"];
 
 // No override UI in this phase — type is inferred from the variable name
 // each time the panel renders, not persisted.
@@ -27,19 +36,24 @@ export const parseVariables = (promptText: string) => {
 interface PromptMetadataPanelProps {
   name: string;
   promptText: string;
-  category: string;
   model: string;
-  temperature: string;
-  maxTokens: string;
-  onCategoryChange: (value: string) => void;
   onModelChange: (value: string) => void;
-  onTemperatureChange: (value: string) => void;
-  onMaxTokensChange: (value: string) => void;
 }
 
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+const Field = ({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) => (
   <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</label>
+    <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+      {label}
+      {hint && <HintMark text={hint} />}
+    </label>
     {children}
   </div>
 );
@@ -47,14 +61,8 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 const PromptMetadataPanel = ({
   name,
   promptText,
-  category,
   model,
-  temperature,
-  maxTokens,
-  onCategoryChange,
   onModelChange,
-  onTemperatureChange,
-  onMaxTokensChange,
 }: PromptMetadataPanelProps) => {
   const variables = useMemo(() => parseVariables(promptText), [promptText]);
 
@@ -65,19 +73,14 @@ const PromptMetadataPanel = ({
         Prompt Metadata
       </p>
 
-      <Field label="Name">
+      <Field label="Name" hint="The prompt's key — read-only here, set when it was created.">
         <Input value={name} readOnly disabled className="font-mono text-xs" />
       </Field>
 
-      <Field label="Category">
-        <Input
-          value={category}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          placeholder="e.g. CV Production"
-        />
-      </Field>
-
-      <Field label="Variables">
+      <Field
+        label="Variables"
+        hint="{{placeholders}} detected in the prompt text — each one must be supplied when the AI runs it."
+      >
         {variables.length === 0 ? (
           <p className="text-xs text-gray-400">No {"{{variables}}"} in this prompt.</p>
         ) : (
@@ -101,36 +104,34 @@ const PromptMetadataPanel = ({
         )}
       </Field>
 
-      <Field label="Model">
-        <Input
-          value={model}
-          onChange={(e) => onModelChange(e.target.value)}
-          placeholder="Not configured"
-        />
+      <Field
+        label="Model"
+        hint="Which AI model this prompt is tagged with. Currently display-only — every prompt runs on the same backend model."
+      >
+        <Select value={model || undefined} onValueChange={onModelChange}>
+          <SelectTrigger className="h-9 text-xs">
+            <SelectValue placeholder="Not configured" />
+          </SelectTrigger>
+          <SelectContent>
+            {AVAILABLE_MODELS.map((m) => (
+              <SelectItem key={m} value={m} className="text-xs">
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Temp">
-          <Input
-            type="number"
-            step="0.1"
-            min="0"
-            max="2"
-            value={temperature}
-            onChange={(e) => onTemperatureChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-        <Field label="Max tokens">
-          <Input
-            type="number"
-            min="1"
-            value={maxTokens}
-            onChange={(e) => onMaxTokensChange(e.target.value)}
-            placeholder="—"
-          />
-        </Field>
-      </div>
+      <Field
+        label="Used By"
+        hint="The feature or service that calls this prompt key."
+      >
+        <p className="text-xs text-gray-500">Changes here affect all services listed below.</p>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-primary">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+          {getPromptUsedByLabel(name)}
+        </div>
+      </Field>
     </CardContent>
     </Card>
   );

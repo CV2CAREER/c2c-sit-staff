@@ -94,58 +94,30 @@ export interface UsersAllResponse {
   statusCode: number;
 }
 
-// Custom Hook for fetching all users
+// Custom Hook for fetching all users. Only takes active/recycle — those are
+// genuinely different server-side populations (isDeleted true vs false).
+// Search/role/plan/date-range are NOT sent to the backend: the full
+// active-or-recycle set is fetched once and UsersDataTable filters it
+// client-side instead, so typing in the search box or switching a dropdown
+// doesn't trigger a new network round trip.
 export const useGetAllUsers = (options: {
   enabled?: boolean;
-  page?: number;
-  limit?: number;
   active?: boolean;
   recycle?: boolean;
-  q?: string;
-  userType?: string;
-  plan?: string;
-  startDate?: string;
-  endDate?: string;
 } = {}) => {
-  const {
-    enabled = true,
-    page,
-    limit,
-    active,
-    recycle,
-    q,
-    userType,
-    plan,
-    startDate,
-    endDate
-  } = options;
+  const { enabled = true, active, recycle } = options;
 
   const params: Record<string, any> = {};
 
-  if (page !== undefined) params.page = page;
-  if (limit !== undefined) params.limit = limit;
   // Send boolean values as string 'true'/'false' as expected by Express backend parser
   if (active !== undefined) params.active = String(active);
   if (recycle !== undefined) params.recycle = String(recycle);
-  if (q) params.q = q;
-  if (userType) params.userType = userType;
-  if (plan) params.plan = plan;
-  if (startDate) params.startDate = startDate;
-  if (endDate) params.endDate = endDate;
 
-  // Stringify parameters for stable query key to prevent infinite re-renders
   const queryKey = useMemo(() => [
     "users-all",
-    page ?? null,
-    limit ?? null,
     active ?? null,
     recycle ?? null,
-    q ?? null,
-    userType ?? null,
-    plan ?? null,
-    startDate ?? null,
-    endDate ?? null
-  ], [page, limit, active, recycle, q, userType, plan, startDate, endDate]);
+  ], [active, recycle]);
 
   const usersQuery = useFetchData<UsersAllResponse>({
     method: "GET",

@@ -25,6 +25,24 @@ export const useVcsPromptUsageSummary = (enabled = true) => {
   });
 };
 
+export interface VcsPromptLastUsedRow {
+  key: string;
+  lastUsedAt: string | null;
+  totalCalls: number;
+}
+
+// GET /api/v1/admin/prompts/usage/last-used — most recent call per key,
+// collapsed across every version, for the "Last used" column on the main
+// prompts grid.
+export const useVcsPromptLastUsed = (enabled = true) => {
+  return useFetchData<VcsPromptLastUsedRow[]>({
+    method: "GET",
+    url: endpoints.ADMIN_VCS_PROMPT_USAGE_LAST_USED,
+    queryKey: ["vcs-prompt-usage-last-used"],
+    enabled,
+  });
+};
+
 export interface VcsPromptUsageLogRow {
   id: string;
   key: string;

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PromptMetadataPanel from "./PromptMetadataPanel";
+import HintMark from "./HintMark";
 import SimulateTab from "./SimulateTab";
 import RunHistoryTab from "./RunHistoryTab";
 import {
@@ -18,6 +19,12 @@ import {
   VcsPromptVersion,
 } from "../hooks/use-vcs-prompts";
 import { useVcsPromptSimulationRuns } from "../hooks/use-vcs-prompt-simulations";
+
+// Prompt keys whose required JSON schema/rules are locked in backend code
+// (see cv-variant-required-prompt.ts) rather than the owner-editable
+// VCSPrompt row — the prompt's non-technical owner only ever sees and edits
+// the free-form AI Prompt box below, with nothing technical to break.
+const LOCKED_SCHEMA_PROMPT_KEYS = new Set(["cv_variant_generation_prompt"]);
 
 const formatRelative = (value: string) => {
   const diffMs = Date.now() - new Date(value).getTime();
@@ -52,76 +59,54 @@ const PromptEditView = ({
   const { mutateAsync: updateMetadata, isPending: isSavingMetadata } = useUpdateVcsPrompt();
 
   const baselinePrompt = draftVersion?.prompt ?? liveVersion?.prompt ?? vcs.prompt;
+  const baselineAiPromptSection =
+    draftVersion?.aiPromptSection ?? liveVersion?.aiPromptSection ?? vcs.aiPromptSection ?? "";
 
   const [promptText, setPromptText] = useState(baselinePrompt);
-  const [category, setCategory] = useState(vcs.category ?? "");
+  const [aiPromptSection, setAiPromptSection] = useState(baselineAiPromptSection);
   const [model, setModel] = useState(vcs.model ?? "");
-  const [temperature, setTemperature] = useState(
-    vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-  );
-  const [maxTokens, setMaxTokens] = useState(
-    vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "",
-  );
 
   useEffect(() => {
     setPromptText(baselinePrompt);
-    setCategory(vcs.category ?? "");
+    setAiPromptSection(baselineAiPromptSection);
     setModel(vcs.model ?? "");
-    setTemperature(
-      vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-    );
-    setMaxTokens(
-      vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "",
-    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vcs.id]);
 
   const isDirty =
     promptText !== baselinePrompt ||
-    category !== (vcs.category ?? "") ||
-    model !== (vcs.model ?? "") ||
-    temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") ||
-    maxTokens !== (vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "");
+    aiPromptSection !== baselineAiPromptSection ||
+    model !== (vcs.model ?? "");
 
   const isSaving = isSavingDraft || isSavingMetadata;
 
   const handleDiscard = () => {
     setPromptText(baselinePrompt);
-    setCategory(vcs.category ?? "");
+    setAiPromptSection(baselineAiPromptSection);
     setModel(vcs.model ?? "");
-    setTemperature(
-      vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "",
-    );
-    setMaxTokens(vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "");
   };
 
   const handleSaveDraft = async () => {
     try {
-      if (promptText !== baselinePrompt) {
-        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText });
+      if (promptText !== baselinePrompt || aiPromptSection !== baselineAiPromptSection) {
+        const result = await saveDraft({ vcsId: vcs.id, prompt: promptText, aiPromptSection });
         const savedDraft = result.data;
         // Patch the cache directly with the fresh draft row instead of
         // waiting on the background refetch below — otherwise "Push to
         // Live" stays disabled (still sees no/stale draft) until that
         // round-trip resolves.
         patchVersions((list) => [savedDraft, ...list.filter((v) => v.id !== savedDraft.id)]);
+        // The backend trims prompt/aiPromptSection before storing them —
+        // sync local state to what was actually saved, not what was typed,
+        // otherwise any trailing whitespace leaves isDirty permanently true
+        // (baseline reflects the trimmed value, local state doesn't) and
+        // Push to Live stays disabled until a page reload.
+        setPromptText(savedDraft.prompt);
+        setAiPromptSection(savedDraft.aiPromptSection ?? "");
       }
 
-      const metadataPatch: { category?: string; model?: string; temperature?: number; maxTokens?: number } = {};
-      if (category !== (vcs.category ?? "")) metadataPatch.category = category;
+      const metadataPatch: { model?: string } = {};
       if (model !== (vcs.model ?? "")) metadataPatch.model = model;
-      if (
-        temperature !== (vcs.temperature !== null && vcs.temperature !== undefined ? String(vcs.temperature) : "") &&
-        temperature !== ""
-      ) {
-        metadataPatch.temperature = Number(temperature);
-      }
-      if (
-        maxTokens !== (vcs.maxTokens !== null && vcs.maxTokens !== undefined ? String(vcs.maxTokens) : "") &&
-        maxTokens !== ""
-      ) {
-        metadataPatch.maxTokens = Number(maxTokens);
-      }
       if (Object.keys(metadataPatch).length > 0) {
         await updateMetadata({ id: vcs.id, ...metadataPatch });
       }
@@ -180,22 +165,27 @@ const PromptEditView = ({
       <PromptMetadataPanel
         name={vcs.key}
         promptText={promptText}
-        category={category}
         model={model}
-        temperature={temperature}
-        maxTokens={maxTokens}
-        onCategoryChange={setCategory}
         onModelChange={setModel}
-        onTemperatureChange={setTemperature}
-        onMaxTokensChange={setMaxTokens}
       />
 
       <Card className="flex-1 rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
       <CardContent className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}>
+            <span
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${statusClass}`}
+              title={
+                status === "draft"
+                  ? "This key has an unsaved/unpushed draft"
+                  : "This is the version production is currently reading"
+              }
+            >
               {statusLabel}
+              <HintMark
+                text="DRAFT means there are unsaved changes. LIVE means this is what production is currently reading."
+                className="bg-black/10 text-current hover:bg-black/20"
+              />
             </span>
             <span className="text-xs text-gray-500">{byline}</span>
           </div>
@@ -206,6 +196,7 @@ const PromptEditView = ({
               className="gap-1.5"
               onClick={handleDiscard}
               disabled={!isDirty || isSaving}
+              title="Revert the prompt text and metadata below back to the last saved version"
             >
               <RotateCcw size={14} />
               Discard changes
@@ -216,6 +207,7 @@ const PromptEditView = ({
               className="gap-1.5"
               onClick={handleSaveDraft}
               disabled={!isDirty || isSaving}
+              title="Save these changes as a draft — production keeps using the live version until you push"
             >
               <Save size={14} />
               {isSavingDraft || isSavingMetadata ? "Saving..." : "Save draft"}
@@ -230,7 +222,7 @@ const PromptEditView = ({
                   ? "Save a draft before pushing to live"
                   : isDirty
                     ? "Save your changes first"
-                    : undefined
+                    : "Promote this draft to be the live version everyone's calls read"
               }
             >
               <UploadCloud size={14} />
@@ -243,12 +235,14 @@ const PromptEditView = ({
           <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b border-gray-100 bg-transparent p-0">
             <TabsTrigger
               value="edit"
+              title="Edit the raw prompt template and its metadata"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               Edit
             </TabsTrigger>
             <TabsTrigger
               value="simulate"
+              title="Test this prompt against sample input without affecting production"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               <FlaskConical size={13} />
@@ -256,6 +250,7 @@ const PromptEditView = ({
             </TabsTrigger>
             <TabsTrigger
               value="history"
+              title="Review past AI calls made with this prompt"
               className="gap-1.5 rounded-none border-b-2 border-transparent bg-transparent px-0.5 pb-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
             >
               <History size={13} />
@@ -264,18 +259,48 @@ const PromptEditView = ({
           </TabsList>
 
           <TabsContent value="edit" className="flex flex-1 flex-col gap-3">
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Prompt template
-            </label>
-            <Textarea
-              value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              className="min-h-[340px] flex-1 font-mono text-sm leading-relaxed"
-            />
-            <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
-              💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it — production
-              keeps reading the current live version until you do.
-            </div>
+            {LOCKED_SCHEMA_PROMPT_KEYS.has(vcs.key) ? (
+              <>
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  AI Prompt
+                  <HintMark text="Plain-language instructions, merged automatically with the required CV formatting rules every time a CV is generated." />
+                </label>
+                <p className="text-xs text-gray-500">
+                  This is the only thing you can change. Write instructions in plain language —
+                  tone, emphasis, formatting, anything you want the AI to do differently. It's
+                  combined automatically with the required CV formatting rules every time a CV is
+                  generated, so you don't need to worry about breaking anything.
+                </p>
+                <Textarea
+                  value={aiPromptSection}
+                  onChange={(e) => setAiPromptSection(e.target.value)}
+                  placeholder="e.g. Make the tone more formal, and put the company name and dates on the same line, separated by a comma."
+                  className="min-h-[280px] flex-1 font-mono text-sm leading-relaxed"
+                />
+
+                <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
+                  💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it —
+                  production keeps using the current live version until you do. Generate a real CV
+                  to see the effect — the Simulate tab doesn't reflect this box yet.
+                </div>
+              </>
+            ) : (
+              <>
+                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Prompt template
+                  <HintMark text="The raw text sent to the AI, combined with variables like {{name}} each time it's called." />
+                </label>
+                <Textarea
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  className="min-h-[340px] flex-1 font-mono text-sm leading-relaxed"
+                />
+                <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-gray-600">
+                  💡 Tip: Save your draft, then Push to Live once you&apos;re happy with it —
+                  production keeps reading the current live version until you do.
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="simulate" className="flex flex-1 flex-col">
@@ -299,6 +324,7 @@ const PromptEditView = ({
             size="sm"
             className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={onRequestDelete}
+            title="Soft-delete this key — it moves to the Recycle Bin and can be restored later"
           >
             <Trash2 size={14} />
             Delete Prompt

@@ -1,20 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   HiOutlineSparkles,
   HiOutlineDocumentSearch,
-  HiOutlineColorSwatch,
+  HiOutlineQuestionMarkCircle,
+  HiCheckCircle,
 } from "react-icons/hi";
 import {
   useCvVariantGeneration,
-  type CvVariantResult,
   type SaveCvVariantFormat,
+  type ConfirmedAnswer,
+  type ConfirmQuestion,
 } from "@/hooks/useCvVariantGeneration";
-import { flattenCvVariantToHtml, collectCvVariantFlags } from "@/utils/cvVariantFormat";
 import { Button } from "@/components/ui/button";
-import CvVariantEditor from "./CvVariantEditor";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -32,22 +33,19 @@ interface GenerateCvVariantButtonProps {
 const LOADING_STEPS = [
   "Reading every supplied document…",
   "Resolving conflicting details…",
-  "Selecting the house style…",
+  "Designing the layout…",
   "Elevating flat bullets into outcomes…",
-  "Tagging AI-authored content…",
+  "Styling the finished document…",
   "Finalizing the CV variant…",
 ];
 
-const STYLE_BADGE_CLASSES: Record<string, string> = {
-  modern: "bg-career-blue-800/10 text-career-blue-800",
-  classic: "bg-slate-200 text-slate-700",
-  contemporary: "bg-emerald-100 text-emerald-700",
-};
-
 /**
  * Flow behind the "Generate" button in the Generate CV Variant column:
- * 1. Show a loading modal while AI consolidates + enriches the CV.
- * 2. Show the style/flags summary + an editable, flattened text preview.
+ * 1. Show a loading modal while the AI writes and designs the CV.
+ * 2. Show the AI's own HTML live, directly editable in place (not a rich
+ *    -text editor like TipTap — that would normalize the AI's markup into
+ *    its own limited style vocabulary and strip anything outside it) with
+ *    Reject / Download / Continue.
  * 3. Save as PDF or DOC — uploads to Firebase, records a new `resume`
  *    Upload, and advances the client's onboarding progress bar.
  * 4. Show a download link for the saved file.
@@ -59,6 +57,8 @@ export default function GenerateCvVariantButton({
   const {
     generateCvVariant,
     isGenerating,
+    previewCvVariant,
+    isPreviewing,
     saveCvVariant,
     isSaving,
     savingFormat,
@@ -67,10 +67,35 @@ export default function GenerateCvVariantButton({
 
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
-  const [result, setResult] = useState<CvVariantResult | null>(null);
-  const [editedHtml, setEditedHtml] = useState("");
+  const [isQuestionsOpen, setIsQuestionsOpen] = useState(false);
+  const [confirmQuestions, setConfirmQuestions] = useState<ConfirmQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Every answer confirmed across ALL rounds of this Generate session, not
+  // just the latest one — each regenerate call re-sends the full cumulative
+  // list, otherwise a fact confirmed in round 1 drops out of the AI's view
+  // the moment round 2 only carries round 2's answers, and it can re-ask
+  // (or re-derive) something already settled.
+  const [confirmedSoFar, setConfirmedSoFar] = useState<ConfirmedAnswer[]>([]);
+  // Hard backstop against the AI re-asking (possibly reworded) questions
+  // round after round — after this many regenerate rounds we stop trusting
+  // it to converge and just proceed to review with whatever's confirmed.
+  const [questionRound, setQuestionRound] = useState(0);
+  const MAX_QUESTION_ROUNDS = 2;
+  const [cvVariantHtml, setCvVariantHtml] = useState("");
   const [loadingStep, setLoadingStep] = useState(0);
   const [savedDocument, setSavedDocument] = useState<{ publicId: string; name: string } | null>(null);
+  // "review" = Reject/Download/Continue gate; "confirm" = the actual Save
+  // as DOC/PDF step. Keeps generating something and it becoming visible to
+  // the client as two distinct, deliberate actions.
+  const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
+  const [isRejecting, setIsRejecting] = useState(false);
+  // The review modal shows the AI's actual HTML live (via srcDoc), directly
+  // editable in place — not a rendered PDF and not a rich-text editor like
+  // TipTap, which would normalize the AI's markup into its own limited
+  // style vocabulary and strip everything outside it (custom banners,
+  // colors, grid layouts). Editing text nodes in the AI's own DOM leaves
+  // the surrounding styled elements untouched.
+  const editableIframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (!isGenerating) {
@@ -83,22 +108,62 @@ export default function GenerateCvVariantButton({
     return () => clearInterval(interval);
   }, [isGenerating]);
 
+  // The sandbox permits same-origin access (so this — and the parent —
+  // can read/write contentDocument) but deliberately omits allow-scripts,
+  // which unconditionally blocks any <script> the AI's HTML contains from
+  // ever executing, regardless of same-origin status. Mirrors the
+  // javaScriptEnabled: false guard already used server-side in
+  // cvVariantHtmlRenderer.ts — this is the same untrusted HTML, just now
+  // also rendered in the admin's own browser for editing.
+  const stripScriptsForEditing = (html: string): string =>
+    html.replace(/<script[\s\S]*?<\/script>/gi, "");
+
+  // Reads whatever's currently in the editable iframe (including any
+  // in-place edits) and syncs it into cvVariantHtml — called right before
+  // any action that uses the CV content, so a save/download/continue never
+  // uses stale pre-edit HTML. Returns the synced value directly since the
+  // state update itself is async.
+  const syncEditedHtml = (): string => {
+    const doc = editableIframeRef.current?.contentDocument;
+    if (!doc?.documentElement) return cvVariantHtml;
+    const edited = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+    setCvVariantHtml(edited);
+    return edited;
+  };
+
+  // Opens the review modal for a given HTML result — shared by the
+  // no-questions path, "Skip", and "Submit & regenerate" once no open
+  // questions remain.
+  const openReview = async (html: string) => {
+    setCvVariantHtml(html);
+    setReviewStage("review");
+    setIsReviewOpen(true);
+  };
+
   const handleGenerate = async () => {
     try {
-      const data = await generateCvVariant({ userId, resumeUploadId });
-      if (!data || Object.keys(data).length === 0) {
+      const { html, confirmQuestions: questions } = await generateCvVariant({ userId, resumeUploadId });
+      if (!html?.trim()) {
         toast.error("No CV variant was returned");
         return;
       }
-      const html = flattenCvVariantToHtml(data);
-      if (!html.trim()) {
-        toast.error("The AI response couldn't be turned into a CV — try generating again");
+      setCvVariantHtml(html);
+      toast.success("CV variant generated");
+
+      // The AI couldn't confirm some facts on its own (missing dates, unclear
+      // responsibilities, etc.) — ask the admin now, before ever showing the
+      // review step, rather than letting the AI guess and risk inventing
+      // something (see CV_VARIANT_REQUIRED_PROMPT's factual-integrity rules).
+      if (questions.length > 0) {
+        setConfirmQuestions(questions);
+        setAnswers({});
+        setConfirmedSoFar([]);
+        setQuestionRound(0);
+        setIsQuestionsOpen(true);
         return;
       }
-      setResult(data);
-      setEditedHtml(html);
-      setIsReviewOpen(true);
-      toast.success("CV variant generated");
+
+      await openReview(html);
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Failed to generate CV variant";
@@ -106,14 +171,122 @@ export default function GenerateCvVariantButton({
     }
   };
 
+  const handleSkipQuestions = async () => {
+    setIsQuestionsOpen(false);
+    await openReview(cvVariantHtml);
+  };
+
+  const handleSubmitAnswers = async () => {
+    const newlyAnswered: ConfirmedAnswer[] = confirmQuestions
+      .filter((q) => answers[q.question]?.trim())
+      .map((q) => ({ question: q.question, answer: answers[q.question].trim() }));
+
+    if (newlyAnswered.length === 0) {
+      toast.error("Answer at least one question, or use Skip instead");
+      return;
+    }
+
+    // Merge into everything confirmed in earlier rounds too — a later
+    // answer for the same question text wins, but nothing already settled
+    // gets dropped just because this round's list moved on from it.
+    const merged = new Map(confirmedSoFar.map((a) => [a.question, a]));
+    newlyAnswered.forEach((a) => merged.set(a.question, a));
+    const confirmedAnswers = Array.from(merged.values());
+
+    const nextRound = questionRound + 1;
+
+    try {
+      const { html, confirmQuestions: questions } = await generateCvVariant({
+        userId,
+        resumeUploadId,
+        confirmedAnswers,
+      });
+      setCvVariantHtml(html);
+      setConfirmedSoFar(confirmedAnswers);
+      setQuestionRound(nextRound);
+
+      // Give it a bounded number of chances to converge — if it's still
+      // surfacing questions after this many rounds, trust the admin's
+      // answers over the AI's persistence and move on rather than looping.
+      if (questions.length > 0 && nextRound < MAX_QUESTION_ROUNDS) {
+        setConfirmQuestions(questions);
+        setAnswers((prev) => {
+          const next: Record<string, string> = {};
+          questions.forEach((q) => {
+            next[q.question] = prev[q.question] ?? "";
+          });
+          return next;
+        });
+        toast("A few things are still unconfirmed", { icon: "ℹ️" });
+        return;
+      }
+
+      if (questions.length > 0) {
+        toast("Proceeding with what's confirmed — remaining items stay visible in the document", {
+          icon: "ℹ️",
+        });
+      } else {
+        toast.success("Confirmed — CV updated");
+      }
+      setIsQuestionsOpen(false);
+      await openReview(html);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to regenerate CV variant");
+    }
+  };
+
+  const handleReject = () => {
+    setIsRejecting(true);
+    const toastId = toast.loading("Rejecting CV variant...");
+    setIsReviewOpen(false);
+    setCvVariantHtml("");
+    setConfirmQuestions([]);
+    setAnswers({});
+    setConfirmedSoFar([]);
+    setQuestionRound(0);
+    setReviewStage("review");
+    toast.dismiss(toastId);
+    toast.success("CV variant rejected");
+    setIsRejecting(false);
+  };
+
+  // Renders the current (possibly edited) HTML to a real PDF on demand —
+  // there's no standing preview blob anymore since the review modal shows
+  // the live editable HTML directly, not a pre-rendered PDF.
+  const handleDownloadPreview = async () => {
+    const html = syncEditedHtml();
+    try {
+      const { blob } = await previewCvVariant({
+        userId,
+        resumeUploadId,
+        cvVariant: html,
+        format: "pdf",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = "CV_Variant_Preview.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      // A plain Error here (not error.isAxiosError) means the hook already
+      // extracted the real backend message from the blob response body —
+      // trust it. Otherwise fall back to the normal JSON-error shape.
+      const message = error?.isAxiosError
+        ? error?.response?.data?.message || "Failed to render preview"
+        : error?.message || "Failed to render preview";
+      toast.error(message);
+    }
+  };
+
   const handleSave = async (format: SaveCvVariantFormat) => {
+    const html = syncEditedHtml();
     try {
       const data = await saveCvVariant({
         userId,
         resumeUploadId,
-        cvVariant: editedHtml,
+        cvVariant: html,
         format,
-        design: result?.design,
       });
       const document_ = data?.upload?.document;
       if (!document_?.publicId) {
@@ -152,8 +325,6 @@ export default function GenerateCvVariantButton({
     }
   };
 
-  const flags = result ? collectCvVariantFlags(result) : [];
-
   return (
     <>
       <Button
@@ -164,8 +335,11 @@ export default function GenerateCvVariantButton({
         {isGenerating ? "Generating..." : "Generate"}
       </Button>
 
-      {/* Loading modal */}
-      <Dialog open={isGenerating}>
+      {/* Loading modal — suppressed while the questions modal is open, since
+          "Submit & regenerate" already shows its own inline loading state
+          on that dialog's button; without this guard both dialogs render
+          open at once (the loading modal stacking on top). */}
+      <Dialog open={isGenerating && !isQuestionsOpen}>
         <DialogContent
           className="max-w-sm border-none bg-transparent shadow-none [&>button]:hidden"
           onInteractOutside={(e) => e.preventDefault()}
@@ -219,86 +393,229 @@ export default function GenerateCvVariantButton({
         </DialogContent>
       </Dialog>
 
-      {/* Review + edit modal */}
+      {/* A few questions — the AI couldn't confirm some facts on its own.
+          Answering here becomes CONFIRMED evidence fed back into a fresh
+          generation. This is purely an internal resolution step: the
+          backend always strips its "Please Confirm" section out of the
+          actual CV before it's ever previewed/saved, whether a question
+          got answered, skipped, or left open. */}
+      <Dialog open={isQuestionsOpen}>
+        <DialogContent
+          className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden rounded-2xl border-none p-0 shadow-2xl [&>button]:hidden"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader className="shrink-0 space-y-2 border-b border-career-gray-300/60 bg-gradient-to-br from-[#0D9F6E]/5 to-transparent px-6 pb-4 pt-6">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0D9F6E]/10 text-[#0D9F6E]">
+                <HiOutlineQuestionMarkCircle size={20} />
+              </div>
+              <DialogTitle className="text-lg">A few questions</DialogTitle>
+            </div>
+            <DialogDescription>
+              The AI couldn&apos;t confirm these on its own. Answer what you already know — it
+              gets folded back in as a confirmed fact. Skip to proceed with the CV as-is; these
+              questions never appear in the actual CV either way, answered or not.
+            </DialogDescription>
+            <div className="flex items-center gap-2 pt-1">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-career-gray-300/50">
+                <div
+                  className="h-full rounded-full bg-[#0D9F6E] transition-all duration-300"
+                  style={{
+                    width: `${(Object.values(answers).filter((a) => a?.trim()).length / Math.max(confirmQuestions.length, 1)) * 100}%`,
+                  }}
+                />
+              </div>
+              <span className="shrink-0 text-xs font-medium text-career-gray-200">
+                {Object.values(answers).filter((a) => a?.trim()).length} of {confirmQuestions.length} answered
+              </span>
+            </div>
+          </DialogHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 py-4">
+            {confirmQuestions.map(({ question, options }, index) => {
+              const currentAnswer = answers[question] ?? "";
+              const isAnswered = !!currentAnswer.trim();
+              return (
+                <div
+                  key={index}
+                  className={`rounded-xl border p-3.5 transition-colors ${
+                    isAnswered
+                      ? "border-[#0D9F6E]/30 bg-[#0D9F6E]/[0.03]"
+                      : "border-career-gray-300/70 bg-white"
+                  }`}
+                >
+                  <div className="mb-2 flex items-start gap-2">
+                    {isAnswered ? (
+                      <HiCheckCircle size={18} className="mt-0.5 shrink-0 text-[#0D9F6E]" />
+                    ) : (
+                      <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-career-gray-300/60 text-[10px] font-semibold text-career-gray-200">
+                        {index + 1}
+                      </span>
+                    )}
+                    <label className="text-13 font-medium leading-snug text-career-black-200">
+                      {question}
+                    </label>
+                  </div>
+                  {options && options.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {options.map((option) => {
+                        // Answers are stored as one string, so multiple picks
+                        // are represented as a comma-joined list — this
+                        // question may only need one option (a yes/no), or
+                        // several (e.g. "which of these did you use"), and
+                        // toggling independently supports both without the
+                        // AI needing to say which kind a question is.
+                        const selected = currentAnswer
+                          .split(",")
+                          .map((o) => o.trim())
+                          .filter(Boolean);
+                        const isSelected = selected.includes(option);
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            disabled={isGenerating}
+                            onClick={() =>
+                              setAnswers((prev) => {
+                                const current = (prev[question] ?? "")
+                                  .split(",")
+                                  .map((o) => o.trim())
+                                  .filter(Boolean);
+                                const next = current.includes(option)
+                                  ? current.filter((o) => o !== option)
+                                  : [...current, option];
+                                return { ...prev, [question]: next.join(", ") };
+                              })
+                            }
+                            className={`rounded-full border px-3.5 py-1.5 text-13 font-medium transition-colors disabled:opacity-50 ${
+                              isSelected
+                                ? "border-[#0D9F6E] bg-[#0D9F6E] text-white"
+                                : "border-career-gray-300/70 bg-white text-career-black-200 hover:border-[#0D9F6E]/40 hover:text-[#0D9F6E]"
+                            }`}
+                          >
+                            {option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Textarea
+                      value={currentAnswer}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({ ...prev, [question]: e.target.value }))
+                      }
+                      disabled={isGenerating}
+                      placeholder="Leave blank if you don't know — it just won't appear in the CV"
+                      className="min-h-[60px] border-career-gray-300/70 bg-white text-sm"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="shrink-0 border-t border-career-gray-300/60 px-6 py-4">
+            <Button variant="outline" disabled={isGenerating} onClick={handleSkipQuestions}>
+              Skip — use as-is
+            </Button>
+            <Button
+              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+              disabled={isGenerating}
+              onClick={handleSubmitAnswers}
+            >
+              {isGenerating ? "Regenerating..." : "Submit & regenerate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review modal — the AI's actual HTML, live and directly editable */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden">
+        <DialogContent className="flex h-[85vh] max-h-[85vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
             <DialogTitle>CV Variant</DialogTitle>
             <DialogDescription>
-              {result?.client_name
-                ? `Generated for ${result.client_name}. Format it below so it reads like a presentable CV, then save.`
-                : "Review and format the AI-generated CV variant, then save it."}
+              Review the AI-designed CV below — click directly into the text to fix anything the
+              AI missed. The design (colors, layout, fonts) is the AI's own and stays intact while
+              you edit; reject and regenerate instead if you want a different look entirely.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
-            {result && (
-              <div className="flex flex-wrap items-center gap-2 text-13">
-                {result.style_variant && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold capitalize ${
-                      STYLE_BADGE_CLASSES[result.style_variant] ?? "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    <HiOutlineColorSwatch />
-                    {result.style_variant}
-                  </span>
-                )}
-                {result.style_reasoning && (
-                  <span className="text-career-gray-200">{result.style_reasoning}</span>
-                )}
-                {result.design && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-career-gray-300 px-2.5 py-1">
-                    <span
-                      className="h-3 w-3 rounded-full border border-black/10"
-                      style={{ backgroundColor: result.design.accent_color }}
-                    />
-                    <span className="capitalize text-career-gray-200">
-                      {result.design.font_family} · {result.design.density}
-                    </span>
-                  </span>
-                )}
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-career-gray-300 bg-career-gray-100">
+            {cvVariantHtml ? (
+              <iframe
+                ref={editableIframeRef}
+                title="CV Variant Preview"
+                srcDoc={stripScriptsForEditing(cvVariantHtml)}
+                sandbox="allow-same-origin"
+                className="h-full w-full bg-white"
+                onLoad={() => {
+                  const doc = editableIframeRef.current?.contentDocument;
+                  if (doc?.body) doc.body.contentEditable = "true";
+                }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-career-gray-200">
+                Preview unavailable — try Download instead.
               </div>
             )}
-
-            {flags.length > 0 && (
-              <div className="max-h-32 overflow-auto rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p className="font-semibold">Flags — review before saving</p>
-                <ul className="mt-1 list-disc pl-5">
-                  {flags.map((item, index) => (
-                    <li key={index}>
-                      <span className="font-medium">{item.source}:</span> {item.flag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <CvVariantEditor content={editedHtml} onChange={setEditedHtml} />
           </div>
 
           <DialogFooter className="shrink-0">
-            <Button
-              variant="outline"
-              disabled={isSaving}
-              onClick={() => setIsReviewOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-              disabled={isSaving}
-              onClick={() => handleSave("docx")}
-            >
-              {isSaving && savingFormat === "docx" ? "Saving..." : "Save as DOC"}
-            </Button>
-            <Button
-              className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
-              disabled={isSaving}
-              onClick={() => handleSave("pdf")}
-            >
-              {isSaving && savingFormat === "pdf" ? "Saving..." : "Save as PDF"}
-            </Button>
+            {reviewStage === "review" ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isRejecting}
+                  onClick={handleReject}
+                >
+                  {isRejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={handleDownloadPreview}
+                >
+                  {isPreviewing ? "Rendering…" : "Download"}
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isRejecting}
+                  onClick={() => {
+                    syncEditedHtml();
+                    setReviewStage("confirm");
+                  }}
+                >
+                  Continue →
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => setIsReviewOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isSaving}
+                  onClick={() => handleSave("docx")}
+                >
+                  {isSaving && savingFormat === "docx" ? "Saving..." : "Save as DOC"}
+                </Button>
+                <Button
+                  className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
+                  disabled={isSaving}
+                  onClick={() => handleSave("pdf")}
+                >
+                  {isSaving && savingFormat === "pdf" ? "Saving..." : "Save as PDF"}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

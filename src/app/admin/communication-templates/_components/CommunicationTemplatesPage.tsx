@@ -4,10 +4,11 @@ import { Accordion, AccordionDetails, AccordionSummary, MenuItem, Select } from 
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { FaEdit, FaSearch, FaTrashAlt, FaUndo } from "react-icons/fa";
-import { FaCheck, FaChevronDown, FaEye, FaFileExport, FaPlus } from "react-icons/fa6";
+import { FaCheck, FaChevronDown, FaCopy, FaEye, FaFileExport, FaPaperPlane, FaPlus } from "react-icons/fa6";
 import { ArrowLeft, Layers, Mail, ShieldCheck, Sparkles, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import FilterSelect from "./FilterSelect";
+import { TriggersTab } from "./TriggersTab";
 import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/PageHeader/PageHeader";
 import {
@@ -47,15 +48,17 @@ export default function CommunicationTemplatesPage() {
   const [typeFilter, setTypeFilter] = useState<EmailTemplateType | "">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTypes, setExpandedTypes] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"templates" | "triggers">("templates");
 
   const [selectedTemplate, setSelectedTemplate] = useState<CommunicationTemplate | null>(null);
+  const [duplicateSource, setDuplicateSource] = useState<CommunicationTemplate | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [createEditOpen, setCreateEditOpen] = useState(false);
   const [missingInfoOpen, setMissingInfoOpen] = useState(false);
 
-  const { usersDomain, templatesDomain, actions } = useCommunicationTemplates({ recycleBin });
+  const { usersDomain, templatesDomain, triggersDomain, actions } = useCommunicationTemplates({ recycleBin });
   const templates = templatesDomain.data;
   const loading = templatesDomain.isLoading;
 
@@ -166,9 +169,23 @@ export default function CommunicationTemplatesPage() {
       toast.dismiss(toastId);
       toast.success(isEditing ? "Template updated." : "Template created.");
       setCreateEditOpen(false);
+      setDuplicateSource(null);
     } catch (e: any) {
       toast.dismiss(toastId);
       toast.error(e?.message || "Failed to save template.");
+    }
+  };
+
+  const handleTestSend = async (template: CommunicationTemplate) => {
+    const toastId = toast.loading("Sending test email...");
+    try {
+      const { variables, triggerKeyUsed } = await actions.resolveTestSend(template.id);
+      const result = await actions.sendTestEmail({ templateId: template.id, values: variables, triggerKeyUsed });
+      toast.dismiss(toastId);
+      toast.success(`Test email sent to ${result.recipientEmail}`);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.message || "Failed to send test email.");
     }
   };
 
@@ -244,7 +261,35 @@ export default function CommunicationTemplatesPage() {
         </div>
       </div>
 
+      {/* Tab switcher */}
+      <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveTab("templates")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === "templates" ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          Templates
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("triggers")}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === "triggers" ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          Triggers
+        </button>
+      </div>
+
       <div className="bg-white rounded-xl border border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)] p-5 flex flex-col gap-5">
+        {activeTab === "triggers" ? (
+          <TriggersTab
+            triggers={triggersDomain.data}
+            templates={templatesDomain.data}
+            isLoading={triggersDomain.isLoading}
+            onRebind={(triggerKey, templateId) => actions.rebindTrigger({ triggerKey, templateId })}
+            onReset={(triggerKey) => actions.resetTrigger(triggerKey)}
+          />
+        ) : (
+        <>
         {/* Toolbar */}
         <div className="flex-col md:flex-row flex md:items-center md:justify-between gap-3">
           <div className="flex w-full md:w-fit justify-between items-center gap-4">
@@ -252,6 +297,7 @@ export default function CommunicationTemplatesPage() {
               className="group gap-2"
               onClick={() => {
                 setSelectedTemplate(null);
+                setDuplicateSource(null);
                 setCreateEditOpen(true);
               }}
             >
@@ -380,9 +426,25 @@ export default function CommunicationTemplatesPage() {
                                 title="Edit"
                                 className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                                 disabled={recycleBin}
-                                onClick={() => { setSelectedTemplate(template); setCreateEditOpen(true); }}
+                                onClick={() => { setSelectedTemplate(template); setDuplicateSource(null); setCreateEditOpen(true); }}
                               >
                                 <FaEdit />
+                              </button>
+                              <button
+                                title="Send Test Email"
+                                className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                                disabled={recycleBin}
+                                onClick={() => void handleTestSend(template)}
+                              >
+                                <FaPaperPlane />
+                              </button>
+                              <button
+                                title="Duplicate"
+                                className="p-2 text-gray-600 hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                                disabled={recycleBin}
+                                onClick={() => { setSelectedTemplate(null); setDuplicateSource(template); setCreateEditOpen(true); }}
+                              >
+                                <FaCopy />
                               </button>
                               <button
                                 title="Export as .html"
@@ -429,6 +491,8 @@ export default function CommunicationTemplatesPage() {
             )}
           </div>
         )}
+        </>
+        )}
       </div>
 
       {/* Modals */}
@@ -446,10 +510,13 @@ export default function CommunicationTemplatesPage() {
       />
       <CreateOrEditModal
         open={createEditOpen}
-        onClose={() => setCreateEditOpen(false)}
+        onClose={() => { setCreateEditOpen(false); setDuplicateSource(null); }}
         template={selectedTemplate?.id ? selectedTemplate : null}
+        duplicateFrom={duplicateSource}
         onSave={handleSave}
         isSaving={actions.isMutating}
+        onSendTest={(payload) => actions.sendDraftTestEmail(payload)}
+        isSendingTest={actions.isSendingDraftTest}
       />
       <MissingInfoModal
         open={missingInfoOpen}
