@@ -1338,35 +1338,6 @@ export const saveManualApplication = async (
       const pipeline = await resolvePipelineNames(manualApplication.client_id);
       const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
 
-      // MQA → SPC approval alert during the learning month.
-      if (result.score === 'MQA' && config.learningMonth && config.mqaLiveFromDayOne) {
-        if (pipeline.creds) {
-          await SlackService.notify({
-            location: getEnvironmentFromHost(host || ''),
-            host: host || '',
-            node: SlackNode.HUMAN_RESOURCE,
-            provider: SlackProvider.HUBSTAFF,
-            severity: SlackSeverity.INFO,
-            trigger: 'AI Vetting Agent',
-            type: SlackEventType.SYSTEM_JOB,
-            channel: SlackChannel.JOB_PIPELINE,
-            body: [
-              `🤖 AI VETTED — MQA`,
-              `• *SPC:* ${pipeline.spcName}`,
-              `• *VPC:* ${pipeline.vpcName}`,
-              `• *DPC:* ${pipeline.dpcName}`,
-              `• *Client:* ${pipeline.clientFullName}`,
-              `• *Job:* ${jobLink}`,
-              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
-              `• *Reason:* ${result.reason}`,
-              `• *Quality:* AI MQA`,
-              `• *Status:* Awaiting SPC Approval`,
-              `${pipeline.spcName} please approve within 30 min.`,
-            ].join('\n'),
-          });
-        }
-      }
-
       // Post-learning rollout: HQA auto-vets and routes to submission.
       if (result.score === 'HQA' && config.hqaAutoSubmit) {
         await manualApplication.update({
