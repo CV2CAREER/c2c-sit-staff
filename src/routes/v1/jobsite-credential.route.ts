@@ -222,7 +222,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/{id}/accept:
  *   post:
- *     summary: Admin accepts a jobsite credential (Gmail delegation confirmed live) — client can no longer edit the email from this point on
+ *     summary: Admin or PC accepts a jobsite credential (Gmail delegation confirmed live) — client can no longer edit the email from this point on
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -248,7 +248,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/accept",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   acceptJobsiteCredential,
 );
 
@@ -289,7 +289,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/{id}/approve:
  *   post:
- *     summary: Admin approves a jobsite credential — moves it to ACTIVE, generates the password, sends the approval email and Slack notification
+ *     summary: Admin or PC approves a jobsite credential — moves it to ACTIVE, generates the password, sends the approval email and Slack notification
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -315,7 +315,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/approve",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   approveJobsiteCredential,
 );
 
@@ -356,7 +356,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/{id}/reject:
  *   post:
- *     summary: Admin rejects a jobsite credential with a reason from the closed list
+ *     summary: Admin or PC rejects a jobsite credential with a reason from the closed list
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -400,7 +400,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/reject",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   rejectJobsiteCredential,
 );
 
