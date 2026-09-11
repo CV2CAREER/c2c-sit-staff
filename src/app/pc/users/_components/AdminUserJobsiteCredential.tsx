@@ -47,8 +47,6 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
     isSendingTestEmail,
     approveJobsiteCredential,
     isApproving,
-    unapproveJobsiteCredential,
-    isUnapproving,
     rejectJobsiteCredential,
     isRejecting,
     revealJobsiteCredentialPassword,
@@ -59,9 +57,11 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
   const [revealedPassword, setRevealedPassword] = useState<string | null>(
     null,
   );
-  // Replaces window.confirm() for Accept and Unapprove.
+  // Replaces window.confirm() for Accept. PCs can't unapprove (admin-only,
+  // stays on the /admin Management table), so there's nothing else to
+  // confirm through this modal.
   const [confirmingAction, setConfirmingAction] = useState<
-    "accept" | "unapprove" | null
+    "accept" | null
   >(null);
 
   const credential = clientJobsiteCredential;
@@ -89,24 +89,12 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
     approveJobsiteCredential({ id: credential.id });
   };
 
-  const handleUnapprove = () => {
-    if (!credential) return;
-    setConfirmingAction("unapprove");
-  };
-
   const handleConfirmAction = () => {
     if (!credential || !confirmingAction) return;
-    if (confirmingAction === "accept") {
-      acceptJobsiteCredential(
-        { id: credential.id },
-        { onSuccess: () => setConfirmingAction(null) },
-      );
-    } else {
-      unapproveJobsiteCredential(
-        { id: credential.id },
-        { onSuccess: () => setConfirmingAction(null) },
-      );
-    }
+    acceptJobsiteCredential(
+      { id: credential.id },
+      { onSuccess: () => setConfirmingAction(null) },
+    );
   };
 
   const handleReject = (
@@ -247,17 +235,6 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
               </>
             )}
 
-            {credential.status === "active" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-red-500 text-red-500"
-                onClick={handleUnapprove}
-                disabled={isUnapproving}
-              >
-                Unapprove
-              </Button>
-            )}
           </div>
         </div>
       ) : (
@@ -301,19 +278,11 @@ const AdminUserJobsiteCredential = ({ userId }: { userId: string }) => {
       >
         {confirmingAction && (
           <ConfirmActionModal
-            title={
-              confirmingAction === "accept"
-                ? "Accept this credential?"
-                : "Unapprove this credential?"
-            }
-            description={
-              confirmingAction === "accept"
-                ? "This confirms the client has completed email forwarding, and the client will no longer be able to edit this email."
-                : "This clears the current jobsite password and reverts to Accepted — applications will be blocked again until it's re-approved."
-            }
-            confirmLabel={confirmingAction === "accept" ? "Accept" : "Unapprove"}
-            isConfirming={confirmingAction === "accept" ? isAccepting : isUnapproving}
-            destructive={confirmingAction === "unapprove"}
+            title="Accept this credential?"
+            description="This confirms the client has completed email forwarding, and the client will no longer be able to edit this email."
+            confirmLabel="Accept"
+            isConfirming={isAccepting}
+            destructive={false}
             onConfirm={handleConfirmAction}
             onClose={() => setConfirmingAction(null)}
           />
