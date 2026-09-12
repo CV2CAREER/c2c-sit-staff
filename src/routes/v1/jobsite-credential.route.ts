@@ -138,7 +138,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/manual:
  *   post:
- *     summary: Staff manually adds a credential for a client who cannot self-serve
+ *     summary: Admin or PC manually adds a credential for a client who cannot self-serve
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -171,7 +171,7 @@ jobsiteCredentialRouterV1.post(
   "/manual",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   addJobsiteCredentialManually,
 );
 
@@ -256,7 +256,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/{id}/test-email:
  *   post:
- *     summary: Admin sends a real test email through the proxy mailbox — does not change status, can be sent any number of times
+ *     summary: Admin or PC sends a real test email through the proxy mailbox — does not change status, can be sent any number of times
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -281,7 +281,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/test-email",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   sendTestEmail,
 );
 
@@ -408,7 +408,7 @@ jobsiteCredentialRouterV1.post(
  * @swagger
  * /v1/jobsite-credentials/{id}/reveal-password:
  *   post:
- *     summary: Admin reveals the system-generated jobsite password (audited)
+ *     summary: Admin or PC reveals the system-generated jobsite password (audited)
  *     tags:
  *       - Jobsite Credentials
  *     security:
@@ -432,7 +432,7 @@ jobsiteCredentialRouterV1.post(
   "/:id/reveal-password",
   checkBlacklistedTokens,
   isUserAuthenticated,
-  adminOnly,
+  staffOnly,
   revealJobsiteCredentialPassword,
 );
 
