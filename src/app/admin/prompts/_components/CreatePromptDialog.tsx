@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import HintMark from "./HintMark";
 import { useCreateVcsPrompt } from "../hooks/use-vcs-prompts";
 
 const slugify = (value: string) =>
@@ -82,6 +83,7 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
       >
         <Plus size={16} />
         New Prompt
+        <HintMark text="Create a brand-new key-based prompt." />
       </Button>
 
       <DialogContent className="sm:max-w-[560px]">
@@ -96,8 +98,9 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
               Key
+              <HintMark text="The lookup key backend services use to call this prompt. Auto-formatted to lowercase_with_underscores." />
             </label>
             <Input
               value={key}
@@ -113,8 +116,9 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
               Prompt
+              <HintMark text="The full prompt text template that will be sent to the AI." />
             </label>
             <Textarea
               value={prompt}
@@ -126,7 +130,10 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
 
           <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
             <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-800">Active</span>
+              <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                Active
+                <HintMark text="Inactive prompts won't be picked up by services querying this key." />
+              </span>
               <span className="text-xs text-gray-500">
                 Inactive prompts won&apos;t be picked up by services querying this key.
               </span>
@@ -139,8 +146,9 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={handleSubmit} disabled={isPending} className="gap-1.5">
             {isPending ? "Creating..." : "Create Prompt"}
+            <HintMark text="Saves this as a new, live prompt key right away." />
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -63,7 +63,7 @@ const formSchema = z.object({
   country: z.string().optional(),
   heritage: z.string().optional(),
   communication: z.string().optional(),
-  role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc", "technology", "cse", "customer", "test", "probono", "business"]),
+  role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc", "technology", "cse", "customer", "test", "probono", "business", "cec"]),
   revenue: z.string().optional(),
   returnCount: z.number(),
   hasCoverLetter: z.boolean(),
@@ -436,6 +436,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                             <SelectItem value="assistant">Assistant / PC</SelectItem>
                             <SelectItem value="technology">Technology</SelectItem>
                             <SelectItem value="cse">CSE</SelectItem>
+                            <SelectItem value="cec">CEC</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>

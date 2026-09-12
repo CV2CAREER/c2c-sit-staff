@@ -260,9 +260,6 @@ export const usersGridSx = {
     borderTop: "1px solid #e7ebf0",
     backgroundColor: "#f8fafc",
   },
-  "& .MuiDataGrid-virtualScroller": {
-    scrollbarWidth: "thin",
-  },
   "& .MuiDataGrid-toolbarContainer": {
     padding: "10px 12px",
     borderBottom: "1px solid #eef1f5",

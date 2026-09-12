@@ -12,6 +12,8 @@ import { useUnsubscribedUsersQueries, useUnsubscribedUsersMutations } from "./ad
 import { useChatbotQueries, useChatbotMutations } from "./admin/chatbot";
 import { useJobsiteCredentialQueries, useJobsiteCredentialMutations } from "./admin/jobsite-credential";
 import { useClientJourneyQueries, useClientJourneyMutations } from "./admin/client-journey";
+import { usePlacementAssignmentsQueries, usePlacementAssignmentsMutations } from "./admin/placement-assignments";
+import { usePlacementExceptionsQueries } from "./admin/placement-exceptions";
 
 export * from "./admin/types";
 
@@ -28,6 +30,8 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
   const chatbot = useChatbotQueries(options);
   const jobsiteCredential = useJobsiteCredentialQueries(options);
   const clientJourney = useClientJourneyQueries(options);
+  const placementAssignments = usePlacementAssignmentsQueries(options);
+  const placementExceptions = usePlacementExceptionsQueries(options);
 
   return useMemo(() => ({
     ...dashboard,
@@ -42,7 +46,9 @@ export const useAdminQueries = (options: AdminQueriesOptions) => {
     ...unsubscribedUsers,
     ...jobsiteCredential,
     ...clientJourney,
-  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot, unsubscribedUsers, jobsiteCredential, clientJourney]);
+    ...placementAssignments,
+    ...placementExceptions,
+  }), [dashboard, users, campaign, jobsite, pricing, clientSample, documents, system, chatbot, unsubscribedUsers, jobsiteCredential, clientJourney, placementAssignments, placementExceptions]);
 };
 
 export const useAdminMutations = () => {
@@ -67,5 +73,6 @@ export const useAdminMutations = () => {
     ...chatbot,
     ...useJobsiteCredentialMutations(),
     ...useClientJourneyMutations(),
+    ...usePlacementAssignmentsMutations(),
   };
 };
