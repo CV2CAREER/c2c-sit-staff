@@ -3,6 +3,7 @@ import ErrorHandler from '../utils/errorHandler';
 import { User } from '../models/v1/user.model';
 import { Credentials } from '../models/v1/credentials.model';
 import { Aggregator } from '../models/v1/aggregator.model';
+import { JobsiteCredential } from '../models/v1/jobsite-credential.model';
 import { Profile } from '../models/v1/profile.model';
 import { Plan } from '../models/v1/plan.model';
 import { Upload } from '../models/v1/upload.model';
@@ -2363,12 +2364,39 @@ export const getCampaignClients = async (
     }
   }
 
+  // SPR-19-02-009: Campaign Management was still reading the old
+  // auto-generated Alias_Email out of seekExternalCredentials instead of the
+  // real proxy mailbox from jobsite_credentials. Fetched as a direct query
+  // (not an `include`) because JobsiteCredential.email only decrypts via its
+  // own @AfterFind hook, which never fires for a model pulled in as an
+  // include (see the jobsite-credential-approved email incident).
+  const jobsiteCredentialEmailByClientId = new Map<string, string>();
+  if (clientIds.length) {
+    try {
+      const jobsiteCredentials = await JobsiteCredential.findAll({
+        where: { clientId: { [Op.in]: clientIds } },
+        order: [['createdAt', 'DESC']],
+      });
+      for (const jc of jobsiteCredentials) {
+        // Newest row per client wins — query is already ordered newest-first.
+        if (!jobsiteCredentialEmailByClientId.has(jc.clientId) && jc.email) {
+          jobsiteCredentialEmailByClientId.set(jc.clientId, jc.email);
+        }
+      }
+    } catch (err) {
+      logger.warn('Could not fetch jobsite credentials for campaign clients:', err);
+    }
+  }
+
   const campaignsWithAggregators = campaigns.map((client) => ({
     ...enrichCampaignFields(client),
     aggregators: client.clientId
       ? (aggregatorsByUserId.get(client.clientId) ?? [])
       : [],
     TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+    jobsiteCredentialEmail: client.clientId
+      ? (jobsiteCredentialEmailByClientId.get(client.clientId) ?? null)
+      : null,
   }));
 
   const totalCount = await Credentials.count({ where: whereClause });
@@ -2432,10 +2460,22 @@ export const getCampaignClientById = async (clientId: string) => {
     });
   }
 
+  // SPR-19-02-009: real proxy mailbox from jobsite_credentials, not the old
+  // Alias_Email — see the matching comment in getCampaignClients above.
+  let jobsiteCredentialEmail: string | null = null;
+  if (clientData.clientId) {
+    const jobsiteCredential = await JobsiteCredential.findOne({
+      where: { clientId: clientData.clientId },
+      order: [['createdAt', 'DESC']],
+    });
+    jobsiteCredentialEmail = jobsiteCredential?.email ?? null;
+  }
+
   return {
     ...enrichCampaignFields(clientData),
     ...applicationCounts,
     aggregators,
+    jobsiteCredentialEmail,
   };
 };
 
