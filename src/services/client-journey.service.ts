@@ -95,6 +95,29 @@ async function completeStep(
     return existing;
   }
 
+  // A previously completed-then-reopened row is soft-deleted, not removed,
+  // and still holds the (userId, tourId, stepKey) unique slot — restore it
+  // instead of creating a new row, or the insert below throws a
+  // SequelizeUniqueConstraintError against the soft-deleted row.
+  const reopened = await ClientJourneyStep.findOne({
+    where: { userId, stepKey, tourId },
+    paranoid: false,
+  });
+
+  if (reopened) {
+    await reopened.restore();
+    await reopened.update({
+      phaseKey,
+      status: ClientJourneyStepStatus.DONE,
+      completedAt: new Date(),
+      actorId,
+      actorType,
+      source,
+      deletedBy: null,
+    });
+    return reopened;
+  }
+
   return ClientJourneyStep.create({
     userId,
     tourId,

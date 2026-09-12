@@ -1,0 +1,994 @@
+# OpenAPI Specification for C2C Staff Backend API
+
+paths:
+  /v1/justcallWebhook/events:
+    post:
+      tags:
+        - Webhook
+      summary: Receive JustCall call/AI-analysis webhook events
+      description: |
+        Receives JustCall call.* and jc.* (AI-analysis) webhook payloads -
+        SMS/MMS events (sms.*) go to a separate endpoint, see
+        justcall-message-webhook.yaml, since a message's shape has almost no
+        overlap with a call's. `justcall_events` holds one current-state row
+        per call, keyed on call_sid - later deliveries for the same call_sid
+        (e.g. call.initiated -> call.ringing -> call.completed) update that
+        row instead of creating duplicates. Every individual delivery is also
+        appended to `justcall_event_logs` (FK -> justcall_events), so the
+        full history is never lost even though the current-state row gets
+        overwritten - each log row carries its own `changes` summary (empty
+        for the first delivery) plus the full raw payload for that delivery.
+
+        Configure this URL as the webhook target in JustCall for whichever
+        call/AI event types you want captured - call.initiated, call.ringing,
+        call.completed, call.updated, jc.call_ai_generated, etc. Not every
+        delivery is a full snapshot - call.updated, for example, only carries
+        the fields that actually changed (disposition/notes/rating), omitting
+        contact/agent/duration info a fuller event already gave us. Each
+        delivery's whole body is deep-merged onto whatever is already on file
+        for that call_sid before being stored, so a partial delivery can't
+        null out data a fuller one already captured; the untouched raw body
+        for each individual delivery is still preserved verbatim in its
+        `justcall_event_logs` row.
+
+        If `JUSTCALL_WEBHOOK_SECRET` is set in the environment, requests must
+        include a matching `x-webhook-secret` header (set this as a custom
+        header on the webhook in JustCall's dashboard) or they are rejected
+        with 401. If it is unset, the endpoint accepts events unauthenticated.
+      security: []
+      parameters:
+        - name: x-webhook-secret
+          in: header
+          required: false
+          description: Required only if JUSTCALL_WEBHOOK_SECRET is configured.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            examples:
+              call_initiated:
+                summary: call.initiated sample payload
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.initiated"
+                  metadata: {}
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: null
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0
+                    call_info:
+                      direction: "Outgoing"
+                      type: ""
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: ""
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits: []
+                    ivr_info:
+                      digit_pressed: ""
+                      content: ""
+                    queue:
+                      entered_at_position: ""
+                      exit_reason: ""
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 0
+                      ring_time: null
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: null
+                      conversation_time: null
+                      handle_time: null
+              call_completed:
+                summary: call.completed sample payload
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.completed"
+                  metadata:
+                    employee:
+                      salary: 50000
+                      name: "John Smith"
+                      married: true
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: 178632
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "00:00:00"
+                    cost_incurred: 0.065
+                    call_info:
+                      direction: "Outgoing"
+                      type: "answered"
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: "https://bifrost.justcall.io/voice-tools-calling/v1/recording/get-presigned-url?recSid=REd82408cxxxxxce1bbxxxxxa3121079b&redirect=1&getSize=0&companyId=6367xxx"
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits:
+                        - "IVR"
+                    call_duration:
+                      friendly_duration: "00:10:33"
+                      queue_wait_time: 0
+                      ring_time: 30
+                      hold_time: 0
+                      wrap_up_time: 10
+                      total_duration: 633
+                      conversation_time: 600
+                      handle_time: 23
+                    ivr_info:
+                      digit_pressed: "2"
+                      content: "Press 2 to talk to Sales"
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_iq:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+              call_answered:
+                summary: call.answered sample payload
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.answered"
+                  metadata: {}
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: null
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: ""
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "00:00:00"
+                    cost_incurred: 0
+                    call_info:
+                      direction: "Outgoing"
+                      type: "answered"
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: "https://bifrost.justcall.io/voice-tools-calling/v1/recording/get-presigned-url?recSid=REd82408cxxxxxce1bbxxxxxa3121079b&redirect=1&getSize=0&companyId=6367xxx"
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits:
+                        - "IVR"
+                    call_duration:
+                      friendly_duration: "00:10:33"
+                      queue_wait_time: 0
+                      ring_time: 30
+                      hold_time: 0
+                      wrap_up_time: 10
+                      total_duration: 633
+                      conversation_time: 600
+                      handle_time: 23
+                    ivr_info:
+                      digit_pressed: "2"
+                      content: "Press 2 to talk to Sales"
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_iq:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+              call_updated:
+                summary: call.updated sample payload (partial patch - only disposition/notes/rating/cost changed)
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.updated"
+                  metadata: {}
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: 178632
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    call_info:
+                      cost_incurred: 0.069
+                      type: "answered"
+                      disposition: "Sales: Lead"
+                      notes: "requested demo on 24th February 2024"
+                      rating: "5"
+              call_missed:
+                summary: >-
+                  call.missed sample payload - note this reuses the same
+                  placeholder call_sid as the other examples above (that's
+                  how JustCall's own docs present it); use a different
+                  call_sid here if you want it to land as its own row
+                  instead of merging onto whatever that call_sid already has
+                  on file from testing the other examples.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.missed"
+                  metadata:
+                    employee:
+                      salary: 50000
+                      name: "John Smith"
+                      married: true
+                  data:
+                    id: 1786326578
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 278726578
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "14:34:13"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0.065
+                    call_info:
+                      direction: "Incoming"
+                      type: "missed"
+                      missed_call_reason: "Call was not picked by any agent"
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: ""
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits:
+                        - "Queued"
+                        - "IVR"
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 27
+                      ring_time: 10
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: 0
+                      conversation_time: 0
+                      handle_time: 0
+                    ivr_info:
+                      digit_pressed: "2"
+                      content: "Press 2 to talk to Sales"
+                    queue:
+                      entered_at_position: "1"
+                      exit_reason: "Caller got connected to a JustCall agent"
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: "00:00:00"
+                      callback_reached_duration: "00:00:00"
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+              call_voicemail:
+                summary: >-
+                  call.voicemail sample payload - reuses the same
+                  placeholder call_sid as the other examples (see the note
+                  on call_missed above); swap in a different call_sid to
+                  test it as its own row.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.voicemail"
+                  metadata:
+                    employee:
+                      salary: 50000
+                      name: "John Smith"
+                      married: true
+                  data:
+                    id: 178632678
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 278725678
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "14:34:13"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0.065
+                    call_info:
+                      direction: "Incoming"
+                      type: "voicemail"
+                      missed_call_reason: "Call was not picked by any agent"
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: "https://bifrost.justcall.io/voice-tools-calling/v1/recording/get-presigned-url?recSid=REd82408cxxxxxce1bbxxxxxa3121079b&redirect=1&getSize=0&companyId=6367xxx"
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits:
+                        - "Queued"
+                        - "IVR"
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 27
+                      ring_time: 10
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: 0
+                      conversation_time: 0
+                      handle_time: 0
+                    ivr_info:
+                      digit_pressed: "2"
+                      content: "Press 2 to talk to Sales"
+                    queue:
+                      entered_at_position: "1"
+                      exit_reason: "Caller got connected to a JustCall agent"
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: "00:00:00"
+                      callback_reached_duration: "00:00:00"
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+              call_incoming:
+                summary: call.incoming sample payload (new incoming call - the Incoming-direction counterpart to call.initiated)
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.incoming"
+                  metadata: {}
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: null
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0
+                    call_info:
+                      direction: "Incoming"
+                      type: ""
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: ""
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits: []
+                    ivr_info:
+                      digit_pressed: ""
+                      content: ""
+                    queue:
+                      entered_at_position: ""
+                      exit_reason: ""
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 0
+                      ring_time: 0
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: null
+                      conversation_time: null
+                      handle_time: null
+              call_enters_queue:
+                summary: >-
+                  call.enters_queue sample payload - carries the caller's
+                  queue_position at the top level of the body (outside
+                  data), unlike every other event type. That value is kept
+                  even after a later delivery for the same call reports an
+                  empty queue_position, so it isn't lost once the caller
+                  leaves the queue.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.enters_queue"
+                  metadata: {}
+                  queue_position: "1"
+                  exit_reason: ""
+                  data:
+                    id: null
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0
+                    call_info:
+                      direction: "Incoming"
+                      type: ""
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: ""
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits: []
+                    ivr_info:
+                      digit_pressed: ""
+                      content: ""
+                    queue:
+                      entered_at_position: ""
+                      exit_reason: ""
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 0
+                      ring_time: 0
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: null
+                      conversation_time: null
+                      handle_time: null
+              call_exits_queue:
+                summary: >-
+                  call.exits_queue sample payload - the counterpart to
+                  call.enters_queue, carrying exit_reason at the top level
+                  of the body instead of queue_position. The queue_position
+                  captured on entry is preserved through this delivery even
+                  though it reports an empty one.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.exits_queue"
+                  metadata: {}
+                  queue_position: ""
+                  exit_reason: "Caller got connected to a JustCall agent"
+                  data:
+                    id: null
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "07:27:57"
+                    cost_incurred: 0
+                    call_info:
+                      direction: "Incoming"
+                      type: ""
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: ""
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits: []
+                    ivr_info:
+                      digit_pressed: ""
+                      content: ""
+                    queue:
+                      entered_at_position: ""
+                      exit_reason: ""
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_ai:
+                      call_moments: []
+                      call_score: 0
+                      tags: []
+                      call_score_parameters:
+                        dead_air_time: 0
+                        filler_word: 0
+                        de_escalation: 0
+                        empathy: 0
+                        talk_listen_ratio: 0
+                        greetings: 0
+                        words_per_minute: 0
+                        monologue_duration: 0
+                        call_etiquette: 0
+                        customer_sentiment_score: 0
+                      manual_call_score: 0
+                      customer_sentiment: ""
+                      call_transcription: []
+                      call_summary: ""
+                    call_duration:
+                      friendly_duration: "00:00:00"
+                      queue_wait_time: 0
+                      ring_time: 0
+                      hold_time: 0
+                      wrap_up_time: 0
+                      total_duration: null
+                      conversation_time: null
+                      handle_time: null
+              call_ai_generated:
+                summary: >-
+                  jc.call_ai_generated sample payload - note the "jc." prefix
+                  instead of "call.", JustCall's own naming split between
+                  AI-analysis events and call-lifecycle events. Still posted
+                  to this same endpoint. Carries a real call score, tagged
+                  moments, transcript, and summary once AI processing
+                  finishes (usually after call.completed for the same call).
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "jc.call_ai_generated"
+                  metadata:
+                    employee:
+                      salary: 50000
+                      name: "John Smith"
+                      married: true
+                  queue_position: ""
+                  exit_reason: ""
+                  data:
+                    id: 178632
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    contact_number: "1681381XXXX"
+                    contact_name: "Robert Williams"
+                    contact_email: "robert.williams@gmail.com"
+                    justcall_number: "1213566XXXX"
+                    justcall_line_name: "Sales Line"
+                    agent_id: 27872
+                    agent_name: "John Smith"
+                    agent_email: "john.smith@justcall.io"
+                    agent_active: "Active"
+                    call_date: "2024-01-18"
+                    call_time: "07:27:57"
+                    call_user_date: "2024-01-18"
+                    call_user_time: "12:57:57"
+                    cost_incurred: 0.065
+                    call_info:
+                      direction: "Outgoing"
+                      type: "answered"
+                      missed_call_reason: ""
+                      status: "Unarchived"
+                      disposition: ""
+                      notes: ""
+                      rating: "0"
+                      recording: "https://bifrost.justcall.io/voice-tools-calling/v1/recording/get-presigned-url?recSid=REd82408cxxxxxce1bbxxxxxa3121079b&redirect=1&getSize=0&companyId=6367xxx"
+                      recording_child: ""
+                      voicemail_transcription: ""
+                      call_traits:
+                        - "IVR"
+                    call_duration:
+                      friendly_duration: "00:10:33"
+                      queue_wait_time: 0
+                      ring_time: 30
+                      hold_time: 0
+                      wrap_up_time: 10
+                      total_duration: 633
+                      conversation_time: 600
+                      handle_time: 23
+                    ivr_info:
+                      digit_pressed: "2"
+                      content: "Press 2 to talk to Sales"
+                    queue_callback:
+                      callback_requested: ""
+                      callback_requested_time: ""
+                      callback_attempted_time: ""
+                      callback_attempted: ""
+                      callback_reached: ""
+                      callback_reached_time: ""
+                      callback_status: ""
+                      callback_wait_duration: null
+                      callback_reached_duration: null
+                    justcall_iq:
+                      call_moments:
+                        - "Procurement Process"
+                        - "Phone numbers"
+                        - "Dutch"
+                      call_score: 93
+                      tags:
+                        - "Demo"
+                        - "Onboarding"
+                      call_score_parameters:
+                        dead_air_time: 30
+                        filler_word: 4
+                        de_escalation: 10
+                        empathy: 9
+                        talk_listen_ratio: 8
+                        greetings: 6
+                        words_per_minute: 9
+                        monologue_duration: 20
+                        call_etiquette: 8
+                        customer_sentiment_score: 9
+                      manual_call_score: 94
+                      customer_sentiment: "Positive"
+                      call_transcription:
+                        - speaker_id: 1
+                          sentence: "Hi."
+                          timestamp:
+                            starttime: 7
+                            endtime: 8
+                        - speaker_id: 0
+                          sentence: "Hello! I understand you guys are on our platform. I was looking to check if you're interested in getting a demo of the product."
+                          timestamp:
+                            starttime: 5
+                            endtime: 19
+                      call_summary: >-
+                        Call Summary: Robert is interested in a demo and asks
+                        about phone numbers. John explains local numbers are
+                        available on request and will send required documents
+                        plus a demo scheduling link by email.
+              call_ai_voice_agent:
+                summary: >-
+                  call.ai_voice_agent sample payload - a fully autonomous
+                  AI-handled call. Unlike every other call.* event, `data`
+                  has no call_info block (direction lives directly on
+                  call_direction) and no contact_* fields; the AI agent's own
+                  identity (ai_agent_name/ai_agent_id) is intentionally kept
+                  separate from the agentName/agentId columns used for human
+                  reps, and its actions (SMS sent, appointment scheduled,
+                  call transferred, disposition set) live in the actions array.
+                value:
+                  request_id: "01HQ0MYWY2NJCTHPXXXXXXXXX"
+                  webhook_url: "https://webhook.site/0c7b314d-5444-416b-93f4-XXXXXXXXX"
+                  url_id: "65d31ef34b883328XXXX"
+                  type: "call.ai_voice_agent"
+                  data:
+                    id: 123456
+                    call_sid: "CA0247d967e9bb3c284163a37a43XXXX"
+                    call_direction: "Incoming"
+                    ai_agent_name: "Agent | mia"
+                    ai_agent_id: "agent_47f60238c80b83fdafd6cc92d0"
+                    action_count: 6
+                    actions:
+                      - state: "during_call"
+                        action_id: "action_448aeab4-ce11-4cce-b68e-67df0a69b8e9"
+                        name: "Send SMS : Pricing"
+                        type: "send_sms"
+                        status: "success"
+                        executed_at: "2025-07-15 17:37:00"
+                        output:
+                          sms_id: 1234567
+                      - state: "during_call"
+                        action_id: "action_161e23c9-03aq-4840-b02c-caeeb73c9b4f"
+                        name: "Schedule Appointment : outlook"
+                        type: "appointment_scheduled"
+                        status: "success"
+                        executed_at: "2025-07-15 17:38:25"
+                        output:
+                          calendar_id: 12345
+                          appointment_id: 126789
+                      - state: "during_call"
+                        name: "Transfer External"
+                        action_id: "action_8809e20d-617e-4635-8d7b-4f01a147ea09"
+                        type: "call_transfer"
+                        status: "success"
+                        executed_at: "2025-07-17 17:35:46"
+                        output:
+                          transfer_type: "Transferred to Team member"
+                          mode: "warm"
+                          is_answered: false
+                          justcall_number: "123456789"
+                          user_group_name: ""
+                          final_agent_name: "Agent | Delta"
+                          final_agent_email: ""
+                      - state: "after_call"
+                        action_id: "action_f1d16b9d-48q6-4c38-86d0-47fde3fea5db"
+                        name: "Send SMS : End of the call"
+                        type: "send_sms"
+                        status: "success"
+                        executed_at: "2025-07-15 17:39:19"
+                        output:
+                          sms_id: 447307554
+                      - state: "after_call"
+                        action_id: "action_810f1025-b32a-4aba-a4b9-5cdb479946a0"
+                        name: "Caller's Information"
+                        type: "data_collection"
+                        status: "success"
+                        executed_at: "2025-07-15 17:39:22"
+                        output:
+                          data_collected:
+                            - field_name: "Caller Name"
+                              field_type: "text"
+                              field_value: "John Smith"
+                            - field_name: "Phone Number"
+                              field_type: "number"
+                              field_value: 123456789
+                            - field_name: "Reason for Calling"
+                              field_type: "text"
+                              field_value: "inquiry about Justcall product and pricing"
+                            - field_name: "Call Summary"
+                              field_type: "string"
+                              field_value: >-
+                                1. Caller is interested in more information
+                                about JustCall.
+                                2. Requested pricing details.
+                      - state: "after_call"
+                        action_id: "action_d117b96b-de17-460d-9b45-43c178cda2f9"
+                        name: "Set Disposition : Prospect"
+                        type: "set_disposition"
+                        status: "success"
+                        executed_at: "2025-07-15 17:39:22"
+                        output:
+                          disposition_code: "Sales: Prospecting"
+      responses:
+        '200':
+          description: Event recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  summary: Event recorded
+                  value:
+                    success: true
+                    message: "Event recorded"
+                    statusCode: 200
+        '401':
+          description: Missing or invalid x-webhook-secret header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_secret:
+                  summary: Invalid webhook secret
+                  value:
+                    success: false
+                    message: "Invalid webhook secret"
+                    statusCode: 401

@@ -6,6 +6,9 @@ import {
   generateRoleTitleRecommendationsController,
   getDocumentSignedUrlController,
   getInterviewPackProcessController,
+  previewCoverLetterController,
+  previewCvVariantController,
+  previewInterviewPackController,
   runInterviewPackStageController,
   saveCoverLetterController,
   saveCvVariantController,
@@ -46,6 +49,11 @@ adminDocumentRouterV1.post(
 );
 
 adminDocumentRouterV1.post(
+  "/preview-cover-letter",
+  previewCoverLetterController,
+);
+
+adminDocumentRouterV1.post(
   "/save-cover-letter",
   saveCoverLetterController,
 );
@@ -58,6 +66,11 @@ adminDocumentRouterV1.post(
 adminDocumentRouterV1.post(
   "/generate-cv-variant",
   generateCvVariantController,
+);
+
+adminDocumentRouterV1.post(
+  "/preview-cv-variant",
+  previewCvVariantController,
 );
 
 adminDocumentRouterV1.post(
@@ -78,6 +91,11 @@ adminDocumentRouterV1.post(
 adminDocumentRouterV1.get(
   "/generate-interview-pack/:processId",
   getInterviewPackProcessController,
+);
+
+adminDocumentRouterV1.post(
+  "/preview-interview-pack",
+  previewInterviewPackController,
 );
 
 adminDocumentRouterV1.post(

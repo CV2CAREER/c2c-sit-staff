@@ -3,6 +3,7 @@ import ErrorHandler from '../utils/errorHandler';
 import { User } from '../models/v1/user.model';
 import { Credentials } from '../models/v1/credentials.model';
 import { Aggregator } from '../models/v1/aggregator.model';
+import { JobsiteCredential } from '../models/v1/jobsite-credential.model';
 import { Profile } from '../models/v1/profile.model';
 import { Plan } from '../models/v1/plan.model';
 import { Upload } from '../models/v1/upload.model';
@@ -1163,7 +1164,8 @@ export const saveManualApplication = async (
   jobData: any,
   user: any,
   host: string,
-  updatedBy?: string
+  updatedBy?: string,
+  discoveryMethod?: string
 ) => {
   logger.info(`Saving manual application for client: ${clientId}`);
 
@@ -1238,6 +1240,7 @@ export const saveManualApplication = async (
     // Discovery details
     DiscoveredBy: fullName || null,
     DiscoveryDate: new Date(),
+    discovery_method: discoveryMethod || 'staff',
 
     // Not submitted yet
     ApplicationSubmittedBy: null,
@@ -1335,35 +1338,6 @@ export const saveManualApplication = async (
 
       const pipeline = await resolvePipelineNames(manualApplication.client_id);
       const jobLink = `=${manualApplication.Job_Title || 'N/A'}`;
-
-      // MQA → SPC approval alert during the learning month.
-      if (result.score === 'MQA' && config.learningMonth && config.mqaLiveFromDayOne) {
-        if (pipeline.creds) {
-          await SlackService.notify({
-            location: getEnvironmentFromHost(host || ''),
-            host: host || '',
-            node: SlackNode.HUMAN_RESOURCE,
-            provider: SlackProvider.HUBSTAFF,
-            severity: SlackSeverity.INFO,
-            trigger: 'AI Vetting Agent',
-            type: SlackEventType.SYSTEM_JOB,
-            channel: SlackChannel.JOB_PIPELINE,
-            body: [
-              `🤖 AI VETTED — MQA`,
-              `• *SPC:* ${pipeline.spcName}`,
-              `• *VPC:* ${pipeline.vpcName}`,
-              `• *DPC:* ${pipeline.dpcName}`,
-              `• *Client:* ${pipeline.clientFullName}`,
-              `• *Job:* ${jobLink}`,
-              `• *Company:* ${manualApplication.Advertiser || 'N/A'}`,
-              `• *Reason:* ${result.reason}`,
-              `• *Quality:* AI MQA`,
-              `• *Status:* Awaiting SPC Approval`,
-              `${pipeline.spcName} please approve within 30 min.`,
-            ].join('\n'),
-          });
-        }
-      }
 
       // Post-learning rollout: HQA auto-vets and routes to submission.
       if (result.score === 'HQA' && config.hqaAutoSubmit) {
@@ -2014,13 +1988,13 @@ export const assignVAToClient = async (
   vaEmail: string | null,
   host: string,
   updatedBy?: string,
-  variant: 'DPC' | 'VPC' | 'SPC' = 'DPC'
+  variant: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC' = 'DPC'
 ) => {
   logger.info(
     `Processing ${variant} assignment for credId=${credId}, vaEmail=${vaEmail}`
   );
 
-  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC') => {
+  const resolveFieldNames = (v: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC') => {
     if (v === 'VPC') {
       return {
         emailField: 'AssignedVetEmail' as const,
@@ -2034,6 +2008,22 @@ export const assignVAToClient = async (
         emailField: 'AssignedCompletedEmail' as const,
         nameField: 'AssignedCompletedName' as const,
         displayLabel: 'SPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'InterimDPC') {
+      return {
+        emailField: 'InterimDPCEmail' as const,
+        nameField: 'InterimDPCName' as const,
+        displayLabel: 'Interim DPC',
+        slackChannel: SlackChannel.VA,
+      };
+    }
+    if (v === 'InterimSPC') {
+      return {
+        emailField: 'InterimSPCEmail' as const,
+        nameField: 'InterimSPCName' as const,
+        displayLabel: 'Interim SPC',
         slackChannel: SlackChannel.VA,
       };
     }
@@ -2336,6 +2326,7 @@ export const getCampaignClients = async (
   const campaignInstances = await Credentials.findAll({
     where: whereClause,
     order: [['createdAt', 'DESC']],
+    include: [{ model: User, as: 'client', attributes: ['id', 'firstName', 'lastName', 'email'] }],
   });
   const campaigns = campaignInstances.map((c) => c.get({ plain: true }));
 
@@ -2373,12 +2364,39 @@ export const getCampaignClients = async (
     }
   }
 
+  // SPR-19-02-009: Campaign Management was still reading the old
+  // auto-generated Alias_Email out of seekExternalCredentials instead of the
+  // real proxy mailbox from jobsite_credentials. Fetched as a direct query
+  // (not an `include`) because JobsiteCredential.email only decrypts via its
+  // own @AfterFind hook, which never fires for a model pulled in as an
+  // include (see the jobsite-credential-approved email incident).
+  const jobsiteCredentialEmailByClientId = new Map<string, string>();
+  if (clientIds.length) {
+    try {
+      const jobsiteCredentials = await JobsiteCredential.findAll({
+        where: { clientId: { [Op.in]: clientIds } },
+        order: [['createdAt', 'DESC']],
+      });
+      for (const jc of jobsiteCredentials) {
+        // Newest row per client wins — query is already ordered newest-first.
+        if (!jobsiteCredentialEmailByClientId.has(jc.clientId) && jc.email) {
+          jobsiteCredentialEmailByClientId.set(jc.clientId, jc.email);
+        }
+      }
+    } catch (err) {
+      logger.warn('Could not fetch jobsite credentials for campaign clients:', err);
+    }
+  }
+
   const campaignsWithAggregators = campaigns.map((client) => ({
     ...enrichCampaignFields(client),
     aggregators: client.clientId
       ? (aggregatorsByUserId.get(client.clientId) ?? [])
       : [],
     TourCount: tourCountByCredentialsId.get(client.id) ?? 0,
+    jobsiteCredentialEmail: client.clientId
+      ? (jobsiteCredentialEmailByClientId.get(client.clientId) ?? null)
+      : null,
   }));
 
   const totalCount = await Credentials.count({ where: whereClause });
@@ -2442,10 +2460,22 @@ export const getCampaignClientById = async (clientId: string) => {
     });
   }
 
+  // SPR-19-02-009: real proxy mailbox from jobsite_credentials, not the old
+  // Alias_Email — see the matching comment in getCampaignClients above.
+  let jobsiteCredentialEmail: string | null = null;
+  if (clientData.clientId) {
+    const jobsiteCredential = await JobsiteCredential.findOne({
+      where: { clientId: clientData.clientId },
+      order: [['createdAt', 'DESC']],
+    });
+    jobsiteCredentialEmail = jobsiteCredential?.email ?? null;
+  }
+
   return {
     ...enrichCampaignFields(clientData),
     ...applicationCounts,
     aggregators,
+    jobsiteCredentialEmail,
   };
 };
 
@@ -2544,6 +2574,20 @@ export const landOrLaunchCampaign = async (
   let slackBody: string;
 
   if (credData.capitalized !== 'INFLIGHT') {
+    const computed = calculateCampaignFields({
+      SeekSubStartDate: credData.SeekSubStartDate,
+      createdAt: credData.createdAt,
+      SeekSubDurDays: jsonb.SeekSubDurDays,
+      GraceDuration: jsonb.GraceDuration,
+    });
+
+    if (computed.SeekSubExpired === 'YES') {
+      throw new ErrorHandler(
+        `Cannot launch — ${clientName}'s subscription already expired on ${computed.CampaignEnd}`,
+        400
+      );
+    }
+
     await cred.update({
       capitalized: 'INFLIGHT',
       Active: true,
