@@ -278,7 +278,10 @@ const queryClient = useQueryClient();
 
         // ── Contact ───────────────────────────────────────────────
         Email: client.seekEmail,
-        Alias_Email: cred.Alias_Email ?? null,
+        // SPR-19-02-009: real proxy mailbox (jobsite_credentials.email) via
+        // the backend's jobsiteCredentialEmail field, not the retired
+        // Alias_Email from seekExternalCredentials.
+        Alias_Email: client.jobsiteCredentialEmail ?? null,
         Alias_Password: cred.Alias_Password ?? null,
         ExternalPassword: cred.ExternalPassword || null,
 
