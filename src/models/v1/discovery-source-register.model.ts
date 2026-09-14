@@ -72,6 +72,19 @@ export class DiscoverySourceRegister extends Model {
   @Column(DataType.JSONB)
   config?: Record<string, any> | null;
 
+  @AllowNull(true)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  consecutive_zero_runs?: number;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  auto_paused_at?: Date | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  last_permission_error?: string | null;
+
   @CreatedAt
   createdAt!: Date;
 

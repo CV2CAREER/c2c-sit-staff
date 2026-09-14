@@ -1,4 +1,4 @@
-import { queryDigitalOceanAI } from '../../utils/digital-factory';
+import { queryDigitalOceanAIWithUsage, AiUsage } from '../../utils/digital-factory';
 import { getServiceLogger } from '../../utils/createLogger';
 
 const logger = getServiceLogger('discovery-ai-extract');
@@ -11,6 +11,11 @@ export interface ExtractedJobFields {
   visa_sponsorship: string;
   relocation_support: string;
   job_summary: string;
+}
+
+export interface ExtractResult {
+  fields: ExtractedJobFields | null;
+  usage: AiUsage;
 }
 
 const cleanText = (text: string): string =>
@@ -56,23 +61,25 @@ function parseJson(text: string): ExtractedJobFields | null {
 /**
  * Use DigitalOcean AI to read a job posting and extract richer structured fields
  * (skills, technologies, salary, work mode, visa/relocation) than regex alone.
- * Falls back to null on any failure so callers can keep regex-based extraction.
+ * Returns null fields on any failure so callers can keep regex-based extraction.
+ * Always returns usage data for metering.
  */
-export async function extractJobFieldsFromText(text: string): Promise<ExtractedJobFields | null> {
+export async function extractJobFieldsFromText(text: string): Promise<ExtractResult> {
+  const emptyUsage: AiUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
   const content = cleanText(text);
-  if (!content || content.length < 50) return null;
+  if (!content || content.length < 50) return { fields: null, usage: emptyUsage };
 
   try {
-    const raw = await queryDigitalOceanAI(buildPrompt(content), 1, true, 1500);
+    const { text: raw, usage } = await queryDigitalOceanAIWithUsage(buildPrompt(content), 1, true, 1500);
     const parsed = parseJson(raw);
     if (parsed) {
-      logger.info(`AI extracted job fields (skills=${parsed.skills.length}, tech=${parsed.technologies.length})`);
-      return parsed;
+      logger.info(`AI extracted job fields (skills=${parsed.skills.length}, tech=${parsed.technologies.length}, tokens=${usage.total_tokens})`);
+      return { fields: parsed, usage };
     }
     logger.warn('Could not parse AI job extraction response');
-    return null;
+    return { fields: null, usage };
   } catch (err: any) {
     logger.warn(`AI job extraction failed: ${err.message}`);
-    return null;
+    return { fields: null, usage: emptyUsage };
   }
 }
