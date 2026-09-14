@@ -342,12 +342,18 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   name="Alias_Email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Alias Email</FormLabel>
+                      <FormLabel>Application Email</FormLabel>
                       <FormControl>
+                        {/* SPR-19-02-009: this now displays the real proxy
+                            mailbox (jobsite_credentials.email), not the old
+                            Alias_Email. Read-only here — it's managed
+                            through the Jobsite Credentials accept/approve
+                            flow, not editable from Campaign Management. */}
                         <Input
-                          placeholder="Alias Email"
+                          placeholder="Application Email"
                           {...field}
                           value={field.value ?? ''}
+                          disabled
                         />
                       </FormControl>
                       <FormMessage />
@@ -739,6 +745,14 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
               <div className="flex flex-col gap-1">
                 <label htmlFor="">Submission Placement Controller</label>
                 <VACell data={client} variant="SPC" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Interim Discovery Placement Controller</label>
+                <VACell data={client} variant="InterimDPC" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="">Interim Submission Placement Controller</label>
+                <VACell data={client} variant="InterimSPC" />
               </div>
             </form>
           </Form>

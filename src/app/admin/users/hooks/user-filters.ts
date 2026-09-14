@@ -69,22 +69,44 @@ export const groupForUser = (user: any): "customer" | "staff" | null => {
 export const loyaltyForUser = (user: any): "newcomer" | "returnee" =>
   (user?.tourCount ?? 0) > 1 ? "returnee" : "newcomer";
 
+// Each facet holds the set of selected option keys — multiple values within
+// the same facet are OR'd together (e.g. Persona: client + guest matches
+// either), while the facets themselves are AND'd together, standard
+// faceted-search behaviour.
 export interface UserFilterState {
-  persona: string | null;
-  state: string | null;
-  group: string | null;
-  loyalty: string | null;
+  persona: string[];
+  state: string[];
+  group: string[];
+  loyalty: string[];
 }
 
 export const EMPTY_FILTERS: UserFilterState = {
-  persona: null,
-  state: null,
-  group: null,
-  loyalty: null,
+  persona: [],
+  state: [],
+  group: [],
+  loyalty: [],
+};
+
+// Saved segments (locked presets + DB-backed custom ones) may still carry
+// the old single-value shape ({persona: "guest" | null}) from before
+// multi-select — normalize either shape into the current array form so old
+// saves keep working.
+export const normalizeFilterState = (raw: any): UserFilterState => {
+  const toArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+    if (typeof value === "string" && value) return [value];
+    return [];
+  };
+  return {
+    persona: toArray(raw?.persona),
+    state: toArray(raw?.state),
+    group: toArray(raw?.group),
+    loyalty: toArray(raw?.loyalty),
+  };
 };
 
 export const hasActiveFacetFilters = (filters: UserFilterState): boolean =>
-  !!(filters.persona || filters.state || filters.group || filters.loyalty);
+  filters.persona.length > 0 || filters.state.length > 0 || filters.group.length > 0 || filters.loyalty.length > 0;
 
 // Matches every facet in `filters` except the one named in `except` — used
 // to compute each pill's "how many results if I also picked this" count
@@ -96,9 +118,12 @@ export const matchesFacets = (
   filters: UserFilterState,
   except?: keyof UserFilterState,
 ): boolean => {
-  if (except !== "persona" && filters.persona && personaForUser(user) !== filters.persona) return false;
-  if (except !== "state" && filters.state && stateForUser(user) !== filters.state) return false;
-  if (except !== "group" && filters.group && groupForUser(user) !== filters.group) return false;
-  if (except !== "loyalty" && filters.loyalty && loyaltyForUser(user) !== filters.loyalty) return false;
+  if (except !== "persona" && filters.persona.length > 0 && !filters.persona.includes(personaForUser(user) ?? ""))
+    return false;
+  if (except !== "state" && filters.state.length > 0 && !filters.state.includes(stateForUser(user))) return false;
+  if (except !== "group" && filters.group.length > 0 && !filters.group.includes(groupForUser(user) ?? ""))
+    return false;
+  if (except !== "loyalty" && filters.loyalty.length > 0 && !filters.loyalty.includes(loyaltyForUser(user)))
+    return false;
   return true;
 };

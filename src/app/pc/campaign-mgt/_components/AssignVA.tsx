@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 interface VACellProps {
     data: null | any;
-    variant?: 'DPC' | 'VPC' | 'SPC';
+    variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
 }
 
 export const VACell = ({ data = null, variant = 'DPC' }: VACellProps) => {
@@ -17,7 +17,11 @@ export const VACell = ({ data = null, variant = 'DPC' }: VACellProps) => {
             ? 'VetEmail'
             : variant === 'SPC'
               ? 'CompletedEmail'
-              : 'VaEmail';
+              : variant === 'InterimDPC'
+                ? 'InterimDPCEmail'
+                : variant === 'InterimSPC'
+                  ? 'InterimSPCEmail'
+                  : 'VaEmail';
     const [selected, setSelected] = useState<any>(null);
     const [unassign, setUnassign] = useState(data?.[emailField]);
     const queryClient = useQueryClient();
@@ -44,7 +48,16 @@ export const VACell = ({ data = null, variant = 'DPC' }: VACellProps) => {
         }
     }, [vaData, data?.[emailField]]);
 
-    const label = variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
+    const label =
+        variant === 'VPC'
+            ? 'VPC'
+            : variant === 'SPC'
+              ? 'SPC'
+              : variant === 'InterimDPC'
+                ? 'Interim DPC'
+                : variant === 'InterimSPC'
+                  ? 'Interim SPC'
+                  : 'DPC';
 
     async function assignVa(credId: string, VaEmail: string | null) {
         const tId = toast.loading(

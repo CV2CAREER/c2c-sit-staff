@@ -12,9 +12,21 @@ import { AssignmentRoleKey } from "@/hooks/api/admin/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Send, X } from "lucide-react";
 
-const ROLE_LABELS: Record<AssignmentRoleKey, string> = { dpc: "DPC", vpc: "VPC", spc: "SPC" };
-const ROLE_VARIANT: Record<AssignmentRoleKey, "DPC" | "VPC" | "SPC"> = { dpc: "DPC", vpc: "VPC", spc: "SPC" };
-const ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc"];
+const ROLE_LABELS: Record<AssignmentRoleKey, string> = {
+  dpc: "DPC",
+  vpc: "VPC",
+  spc: "SPC",
+  interimdpc: "Interim DPC",
+  interimspc: "Interim SPC",
+};
+const ROLE_VARIANT: Record<AssignmentRoleKey, "DPC" | "VPC" | "SPC" | "InterimDPC" | "InterimSPC"> = {
+  dpc: "DPC",
+  vpc: "VPC",
+  spc: "SPC",
+  interimdpc: "InterimDPC",
+  interimspc: "InterimSPC",
+};
+const ROLE_KEYS: AssignmentRoleKey[] = ["dpc", "vpc", "spc", "interimdpc", "interimspc"];
 const OVERLOAD = 15;
 // Radix Select.Item rejects an empty-string value, so "unassign" needs a
 // real sentinel that gets translated back to "" before it hits the API.

@@ -14,6 +14,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import HintMark from "./HintMark";
 import {
   useDeletedVcsPrompts,
   useRestoreVcsPrompt,
@@ -79,6 +80,7 @@ const RecycleBinDialog = ({ onRestored }: RecycleBinDialogProps) => {
       >
         <Archive size={16} />
         Recycle Bin
+        <HintMark text="View and restore prompt keys that have been soft-deleted." />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

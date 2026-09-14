@@ -11,12 +11,12 @@ export const ROLE_ROUTES: Record<string, string> = {
   sales: "/sales/dashboard",
   coach: "/coach/dashboard",
   customer: "/cse/dashboard",
-  assistant: "/assistant/dashboard",
-  tpc: "/assistant/dashboard",
+  assistant: "/pc/dashboard",
+  tpc: "/pc/dashboard",
   client: "/login",
   guest: "/login",
-  test: "/assistant/dashboard",
-  pc: "/assistant/dashboard",
+  test: "/pc/dashboard",
+  pc: "/pc/dashboard",
   cec: "/cec/dashboard",
 };
 

@@ -11,6 +11,7 @@ import DeletePromptDialog from "../_components/DeletePromptDialog";
 import PromptEditView from "../_components/PromptEditView";
 import PromptVersionsView from "../_components/PromptVersionsView";
 import AllSimulationsSection from "../_components/AllSimulationsSection";
+import PageHint from "../_components/PageHint";
 import {
   useVcsPrompts,
   useDeletedVcsPrompts,
@@ -18,6 +19,35 @@ import {
   VcsPrompt,
   VcsPromptVersion,
 } from "../hooks/use-vcs-prompts";
+
+const PROMPT_DETAIL_HINTS = [
+  {
+    label: "Edit / Versions toggle",
+    description: "Switch between editing the current draft and browsing every past version of this key.",
+  },
+  {
+    label: "DRAFT / LIVE badge",
+    description: "DRAFT means there are unsaved changes; LIVE means this is what production is currently reading.",
+  },
+  {
+    label: "Save draft / Push to Live",
+    description:
+      "Edits are saved as a draft first and don't affect production. Push to Live promotes that draft to be the active version.",
+  },
+  {
+    label: "Edit / Simulate / History tabs",
+    description:
+      "Edit the raw prompt text, Simulate tests it against sample input without touching production, and History reviews past AI calls made with this prompt.",
+  },
+  {
+    label: "Metadata panel",
+    description: "AI model settings for this key.",
+  },
+  {
+    label: "Delete",
+    description: "Soft-deletes this key, moving it to the Recycle Bin on the main Prompts page (recoverable).",
+  },
+];
 
 type Mode = "edit" | "versions";
 
@@ -112,12 +142,18 @@ const PromptDetailContent = ({ id }: { id: string }) => {
         description="Manage this prompt's draft, live, and retired versions."
         renderJSX={
           <div className="flex items-center gap-3">
+            <PageHint title="What's on this page" items={PROMPT_DETAIL_HINTS} />
             <div className="flex items-center gap-1 rounded-full bg-gray-100 p-1">
               {(["edit", "versions"] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
+                  title={
+                    m === "edit"
+                      ? "Edit this key's prompt text and metadata"
+                      : "Browse and compare every past version of this key"
+                  }
                   className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
                     mode === m ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"
                   }`}
@@ -131,6 +167,7 @@ const PromptDetailContent = ({ id }: { id: string }) => {
               size="sm"
               className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => setDeleteTarget(prompt)}
+              title="Soft-delete this key — it moves to the Recycle Bin and can be restored later"
             >
               <Trash2 size={14} />
               Delete

@@ -98,6 +98,10 @@ export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_GENERATE_AMBASSADOR_LINK = (userId: string) =>
   `/api/v1/admin/ambassador/generate-link/${userId}`;
+export const ADMIN_ASSIGN_REFERRER = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/referrer`;
+export const ADMIN_APPROVE_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/approve`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';
@@ -246,6 +250,7 @@ export const ADMIN_VCS_PROMPT_BY_ID = (id: string) =>
 export const ADMIN_VCS_PROMPT_RESTORE = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_PERMANENT = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_USAGE_SUMMARY = '/api/v1/admin/prompts/usage/summary';
+export const ADMIN_VCS_PROMPT_USAGE_LAST_USED = '/api/v1/admin/prompts/usage/last-used';
 export const ADMIN_VCS_PROMPT_USAGE_LOGS = '/api/v1/admin/prompts/usage';
 export const ADMIN_VCS_PROMPT_VERSIONS = (vcsId: string) =>
   `/api/v1/admin/prompts/${vcsId}/versions`;
@@ -311,6 +316,14 @@ export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
 export const ADMIN_TEMPLATES = '/api/v1/admin/templates';
 export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO =
   '/api/v1/communication-template/notify-missing-info';
+export const ADMIN_EMAIL_TRIGGERS = '/api/v1/admin/templates/triggers';
+export const ADMIN_EMAIL_TRIGGER_BINDING = (triggerKey: string) =>
+  `/api/v1/admin/templates/triggers/${encodeURIComponent(triggerKey)}`;
+export const ADMIN_TEMPLATE_TEST_SEND_RESOLVE = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send/resolve`;
+export const ADMIN_TEMPLATE_TEST_SEND = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send`;
+export const ADMIN_TEMPLATE_TEST_SEND_DRAFT = '/api/v1/admin/templates/test-send-draft';
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;

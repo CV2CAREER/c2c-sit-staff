@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StyledDataGridPro } from "@/utils/table";
 import { useVcsPromptUsageSummary, useVcsPromptUsageLogs } from "../hooks/use-vcs-prompt-usage";
+import { columnHeaderHint } from "./HintMark";
 
 const formatDate = (value?: string) =>
   value
@@ -19,43 +20,71 @@ const formatMs = (ms?: number) => {
 };
 
 const summaryColumns: GridColDef[] = [
-  { field: "key", headerName: "Key", flex: 1, minWidth: 240 },
-  { field: "version", headerName: "Version", width: 90, valueFormatter: (v) => v ?? "—" },
-  { field: "totalCalls", headerName: "Calls", width: 90 },
+  {
+    field: "key",
+    headerName: "Key",
+    flex: 1,
+    minWidth: 240,
+    renderHeader: () =>
+      columnHeaderHint("Key", "The prompt key these stats are aggregated for. Click a row to see every individual call."),
+  },
+  {
+    field: "version",
+    headerName: "Version",
+    width: 90,
+    valueFormatter: (v) => v ?? "—",
+    renderHeader: () =>
+      columnHeaderHint("Version", "Prompt version these stats cover (blank if calls span multiple versions)."),
+  },
+  {
+    field: "totalCalls",
+    headerName: "Calls",
+    width: 90,
+    renderHeader: () => columnHeaderHint("Calls", "Total number of times this prompt has been called."),
+  },
   {
     field: "avgDurationMs",
     headerName: "Avg Time",
     width: 150,
     valueFormatter: (value) => formatMs(value as number),
+    renderHeader: () => columnHeaderHint("Avg Time", "Average AI response time across all calls."),
   },
   {
     field: "minDurationMs",
     headerName: "Min Time",
     width: 150,
     valueFormatter: (value) => formatMs(value as number),
+    renderHeader: () => columnHeaderHint("Min Time", "The fastest recorded response time."),
   },
   {
     field: "maxDurationMs",
     headerName: "Max Time",
     width: 150,
     valueFormatter: (value) => formatMs(value as number),
+    renderHeader: () => columnHeaderHint("Max Time", "The slowest recorded response time."),
   },
   {
     field: "avgPromptLength",
     headerName: "Avg Prompt",
     width: 150,
     valueFormatter: (value) => `${(value as number).toLocaleString()} ch`,
+    renderHeader: () =>
+      columnHeaderHint("Avg Prompt", "Average length of the prompt text sent to the AI, in characters."),
   },
   {
     field: "avgResponseLength",
     headerName: "Avg Response",
     width: 150,
     valueFormatter: (value) => `${(value as number).toLocaleString()} ch`,
+    renderHeader: () =>
+      columnHeaderHint("Avg Response", "Average length of the AI's response, in characters."),
   },
   {
     field: "successRate",
     headerName: "Success",
     width: 150,
+    renderHeader: () =>
+      columnHeaderHint("Success", "Percentage of calls that completed without error."),
     renderCell: (params) => {
       const rate = params.value as number;
       return (
@@ -78,6 +107,7 @@ const summaryColumns: GridColDef[] = [
     headerName: "Last run",
     width: 180,
     valueFormatter: (value) => formatDate(value as string),
+    renderHeader: () => columnHeaderHint("Last run", "When this prompt was most recently called."),
   },
 ];
 
@@ -87,30 +117,43 @@ const logColumns: GridColDef[] = [
     headerName: "When",
     width: 180,
     valueFormatter: (value) => formatDate(value as string),
+    renderHeader: () => columnHeaderHint("When", "Timestamp of this individual AI call."),
   },
-  { field: "version", headerName: "Version", width: 90, valueFormatter: (v) => v ?? "—" },
+  {
+    field: "version",
+    headerName: "Version",
+    width: 90,
+    valueFormatter: (v) => v ?? "—",
+    renderHeader: () => columnHeaderHint("Version", "Prompt version used for this call."),
+  },
   {
     field: "durationMs",
     headerName: "Duration",
     width: 110,
     valueFormatter: (value) => formatMs(value as number),
+    renderHeader: () => columnHeaderHint("Duration", "How long this specific call took."),
   },
   {
     field: "promptLength",
     headerName: "Prompt",
     width: 100,
     valueFormatter: (value) => `${(value as number).toLocaleString()} ch`,
+    renderHeader: () => columnHeaderHint("Prompt", "Length of the prompt text sent, in characters."),
   },
   {
     field: "responseLength",
     headerName: "Response",
     width: 110,
     valueFormatter: (value) => (value != null ? `${(value as number).toLocaleString()} ch` : "—"),
+    renderHeader: () =>
+      columnHeaderHint("Response", "Length of the AI's response, in characters (blank if it failed)."),
   },
   {
     field: "success",
     headerName: "Status",
     width: 100,
+    renderHeader: () =>
+      columnHeaderHint("Status", "Whether the call succeeded or failed — hover a Failed badge for the error."),
     renderCell: (params) =>
       params.value ? (
         <span className="flex h-full items-center gap-1 text-xs font-medium text-emerald-600">
@@ -133,6 +176,7 @@ const logColumns: GridColDef[] = [
     flex: 1,
     minWidth: 200,
     valueFormatter: (value) => value ?? "",
+    renderHeader: () => columnHeaderHint("Error", "The error message returned, if the call failed."),
   },
 ];
 

@@ -260,7 +260,10 @@ const queryClient = useQueryClient();
 
         // ── Contact ───────────────────────────────────────────────
         Email: client.seekEmail,
-        Alias_Email: cred.Alias_Email ?? null,
+        // SPR-19-02-009: real proxy mailbox (jobsite_credentials.email) via
+        // the backend's jobsiteCredentialEmail field, not the retired
+        // Alias_Email from seekExternalCredentials.
+        Alias_Email: client.jobsiteCredentialEmail ?? null,
         Alias_Password: cred.Alias_Password ?? null,
         ExternalPassword: cred.ExternalPassword || null,
 
@@ -324,6 +327,11 @@ const queryClient = useQueryClient();
         CompletedEmail: client.AssignedCompletedEmail ?? null,
         AssignedCompletedName: client.AssignedCompletedName ?? null,
         AssignedCompletedEmail: client.AssignedCompletedEmail ?? null,
+        // ── Interim DPC / SPC assignment ─
+        InterimDPCName: client.InterimDPCName ?? null,
+        InterimDPCEmail: client.InterimDPCEmail ?? null,
+        InterimSPCName: client.InterimSPCName ?? null,
+        InterimSPCEmail: client.InterimSPCEmail ?? null,
         updateBy: client.updatedBy ?? null,
 
         // ── Metadata ──────────────────────────────────────────────
@@ -417,19 +425,22 @@ const queryClient = useQueryClient();
     setRefetch(false);
   };
 
+  const [flightTogglingId, setFlightTogglingId] = useState<string | null>(null);
+
   const handleFlight = useCallback((clientId: string) => {
-    toast.loading("Toggling campaign flight status...");
+    setFlightTogglingId(clientId);
+    const toastId = toast.loading("Toggling campaign flight status...");
     toggleFlightStatusMutation.mutate(
       { clientId },
       {
         onSuccess: (res: any) => {
-          toast.dismiss();
-          toast.success(res.message || "Campaign flight status updated successfully");
+          setFlightTogglingId(null);
+          toast.success(res.message || "Campaign flight status updated successfully", { id: toastId });
           queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
         },
         onError: (err: any) => {
-          toast.dismiss();
-          toast.error(err.message || "Failed to toggle flight status");
+          setFlightTogglingId(null);
+          toast.error(err.message || "Failed to toggle flight status", { id: toastId });
         },
       }
     );
@@ -451,9 +462,10 @@ const queryClient = useQueryClient();
     tableDataRef.current,
     setTableData,
     generateAQFn,
-    handleFlight
+    handleFlight,
+    flightTogglingId
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [columnHeaders, clientDataState, isEditable, route, table, generateAQFn, handleFlight]);
+  ), [columnHeaders, clientDataState, isEditable, route, table, generateAQFn, handleFlight, flightTogglingId]);
 
 
   return (

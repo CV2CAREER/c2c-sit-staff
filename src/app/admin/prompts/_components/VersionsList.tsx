@@ -19,6 +19,7 @@ import {
   VcsPromptVersion,
 } from "../hooks/use-vcs-prompts";
 import { VERSION_STATUS_BADGE_CLASS, VERSION_STATUS_LABEL } from "./versionStatus";
+import HintMark from "./HintMark";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
@@ -98,7 +99,10 @@ const VersionsList = ({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-bold text-gray-900">Versions</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+          Versions
+          <HintMark text="Every saved version of this key: draft, live, and retired." />
+        </h3>
         {versions.map((version) => {
           const isSelected = selectedIds.includes(version.id);
           return (
@@ -117,6 +121,13 @@ const VersionsList = ({
                   <span className="text-sm font-bold text-gray-900">v{version.version}</span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${VERSION_STATUS_BADGE_CLASS[version.status]}`}
+                    title={
+                      version.status === "live"
+                        ? "This is the version currently used in production"
+                        : version.status === "draft"
+                          ? "Unsaved/unpushed changes — not used in production"
+                          : "A previous live version, no longer active"
+                    }
                   >
                     {VERSION_STATUS_LABEL[version.status]}
                   </span>
@@ -135,6 +146,7 @@ const VersionsList = ({
                   variant="outline"
                   className="gap-1.5"
                   onClick={() => onView(version)}
+                  title="Show this version side-by-side in the diff view above"
                 >
                   <Eye size={13} />
                   View
@@ -146,6 +158,7 @@ const VersionsList = ({
                     className="gap-1.5"
                     disabled={isBusy}
                     onClick={() => setConfirmAction({ type: "rollback" })}
+                    title="Promote the most recently retired version back to live"
                   >
                     <RotateCcw size={13} />
                     Roll back
@@ -158,6 +171,7 @@ const VersionsList = ({
                     className="gap-1.5"
                     disabled={isBusy}
                     onClick={() => setConfirmAction({ type: "restore", version })}
+                    title="Make this version live again — the current live version will be retired"
                   >
                     <RotateCcw size={13} />
                     Restore
