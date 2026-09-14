@@ -20,6 +20,7 @@ import {
   stateForUser,
   groupForUser,
   loyaltyForUser,
+  subscriptionForUser,
   matchesFacets,
 } from "@/app/admin/users/hooks/user-filters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,13 +42,13 @@ const LOCKED_SEGMENTS: SavedSegment[] = [
     id: "locked-dormant-clients",
     name: "Dormant clients",
     locked: true,
-    filters: { persona: [], state: ["dormant"], group: ["customer"], loyalty: [] },
+    filters: { persona: [], state: ["dormant"], group: ["customer"], loyalty: [], subscription: [] },
   },
   {
     id: "locked-new-guests",
     name: "New guests",
     locked: true,
-    filters: { persona: ["guest"], state: [], group: [], loyalty: ["newcomer"] },
+    filters: { persona: ["guest"], state: [], group: [], loyalty: ["newcomer"], subscription: [] },
   },
 ];
 
@@ -127,6 +128,9 @@ const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProp
     state: stateForUser,
     group: groupForUser,
     loyalty: loyaltyForUser,
+    // Not rendered as a facet here (Admin-only per SPR-19-15-003) — present
+    // only so this object satisfies the shared UserFilterState shape.
+    subscription: subscriptionForUser,
   };
 
   // <details> gives every section a native, accessible dropdown/disclosure —
