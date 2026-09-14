@@ -419,8 +419,12 @@ export const assignVA = catchAsyncError(async (req: Request, res: Response) => {
     ? `${authenticatedUser.firstName} ${authenticatedUser.lastName}`
     : undefined;
 
-  const validVariant: 'DPC' | 'VPC' | 'SPC' =
-    variant === 'VPC' ? 'VPC' : variant === 'SPC' ? 'SPC' : 'DPC';
+  const validVariant: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC' =
+    variant === 'VPC' ? 'VPC'
+      : variant === 'SPC' ? 'SPC'
+      : variant === 'InterimDPC' ? 'InterimDPC'
+      : variant === 'InterimSPC' ? 'InterimSPC'
+      : 'DPC';
 
   const result = await assignVAToClient(
     credId,

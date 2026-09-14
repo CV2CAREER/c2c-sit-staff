@@ -123,6 +123,9 @@ export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
 export const PRODUCT_OWNER_EMAIL = process.env.PRODUCT_OWNER_EMAIL || process.env.TEAM_EMAIL!;
 // BCC'd on every customer-facing email (not internal/admin notifications) — see sendMail() in config/sendGrid.ts
 export const CUSTOMER_EMAIL_BCC = process.env.CUSTOMER_EMAIL_BCC;
+// Fixed destination for admin "test send" — deliberately never a real
+// customer or the clicking admin's own inbox, see CommunicationTemplateService.sendTestEmail
+export const EMAIL_TEST_RECIPIENT = process.env.EMAIL_TEST_RECIPIENT;
 
 // ACCESS TOKEN SECRET
 export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;

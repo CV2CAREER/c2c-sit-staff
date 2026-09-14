@@ -95,14 +95,31 @@ const normalizeStates = (locations: string[] | undefined | null, states: string[
   return Array.from(new Set(combined)).slice(0, 10);
 };
 
-const buildClientProfile = (profile: Profile): string => {
+interface ClientProfileContext {
+  text: string;
+  // True when the client accepts anywhere in their target country — either
+  // explicit ("All Australia") or by omission (a country was given but no
+  // state/city/location narrowed it further). Deciding this in code means
+  // the AI is never asked to infer it from a wall of prompt text.
+  isCountryWide: boolean;
+  // Explicit selected states, or the single state inferred from suburbs
+  // (see inferStateFromLocations). Empty when isCountryWide, since every
+  // state is already accepted in that case.
+  acceptedStates: string[];
+}
+
+const buildClientProfile = (profile: Profile): ClientProfileContext => {
     const hasAllLocations =
       (profile.locations || []).some(l => l.trim().toLowerCase().startsWith('all ')) ||
-      (profile.state || []).some(s => s.trim().toLowerCase().startsWith('all '));
+      (profile.state || []).some(s => s.trim().toLowerCase().startsWith('all ')) ||
+      (profile.municipals || []).some(m => m.trim().toLowerCase().startsWith('all ')) ||
+      (profile.city || []).some(c => c.trim().toLowerCase().startsWith('all '));
 
     const locations = hasAllLocations ? [] : normalizeLocations(profile.locations);
     const states = hasAllLocations ? [] : normalizeStates(profile.locations, profile.state);
     const cities = hasAllLocations ? [] : normalizeLocations(profile.city);
+    const municipals = hasAllLocations ? [] : normalizeLocations(profile.municipals);
+    const allLocations = [...locations, ...municipals];
 
     // State-priority inference: if no explicit state but all suburbs map to one state, infer it
     let inferred: string | null = null;
@@ -115,31 +132,66 @@ const buildClientProfile = (profile: Profile): string => {
       ? `${safeList(displayStates)} (inferred from ${locations.length} locations in ${inferred})`
       : safeList(displayStates);
 
-    return [
+    // A client who only set a country, with nothing narrower at all, is
+    // functionally identical to an explicit "All {country}" pick — they
+    // just never had to type it. Treat it the same way rather than leaving
+    // the AI to guess whether silence means country-wide or unspecified.
+    const noNarrowerGeo = !hasAllLocations && allLocations.length === 0 && cities.length === 0 && displayStates.length === 0;
+    const isCountryWide = hasAllLocations || (noNarrowerGeo && !!profile.country?.trim());
+
+    const countryLine = isCountryWide && !hasAllLocations && profile.country
+      ? `${profile.country} (no state/city restriction given — accept anywhere in ${profile.country})`
+      : (profile.country || "Not specified");
+
+    const text = [
       `- Target Titles: ${safeList(profile.titles)}`,
       `- Excluded Titles: ${safeList(profile.titlesExcluded)}`,
       `- Target Keywords: ${safeList(profile.keywords)}`,
       `- Excluded Keywords: ${safeList(profile.keywordsExcluded)}`,
-      `- Target Locations: ${safeList(locations)}`,
+      `- Target Locations: ${safeList(allLocations)}`,
       `- Target Cities: ${safeList(cities)}`,
+      `- Excluded Cities: ${safeList(profile.cityExcluded)}`,
       `- Target States: ${statesLine}`,
-      `- Target Country: ${profile.country || "Not specified"}`,
+      `- Excluded States: ${safeList(profile.stateExcluded)}`,
+      `- Target Country: ${countryLine}`,
       `- Salary Range (stored in thousands): ${profile.minSalary ?? "Not specified"} - ${profile.maxSalary ?? "Not specified"}`,
       `- Target Industries: ${safeList(profile.industriesInclude)}`,
       `- Excluded Industries: ${safeList(profile.industriesExclude)}`,
       `- Target Job Types: ${safeList(profile.jobTypes)}`,
       `- Work Rights: ${safeList(profile.workingRight)}`,
     ].join("\n");
+
+    return { text, isCountryWide, acceptedStates: isCountryWide ? [] : displayStates };
   };
 
-const buildJobDetails = (job: ManualApplication): string => {
-  return [
+const buildJobDetails = (job: ManualApplication, clientContext: ClientProfileContext): string => {
+  const lines = [
     `- Title: ${extractHyperlinkTitle(job.Job_Title)}`,
     `- Company: ${job.Advertiser || "N/A"}`,
     `- Location: ${job.Location || "N/A"}`,
     `- Country: ${job.Country || "N/A"}`,
     `- Job Type: ${job.Job_Type || "N/A"}`,
-  ].join("\n");
+  ];
+
+  // Pre-compute the state match instead of leaving it to the AI to notice
+  // that e.g. Tamworth is in NSW when NSW is an accepted state but Tamworth
+  // itself isn't in the client's (necessarily incomplete) Preferred Cities
+  // list — that's exactly the failure mode this fixes.
+  if (!clientContext.isCountryWide && clientContext.acceptedStates.length > 0 && job.Location) {
+    const jobState = getStateForSuburb(job.Location);
+    if (jobState) {
+      const matches = clientContext.acceptedStates.includes(jobState);
+      lines.push(
+        `- Location Resolves To State: ${jobState} — ${
+          matches
+            ? "this IS one of the client's accepted states, so location PASSES regardless of whether the exact city appears in Target Cities"
+            : "this is NOT one of the client's accepted states"
+        }`,
+      );
+    }
+  }
+
+  return lines.join("\n");
 };
 
 export const getVcsPrompt = async (): Promise<{ prompt: string; version: string }> => {
@@ -220,11 +272,11 @@ export const classifyJob = async (
 ): Promise<AiVettingResult> => {
   const { prompt: promptTemplate, version } = await getVcsPrompt();
 
-  const clientProfile = buildClientProfile(profile);
-  const jobDetails = buildJobDetails(job);
+  const clientContext = buildClientProfile(profile);
+  const jobDetails = buildJobDetails(job, clientContext);
 
   const prompt = promptTemplate
-    .replace(/\{\{CLIENT_PROFILE\}\}/g, clientProfile)
+    .replace(/\{\{CLIENT_PROFILE\}\}/g, clientContext.text)
     .replace(/\{\{JOB_DETAILS\}\}/g, jobDetails);
 
   logger.info(
@@ -232,7 +284,11 @@ export const classifyJob = async (
   );
 
   try {
-    const raw = await queryDigitalOceanAI(prompt);
+    // jsonMode enforces valid JSON at the API level instead of relying
+    // purely on the prompt's own "return ONLY JSON" instruction, with
+    // parseClassificationResponse's regex extraction as a second-line
+    // fallback for whatever that still doesn't catch.
+    const raw = await queryDigitalOceanAI(prompt, 2, true);
     const result = parseClassificationResponse(raw);
     logger.info(
       `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"} (prompt v${version})`

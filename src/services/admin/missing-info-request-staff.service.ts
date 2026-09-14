@@ -171,7 +171,7 @@ export class MissingInfoRequestStaffService {
           ...(host ? { host } : {}),
           ...(protocol ? { protocol } : {}),
           body: [
-            `RC follow-up — ${client.firstName} ${client.lastName || ""} was sent "${template.name}" via ${data.channel === "whatsapp" ? "WhatsApp" : "Email"}.`,
+            `CSC follow-up — ${client.firstName} ${client.lastName || ""} was sent "${template.name}" via ${data.channel === "whatsapp" ? "WhatsApp" : "Email"} by ${staffName}.`,
             `Please confirm delivery and follow up if unopened after 48h.`,
           ].join("\n"),
         });
@@ -496,7 +496,7 @@ export class MissingInfoRequestStaffService {
           ...(host ? { host } : {}),
           ...(protocol ? { protocol } : {}),
           body: [
-            `RC follow-up — Reminder sent to ${clientSummaries.join(", ")}.`,
+            `CSC follow-up — Reminder sent to ${clientSummaries.join(", ")} by ${staffName}.`,
             `${totalProcessed} clients, ${totalProcessed} templates. Please confirm delivery.`,
           ].join("\n"),
         });
@@ -894,7 +894,7 @@ export class MissingInfoRequestStaffService {
           ...(host ? { host } : {}),
           ...(protocol ? { protocol } : {}),
           body: [
-            `RC follow-up — Reminder sent to ${clientName} for "${templateName || request.missingInfoType}".`,
+            `CSC follow-up — Reminder sent to ${clientName} for "${templateName || request.missingInfoType}" by ${staffName}.`,
             `${newCount} reminder${newCount > 1 ? "s" : ""} sent in total. Please confirm delivery.`,
           ].join("\n"),
         });

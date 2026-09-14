@@ -3,12 +3,15 @@ import { Credentials } from "../../models/v1/credentials.model";
 import { getServiceLogger } from "../../utils/createLogger";
 import { getSequelize } from "../../utils/sequelize";
 import { calculateCampaignFields, parseDate } from "../../utils/campaign-calculator";
-import { Role } from "../../utils/enum";
+import {
+  NOT_YET_LIVE_PHASES,
+  resolveCurrentJourneyPhases,
+} from "../../utils/resolveClientJourneyPhase";
 
 const logger = getServiceLogger("pipeline-stats-service");
 
 const FLIGHT_STATUSES = ["INFLIGHT", "FLIGHT"];
-const ONBOARDING_ROLES = [Role.CLIENT, Role.GUEST];
+const NOT_YET_LIVE_DAY_THRESHOLD = 14;
 
 export type PipelineRangeKey = "today" | "week" | "month" | "quarter" | "year" | "all";
 
@@ -48,6 +51,8 @@ export interface PipelineStats {
 
 interface CredentialsCoreRow {
   id: string;
+  clientId: string | null;
+  tourId: string | null;
   capitalized: string | null;
   SeekSubStartDate: string | null;
   createdAt: string | Date;
@@ -55,6 +60,11 @@ interface CredentialsCoreRow {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const daysAgo = (from: string | Date, now: Date): number => {
+  const fromDate = from instanceof Date ? from : new Date(from);
+  return Math.max(0, Math.floor((now.getTime() - fromDate.getTime()) / DAY_MS));
+};
 
 // Rolling trailing windows anchored at "now", not calendar-aligned boundaries.
 // Calendar boundaries (e.g. startOf('week')) don't nest inside each other —
@@ -142,18 +152,24 @@ class PipelineStatsService {
     };
   }
 
-  // Paid-not-in-flight and completed only need non-PII columns (capitalized,
-  // the campaign date fields), so a raw query avoids paying the per-row PII
-  // decryption cost that the Credentials model's @AfterFind hook incurs.
+  // Completed only needs non-PII columns (capitalized, the campaign date
+  // fields), so a raw query avoids paying the per-row PII decryption cost
+  // that the Credentials model's @AfterFind hook incurs. The paid-and-HOLD
+  // rows found here (clientId + tourId) get handed off to
+  // splitPaidByPhaseAndDays() for the Phase 1-4 / days-on-hold split, since
+  // that needs a client_journey_steps lookup this raw query can't do.
   private async countByCampaignEnd(
     rangeStart: Date | null,
-  ): Promise<{ paidNotInFlight: number; completed: number }> {
+  ): Promise<{
+    completed: number;
+    paidCandidates: { id: string; tourId: string | null; createdAt: string | Date }[];
+  }> {
     const sequelize = getSequelize();
     const dateCondition = rangeStart ? `AND "createdAt" >= :rangeStart` : "";
 
     const rows = await sequelize.query<CredentialsCoreRow>(
       `
-        SELECT id, capitalized, "SeekSubStartDate", "createdAt", "seekExternalCredentials"
+        SELECT id, "clientId", "tourId", capitalized, "SeekSubStartDate", "createdAt", "seekExternalCredentials"
         FROM credentials
         WHERE "isDeleted" = false
           ${dateCondition}
@@ -165,8 +181,8 @@ class PipelineStatsService {
     );
 
     const now = new Date();
-    let paidNotInFlight = 0;
     let completed = 0;
+    const paidCandidates: { id: string; tourId: string | null; createdAt: string | Date }[] = [];
 
     for (const row of rows) {
       const cred = row.seekExternalCredentials || {};
@@ -186,66 +202,65 @@ class PipelineStatsService {
 
       if (hasEnded) {
         completed += 1;
-      } else if (row.capitalized === "HOLD") {
-        paidNotInFlight += 1;
+      } else if (row.capitalized === "HOLD" && row.clientId) {
+        paidCandidates.push({ id: row.clientId, tourId: row.tourId, createdAt: row.createdAt });
       }
     }
 
-    return { paidNotInFlight, completed };
+    return { completed, paidCandidates };
   }
 
-  // Onboarding = client/guest users with no currently active paid plan —
-  // same "active plan" definition used by the subscription-tier aggregator
-  // (paymentStatus completed, not expired).
-  private async countOnboarding(rangeStart: Date | null): Promise<number> {
-    const sequelize = getSequelize();
-    const dateCondition = rangeStart ? `AND u."createdAt" >= :rangeStart` : "";
+  // Paid ("HOLD") clients still in Phase 1-4 (not yet LIVE / Phase 5
+  // campaign_launched attestation) split by how long they've been on hold:
+  // 14+ days = stuck ("Paid · Not In-Flight"), under 14 days = still working
+  // through onboarding normally ("Onboarding") — same rule pipeline-lists
+  // uses for the matching detail lists.
+  private async splitPaidByPhaseAndDays(
+    paidCandidates: { id: string; tourId: string | null; createdAt: string | Date }[],
+  ): Promise<{ paidNotInFlight: number; onboarding: number }> {
+    const currentPhases = await resolveCurrentJourneyPhases(paidCandidates);
+    const now = new Date();
 
-    const rows = await sequelize.query<{ count: string | number }>(
-      `
-        SELECT COUNT(*)::bigint AS count
-        FROM users u
-        WHERE u."deletedAt" IS NULL
-          AND u.role IN (:roles)
-          ${dateCondition}
-          AND NOT EXISTS (
-            SELECT 1 FROM plans p
-            WHERE p."userId" = u.id
-              AND p."deletedAt" IS NULL
-              AND p."paymentStatus" = 'completed'
-              AND COALESCE(p."hasExpired", false) = false
-          )
-      `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          roles: ONBOARDING_ROLES,
-          ...(rangeStart ? { rangeStart: rangeStart.toISOString() } : {}),
-        },
-      },
-    );
+    let paidNotInFlight = 0;
+    let onboarding = 0;
 
-    return Number(rows[0]?.count) || 0;
+    for (const candidate of paidCandidates) {
+      const phase = currentPhases.get(candidate.id)?.phaseKey;
+      if (!phase || !(NOT_YET_LIVE_PHASES as string[]).includes(phase)) {
+        continue;
+      }
+
+      if (daysAgo(candidate.createdAt, now) >= NOT_YET_LIVE_DAY_THRESHOLD) {
+        paidNotInFlight += 1;
+      } else {
+        onboarding += 1;
+      }
+    }
+
+    return { paidNotInFlight, onboarding };
   }
 
   async getPipelineStats(range: PipelineRangeKey): Promise<PipelineStats> {
     const rangeStart = resolveRangeStart(range);
 
-    const [flight, campaignCounts, onboarding] = await Promise.all([
+    const [flight, campaignCounts] = await Promise.all([
       this.countInFlight(rangeStart),
       this.countByCampaignEnd(rangeStart),
-      this.countOnboarding(rangeStart),
     ]);
 
+    const { paidNotInFlight, onboarding } = await this.splitPaidByPhaseAndDays(
+      campaignCounts.paidCandidates,
+    );
+
     logger.info(
-      `Pipeline stats computed (range=${range}, inFlight=${flight.inFlight}, unallocatedInFlight=${flight.unallocatedInFlight}, paidNotInFlight=${campaignCounts.paidNotInFlight}, completed=${campaignCounts.completed}, onboarding=${onboarding})`,
+      `Pipeline stats computed (range=${range}, inFlight=${flight.inFlight}, unallocatedInFlight=${flight.unallocatedInFlight}, paidNotInFlight=${paidNotInFlight}, completed=${campaignCounts.completed}, onboarding=${onboarding})`,
     );
 
     return {
       range,
       from: rangeStart ? rangeStart.toISOString() : null,
       to: new Date().toISOString(),
-      paidNotInFlight: campaignCounts.paidNotInFlight,
+      paidNotInFlight,
       onboarding,
       unallocatedInFlight: flight.unallocatedInFlight,
       inFlight: flight.inFlight,

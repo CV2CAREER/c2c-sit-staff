@@ -79,6 +79,22 @@ const cleanLocation = (raw: string): string | null => {
   return v;
 };
 
+// A raw "All Australia" / "All Nigeria" location entry means "anywhere in
+// this country", not junk to discard — cleanLocation() drops it as a
+// placeholder, so callers must check for it first and capture the intended
+// country before normalizing the rest of the list.
+const extractAnyLocationCountry = (arr: string[] | undefined | null): string | undefined => {
+  for (const raw of arr || []) {
+    if (typeof raw !== 'string') continue;
+    const match = raw.trim().match(/^all[\s-]+(.+)$/i);
+    if (match) {
+      const code = normalizeCountryCode(match[1]);
+      if (code) return code;
+    }
+  }
+  return undefined;
+};
+
 const normalizeLocations = (arr: string[] | undefined | null): string[] => {
   if (!arr || arr.length === 0) return [];
   const cleaned = arr
@@ -123,9 +139,10 @@ const COUNTRY_TO_CODE: Record<string, string> = {
 };
 
 const COUNTRY_HINTS: Record<string, string[]> = {
+  au: ['australia', 'nsw', 'qld', 'vic', 'sa', 'wa', 'tas', 'nt', 'act', 'perth', 'sydney', 'melbourne', 'brisbane', 'adelaide', 'hobart', 'darwin', 'canberra'],
   ng: ['nigeria', 'lagos', 'abuja', 'ibadan', 'port harcourt', 'kano'],
-  gb: ['united kingdom', ' uk', 'london', 'manchester', 'birmingham', 'leeds', 'scotland', 'england'],
-  us: ['united states', 'new york', 'california', 'texas', 'florida', ' usa'],
+  gb: ['united kingdom', 'uk', 'london', 'manchester', 'birmingham', 'leeds', 'scotland', 'england'],
+  us: ['united states', 'usa', 'new york', 'california', 'texas', 'florida'],
   ca: ['canada', 'toronto', 'vancouver', 'montreal', 'ottawa', 'calgary'],
   nz: ['new zealand', 'auckland', 'wellington', 'christchurch'],
   za: ['south africa', 'johannesburg', 'cape town', 'durban'],
@@ -141,12 +158,29 @@ const normalizeCountryCode = (country: string | undefined | null): string | unde
   return COUNTRY_TO_CODE[key];
 };
 
+const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Word-boundary-safe "does haystack contain this term". Plain .includes()
+// lets short terms (state abbreviations like "WA", "SA", country hints like
+// "uk"/"usa") match as substrings of unrelated words — "WA" inside
+// "Washington", "SA" inside "Mesa", "UK"/"usa" mid-word — producing false
+// location/country matches. \b boundaries eliminate that without losing
+// genuine matches ("Sydney" in "Sydney, NSW" still matches on either side).
+const containsTerm = (haystack: string, term: string): boolean => {
+  if (!term) return false;
+  try {
+    return new RegExp(`\\b${escapeRegex(term)}\\b`, 'i').test(haystack);
+  } catch {
+    return haystack.toLowerCase().includes(term.toLowerCase());
+  }
+};
+
 // Fallback: infer country from location strings when the profile has no country.
 const inferCountryFromLocations = (locations: string[]): string | undefined => {
-  const joined = locations.join(' ').toLowerCase();
+  const joined = locations.join(' ');
   for (const [code, hints] of Object.entries(COUNTRY_HINTS)) {
     for (const hint of hints) {
-      if (joined.includes(hint)) return code;
+      if (containsTerm(joined, hint)) return code;
     }
   }
   return undefined;
@@ -168,6 +202,9 @@ export interface ClientProfile {
   titles: string[];
   jobTypes: string[];
   locations: string[];
+  /** Set when the client's raw locations included "All <Country>" — means
+   *  any location within this country satisfies the location signal. */
+  anyLocationCountry?: string;
   industries: string[];
   minSalary?: number;
   maxSalary?: number;
@@ -230,6 +267,10 @@ export async function loadActiveClientProfiles(): Promise<Map<string, ClientProf
 
     const profile = client.profile;
 
+    // "All Australia" etc. means "anywhere in this country" — capture that
+    // intent before normalizeLocations() discards it as a junk placeholder.
+    const anyLocationCountry = extractAnyLocationCountry(profile.locations);
+
     // Normalize all location fields
     const locations = normalizeLocations(profile.locations);
     const cities = normalizeLocations(profile.city);
@@ -241,6 +282,7 @@ export async function loadActiveClientProfiles(): Promise<Map<string, ClientProf
 
     // Country: explicit profile.country first, then infer from locations, default AU
     const country = normalizeCountryCode(profile.country)
+      || anyLocationCountry
       || inferCountryFromLocations(allLocations)
       || 'au';
 
@@ -260,6 +302,7 @@ export async function loadActiveClientProfiles(): Promise<Map<string, ClientProf
       titles,
       jobTypes: toList(profile.jobTypes),
       locations: allLocations,
+      anyLocationCountry,
       industries: toList(profile.industriesInclude),
       minSalary: profile.minSalary || undefined,
       maxSalary: profile.maxSalary || undefined,
@@ -346,7 +389,6 @@ export function matchJobToClients(
   const matches: MatchResult[] = [];
   const titleLower = (job.title || '').toLowerCase();
   const companyLower = (job.company || '').toLowerCase();
-  const locationLower = (job.location || '').toLowerCase();
   const descLower = (job.description || '').toLowerCase();
   const fullText = `${titleLower} ${companyLower} ${descLower}`;
   const employmentTypeLower = ((job as any).employment_type || '').toString().toLowerCase();
@@ -373,16 +415,26 @@ export function matchJobToClients(
       }
     }
 
-    // Location match
-    if ((profile.locations || []).length > 0) {
-      const matched = profile.locations.some((loc: string) => {
-        const locLower = loc.toLowerCase();
-        return locationLower.includes(locLower) || locLower.includes(locationLower);
-      });
-      if (matched) {
-        score += 30;
-        reasons.push('location match');
-      }
+    // Location match. "All Australia"-style profiles match any job in that
+    // country outright — checked first since normalizeLocations() strips
+    // that signal from profile.locations entirely (see anyLocationCountry).
+    // Otherwise compare with word-boundary matching, not raw .includes():
+    // plain substring checks let short state codes ("WA", "SA") false-match
+    // inside unrelated words ("Washington", "Mesa") — see discovery-client-
+    // matcher analysis 2026-09-08 for real examples this caused.
+    let locationMatched = false;
+    if (profile.anyLocationCountry) {
+      const jobCountry = inferCountryFromLocations([job.location || '']);
+      if (jobCountry === profile.anyLocationCountry) locationMatched = true;
+    }
+    if (!locationMatched && (profile.locations || []).length > 0) {
+      locationMatched = profile.locations.some((loc: string) =>
+        containsTerm(job.location || '', loc) || containsTerm(loc, job.location || ''),
+      );
+    }
+    if (locationMatched) {
+      score += 30;
+      reasons.push('location match');
     }
 
     // Industry match

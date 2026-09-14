@@ -4,6 +4,7 @@ import { sendMail } from "../config/sendGrid";
 import ErrorHandler from "../utils/errorHandler";
 import { fieldEncryption } from "../utils/field-encryption";
 import {
+  JobsiteCredentialSource,
   JobsiteCredentialStatus,
   JobsiteCredentialRejectionReason,
   SlackChannel,
@@ -20,6 +21,26 @@ import { SlackService } from "./slack.service";
 import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
 
 const logger = getServiceLogger("JobsiteCredentialService");
+
+// User.email is a virtual field populated only by User's own @AfterFind
+// hook, which decrypts it -- but that hook only fires for a *direct* query
+// against User. It never runs for a User pulled in via `include` (Sequelize
+// does not re-dispatch a nested model's find hooks), so `client.email` off
+// an included/associated User is always undefined here, no matter what its
+// own `attributes` list requests. Same fallback pattern already used in
+// missing-info-request-staff.service.ts.
+async function resolveClientEmail(client: User): Promise<string | null> {
+  if (client.email) return client.email;
+  try {
+    const decrypted = await fieldEncryption.getDecryptedUsersBatch([client.id]);
+    return decrypted.get(client.id)?.email ?? null;
+  } catch (err: any) {
+    logger.warn(
+      `Failed to resolve client email via field_encryption fallback for ${client.id}: ${err?.message || err}`,
+    );
+    return null;
+  }
+}
 
 function generateJobsitePassword(): string {
   // System-generated password for the jobsite accounts the SPC opens by
@@ -57,6 +78,7 @@ export async function submitJobsiteCredential(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.CUSTOMER,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -96,15 +118,17 @@ async function sendSubmittedNotifications(
 ): Promise<void> {
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
+  const clientEmail = await resolveClientEmail(client);
 
   const [clientResult, teamResult] = await Promise.allSettled([
     sendMail({
-      email: client.email,
+      email: clientEmail!,
       subject: "One more step ⏳ — CVtoCAREER",
       templateName: "jobsite-credential-pending.ejs",
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isStaffAdded: credential.source === JobsiteCredentialSource.STAFF,
         frontendUrl,
         currentYear,
       },
@@ -123,7 +147,7 @@ async function sendSubmittedNotifications(
 
   if (clientResult.status === "rejected") {
     logger.error(
-      `Failed to send jobsite-credential-pending email to ${client.email}:`,
+      `Failed to send jobsite-credential-pending email to ${clientEmail}:`,
       clientResult.reason,
     );
   }
@@ -161,6 +185,7 @@ export async function addJobsiteCredentialManually(
       clientId,
       email: email.trim(),
       status: JobsiteCredentialStatus.PENDING,
+      source: JobsiteCredentialSource.STAFF,
     } as any);
 
     await JobsiteCredentialAudit.create({
@@ -523,13 +548,14 @@ export async function approveJobsiteCredential(
         {
           model: User,
           as: "client",
-          // "email" must be requested here — the User model's email is a
-          // virtual field only populated by its @AfterFind hook's batch
-          // decrypt, which is itself gated on "email" being in this
-          // attributes list (a perf guard against decrypting on every
-          // unrelated User fetch). Without it, sendActiveNotifications
-          // below sent client.email as undefined, which SendGrid rejects.
-          attributes: ["id", "firstName", "lastName", "email"],
+          // "email" here does NOT actually decrypt the field -- User's
+          // @AfterFind decrypt hook never fires for an included/associated
+          // model (Sequelize only dispatches find hooks for the model a
+          // query is run directly against), so listing it is a no-op for
+          // an include. Kept anyway since it's harmless and documents
+          // intent; sendActiveNotifications resolves the real value via
+          // resolveClientEmail()'s field_encryption fallback instead.
+          attributes: ["id", "firstName", "lastName", "email", "isAmbassador"],
           required: true,
         },
       ],
@@ -592,15 +618,17 @@ async function sendActiveNotifications(
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
+  const clientEmail = await resolveClientEmail(client);
 
   const [clientResult, teamResult] = await Promise.allSettled([
     sendMail({
-      email: client.email,
+      email: clientEmail!,
       subject: "Email approved ✓ — CVtoCAREER",
       templateName: "jobsite-credential-approved.ejs",
       templateData: {
         name: client.firstName,
         email: credential.email,
+        isAmbassador: !!(client as any).isAmbassador,
         frontendUrl,
         currentYear,
       },
@@ -620,7 +648,7 @@ async function sendActiveNotifications(
 
   if (clientResult.status === "rejected") {
     logger.error(
-      `Failed to send jobsite-credential-approved email to ${client.email}:`,
+      `Failed to send jobsite-credential-approved email to ${clientEmail}:`,
       clientResult.reason,
     );
   }
@@ -667,10 +695,9 @@ export async function rejectJobsiteCredential(
         {
           model: User,
           as: "client",
-          // "email" must be requested here — see approveJobsiteCredential's
-          // identical fix above for why (the AfterFind decrypt hook is
-          // gated on it being in this list). This function's own
-          // jobsite-credential-failed email also sends client.email.
+          // See approveJobsiteCredential's include above — "email" here is
+          // a no-op (AfterFind never fires for includes); sendRejected-
+          // Notifications resolves the real value via resolveClientEmail().
           attributes: ["id", "firstName", "lastName", "email"],
           required: true,
         },
@@ -729,12 +756,13 @@ async function sendRejectedNotifications(
   const client = (credential as any).client as User;
   const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
   const currentYear = new Date().getFullYear();
+  const clientEmail = await resolveClientEmail(client);
 
   // Email → client (exact reason, never "something went wrong") + team,
   // sent concurrently so one failing send never suppresses the other.
   const [clientResult, teamResult] = await Promise.allSettled([
     sendMail({
-      email: client.email,
+      email: clientEmail!,
       subject: "Email approval failed — CVtoCAREER",
       templateName: "jobsite-credential-failed.ejs",
       templateData: {
@@ -763,7 +791,7 @@ async function sendRejectedNotifications(
 
   if (clientResult.status === "rejected") {
     logger.error(
-      `Failed to send jobsite-credential-failed email to ${client.email}:`,
+      `Failed to send jobsite-credential-failed email to ${clientEmail}:`,
       clientResult.reason,
     );
   }
@@ -932,6 +960,7 @@ export async function importJobsiteCredentialsFromCsv(
         clientId: client.id,
         email: applicationEmail.trim(),
         status: JobsiteCredentialStatus.PENDING,
+        source: JobsiteCredentialSource.STAFF,
       } as any);
 
       await JobsiteCredentialAudit.create({

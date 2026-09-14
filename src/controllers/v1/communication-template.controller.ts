@@ -81,6 +81,51 @@ export const deleteCommunicationTemplate = catchAsyncError(async (req: any, res:
   return res.apiSuccess({}, "Template deleted successfully", 200);
 });
 
+export const listEmailTriggers = catchAsyncError(async (req: any, res: Response) => {
+  logger.info("Fetching email triggers");
+  const data = await CommunicationTemplateService.listTriggers();
+  return res.apiSuccess(data, "Triggers fetched successfully", 200);
+});
+
+export const rebindEmailTrigger = catchAsyncError(async (req: any, res: Response) => {
+  const { triggerKey } = req.params;
+  const templateId: string | null = req.body.templateId ?? null;
+  logger.info(
+    `${templateId === null ? "Disabling" : "Rebinding"} trigger "${triggerKey}"${templateId ? ` to template ${templateId}` : ""} — by ${getActorLabel(req)}`,
+  );
+  const data = await CommunicationTemplateService.rebindTrigger(triggerKey, templateId, req.user?.id);
+  return res.apiSuccess(data, templateId === null ? "Trigger disabled" : "Trigger rebound successfully", 200);
+});
+
+export const resetEmailTrigger = catchAsyncError(async (req: any, res: Response) => {
+  const { triggerKey } = req.params;
+  logger.info(`Resetting trigger "${triggerKey}" to default — by ${getActorLabel(req)}`);
+  const data = await CommunicationTemplateService.resetTrigger(triggerKey);
+  return res.apiSuccess(data, "Trigger reset to default", 200);
+});
+
+export const resolveTestSend = catchAsyncError(async (req: any, res: Response) => {
+  const data = await CommunicationTemplateService.resolveTestSendData(req.params.id, req.user);
+  return res.apiSuccess(data, "Test-send values resolved", 200);
+});
+
+export const sendTestEmail = catchAsyncError(async (req: any, res: Response) => {
+  logger.info(`Sending test email for template ${req.params.id} — by ${getActorLabel(req)}`);
+  const data = await CommunicationTemplateService.sendTestEmail(
+    req.params.id,
+    req.body.values,
+    req.user,
+    req.body.triggerKeyUsed,
+  );
+  return res.apiSuccess(data, "Test email sent", 200);
+});
+
+export const sendDraftTestEmail = catchAsyncError(async (req: any, res: Response) => {
+  logger.info(`Sending draft test email — by ${getActorLabel(req)}`);
+  const data = await CommunicationTemplateService.sendDraftTestEmail(req.body, req.user);
+  return res.apiSuccess(data, "Test email sent", 200);
+});
+
 export const notifyMissingInfo = catchAsyncError(async (req: any, res: Response) => {
   const host = req.headers.host || req.headers.origin || "localhost";
   logger.info(

@@ -17,7 +17,7 @@ const FLIGHT_STATUSES = ["INFLIGHT", "FLIGHT"];
 // mapping the sidebar's Switch Persona list uses ("Placement Controller").
 const CONTROLLER_ROLES = [Role.ASSISTANT];
 
-export type AssignmentRoleKey = "dpc" | "vpc" | "spc";
+export type AssignmentRoleKey = "dpc" | "vpc" | "spc" | "interimdpc" | "interimspc";
 
 export interface AssignmentRoleValue {
   name: string | null;
@@ -32,6 +32,8 @@ export interface AssignmentRow {
   dpc: AssignmentRoleValue;
   vpc: AssignmentRoleValue;
   spc: AssignmentRoleValue;
+  interimdpc: AssignmentRoleValue;
+  interimspc: AssignmentRoleValue;
   industry: string | null;
   subEnd: string | null;
   days: number | null;
@@ -74,6 +76,8 @@ const ROLE_FIELD_MAP: Record<AssignmentRoleKey, { nameField: string; emailField:
   dpc: { nameField: "AssignedPCName", emailField: "AssignedPCEmail", label: "DPC" },
   vpc: { nameField: "AssignedVetName", emailField: "AssignedVetEmail", label: "VPC" },
   spc: { nameField: "AssignedCompletedName", emailField: "AssignedCompletedEmail", label: "SPC" },
+  interimdpc: { nameField: "InterimDPCName", emailField: "InterimDPCEmail", label: "Interim DPC" },
+  interimspc: { nameField: "InterimSPCName", emailField: "InterimSPCEmail", label: "Interim SPC" },
 };
 
 const trimOrNull = (v: string | null | undefined): string | null => {
@@ -125,6 +129,10 @@ class PlacementAssignmentsService {
       vpcEmail: trimOrNull(row.AssignedVetEmail),
       spc: trimOrNull(row.AssignedCompletedName),
       spcEmail: trimOrNull(row.AssignedCompletedEmail),
+      interimdpc: trimOrNull(row.InterimDPCName),
+      interimdpcEmail: trimOrNull(row.InterimDPCEmail),
+      interimspc: trimOrNull(row.InterimSPCName),
+      interimspcEmail: trimOrNull(row.InterimSPCEmail),
       industry: trimOrNull(row.tour?.craft || null),
       campaignEnd,
       capitalized: trimOrNull(row.capitalized || null),
@@ -149,12 +157,14 @@ class PlacementAssignmentsService {
 
   private buildRow(
     r: ReturnType<PlacementAssignmentsService["resolveRow"]>,
-    loads: { dpc: Map<string, number>; vpc: Map<string, number>; spc: Map<string, number> },
+    loads: Record<AssignmentRoleKey, Map<string, number>>,
   ): AssignmentRow {
     const now = new Date();
     const days = r.campaignEnd
       ? Math.round((r.campaignEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
       : null;
+    // Interim roles are optional backups, not part of the required trio, so
+    // they don't count toward "gaps" the way a missing DPC/VPC/SPC does.
     const gaps = [r.dpc, r.vpc, r.spc].filter((v) => !v).length;
 
     return {
@@ -164,6 +174,16 @@ class PlacementAssignmentsService {
       dpc: { name: r.dpc, email: r.dpcEmail, load: r.dpc ? loads.dpc.get(norm(r.dpc)) || 0 : 0 },
       vpc: { name: r.vpc, email: r.vpcEmail, load: r.vpc ? loads.vpc.get(norm(r.vpc)) || 0 : 0 },
       spc: { name: r.spc, email: r.spcEmail, load: r.spc ? loads.spc.get(norm(r.spc)) || 0 : 0 },
+      interimdpc: {
+        name: r.interimdpc,
+        email: r.interimdpcEmail,
+        load: r.interimdpc ? loads.interimdpc.get(norm(r.interimdpc)) || 0 : 0,
+      },
+      interimspc: {
+        name: r.interimspc,
+        email: r.interimspcEmail,
+        load: r.interimspc ? loads.interimspc.get(norm(r.interimspc)) || 0 : 0,
+      },
       industry: r.industry,
       subEnd: computedEndDisplay(r),
       days,
@@ -172,8 +192,10 @@ class PlacementAssignmentsService {
     };
   }
 
-  private loadMaps(resolved: ReturnType<PlacementAssignmentsService["resolveRow"]>[]) {
-    const loadOf = (key: "dpc" | "vpc" | "spc") => {
+  private loadMaps(
+    resolved: ReturnType<PlacementAssignmentsService["resolveRow"]>[],
+  ): Record<AssignmentRoleKey, Map<string, number>> {
+    const loadOf = (key: "dpc" | "vpc" | "spc" | "interimdpc" | "interimspc") => {
       const m = new Map<string, number>();
       resolved.forEach((r) => {
         const v = r[key];
@@ -183,7 +205,13 @@ class PlacementAssignmentsService {
       });
       return m;
     };
-    return { dpc: loadOf("dpc"), vpc: loadOf("vpc"), spc: loadOf("spc") };
+    return {
+      dpc: loadOf("dpc"),
+      vpc: loadOf("vpc"),
+      spc: loadOf("spc"),
+      interimdpc: loadOf("interimdpc"),
+      interimspc: loadOf("interimspc"),
+    };
   }
 
   async getAssignments(): Promise<PlacementAssignments> {
