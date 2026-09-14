@@ -17,7 +17,7 @@ export const ROLE_ROUTES: Record<string, string> = {
   guest: "/login",
   test: "/pc/dashboard",
   pc: "/pc/dashboard",
-  cec: "/cec/dashboard",
+  cec: "/admin/cec/dashboard",
 };
 
 export function getRoleRoute(role: StaffRole | string): string {
