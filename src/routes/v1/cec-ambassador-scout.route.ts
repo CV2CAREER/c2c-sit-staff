@@ -5,7 +5,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const cecAmbassadorScoutRouterV1 = Router();
-cecAmbassadorScoutRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "cec"));
+cecAmbassadorScoutRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 cecAmbassadorScoutRouterV1.get("/", getCECAmbassadorScouts);
 cecAmbassadorScoutRouterV1.get("/clients-with-logs", getCECClientsWithAmbassadorScouts);

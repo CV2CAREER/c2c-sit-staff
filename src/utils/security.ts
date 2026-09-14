@@ -5,8 +5,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+if (!ENCRYPTION_SECRET) {
+  throw new Error(
+    "ENCRYPTION_SECRET is not set. Add it to .env (base64, 32 bytes) — it must match the key used to encrypt existing data, or decryption will fail.",
+  );
+}
+
 // encrypt strings
-const secret = Buffer.from(ENCRYPTION_SECRET!, "base64");
+const secret = Buffer.from(ENCRYPTION_SECRET, "base64");
 
 export const encryptData = (plainText: string): string => {
   const iv = crypto.randomBytes(16);
