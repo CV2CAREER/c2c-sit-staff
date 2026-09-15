@@ -5,7 +5,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const cecSalesOutreachRouterV1 = Router();
-cecSalesOutreachRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "cec"));
+cecSalesOutreachRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 cecSalesOutreachRouterV1.get("/", getCECSalesOutreachs);
 cecSalesOutreachRouterV1.get("/clients-with-logs", getCECClientsWithSalesOutreachs);

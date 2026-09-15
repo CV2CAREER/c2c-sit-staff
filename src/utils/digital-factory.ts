@@ -46,10 +46,21 @@ try {
   throw new Error('Failed to initialize DigitalOcean Gradient clients');
 }
 
+export interface AiUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface AiResponse {
+  text: string;
+  usage: AiUsage;
+}
+
 /**
  * Calls the Digital Ocean AI Agent using SDK (like Python code)
  */
-const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxTokens: number): Promise<string> => {
+const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxTokens: number): Promise<AiResponse> => {
   logger.info(`[DigitalOcean AI] Using agent client with endpoint: ${GRADIENT_AGENT_ENDPOINT}`);
 
   // Only requested for callers that parse the response as JSON (e.g. CV
@@ -80,7 +91,11 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
         logger.info(`[DigitalOcean AI] Agent responded in ${endTime - startTime}ms`);
 
         if (agentResponse && agentResponse.choices && agentResponse.choices[0]) {
-          return agentResponse.choices[0].message.content || '';
+          const text = agentResponse.choices[0].message.content || '';
+          const usage: AiUsage = agentResponse.usage
+            ? { prompt_tokens: agentResponse.usage.prompt_tokens || 0, completion_tokens: agentResponse.usage.completion_tokens || 0, total_tokens: agentResponse.usage.total_tokens || 0 }
+            : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+          return { text, usage };
         }
       } catch (agentError: any) {
         logger.warn(`[DigitalOcean AI] Agent SDK error: ${agentError.message.substring(0, 100)}`);
@@ -107,7 +122,11 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
         logger.info(`[DigitalOcean AI] Serverless responded in ${endTime - startTime}ms`);
 
         if (inferenceResponse && inferenceResponse.choices && inferenceResponse.choices[0]) {
-          return inferenceResponse.choices[0].message.content || '';
+          const text = inferenceResponse.choices[0].message.content || '';
+          const usage: AiUsage = inferenceResponse.usage
+            ? { prompt_tokens: inferenceResponse.usage.prompt_tokens || 0, completion_tokens: inferenceResponse.usage.completion_tokens || 0, total_tokens: inferenceResponse.usage.total_tokens || 0 }
+            : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+          return { text, usage };
         }
       } catch (inferenceError: any) {
         logger.warn(`[DigitalOcean AI] Serverless SDK error: ${inferenceError.message.substring(0, 100)}`);
@@ -192,7 +211,11 @@ const directApiFallback = async (prompt: string, startTime: number, jsonMode: bo
     logger.info(`[DigitalOcean AI] Direct API responded in ${endTime - startTime}ms`);
     
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content;
+      const text = data.choices[0].message.content;
+      const usage: AiUsage = data.usage
+        ? { prompt_tokens: data.usage.prompt_tokens || 0, completion_tokens: data.usage.completion_tokens || 0, total_tokens: data.usage.total_tokens || 0 }
+        : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+      return { text, usage };
     }
     
     throw new Error('Unexpected response format from direct API');
@@ -226,18 +249,33 @@ export const queryDigitalOceanAI = async (
   // content in.
   maxTokens: number = 4000,
 ): Promise<string> => {
+  const result = await queryDigitalOceanAIWithUsage(prompt, retryCount, jsonMode, maxTokens);
+  return result.text;
+};
+
+/**
+ * Like queryDigitalOceanAI but also returns token usage data for metering.
+ */
+export const queryDigitalOceanAIWithUsage = async (
+  prompt: string,
+  retryCount: number = 2,
+  jsonMode: boolean = false,
+  maxTokens: number = 4000,
+): Promise<AiResponse> => {
   logger.info(`[DigitalOcean AI] Processing prompt (${prompt.length} chars)`);
+
+  const emptyUsage: AiUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
   for (let attempt = 1; attempt <= retryCount + 1; attempt++) {
     try {
       logger.info(`[DigitalOcean AI] Attempt ${attempt} of ${retryCount + 1}`);
       const result = await callDigitalOceanAgent(prompt, jsonMode, maxTokens);
       
-      if (!result || result.trim().length === 0) {
+      if (!result.text || result.text.trim().length === 0) {
         throw new Error('Empty response');
       }
       
-      logger.info(`[DigitalOcean AI] Success on attempt ${attempt}`);
+      logger.info(`[DigitalOcean AI] Success on attempt ${attempt} — ${result.usage.total_tokens} tokens`);
       return result;
     } catch (error: any) {
       logger.warn(`[DigitalOcean AI] Attempt ${attempt} failed:`, error.message);
