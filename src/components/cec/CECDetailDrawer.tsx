@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import CECDatePicker from "@/components/cec/CECDatePicker";
 
 export interface DrawerField {
@@ -24,6 +24,7 @@ interface CECDetailDrawerProps {
   sections: DrawerSection[];
   data: Record<string, any>;
   onChange?: (key: string, value: string) => void;
+  onSave?: () => void | Promise<void>;
   onDelete?: () => void;
   linkedRecords?: React.ReactNode;
 }
@@ -74,22 +75,38 @@ export default function CECDetailDrawer({
   sections,
   data,
   onChange,
+  onSave,
   onDelete,
   linkedRecords,
 }: CECDetailDrawerProps) {
   const [localData, setLocalData] = useState<Record<string, any>>({});
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setLocalData({ ...data });
   }, [data]);
 
+  // Every edit is reflected in the table immediately (onChange updates the row
+  // in place); the accumulated changes are only written to the server on Done.
   const handleChange = (key: string, value: string) => {
     setLocalData((prev) => ({ ...prev, [key]: value }));
-    if (onChange) {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => onChange(key, value), 300);
+    onChange?.(key, value);
+  };
+
+  const handleDone = async () => {
+    setSaving(true);
+    try {
+      await onSave?.();
+    } finally {
+      setSaving(false);
+      onClose();
     }
+  };
+
+  // Overlay / X also commit, so an edit is never silently lost on close.
+  const handleClose = () => {
+    if (saving) return;
+    void handleDone();
   };
 
   if (!isOpen) return null;
@@ -99,7 +116,7 @@ export default function CECDetailDrawer({
       {/* Overlay */}
       <div
         style={{ position: "fixed", inset: 0, zIndex: 40, display: "flex", justifyContent: "flex-end" }}
-        onClick={onClose}
+        onClick={handleClose}
       >
         <div style={{ position: "absolute", inset: 0, background: "rgba(18,32,45,0.32)" }} />
       </div>
@@ -140,7 +157,7 @@ export default function CECDetailDrawer({
             )}
           </div>
           <div
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               flexShrink: 0,
               width: "30px",
@@ -236,9 +253,9 @@ export default function CECDetailDrawer({
           )}
           {!onDelete && <div />}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ fontSize: "11.5px", color: "#8A9AAB" }}>Changes save as you type</div>
+            <div style={{ fontSize: "11.5px", color: "#8A9AAB" }}>{saving ? "Saving..." : "Changes save when you click Done"}</div>
             <div
-              onClick={onClose}
+              onClick={() => { if (!saving) void handleDone(); }}
               style={{
                 height: "36px",
                 display: "flex",
@@ -249,10 +266,11 @@ export default function CECDetailDrawer({
                 color: "#fff",
                 fontSize: "12.5px",
                 fontWeight: 500,
-                cursor: "pointer",
+                cursor: saving ? "default" : "pointer",
+                opacity: saving ? 0.7 : 1,
               }}
             >
-              Done
+              {saving ? "Saving..." : "Done"}
             </div>
           </div>
         </div>

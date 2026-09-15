@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,11 +9,13 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_COMPLAINTS } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface Complaint {
   id: string;
+  hasLog?: boolean;
+  logId?: string | null;
   complaintId: string;
   logged: string;
   name: string;
@@ -97,7 +99,8 @@ export default function CECComplaintsPage() {
   const [selected, setSelected] = useState<Complaint | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_COMPLAINTS, "cec-complaints");
+  const { saveChanges, removeRow } = useCecRowEditor<Complaint>(ADMIN_CEC_COMPLAINTS, "cec-complaints");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as Complaint[]); }, [serverRows]);
 
@@ -110,29 +113,31 @@ export default function CECComplaintsPage() {
     return rows;
   })();
 
-  const handleRowClick = (row: Complaint) => { setSelected(row); setDrawerOpen(true); };
+  const handleRowClick = (row: Complaint) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-    if (String(selected.id).startsWith("temp-")) {
-      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          setSelected(saved);
-          setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.id, field: key, value });
-    }
+  };
+
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleAddRow = () => {
     const tempId = `temp-${Date.now()}`;
-    const row = { id: tempId, complaintId: `C2C-CMP-${String(data.length + 1).padStart(3, "0")}`, status: "Open", logged: new Date().toISOString().slice(0, 10), name: "", category: "", channel: "", priority: "Medium", owner: "", age: 0, issue: "", action: "", next: "", resolved: "", notes: "" } as unknown as Complaint;
+    const row = { id: tempId, hasLog: false, logId: null, complaintId: "", status: "Open", logged: new Date().toISOString().slice(0, 10), name: "", category: "", channel: "", priority: "Medium", owner: "", age: 0, issue: "", action: "", next: "", resolved: "", notes: "" } as unknown as Complaint;
     setData((prev) => [row, ...prev]);
     setSelected(row);
     setDrawerOpen(true);
@@ -140,17 +145,16 @@ export default function CECComplaintsPage() {
 
   const handleDelete = async () => {
     if (!selected) return;
-    if (String(selected.id).startsWith("temp-")) {
+    if (!selected.hasLog) {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.id }).then(() => {
-      setData((prev) => prev.filter((r) => r.id !== selected.id));
-      setDrawerOpen(false);
-      setSelected(null);
-    });
+    await removeRow(selected);
+    setData((prev) => prev.filter((r) => r.id !== selected.id));
+    setDrawerOpen(false);
+    setSelected(null);
   };
 
   if (isLoading) {
@@ -182,7 +186,7 @@ export default function CECComplaintsPage() {
         <CECKPICard label="Resolved" value={stats.resolved} hint="closed out" />
       </div>
       <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle={selected ? `${selected.complaintId || "No ID"} · logged ${selected.logged || "---"}` : undefined} pills={selected ? [selected.status, selected.priority, selected.category, selected.channel].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle={selected ? `${selected.complaintId || "No ID"} · logged ${selected.logged || "---"}` : undefined} pills={selected ? [selected.status, selected.priority, selected.category, selected.channel].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }

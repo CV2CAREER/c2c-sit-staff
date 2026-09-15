@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_AMBASSADOR_SCOUTING } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface AmbassadorScout {
   id: string;
+  hasLog?: boolean;
+  logId?: string | null;
   country: string;
   pipeline: string;
   nominations: string;
@@ -46,33 +48,36 @@ export default function CECAmbassadorScoutingPage() {
   const [selected, setSelected] = useState<AmbassadorScout | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_AMBASSADOR_SCOUTING, "cec-ambassador-scouting");
+  const { saveChanges, removeRow } = useCecRowEditor<AmbassadorScout>(ADMIN_CEC_AMBASSADOR_SCOUTING, "cec-ambassador-scouting");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as AmbassadorScout[]); }, [serverRows]);
 
-  const handleRowClick = (row: AmbassadorScout) => { setSelected(row); setDrawerOpen(true); };
+  const handleRowClick = (row: AmbassadorScout) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-    if (String(selected.id).startsWith("temp-")) {
-      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          setSelected(saved);
-          setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.id, field: key, value });
-    }
+  };
+
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleAddRow = () => {
     const tempId = `temp-${Date.now()}`;
-    const row = { id: tempId, country: "", pipeline: "", nominations: "" } as AmbassadorScout;
+    const row = { id: tempId, hasLog: false, logId: null, country: "", pipeline: "", nominations: "" } as AmbassadorScout;
     setData((prev) => [row, ...prev]);
     setSelected(row);
     setDrawerOpen(true);
@@ -80,17 +85,16 @@ export default function CECAmbassadorScoutingPage() {
 
   const handleDelete = async () => {
     if (!selected) return;
-    if (String(selected.id).startsWith("temp-")) {
+    if (!selected.hasLog) {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.id }).then(() => {
-      setData((prev) => prev.filter((r) => r.id !== selected.id));
-      setDrawerOpen(false);
-      setSelected(null);
-    });
+    await removeRow(selected);
+    setData((prev) => prev.filter((r) => r.id !== selected.id));
+    setDrawerOpen(false);
+    setSelected(null);
   };
 
   if (isLoading) {
@@ -119,7 +123,7 @@ export default function CECAmbassadorScoutingPage() {
         <CECKPICard label="Nominations" value={stats.nominations} hint="named" />
       </div>
       <CECDataTable columns={COLUMNS} data={data} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.country || "Untitled row"} subtitle="Ambassador Scouting" sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.country || "Untitled row"} subtitle="Ambassador Scouting" sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }
