@@ -145,7 +145,7 @@ export default function CECDataTable<T extends Record<string, any>>({
         ))}
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: "12.5px", color: "#8A9AAB", whiteSpace: "nowrap" }}>
-          {totalCount != null ? totalCount : sortedData.length} of {totalCount != null ? totalCount : sortedData.length} rows
+          {pagedData.length} of {sortedData.length} rows
         </span>
         {onAddRow && (
           <button

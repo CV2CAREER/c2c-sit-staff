@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function CECHomePage() {
-  redirect("/cec/dashboard");
+  redirect("/admin/cec/dashboard");
 }

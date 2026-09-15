@@ -22,7 +22,7 @@ export function useCecTracker<T extends Record<string, any>>(apiBase: string, qu
   const rowsQuery = useQuery({
     queryKey: [queryKey, "rows"],
     queryFn: async () => {
-      const res = await axiosInstance.get(`${apiBase}/clients-with-logs`);
+      const res = await axiosInstance.get(`${apiBase}/clients-with-logs`, { params: { limit: 200 } });
       return (res.data?.data?.rows ?? []) as Record<string, any>[];
     },
     staleTime: 30_000,

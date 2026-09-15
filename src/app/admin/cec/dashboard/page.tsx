@@ -7,12 +7,12 @@ import { BookOpen, ClipboardList, Bug, AlertTriangle, DollarSign, Megaphone, Tar
 import Link from "next/link";
 
 const trackers = [
-  { name: "Daily Log", href: "/cec/daily-log", icon: ClipboardList, description: "Track daily client interactions" },
-  { name: "Issue Burndown", href: "/cec/issue-burndown", icon: Bug, description: "Monitor and resolve client issues" },
-  { name: "Complaints", href: "/cec/complaints", icon: AlertTriangle, description: "Manage client complaints" },
-  { name: "Referral Payouts", href: "/cec/referral-payouts", icon: DollarSign, description: "Track referral payments" },
-  { name: "Sales Outreach", href: "/cec/sales-outreach", icon: Megaphone, description: "Track prospect outreach" },
-  { name: "Ambassador Scouting", href: "/cec/ambassador-scouting", icon: Target, description: "Pipeline for ambassadors" },
+  { name: "Daily Log", href: "/admin/cec/daily-log", icon: ClipboardList, description: "Track daily client interactions" },
+  { name: "Issue Burndown", href: "/admin/cec/issue-burndown", icon: Bug, description: "Monitor and resolve client issues" },
+  { name: "Complaints", href: "/admin/cec/complaints", icon: AlertTriangle, description: "Manage client complaints" },
+  { name: "Referral Payouts", href: "/admin/cec/referral-payouts", icon: DollarSign, description: "Track referral payments" },
+  { name: "Sales Outreach", href: "/admin/cec/sales-outreach", icon: Megaphone, description: "Track prospect outreach" },
+  { name: "Ambassador Scouting", href: "/admin/cec/ambassador-scouting", icon: Target, description: "Pipeline for ambassadors" },
 ];
 
 export default function CECDashboardPage() {

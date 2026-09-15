@@ -178,10 +178,10 @@ export default function AIDiscoveryAgentPage() {
     setIsRunning(true);
     const payload: any = {};
     if (overrideKeywords.trim()) {
-      payload.keywords = overrideKeywords.split(',').map(k => k.trim()).filter(Boolean);
+      payload.keywords = overrideKeywords.split(',').map(k => k.trim().replace(/[^\w\s\-]/g, '')).filter(Boolean);
     }
     if (overrideLocation.trim()) {
-      payload.location = overrideLocation.trim();
+      payload.location = overrideLocation.trim().replace(/[^\w\s,\-]/g, '');
     }
     triggerRunAll.mutate(payload, {
       onSettled: () => setTimeout(() => setIsRunning(false), 3000),
