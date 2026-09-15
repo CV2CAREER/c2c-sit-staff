@@ -15,8 +15,8 @@ import {
 import { authorizeRoles } from '../../middlewares/authorizeRoles';
 
 const adminDiscoveryRouterV1 = Router();
-const readAccess = authorizeRoles('admin', 'cec', 'assistant');
-const writeAccess = authorizeRoles('admin', 'cec');
+const readAccess = authorizeRoles('admin', 'assistant');
+const writeAccess = authorizeRoles('admin', 'assistant');
 
 adminDiscoveryRouterV1.get('/', readAccess, getDashboard);
 adminDiscoveryRouterV1.post('/run', writeAccess, triggerRun);

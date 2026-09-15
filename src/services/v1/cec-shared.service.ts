@@ -8,6 +8,7 @@ import { CECSalesOutreach } from "../../models/v1/cec-sales-outreach.model";
 import { CECAmbassadorScout } from "../../models/v1/cec-ambassador-scout.model";
 import { TourCount } from "../../models/v1/tour-count.model";
 import { getServiceLogger } from "../../utils/createLogger";
+import { calculateCampaignFields } from "../../utils/campaign-calculator";
 
 const logger = getServiceLogger("cec-shared");
 
@@ -22,7 +23,14 @@ const TrackerModels: Record<string, any> = {
 
 function baseClientRow(cred: any, existingLog: any, tourCount: number) {
   const sec = cred.seekExternalCredentials || {};
-  const customerId = sec.CustomerId || "";
+  const customerId = sec.CustomerId || cred.clientId || "";
+  const computed = calculateCampaignFields({
+    SeekSubStartDate: sec.SeekSubStartDate || cred.SeekSubStartDate,
+    createdAt: cred.createdAt,
+    SeekSubDurDays: sec.SeekSubDurDays,
+    GraceDuration: sec.GraceDuration,
+    CampaignEnd: sec.CampaignEnd,
+  });
   return {
     id: existingLog?.id || `campaign-${cred.id}`,
     logId: existingLog?.id || null,
@@ -31,8 +39,8 @@ function baseClientRow(cred: any, existingLog: any, tourCount: number) {
     customerId,
     plan: sec.Plan || "",
     flightStatus: cred.capitalized || "",
-    subDate: sec.SeekSubStartDate || cred.SeekSubStartDate || "",
-    subEnd: sec.CampaignEnd || "",
+    subDate: computed.SeekSubStartDate || "",
+    subEnd: computed.CampaignEnd || "",
     seekEmail: sec.Alias_Email || "",
     country: sec.Country || "",
     submissions: tourCount,

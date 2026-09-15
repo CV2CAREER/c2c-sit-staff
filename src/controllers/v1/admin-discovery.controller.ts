@@ -13,14 +13,14 @@ import { loadActiveClientProfiles, getCombinedSearchParams, matchJobToClients, c
 import { extractJobFieldsFromText } from '../../services/discovery/discovery-ai-extract.service';
 import { reclassifyUnscoredDiscovery } from '../../services/discovery/discovery-ai-vetting.service';
 import { DiscoveryJob } from '../../models/v1/discovery-job.model';
-import { DiscoveryMatch } from '../../models/v1/discovery-match.model';
 import { DiscoverySourceRegister } from '../../models/v1/discovery-source-register.model';
 import { DiscoveryRun } from '../../models/v1/discovery-run.model';
-import { Credentials } from '../../models/v1/credentials.model';
-import { ManualApplication } from '../../models/v1/manual-application.model';
 import { Op } from 'sequelize';
 import { getServiceLogger } from '../../utils/createLogger';
 import { registerClient, removeClient } from '../../services/discovery/discovery-sse';
+import { sendStandardSlackNotification } from '../../utils/slack-helpers';
+import { SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from '../../utils/enum';
+
 
 const logger = getServiceLogger('admin-discovery-controller');
 
@@ -332,6 +332,21 @@ async function runFetchJob(
     const qualifyResult = await adapter.qualify();
     if (!qualifyResult.permitted) {
       await log('error', `Source not permitted: ${qualifyResult.reason}`);
+      // Auto-pause source and send permission-signal alert
+      const permError = qualifyResult.reason?.match(/403|429/)?.[0] || 'PERMISSION_DENIED';
+      source.enabled = false;
+      source.auto_paused_at = new Date();
+      source.last_permission_error = permError;
+      await source.save();
+      await sendStandardSlackNotification({
+        node: SlackNode.AI,
+        provider: SlackProvider.DIGITAL_OCEAN_AI,
+        severity: SlackSeverity.CRITICAL,
+        type: SlackEventType.ERROR_ALERT,
+        channel: SlackChannel.JOB_PIPELINE,
+        teamMentions: 'CSM',
+        body: `🛑 [${source.name}] returned [${permError}]. Source auto-paused. Business decision required.\n• Run: ${runId}\n• Reason: ${qualifyResult.reason}\n• Source: ${source.slug}`,
+      }).catch(() => {});
       await discoveryService.completeRun(runId, {
         status: 'failed',
         duration_ms: Date.now() - startTime,
@@ -374,6 +389,32 @@ async function runFetchJob(
 
     if (drafts.length === 0) {
       await log('warn', `No jobs found — scraping may have failed or site returned empty results`);
+      // Track consecutive zero runs and auto-pause if threshold breached
+      source.consecutive_zero_runs = (source.consecutive_zero_runs || 0) + 1;
+      // Check trailing 7-day average
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentJobs = await DiscoveryJob.count({
+        where: { source_id: source.id, retrieved_at: { [Op.gte]: sevenDaysAgo } },
+      });
+      const avgPerDay = recentJobs / 7;
+      if (source.consecutive_zero_runs >= 3 && avgPerDay > 0) {
+        source.enabled = false;
+        source.auto_paused_at = new Date();
+        await source.save();
+        await sendStandardSlackNotification({
+          node: SlackNode.AI,
+          provider: SlackProvider.DIGITAL_OCEAN_AI,
+          severity: SlackSeverity.CRITICAL,
+          type: SlackEventType.ERROR_ALERT,
+          channel: SlackChannel.JOB_PIPELINE,
+          teamMentions: 'CSM',
+          body: `🛑 [${source.name}] returned 0 records. 7-day avg: ${avgPerDay.toFixed(1)}/day. Investigate immediately.\n• Run: ${runId}\n• Consecutive zero runs: ${source.consecutive_zero_runs}\n• Source auto-paused`,
+        }).catch(() => {});
+        await log('warn', `Source auto-paused after ${source.consecutive_zero_runs} consecutive zero runs`);
+      } else {
+        await source.save();
+      }
       await discoveryService.completeRun(runId, {
         status: 'success',
         duration_ms: Date.now() - startTime,
@@ -386,8 +427,6 @@ async function runFetchJob(
         tokens_used: tokensUsed,
         ai_request_count: aiRequestCount,
       });
-      source.last_fetched_at = new Date();
-      await source.save();
       return;
     }
 
@@ -454,10 +493,12 @@ async function runFetchJob(
             const updatedFields: Record<string, any> = {};
 
             // AI extraction (preferred) — richer structured fields than regex
-            const ai = await extractJobFieldsFromText(deepData.text, (usage) => {
-              tokensUsed += usage.totalTokens;
+            const extractResult = await extractJobFieldsFromText(deepData.text);
+            const ai = extractResult.fields;
+            if (extractResult.usage.total_tokens > 0) {
+              tokensUsed += extractResult.usage.total_tokens;
               aiRequestCount += 1;
-            });
+            }
             if (ai) {
               const enrichLines: string[] = [];
               if (ai.skills.length > 0) enrichLines.push(`[Enriched] Skills: ${ai.skills.join(', ')}`);
@@ -540,11 +581,25 @@ async function runFetchJob(
       ai_request_count: aiRequestCount,
     });
 
-    // Update source last_fetched_at
+    // Reset consecutive zero runs on successful fetch, update source
+    source.consecutive_zero_runs = 0;
     source.last_fetched_at = new Date();
     await source.save();
 
     await log('ok', `Run ${runId} completed in ${(durationMs / 1000).toFixed(1)}s`);
+
+    // Post-run Slack notification
+    const adminUrl = process.env.NODE_ENV === 'prod'
+      ? `https://uat.cvtocareer.com/admin/Discovery`
+      : `http://localhost:3000/admin/Discovery`;
+    await sendStandardSlackNotification({
+      node: SlackNode.AI,
+      provider: SlackProvider.DIGITAL_OCEAN_AI,
+      severity: SlackSeverity.INFO,
+      type: SlackEventType.SYSTEM_JOB,
+      channel: SlackChannel.JOB_PIPELINE,
+      body: `🤖 AI Discovery Agent — ${runId} complete. 1 source · ${fetchedCount} fetched · ${dedupCount} unique · ${hqaCount} HQA · ${mqaCount} MQA · ${lqaCount} LQA · ${matchedClientIds.size} clients updated.\n• Duration: ${(durationMs / 1000).toFixed(1)}s\n• Admin: ${adminUrl}`,
+    }).catch(() => {});
 
     logger.info(`Run ${runId} complete: ${fetchedCount} fetched, ${dedupCount} deduped, ${durationMs}ms`);
   } catch (error: any) {
@@ -577,6 +632,16 @@ async function runFetchJob(
       });
       await log('error', `Run failed: ${error.message}`);
       logger.error(`Run ${runId} failed: ${error.message}`);
+
+      // Slack alert for failed run
+      await sendStandardSlackNotification({
+        node: SlackNode.AI,
+        provider: SlackProvider.DIGITAL_OCEAN_AI,
+        severity: SlackSeverity.ERROR,
+        type: SlackEventType.ERROR_ALERT,
+        channel: SlackChannel.JOB_PIPELINE,
+        body: `❌ AI Discovery Agent — ${runId} failed.\n• Source: ${source.name}\n• Error: ${error.message}\n• Duration: ${(durationMs / 1000).toFixed(1)}s\n• Jobs saved before failure: ${fetchedCount}`,
+      }).catch(() => {});
     }
   } finally {
     if (globalTimer) clearTimeout(globalTimer);
@@ -638,6 +703,21 @@ export async function runAllSources(
       const qualifyResult = await adapter.qualify();
       if (!qualifyResult.permitted) {
         await log('warn', `Skipping ${source.name} — ${qualifyResult.reason}`);
+        // Auto-pause source and send permission-signal alert
+        const permError = qualifyResult.reason?.match(/403|429/)?.[0] || 'PERMISSION_DENIED';
+        source.enabled = false;
+        source.auto_paused_at = new Date();
+        source.last_permission_error = permError;
+        await source.save();
+        await sendStandardSlackNotification({
+          node: SlackNode.AI,
+          provider: SlackProvider.DIGITAL_OCEAN_AI,
+          severity: SlackSeverity.CRITICAL,
+          type: SlackEventType.ERROR_ALERT,
+          channel: SlackChannel.JOB_PIPELINE,
+          teamMentions: 'CSM',
+          body: `🛑 [${source.name}] returned [${permError}]. Source auto-paused. Business decision required.\n• Run: ${runId}\n• Reason: ${qualifyResult.reason}\n• Source: ${source.slug}`,
+        }).catch(() => {});
         continue;
       }
 
@@ -665,6 +745,34 @@ export async function runAllSources(
       }
 
       await log('info', `${source.name} returned ${drafts.length} total raw listings`);
+
+      // Zero-record alert + auto-pause
+      if (drafts.length === 0) {
+        source.consecutive_zero_runs = (source.consecutive_zero_runs || 0) + 1;
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentJobs = await DiscoveryJob.count({
+          where: { source_id: source.id, retrieved_at: { [Op.gte]: sevenDaysAgo } },
+        });
+        const avgPerDay = recentJobs / 7;
+        if (source.consecutive_zero_runs >= 3 && avgPerDay > 0) {
+          source.enabled = false;
+          source.auto_paused_at = new Date();
+          await source.save();
+          await sendStandardSlackNotification({
+            node: SlackNode.AI,
+            provider: SlackProvider.DIGITAL_OCEAN_AI,
+            severity: SlackSeverity.CRITICAL,
+            type: SlackEventType.ERROR_ALERT,
+            channel: SlackChannel.JOB_PIPELINE,
+            teamMentions: 'CSM',
+            body: `🛑 [${source.name}] returned 0 records. 7-day avg: ${avgPerDay.toFixed(1)}/day. Investigate immediately.\n• Run: ${runId}\n• Consecutive zero runs: ${source.consecutive_zero_runs}\n• Source auto-paused`,
+          }).catch(() => {});
+          await log('warn', `Source auto-paused after ${source.consecutive_zero_runs} consecutive zero runs`);
+        } else {
+          await source.save();
+        }
+      }
       let sourceFetched = 0;
       let sourceDedup = 0;
       let sourceMatched = 0;
@@ -725,7 +833,8 @@ export async function runAllSources(
       totalMatched += sourceMatched;
       sourcesCompleted++;
 
-      // Update source last_fetched_at
+      // Reset consecutive zero runs on successful fetch, update source
+      source.consecutive_zero_runs = 0;
       source.last_fetched_at = new Date();
       await source.save();
 
@@ -763,6 +872,19 @@ export async function runAllSources(
       lqa_count: totalLqa,
     });
     await log('ok', `Run All complete — ${sourcesCompleted} sources, ${totalFetched} unique jobs, ${totalMatched} matched to ${allMatchedClientIds.size} clients, ${(durationMs / 1000).toFixed(1)}s`);
+
+    // Post-run Slack notification
+    const adminUrl = process.env.NODE_ENV === 'prod'
+      ? `https://uat.cvtocareer.com/admin/Discovery`
+      : `http://localhost:3000/admin/Discovery`;
+    await sendStandardSlackNotification({
+      node: SlackNode.AI,
+      provider: SlackProvider.DIGITAL_OCEAN_AI,
+      severity: SlackSeverity.INFO,
+      type: SlackEventType.SYSTEM_JOB,
+      channel: SlackChannel.JOB_PIPELINE,
+      body: `🤖 AI Discovery Agent — ${runId} complete. ${sourcesCompleted} sources · ${totalFetched} fetched · ${totalDedup} unique · ${totalHqa} HQA · ${totalMqa} MQA · ${totalLqa} LQA · ${allMatchedClientIds.size} clients updated.\n• Duration: ${(durationMs / 1000).toFixed(1)}s\n• Admin: ${adminUrl}`,
+    }).catch(() => {});
   }
 
   if (globalTimer) clearTimeout(globalTimer);

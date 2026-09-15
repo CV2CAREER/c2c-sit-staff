@@ -22,12 +22,15 @@ const estimateCostUsd = (tokens: number): number => (tokens / 1_000_000) * AI_CO
 
 export const listSources = async (): Promise<DiscoverySourceRegister[]> => {
   return DiscoverySourceRegister.findAll({
+    attributes: { exclude: ['api_key', 'app_id'] },
     order: [['name', 'ASC']],
   });
 };
 
 export const getSource = async (id: string): Promise<DiscoverySourceRegister | null> => {
-  return DiscoverySourceRegister.findByPk(id);
+  return DiscoverySourceRegister.findByPk(id, {
+    attributes: { exclude: ['api_key', 'app_id'] },
+  });
 };
 
 export const getSourceBySlug = async (slug: string): Promise<DiscoverySourceRegister | null> => {
@@ -40,7 +43,9 @@ export const pauseSource = async (id: string): Promise<DiscoverySourceRegister |
   source.enabled = false;
   await source.save();
   logger.info(`Source paused: ${source.name} (${source.slug})`);
-  return source;
+  // Return without sensitive fields
+  const { api_key, app_id, ...safe } = source.get({ plain: true }) as any;
+  return safe as DiscoverySourceRegister;
 };
 
 export const resumeSource = async (id: string): Promise<DiscoverySourceRegister | null> => {
@@ -49,7 +54,9 @@ export const resumeSource = async (id: string): Promise<DiscoverySourceRegister 
   source.enabled = true;
   await source.save();
   logger.info(`Source resumed: ${source.name} (${source.slug})`);
-  return source;
+  // Return without sensitive fields
+  const { api_key, app_id, ...safe } = source.get({ plain: true }) as any;
+  return safe as DiscoverySourceRegister;
 };
 
 export const getDashboardStats = async (): Promise<{

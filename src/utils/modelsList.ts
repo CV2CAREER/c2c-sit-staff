@@ -106,6 +106,12 @@ import { DiscoveryJob } from '../models/v1/discovery-job.model';
 import { DiscoveryMatch } from '../models/v1/discovery-match.model';
 import { DiscoveryRun } from '../models/v1/discovery-run.model';
 import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
+import { CECDailyLog } from '../models/v1/cec-daily-log.model';
+import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
+import { CECComplaint } from '../models/v1/cec-complaint.model';
+import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
+import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
+import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
 
 export const modelList = [
   User,
@@ -218,4 +224,10 @@ export const modelList = [
   DiscoveryMatch,
   DiscoveryRun,
   DiscoverySchedule,
+  CECDailyLog,
+  CECIssueBurndown,
+  CECComplaint,
+  CECReferralPayout,
+  CECSalesOutreach,
+  CECAmbassadorScout,
 ];

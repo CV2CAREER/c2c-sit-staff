@@ -5,7 +5,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const cecComplaintRouterV1 = Router();
-cecComplaintRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "cec"));
+cecComplaintRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 cecComplaintRouterV1.get("/", getCECComplaints);
 cecComplaintRouterV1.get("/clients-with-logs", getCECClientsWithComplaints);
