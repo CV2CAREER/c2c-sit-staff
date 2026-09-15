@@ -603,15 +603,20 @@ export const useUsersMutations = () => {
       { userId: string; action: string }
     >({
       method: 'POST',
-      // Accept (approve) is the only account action with a real endpoint
-      // today — routes to POST /user-management/users/:userId/approve.
-      // Suspend / restrict still hit ADMIN_ACCOUNT_ACTION (which does not
-      // exist server-side) and will keep failing until those actions are
-      // built out as a separate ticket.
+      // Each account action has its own dedicated endpoint on
+      // user-management. SPR-19-16-001 completed suspend + restrict; accept
+      // (approve) was already wired by PR #198.
       url: (params) => {
         const action = params?.action?.toLowerCase();
-        if ((action === 'accept' || action === 'approve') && params?.userId) {
+        if (!params?.userId) return endpoints.ADMIN_ACCOUNT_ACTION;
+        if (action === 'accept' || action === 'approve') {
           return endpoints.ADMIN_APPROVE_USER_ACCOUNT(params.userId);
+        }
+        if (action === 'suspend') {
+          return endpoints.ADMIN_SUSPEND_USER_ACCOUNT(params.userId);
+        }
+        if (action === 'restrict') {
+          return endpoints.ADMIN_RESTRICT_USER_ACCOUNT(params.userId);
         }
         return endpoints.ADMIN_ACCOUNT_ACTION;
       },

@@ -401,7 +401,7 @@ const AmbassadorLinkModal = ({ isOpen, toggleOpen, link }: {
 
 // ─── Assign Referrer Modal ────────────────────────────────────────────────────
 
-const AssignReferrerModal = ({ isOpen, toggleOpen, userId }: {
+export const AssignReferrerModal = ({ isOpen, toggleOpen, userId }: {
     isOpen: boolean; toggleOpen: (value: boolean) => void; userId: string;
 }) => {
     const queryClient = useQueryClient();
