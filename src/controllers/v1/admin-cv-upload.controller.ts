@@ -199,8 +199,15 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
 
         // Send email notification to the client (user) — reuses targetUser
         // fetched above so this path avoids a second DB round-trip.
+        // Client-facing "Revised Document Available" is meant for CVs only —
+        // a cover-letter-only batch (no resume in this upload) must not
+        // trigger it, even though the team Slack/email notifications above
+        // still cover every upload type.
+        const hasRevisedResume = documents.some(
+          (doc) => doc.type === UploadType.RESUME,
+        );
         try {
-          if (targetUser?.email) {
+          if (targetUser?.email && hasRevisedResume) {
             const clientName =
               `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || "there";
 
@@ -222,6 +229,10 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
             });
             logger.info(
               `✅ Client notification email sent for revised document upload to user ${userId}`,
+            );
+          } else if (!hasRevisedResume) {
+            logger.info(
+              `Skipped client email for revised document upload: cover-letter-only batch (no resume) for user ${userId}`,
             );
           } else {
             logger.warn(
