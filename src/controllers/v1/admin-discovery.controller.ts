@@ -316,6 +316,8 @@ async function runFetchJob(
   let hqaCount = 0;
   let mqaCount = 0;
   let lqaCount = 0;
+  let tokensUsed = 0;
+  let aiRequestCount = 0;
   const matchedClientIds = new Set<string>();
   let adapter: any;
   const allLocations = searchLocations.map((s) => s.location);
@@ -381,6 +383,8 @@ async function runFetchJob(
         hqa_count: 0,
         mqa_count: 0,
         lqa_count: 0,
+        tokens_used: tokensUsed,
+        ai_request_count: aiRequestCount,
       });
       source.last_fetched_at = new Date();
       await source.save();
@@ -450,7 +454,10 @@ async function runFetchJob(
             const updatedFields: Record<string, any> = {};
 
             // AI extraction (preferred) — richer structured fields than regex
-            const ai = await extractJobFieldsFromText(deepData.text);
+            const ai = await extractJobFieldsFromText(deepData.text, (usage) => {
+              tokensUsed += usage.totalTokens;
+              aiRequestCount += 1;
+            });
             if (ai) {
               const enrichLines: string[] = [];
               if (ai.skills.length > 0) enrichLines.push(`[Enriched] Skills: ${ai.skills.join(', ')}`);
@@ -529,6 +536,8 @@ async function runFetchJob(
       hqa_count: hqaCount,
       mqa_count: mqaCount,
       lqa_count: lqaCount,
+      tokens_used: tokensUsed,
+      ai_request_count: aiRequestCount,
     });
 
     // Update source last_fetched_at
@@ -548,6 +557,8 @@ async function runFetchJob(
       hqa_count: hqaCount,
       mqa_count: mqaCount,
       lqa_count: lqaCount,
+      tokens_used: tokensUsed,
+      ai_request_count: aiRequestCount,
     };
 
     if (error.name === 'AbortError') {

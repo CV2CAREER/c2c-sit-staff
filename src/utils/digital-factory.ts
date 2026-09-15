@@ -46,10 +46,31 @@ try {
   throw new Error('Failed to initialize DigitalOcean Gradient clients');
 }
 
+export interface AiTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+// Additive, opt-in only -- every existing caller omits this and gets the
+// exact same string-returning behavior as before. Only a caller that wants
+// to meter usage (currently: AI Discovery Agent, SPR-19-03-017) passes one.
+type OnUsage = (usage: AiTokenUsage) => void;
+
+const extractUsage = (response: any): AiTokenUsage | null => {
+  const usage = response?.usage;
+  if (!usage) return null;
+  return {
+    promptTokens: usage.prompt_tokens ?? 0,
+    completionTokens: usage.completion_tokens ?? 0,
+    totalTokens: usage.total_tokens ?? (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0),
+  };
+};
+
 /**
  * Calls the Digital Ocean AI Agent using SDK (like Python code)
  */
-const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxTokens: number): Promise<string> => {
+const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxTokens: number, onUsage?: OnUsage): Promise<string> => {
   logger.info(`[DigitalOcean AI] Using agent client with endpoint: ${GRADIENT_AGENT_ENDPOINT}`);
 
   // Only requested for callers that parse the response as JSON (e.g. CV
@@ -80,6 +101,8 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
         logger.info(`[DigitalOcean AI] Agent responded in ${endTime - startTime}ms`);
 
         if (agentResponse && agentResponse.choices && agentResponse.choices[0]) {
+          const usage = extractUsage(agentResponse);
+          if (usage) onUsage?.(usage);
           return agentResponse.choices[0].message.content || '';
         }
       } catch (agentError: any) {
@@ -107,6 +130,8 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
         logger.info(`[DigitalOcean AI] Serverless responded in ${endTime - startTime}ms`);
 
         if (inferenceResponse && inferenceResponse.choices && inferenceResponse.choices[0]) {
+          const usage = extractUsage(inferenceResponse);
+          if (usage) onUsage?.(usage);
           return inferenceResponse.choices[0].message.content || '';
         }
       } catch (inferenceError: any) {
@@ -116,7 +141,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
 
     // METHOD 3: Fallback to direct API (final fallback)
     logger.info('[DigitalOcean AI] SDK methods failed, trying direct API...');
-    return await directApiFallback(prompt, startTime, jsonMode, maxTokens);
+    return await directApiFallback(prompt, startTime, jsonMode, maxTokens, onUsage);
 
   } catch (error: any) {
     logger.error(`[DigitalOcean AI] All methods failed:`, error.message);
@@ -127,7 +152,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
 /**
  * Direct API fallback (like Python's _direct_api_fallback)
  */
-const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, maxTokens: number): Promise<string> => {
+const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, maxTokens: number, onUsage?: OnUsage): Promise<string> => {
   try {
     const headers = {
       'Authorization': `Bearer ${GRADIENT_AGENT_ACCESS_KEY}`,
@@ -192,6 +217,8 @@ const directApiFallback = async (prompt: string, startTime: number, jsonMode: bo
     logger.info(`[DigitalOcean AI] Direct API responded in ${endTime - startTime}ms`);
     
     if (data.choices && data.choices[0] && data.choices[0].message) {
+      const usage = extractUsage(data);
+      if (usage) onUsage?.(usage);
       return data.choices[0].message.content;
     }
     
@@ -225,13 +252,16 @@ export const queryDigitalOceanAI = async (
   // spending tokens on decorative styling in favor of just fitting the
   // content in.
   maxTokens: number = 4000,
+  // Opt-in usage metering -- see AiTokenUsage. Omit for the default
+  // string-only behavior every existing caller already relies on.
+  onUsage?: OnUsage,
 ): Promise<string> => {
   logger.info(`[DigitalOcean AI] Processing prompt (${prompt.length} chars)`);
 
   for (let attempt = 1; attempt <= retryCount + 1; attempt++) {
     try {
       logger.info(`[DigitalOcean AI] Attempt ${attempt} of ${retryCount + 1}`);
-      const result = await callDigitalOceanAgent(prompt, jsonMode, maxTokens);
+      const result = await callDigitalOceanAgent(prompt, jsonMode, maxTokens, onUsage);
       
       if (!result || result.trim().length === 0) {
         throw new Error('Empty response');

@@ -1,4 +1,4 @@
-import { queryDigitalOceanAI } from '../../utils/digital-factory';
+import { queryDigitalOceanAI, AiTokenUsage } from '../../utils/digital-factory';
 import { getServiceLogger } from '../../utils/createLogger';
 
 const logger = getServiceLogger('discovery-ai-extract');
@@ -58,12 +58,15 @@ function parseJson(text: string): ExtractedJobFields | null {
  * (skills, technologies, salary, work mode, visa/relocation) than regex alone.
  * Falls back to null on any failure so callers can keep regex-based extraction.
  */
-export async function extractJobFieldsFromText(text: string): Promise<ExtractedJobFields | null> {
+export async function extractJobFieldsFromText(
+  text: string,
+  onUsage?: (usage: AiTokenUsage) => void,
+): Promise<ExtractedJobFields | null> {
   const content = cleanText(text);
   if (!content || content.length < 50) return null;
 
   try {
-    const raw = await queryDigitalOceanAI(buildPrompt(content), 1, true, 1500);
+    const raw = await queryDigitalOceanAI(buildPrompt(content), 1, true, 1500, onUsage);
     const parsed = parseJson(raw);
     if (parsed) {
       logger.info(`AI extracted job fields (skills=${parsed.skills.length}, tech=${parsed.technologies.length})`);
