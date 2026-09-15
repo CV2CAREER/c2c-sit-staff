@@ -107,6 +107,7 @@ export const seedEmailTemplates = async (): Promise<void> => {
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
 
   for (const fileName of files) {
     const body = fs.readFileSync(path.join(mailDirectory, fileName), "utf-8");
@@ -128,16 +129,29 @@ export const seedEmailTemplates = async (): Promise<void> => {
       },
     });
 
+    // A row last touched by a real person (updatedBy is anything other than
+    // "System") has been manually customized -- force must never clobber
+    // that, matching the doc comment above's own stated intent, which the
+    // force branch never actually enforced. This was the root cause of a
+    // real incident: a force-reseed silently overwrote an admin's edited
+    // templates back to their on-disk defaults with no warning.
+    const isAdminEdited = !wasCreated && row.updatedBy && row.updatedBy !== "System";
+
     if (wasCreated) {
       created += 1;
-    } else if (forceUpdate) {
+    } else if (forceUpdate && !isAdminEdited) {
       await row.update({ name: meta.name, type: meta.type, body, variables: meta.variables, updatedBy: "System" });
       updated += 1;
+    } else if (forceUpdate && isAdminEdited) {
+      skipped += 1;
+      logger.info(
+        `Skipped force-update for "${fileName}" -- last edited by ${row.updatedBy}, not System`,
+      );
     }
   }
 
   logger.info(
-    `Email template seed complete — ${created} created, ${updated} refreshed, ${files.length} total files scanned`,
+    `Email template seed complete — ${created} created, ${updated} refreshed, ${skipped} skipped (admin-edited), ${files.length} total files scanned`,
   );
 };
 
