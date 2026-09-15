@@ -377,6 +377,7 @@ export default function AssignmentsTable() {
               pagination
               pageSizeOptions={[10, 25, 50]}
               initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+              showToolbar
               slots={{ toolbar: GridToolbar }}
               slotProps={{ toolbar: { showQuickFilter: false } as any }}
               sx={{
