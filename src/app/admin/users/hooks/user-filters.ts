@@ -1,8 +1,10 @@
 // Shared faceted-filter model for the Users pages' sidebar (admin +
 // assistant both import this — same convention as useGetAllUsers living in
-// admin/users/hooks and being reused by assistant). Four independent facets
-// — Persona, State, Group, Loyalty — each derived from real User fields, so
-// picking one narrows the set without a network round trip.
+// admin/users/hooks and being reused by assistant). Five independent facets
+// — Persona, State, Group, Loyalty, Subscription — each derived from real
+// User fields, so picking one narrows the set without a network round trip.
+// Subscription is conditional: only clients have a plan, so the UI only
+// shows that facet when Persona = Client is selected (SPR-19-15-003).
 
 export interface PersonaOption {
   key: string;
@@ -39,6 +41,18 @@ export const LOYALTY_OPTIONS = [
   { key: "returnee", label: "Returnee" },
 ];
 
+// Same plan names as PLAN_ORDER (utils/constants.ts) — kept as its own copy
+// here so this facet module doesn't take on a dependency for one shared
+// array; update both if a plan is ever added/renamed.
+export const SUBSCRIPTION_OPTIONS = [
+  { key: "emerald", label: "Emerald" },
+  { key: "bronze", label: "Bronze" },
+  { key: "silver", label: "Silver" },
+  { key: "gold", label: "Gold" },
+  { key: "platinum", label: "Platinum" },
+  { key: "coral", label: "Coral" },
+];
+
 const CUSTOMER_PERSONAS = new Set(["client", "guest", "partner", "ambassador"]);
 const STAFF_PERSONAS = new Set(["admin", "coach", "assistant"]);
 
@@ -69,6 +83,15 @@ export const groupForUser = (user: any): "customer" | "staff" | null => {
 export const loyaltyForUser = (user: any): "newcomer" | "returnee" =>
   (user?.tourCount ?? 0) > 1 ? "returnee" : "newcomer";
 
+// user.plan holds the plan title as stored (e.g. "Bronze") — compare
+// case-insensitively against SUBSCRIPTION_OPTIONS labels and return the
+// matching option key, or null if unset/unrecognized.
+export const subscriptionForUser = (user: any): string | null => {
+  const plan = typeof user?.plan === "string" ? user.plan.trim().toLowerCase() : "";
+  if (!plan) return null;
+  return SUBSCRIPTION_OPTIONS.some((o) => o.key === plan) ? plan : null;
+};
+
 // Each facet holds the set of selected option keys — multiple values within
 // the same facet are OR'd together (e.g. Persona: client + guest matches
 // either), while the facets themselves are AND'd together, standard
@@ -78,6 +101,7 @@ export interface UserFilterState {
   state: string[];
   group: string[];
   loyalty: string[];
+  subscription: string[];
 }
 
 export const EMPTY_FILTERS: UserFilterState = {
@@ -85,6 +109,7 @@ export const EMPTY_FILTERS: UserFilterState = {
   state: [],
   group: [],
   loyalty: [],
+  subscription: [],
 };
 
 // Saved segments (locked presets + DB-backed custom ones) may still carry
@@ -102,11 +127,16 @@ export const normalizeFilterState = (raw: any): UserFilterState => {
     state: toArray(raw?.state),
     group: toArray(raw?.group),
     loyalty: toArray(raw?.loyalty),
+    subscription: toArray(raw?.subscription),
   };
 };
 
 export const hasActiveFacetFilters = (filters: UserFilterState): boolean =>
-  filters.persona.length > 0 || filters.state.length > 0 || filters.group.length > 0 || filters.loyalty.length > 0;
+  filters.persona.length > 0 ||
+  filters.state.length > 0 ||
+  filters.group.length > 0 ||
+  filters.loyalty.length > 0 ||
+  filters.subscription.length > 0;
 
 // Matches every facet in `filters` except the one named in `except` — used
 // to compute each pill's "how many results if I also picked this" count
@@ -124,6 +154,12 @@ export const matchesFacets = (
   if (except !== "group" && filters.group.length > 0 && !filters.group.includes(groupForUser(user) ?? ""))
     return false;
   if (except !== "loyalty" && filters.loyalty.length > 0 && !filters.loyalty.includes(loyaltyForUser(user)))
+    return false;
+  if (
+    except !== "subscription" &&
+    filters.subscription.length > 0 &&
+    !filters.subscription.includes(subscriptionForUser(user) ?? "")
+  )
     return false;
   return true;
 };
