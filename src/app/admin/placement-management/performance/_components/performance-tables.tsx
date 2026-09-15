@@ -454,6 +454,7 @@ export default function PerformanceTables() {
                 getDetailPanelHeight={() => "auto" as const}
                 detailPanelExpandedRowIds={league.expanded}
                 onDetailPanelExpandedRowIdsChange={(ids: Set<GridRowId>) => league.setExpanded(new Set(ids))}
+                showToolbar
                 slots={{ toolbar: GridToolbar }}
                 slotProps={{ toolbar: { showQuickFilter: false } as any }}
                 sx={{
