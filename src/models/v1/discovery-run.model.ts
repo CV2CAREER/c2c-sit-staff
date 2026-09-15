@@ -79,6 +79,16 @@ export class DiscoveryRun extends Model {
   lqa_count?: number;
 
   @AllowNull(true)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  tokens_used?: number;
+
+  @AllowNull(true)
+  @Default(0)
+  @Column(DataType.INTEGER)
+  ai_request_count?: number;
+
+  @AllowNull(true)
   @Column(DataType.JSONB)
   log_entries?: Record<string, any>[] | null;
 

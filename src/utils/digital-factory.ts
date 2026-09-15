@@ -146,7 +146,7 @@ const callDigitalOceanAgent = async (prompt: string, jsonMode: boolean, maxToken
 /**
  * Direct API fallback (like Python's _direct_api_fallback)
  */
-const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, maxTokens: number): Promise<string> => {
+const directApiFallback = async (prompt: string, startTime: number, jsonMode: boolean, maxTokens: number): Promise<AiResponse> => {
   try {
     const headers = {
       'Authorization': `Bearer ${GRADIENT_AGENT_ACCESS_KEY}`,

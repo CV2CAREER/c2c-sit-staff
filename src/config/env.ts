@@ -173,6 +173,12 @@ export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
 export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
 export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;
+// Blended per-1M-token rate for the model behind GRADIENT_AGENT_ENDPOINT
+// ('llama3.3-70b-instruct'), used only to project AI Discovery Agent spend
+// (SPR-19-03-017) — not billed against directly, so an approximate default
+// is fine, but finance/ops should override via env with the actual
+// DigitalOcean Gradient rate once confirmed.
+export const AI_COST_PER_1M_TOKENS = parseFloat(process.env.AI_COST_PER_1M_TOKENS || '0.65');
 
 // ADZUNA API (AI Discovery Agent)
 export const ADZUNA_API_KEY = process.env.ADZUNA_API_KEY || '';
