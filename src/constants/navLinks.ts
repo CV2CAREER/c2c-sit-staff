@@ -186,7 +186,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Guest", role: "guest", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
       { name: "Ambassador", role: "ambassador", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
       { name: "Coach", role: "coach", href: "/coach/dashboard", icon: User },
-      { name: "CSE", role: "cse", href: "/cse/dashboard", icon: User },
+      // { name: "CSE", role: "cse", href: "/cse/dashboard", icon: User },
       { name: "Placement Controller", role: "assistant", href: "/pc/dashboard", icon: User },
       { name: "CEC", role: "cec", href: "/cec/dashboard", icon: User },
     ],
