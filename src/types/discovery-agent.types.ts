@@ -28,10 +28,20 @@ export interface DiscoveryRun {
   hqa_count: number | null;
   mqa_count: number | null;
   lqa_count: number | null;
+  tokens_used: number | null;
+  ai_request_count: number | null;
   log_entries: Record<string, any>[] | null;
   error_message: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DiscoveryAiUsageStats {
+  tokensThisMonth: number;
+  requestsThisMonth: number;
+  estimatedMonthlyCostUsd: number;
+  projectedCostAt3xVolumeUsd: number;
+  costPer1mTokensUsd: number;
 }
 
 export interface DiscoveryDashboardStats {
@@ -44,6 +54,7 @@ export interface DiscoveryDashboardStats {
   runsToday: number;
   sourcesActive: number;
   sourcesTotal: number;
+  aiUsage: DiscoveryAiUsageStats;
 }
 
 export interface DiscoverySourceBreakdown {

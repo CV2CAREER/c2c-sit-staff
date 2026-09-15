@@ -20,6 +20,7 @@ import {
   Search,
   CheckCircle2,
   Zap,
+  DollarSign,
 } from "lucide-react";
 import {
   useDiscoveryDashboard,
@@ -55,6 +56,7 @@ interface RunItem {
   hqa: number | string | null;
   mqa: number | string | null;
   lqa: number | string | null;
+  tokens: number | string;
   log_entries?: Array<{ ts?: string; level?: string; message: string }> | null;
 }
 
@@ -158,6 +160,7 @@ export default function AIDiscoveryAgentPage() {
           hqa:        r.hqa_count     ?? null,
           mqa:        r.mqa_count     ?? null,
           lqa:        r.lqa_count     ?? null,
+          tokens:     r.tokens_used   ?? "—",
           log_entries: r.log_entries  ?? null,
         }))
       );
@@ -212,6 +215,14 @@ export default function AIDiscoveryAgentPage() {
     lqaCount:   dashboard?.stats?.lqaCount   ?? 0,
     runsToday:  dashboard?.stats?.runsToday  ?? 0,
     runsTarget: dashboard?.stats?.totalRuns  ?? 0,
+  };
+
+  // AI usage & cost metering (SPR-19-03-017) — real or defaults
+  const aiUsage = {
+    tokensThisMonth:          dashboard?.stats?.aiUsage?.tokensThisMonth          ?? 0,
+    requestsThisMonth:        dashboard?.stats?.aiUsage?.requestsThisMonth        ?? 0,
+    estimatedMonthlyCostUsd:  dashboard?.stats?.aiUsage?.estimatedMonthlyCostUsd  ?? 0,
+    projectedCostAt3xVolumeUsd: dashboard?.stats?.aiUsage?.projectedCostAt3xVolumeUsd ?? 0,
   };
 
   // AI score % — dynamic, not hardcoded
@@ -606,6 +617,40 @@ export default function AIDiscoveryAgentPage() {
         </div>
       </div>
 
+      {/* AI USAGE & COST CARD — SPR-19-03-017 */}
+      <div className={`${CARD} mb-4`}>
+        <div className={CARD_HEADER}>
+          <div className={CARD_HEADER_LEFT}>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <DollarSign size={14} />
+            </span>
+            <span className={CARD_TITLE}>AI Usage & Cost — This Month</span>
+          </div>
+        </div>
+        <div className={`${CARD_BODY} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5`}>
+          <div>
+            <div className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Tokens used</div>
+            <div className="text-xl font-extrabold text-slate-900">{aiUsage.tokensThisMonth.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">AI requests</div>
+            <div className="text-xl font-extrabold text-slate-900">{aiUsage.requestsThisMonth.toLocaleString()}</div>
+          </div>
+          <div>
+            <div className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Est. cost at current volume</div>
+            <div className="text-xl font-extrabold text-[#1EB62D]">
+              ${aiUsage.estimatedMonthlyCostUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10.5px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Projected cost at 3× client volume</div>
+            <div className="text-xl font-extrabold text-amber-500">
+              ${aiUsage.projectedCostAt3xVolumeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* RUN HISTORY TABLE */}
       <div className={CARD}>
         <div className={CARD_HEADER}>
@@ -647,6 +692,7 @@ export default function AIDiscoveryAgentPage() {
                   <th className="text-left px-3.5 py-2.5 font-semibold text-slate-500 text-[10.5px] uppercase tracking-wide border-b-2 border-slate-100 bg-slate-50">HQA</th>
                   <th className="text-left px-3.5 py-2.5 font-semibold text-slate-500 text-[10.5px] uppercase tracking-wide border-b-2 border-slate-100 bg-slate-50">MQA</th>
                   <th className="text-left px-3.5 py-2.5 font-semibold text-slate-500 text-[10.5px] uppercase tracking-wide border-b-2 border-slate-100 bg-slate-50">LQA</th>
+                  <th className="text-left px-3.5 py-2.5 font-semibold text-slate-500 text-[10.5px] uppercase tracking-wide border-b-2 border-slate-100 bg-slate-50">Tokens</th>
                   <th className="text-left px-3.5 py-2.5 font-semibold text-slate-500 text-[10.5px] uppercase tracking-wide border-b-2 border-slate-100 bg-slate-50" />
                 </tr>
               </thead>
@@ -679,6 +725,7 @@ export default function AIDiscoveryAgentPage() {
                     <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.hqa !== null ? <span className={`${PILL} ${pillClass("hqa")}`}>{run.hqa}</span> : "—"}</td>
                     <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.mqa !== null ? <span className={`${PILL} ${pillClass("mqa")}`}>{run.mqa}</span> : "—"}</td>
                     <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.lqa !== null ? <span className={`${PILL} ${pillClass("lqa")}`}>{run.lqa}</span> : "—"}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700 font-mono text-[11px]">{typeof run.tokens === "number" ? run.tokens.toLocaleString() : run.tokens}</td>
                     <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
                       {run.status === "running" ? (
                         <button
