@@ -12,6 +12,8 @@ import {
   bulkPurgeUsers,
   getPendingDocumentsByUserId,
   approveUserAccount,
+  suspendUserAccount,
+  restrictUserAccount,
   assignReferrer,
   sendUserDetailsToSlack,
   getFeatureTitles,
@@ -81,6 +83,16 @@ userManagementRouterV1.delete(
 // Approve user account
 userManagementRouterV1.post(
   "/users/:userId/approve", authorizeRoles("admin"), approveUserAccount
+);
+
+// Suspend user account (isActive → false; login blocked customer-side)
+userManagementRouterV1.post(
+  "/users/:userId/suspend", authorizeRoles("admin"), suspendUserAccount
+);
+
+// Restrict user account (isRestricted → true; login blocked customer-side)
+userManagementRouterV1.post(
+  "/users/:userId/restrict", authorizeRoles("admin"), restrictUserAccount
 );
 
 // Assign / update / allow a referrer relationship for the client

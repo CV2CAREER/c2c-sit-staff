@@ -30,6 +30,11 @@ export class CECDailyLog extends Model {
   customerId?: string;
 
   @AllowNull(true)
+  @Index
+  @Column(DataType.STRING)
+  campaignCredentialId?: string;
+
+  @AllowNull(true)
   @Column(DataType.STRING)
   mobile?: string;
 

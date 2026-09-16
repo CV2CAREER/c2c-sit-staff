@@ -280,6 +280,11 @@ export class User extends Model {
   @Column(DataType.BOOLEAN)
   isActive!: boolean;
 
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isRestricted?: boolean;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)

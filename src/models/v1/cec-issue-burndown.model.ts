@@ -27,6 +27,11 @@ export class CECIssueBurndown extends Model {
   customerId?: string;
 
   @AllowNull(true)
+  @Index
+  @Column(DataType.STRING)
+  campaignCredentialId?: string;
+
+  @AllowNull(true)
   @Column(DataType.STRING)
   otp?: string;
 
@@ -62,9 +67,11 @@ export class CECIssueBurndown extends Model {
   @Column(DataType.STRING)
   resolution?: string;
 
-  @AllowNull(true)
-  @Column(DataType.TEXT)
-  login?: string;
+  // NOTE (SPR-19-10-005): the former `login` ("Email and password") plaintext
+  // credential field has been removed from the model entirely. No raw plaintext
+  // credential may be stored here — a secure handling method must be agreed and
+  // recorded before any such field is reintroduced. The DB column is left
+  // dormant for a scheduled purge.
 
   @AllowNull(true)
   @Column(DataType.TEXT)

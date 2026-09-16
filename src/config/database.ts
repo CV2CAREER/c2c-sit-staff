@@ -3,6 +3,8 @@ import { setDbReady } from '../middlewares/dbReady';
 import { getServiceLogger } from '../utils/createLogger';
 import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
+// Ensure DNS cache/serve-stale is active before any connection is opened.
+import './dns-cache';
 // import { JustCallEvent } from '../models/v1/justcall-event.model';
 // import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
 // import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
@@ -28,6 +30,12 @@ import { DiscoveryJob } from '../models/v1/discovery-job.model';
 import { DiscoveryMatch } from '../models/v1/discovery-match.model';
 import { DiscoveryRun } from '../models/v1/discovery-run.model';
 import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
+import { CECDailyLog } from '../models/v1/cec-daily-log.model';
+import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
+import { CECComplaint } from '../models/v1/cec-complaint.model';
+import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
+import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
+import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -94,6 +102,18 @@ export const connectDB = async (): Promise<void> => {
         await DiscoveryMatch.sync({ force: false });
         await DiscoveryRun.sync({ force: false });
         await DiscoverySchedule.sync({ force: false });
+        await CECDailyLog.sync({ force: false });
+        await CECIssueBurndown.sync({ force: false });
+        await CECComplaint.sync({ force: false });
+        await CECReferralPayout.sync({ force: false });
+        await CECSalesOutreach.sync({ force: false });
+        await CECAmbassadorScout.sync({ force: false });
+
+        // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
+        // purge and the campaignCredentialId / discovery_source_register columns)
+        // are applied via the SQL migration in c2c-cleanup:
+        //   c2c-cleanup/c2c_cec_discovery_migration.sql
+        //   node c2c-cleanup/run_cec_discovery_migration.js [db_name]
 
         // Add discovery_method column to manual_applications if missing
         try {
@@ -103,14 +123,6 @@ export const connectDB = async (): Promise<void> => {
           `);
         } catch (colErr: any) {
           logger.warn(`discovery_method column check: ${colErr.message}`);
-        }
-
-        // Seed discovery source register on first boot
-        try {
-          const { seedDiscoverySourceRegister } = await import('../scripts/seed-discovery-config');
-          await seedDiscoverySourceRegister();
-        } catch (seedErr: any) {
-          logger.warn(`Discovery seed skipped: ${seedErr.message}`);
         }
 
         // SPR-19-07-005: add users.socialVerificationExempt column as a
