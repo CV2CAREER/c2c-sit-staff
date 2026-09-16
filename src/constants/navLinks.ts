@@ -123,7 +123,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: Headphones,
     access: ["admin", "assistant"],
     children: [
-      { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
+      // { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
       { name: "Daily Log", href: "/admin/cec/daily-log", icon: ClipboardList },
       { name: "Issue Burndown", href: "/admin/cec/issue-burndown", icon: Bug },
       { name: "Complaints", href: "/admin/cec/complaints", icon: AlertTriangle },
@@ -254,7 +254,7 @@ export const ASSISTANT_NAV_LINKS: NavLink[] = [
     icon: Headphones,
     access: ["admin", "assistant"],
     children: [
-      { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
+      // { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
       { name: "Daily Log", href: "/admin/cec/daily-log", icon: ClipboardList },
       { name: "Issue Burndown", href: "/admin/cec/issue-burndown", icon: Bug },
       { name: "Complaints", href: "/admin/cec/complaints", icon: AlertTriangle },
