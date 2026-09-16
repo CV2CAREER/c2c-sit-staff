@@ -6,7 +6,6 @@ import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
 import CECPill from "@/components/cec/CECPill";
-import { OPTS } from "@/components/cec/cec-constants";
 import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_AMBASSADOR_SCOUTING } from "@/constants/apiEndpoints/admin.endpoint";
 
@@ -32,7 +31,7 @@ const DRAWER_SECTIONS: DrawerSection[] = [
     title: "Pipeline",
     fields: [
       { key: "country", label: "Country", type: "input", required: true },
-      { key: "pipeline", label: "Pipeline stage", type: "select", options: OPTS.ambassadorPipeline },
+      { key: "pipeline", label: "Pipeline stage", type: "input" },
       { key: "nominations", label: "Nominations", type: "area" },
     ],
   },
