@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,11 +9,13 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_ISSUE_BURNDOWN } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface IssueBurndown {
   id: string;
+  hasLog?: boolean;
+  logId?: string | null;
   name: string;
   otp: string;
   verification: string;
@@ -24,7 +26,6 @@ interface IssueBurndown {
   outreachType: string;
   outreachDate: string;
   resolution: string;
-  login: string;
   proof: string;
   vcount: string;
 }
@@ -69,7 +70,6 @@ const DRAWER_SECTIONS: DrawerSection[] = [
   {
     title: "Access & outreach",
     fields: [
-      { key: "login", label: "Email and password", type: "input" },
       { key: "proof", label: "Verification proof", type: "input" },
       { key: "outreachType", label: "Outreach type", type: "input" },
       { key: "outreachDate", label: "Outreach date", type: "date" },
@@ -91,7 +91,8 @@ export default function CECIssueBurndownPage() {
   const [selected, setSelected] = useState<IssueBurndown | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_ISSUE_BURNDOWN, "cec-issue-burndown");
+  const { saveChanges, removeRow } = useCecRowEditor<IssueBurndown>(ADMIN_CEC_ISSUE_BURNDOWN, "cec-issue-burndown");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as IssueBurndown[]); }, [serverRows]);
 
@@ -104,47 +105,40 @@ export default function CECIssueBurndownPage() {
     return rows;
   })();
 
-  const handleRowClick = (row: IssueBurndown) => { setSelected(row); setDrawerOpen(true); };
+  const handleRowClick = (row: IssueBurndown) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-    if (String(selected.id).startsWith("temp-")) {
-      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          setSelected(saved);
-          setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.id, field: key, value });
-    }
   };
 
-  const handleAddRow = () => {
-    const tempId = `temp-${Date.now()}`;
-    const row = { id: tempId, name: "", otp: "", verification: "", cv: "", forwarding: "", indeed: "", delegation: "", outreachType: "", outreachDate: "", resolution: "", login: "", proof: "", vcount: "" } as IssueBurndown;
-    setData((prev) => [row, ...prev]);
-    setSelected(row);
-    setDrawerOpen(true);
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleDelete = async () => {
     if (!selected) return;
-    if (String(selected.id).startsWith("temp-")) {
+    if (!selected.hasLog) {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.id }).then(() => {
-      setData((prev) => prev.filter((r) => r.id !== selected.id));
-      setDrawerOpen(false);
-      setSelected(null);
-    });
+    await removeRow(selected);
+    const reset = { ...selected, hasLog: false, logId: null, otp: "", verification: "", cv: "", forwarding: "", indeed: "", delegation: "", resolution: "", proof: "", outreachType: "", outreachDate: "", vcount: "" };
+    setSelected(reset);
+    setData((prev) => prev.map((r) => r.id === selected.id ? reset : r));
   };
 
   if (isLoading) {
@@ -175,8 +169,8 @@ export default function CECIssueBurndownPage() {
         <CECKPICard label="CV missing" value={stats.cvMissing} hint="no PDF on file" bad />
         <CECKPICard label="Clean" value={stats.clean} hint="all three green" />
       </div>
-      <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle="Issue Burndown" pills={selected ? [selected.otp, selected.verification, selected.cv, selected.resolution].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} totalCount={data.length} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle="Issue Burndown" pills={selected ? [selected.otp, selected.verification, selected.cv, selected.resolution].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }
