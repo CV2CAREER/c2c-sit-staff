@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useGetAllUsers } from "@/app/admin/users/hooks/users-all";
@@ -13,6 +13,7 @@ import {
   STATE_OPTIONS,
   GROUP_OPTIONS,
   LOYALTY_OPTIONS,
+  SUBSCRIPTION_OPTIONS,
   UserFilterState,
   EMPTY_FILTERS,
   hasActiveFacetFilters,
@@ -20,6 +21,7 @@ import {
   stateForUser,
   groupForUser,
   loyaltyForUser,
+  subscriptionForUser,
   matchesFacets,
 } from "@/app/admin/users/hooks/user-filters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,13 +43,13 @@ const LOCKED_SEGMENTS: SavedSegment[] = [
     id: "locked-dormant-clients",
     name: "Dormant clients",
     locked: true,
-    filters: { persona: [], state: ["dormant"], group: ["customer"], loyalty: [] },
+    filters: { persona: [], state: ["dormant"], group: ["customer"], loyalty: [], subscription: [] },
   },
   {
     id: "locked-new-guests",
     name: "New guests",
     locked: true,
-    filters: { persona: ["guest"], state: [], group: [], loyalty: ["newcomer"] },
+    filters: { persona: ["guest"], state: [], group: [], loyalty: ["newcomer"], subscription: [] },
   },
 ];
 
@@ -127,7 +129,19 @@ const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProp
     state: stateForUser,
     group: groupForUser,
     loyalty: loyaltyForUser,
+    subscription: subscriptionForUser,
   };
+
+  // Subscription only means something for clients — if Client stops being
+  // selected in Persona, drop any subscription selection too rather than
+  // leaving an invisible filter still narrowing the results (SPR-19-15-003).
+  const personaIncludesClient = filters.persona.includes("client");
+  useEffect(() => {
+    if (!personaIncludesClient && filters.subscription.length > 0) {
+      setFilters({ ...filters, subscription: [] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personaIncludesClient]);
 
   // <details> gives every section a native, accessible dropdown/disclosure —
   // open by default (unchanged desktop look), but collapsible so a long
@@ -201,6 +215,10 @@ const UserDataCards = ({ filters, setFilters, scrollTotable }: UserDataCardsProp
         {renderSection("State", "recent activity", "state", STATE_OPTIONS)}
         {renderSection("User Group", "side of the house", "group", GROUP_OPTIONS)}
         {renderSection("Loyalty", "first time or back", "loyalty", LOYALTY_OPTIONS)}
+        {/* Only clients have a plan — this facet only makes sense once
+            Client is the active Persona selection (SPR-19-15-003). */}
+        {personaIncludesClient &&
+          renderSection("Subscription", "which plan", "subscription", SUBSCRIPTION_OPTIONS)}
 
         <details className="group border-t border-gray-100 pt-4" open>
           <summary className="mb-2 flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">

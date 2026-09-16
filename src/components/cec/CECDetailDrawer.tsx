@@ -8,6 +8,13 @@ export interface DrawerField {
   label: string;
   type: "static" | "input" | "select" | "area" | "date";
   options?: string[];
+  // Validation — `required` blocks an empty value; `validate` returns an error
+  // message (or null) for anything more specific. Errors render inline and block
+  // Done until resolved.
+  required?: boolean;
+  validate?: (value: string, all: Record<string, any>) => string | null;
+  // HTML input type for `input` fields (e.g. "number"); defaults to "text".
+  inputType?: string;
 }
 
 export interface DrawerSection {
@@ -24,6 +31,7 @@ interface CECDetailDrawerProps {
   sections: DrawerSection[];
   data: Record<string, any>;
   onChange?: (key: string, value: string) => void;
+  onSave?: () => void | Promise<void>;
   onDelete?: () => void;
   linkedRecords?: React.ReactNode;
 }
@@ -74,22 +82,79 @@ export default function CECDetailDrawer({
   sections,
   data,
   onChange,
+  onSave,
   onDelete,
   linkedRecords,
 }: CECDetailDrawerProps) {
   const [localData, setLocalData] = useState<Record<string, any>>({});
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const dirtyRef = useRef(false);
 
   useEffect(() => {
     setLocalData({ ...data });
   }, [data]);
 
+  // Reset validation state when a different row is opened (the id changes when a
+  // client-anchored row is created on its first save).
+  useEffect(() => {
+    setErrors({});
+    dirtyRef.current = false;
+  }, [data?.id]);
+
+  const validateAll = (values: Record<string, any>): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    for (const section of sections) {
+      for (const field of section.fields) {
+        if (field.type === "static") continue;
+        const raw = values[field.key];
+        const val = raw == null ? "" : String(raw).trim();
+        if (field.required && val === "") {
+          errs[field.key] = `${field.label} is required`;
+          continue;
+        }
+        const msg = field.validate?.(val, values);
+        if (msg) errs[field.key] = msg;
+      }
+    }
+    return errs;
+  };
+
+  // Every edit is reflected in the table immediately (onChange updates the row
+  // in place); the accumulated changes are only written to the server on Done.
   const handleChange = (key: string, value: string) => {
     setLocalData((prev) => ({ ...prev, [key]: value }));
-    if (onChange) {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => onChange(key, value), 300);
+    dirtyRef.current = true;
+    setErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    onChange?.(key, value);
+  };
+
+  const handleDone = async () => {
+    // Only validate once something has actually been edited, so an untouched
+    // "+ New row" can still be dismissed.
+    if (dirtyRef.current) {
+      const errs = validateAll(localData);
+      setErrors(errs);
+      if (Object.keys(errs).length > 0) return;
     }
+    setSaving(true);
+    try {
+      await onSave?.();
+    } finally {
+      setSaving(false);
+      onClose();
+    }
+  };
+
+  // Overlay / X also commit, so an edit is never silently lost on close.
+  const handleClose = () => {
+    if (saving) return;
+    void handleDone();
   };
 
   if (!isOpen) return null;
@@ -99,7 +164,7 @@ export default function CECDetailDrawer({
       {/* Overlay */}
       <div
         style={{ position: "fixed", inset: 0, zIndex: 40, display: "flex", justifyContent: "flex-end" }}
-        onClick={onClose}
+        onClick={handleClose}
       >
         <div style={{ position: "absolute", inset: 0, background: "rgba(18,32,45,0.32)" }} />
       </div>
@@ -140,7 +205,7 @@ export default function CECDetailDrawer({
             )}
           </div>
           <div
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               flexShrink: 0,
               width: "30px",
@@ -170,11 +235,12 @@ export default function CECDetailDrawer({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px" }}>
                 {section.fields.map((field) => {
                   const val = localData[field.key] == null ? "" : String(localData[field.key]);
+                  const fieldError = errors[field.key];
                   const wrapStyle: React.CSSProperties = field.type === "area" ? { gridColumn: "1 / -1" } : {};
 
                   return (
                     <div key={field.key} style={wrapStyle}>
-                      <div style={{ fontSize: "11.5px", color: "#8A9AAB", marginBottom: "5px" }}>{field.label}</div>
+                      <div style={{ fontSize: "11.5px", color: fieldError ? "#C23434" : "#8A9AAB", marginBottom: "5px" }}>{field.label}</div>
                       {field.type === "static" && (
                         <div style={{ fontSize: "13px", color: "#12202D", lineHeight: "1.5", wordBreak: "break-word" }}>
                           {val || "---"}
@@ -182,10 +248,10 @@ export default function CECDetailDrawer({
                       )}
                       {field.type === "input" && (
                         <input
-                          type="text"
+                          type={field.inputType || "text"}
                           value={val}
                           onChange={(e) => handleChange(field.key, e.target.value)}
-                          style={INPUT_STYLE}
+                          style={fieldError ? { ...INPUT_STYLE, borderColor: "#E7A9A9" } : INPUT_STYLE}
                         />
                       )}
                       {field.type === "date" && (
@@ -215,6 +281,9 @@ export default function CECDetailDrawer({
                           style={AREA_STYLE}
                         />
                       )}
+                      {fieldError && (
+                        <div style={{ fontSize: "11px", color: "#C23434", marginTop: "4px" }}>{fieldError}</div>
+                      )}
                     </div>
                   );
                 })}
@@ -236,9 +305,9 @@ export default function CECDetailDrawer({
           )}
           {!onDelete && <div />}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ fontSize: "11.5px", color: "#8A9AAB" }}>Changes save as you type</div>
+            <div style={{ fontSize: "11.5px", color: "#8A9AAB" }}>{saving ? "Saving..." : "Changes save when you click Done"}</div>
             <div
-              onClick={onClose}
+              onClick={() => { if (!saving) void handleDone(); }}
               style={{
                 height: "36px",
                 display: "flex",
@@ -249,10 +318,11 @@ export default function CECDetailDrawer({
                 color: "#fff",
                 fontSize: "12.5px",
                 fontWeight: 500,
-                cursor: "pointer",
+                cursor: saving ? "default" : "pointer",
+                opacity: saving ? 0.7 : 1,
               }}
             >
-              Done
+              {saving ? "Saving..." : "Done"}
             </div>
           </div>
         </div>

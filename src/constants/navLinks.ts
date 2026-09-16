@@ -43,7 +43,7 @@ import {
 // import { IconType } from "react-icons";
 import { SiSlack } from "react-icons/si";
 
-export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "client" | "guest" | "ambassador" | "cec";
+export type NavRole = "admin" | "assistant" | "partner" | "coach" | "cse" | "client" | "guest" | "ambassador";
 
 export type NavAction = "switch-admin" | "switch-persona-target";
 
@@ -118,6 +118,21 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     ],
   },
   {
+    name: "CEC",
+    groupId: 10,
+    icon: Headphones,
+    access: ["admin", "assistant"],
+    children: [
+      // { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
+      { name: "Daily Log", href: "/admin/cec/daily-log", icon: ClipboardList },
+      { name: "Issue Burndown", href: "/admin/cec/issue-burndown", icon: Bug },
+      { name: "Complaints", href: "/admin/cec/complaints", icon: AlertTriangle },
+      { name: "Referral Payouts", href: "/admin/cec/referral-payouts", icon: DollarSign },
+      { name: "Sales Outreach", href: "/admin/cec/sales-outreach", icon: Megaphone },
+      { name: "Ambassador Scouting", href: "/admin/cec/ambassador-scouting", icon: Target },
+    ],
+  },
+  {
     name: "Job Mgt",
     groupId: 5,
     icon: Briefcase,
@@ -186,9 +201,8 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
       { name: "Guest", role: "guest", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
       { name: "Ambassador", role: "ambassador", href: `${process.env.NEXT_PUBLIC_CUSTOMER_URL ?? ""}/dashboard`, icon: User },
       { name: "Coach", role: "coach", href: "/coach/dashboard", icon: User },
-      { name: "CSE", role: "cse", href: "/cse/dashboard", icon: User },
+      // { name: "CSE", role: "cse", href: "/cse/dashboard", icon: User },
       { name: "Placement Controller", role: "assistant", href: "/pc/dashboard", icon: User },
-      { name: "CEC", role: "cec", href: "/cec/dashboard", icon: User },
     ],
   },
 ];
@@ -234,6 +248,21 @@ export const ASSISTANT_NAV_LINKS: NavLink[] = [
     ],
   },
   { name: "View As User", href: "/pc/view-as-user", icon: ScanEye, access: ["admin", "assistant"] },
+  {
+    name: "CEC",
+    groupId: 10,
+    icon: Headphones,
+    access: ["admin", "assistant"],
+    children: [
+      // { name: "CEC Dashboard", href: "/admin/cec/dashboard", icon: LayoutDashboard },
+      { name: "Daily Log", href: "/admin/cec/daily-log", icon: ClipboardList },
+      { name: "Issue Burndown", href: "/admin/cec/issue-burndown", icon: Bug },
+      { name: "Complaints", href: "/admin/cec/complaints", icon: AlertTriangle },
+      { name: "Referral Payouts", href: "/admin/cec/referral-payouts", icon: DollarSign },
+      { name: "Sales Outreach", href: "/admin/cec/sales-outreach", icon: Megaphone },
+      { name: "Ambassador Scouting", href: "/admin/cec/ambassador-scouting", icon: Target },
+    ],
+  },
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
 ];
 
@@ -260,26 +289,6 @@ export const SALES_NAV_LINKS: NavLink[] = [
   { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
 ];
 
-export const CEC_NAV_LINKS: NavLink[] = [
-  { name: "Home", href: "/cec/dashboard", icon: House },
-  {
-    name: "Trackers",
-    groupId: 1,
-    icon: NotebookPen,
-    access: ["cec"],
-    children: [
-      { name: "Daily Log", href: "/cec/daily-log", icon: ClipboardList },
-      { name: "Issue Burndown", href: "/cec/issue-burndown", icon: Bug },
-      { name: "Complaints", href: "/cec/complaints", icon: AlertTriangle },
-      { name: "Referral Payouts", href: "/cec/referral-payouts", icon: DollarSign },
-      { name: "Sales Outreach", href: "/cec/sales-outreach", icon: Megaphone },
-      { name: "Ambassador Scouting", href: "/cec/ambassador-scouting", icon: Target },
-    ],
-  },
-  { name: "Personal Info", href: "/cec/profile", icon: User },
-  { name: "Switch to Admin", href: "/admin/dashboard", icon: ArrowLeftRight, action: "switch-admin" },
-];
-
 export const CSE_NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/cse/dashboard", icon: House },
   { name: "Personal Info", href: "/cse/profile", icon: User },
@@ -293,5 +302,4 @@ export const NAV_LINKS_BY_ROLE: Record<string, NavLink[]> = {
   sales: SALES_NAV_LINKS,
   cse: CSE_NAV_LINKS,
   partner: PARTNER_NAV_LINKS,
-  cec: CEC_NAV_LINKS,
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,18 +9,18 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_REFERRAL_PAYOUTS } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface ReferralPayout {
   id: string;
+  hasLog?: boolean;
+  logId?: string | null;
   date: string;
   amount: number;
   account: string;
   type: string;
   details: string;
-  heritage: string;
-  gender: string;
   outreach: string;
   response: string;
   processed: string;
@@ -30,7 +30,6 @@ const COLUMNS: { key: string; label: string; wide?: boolean; render?: (row: any)
   { key: "date", label: "Date", render: (row: any) => fmtDate(row.date) },
   { key: "amount", label: "Amount" },
   { key: "details", label: "Transaction details", wide: true },
-  { key: "heritage", label: "Heritage" },
   { key: "outreach", label: "Outreach" },
   { key: "response", label: "Response" },
   { key: "processed", label: "Processed" },
@@ -43,22 +42,40 @@ const FILTERS = [
   { key: "noreach", label: "No outreach" },
 ];
 
+const MAX_AMOUNT = 99999999.99; // fits the DECIMAL(10,2) column
+
 const DRAWER_SECTIONS: DrawerSection[] = [
   {
     title: "Payment",
     fields: [
-      { key: "date", label: "Date", type: "date" },
-      { key: "amount", label: "Amount", type: "input" },
-      { key: "type", label: "Transaction type", type: "input" },
-      { key: "account", label: "Account number", type: "input" },
+      { key: "date", label: "Date", type: "date", required: true },
+      {
+        key: "amount",
+        label: "Amount",
+        type: "input",
+        inputType: "number",
+        required: true,
+        validate: (v) => {
+          if (!/^\d+(\.\d{1,2})?$/.test(v)) return "Enter a valid amount (numbers, up to 2 decimals)";
+          const n = Number(v);
+          if (n <= 0) return "Amount must be greater than 0";
+          if (n > MAX_AMOUNT) return "Amount is too large";
+          return null;
+        },
+      },
+      { key: "type", label: "Transaction type", type: "input", required: true },
+      {
+        key: "account",
+        label: "Account number",
+        type: "input",
+        validate: (v) => (v && !/^\d+$/.test(v) ? "Account number must be digits only" : null),
+      },
       { key: "details", label: "Transaction details", type: "area" },
     ],
   },
   {
     title: "Follow-up",
     fields: [
-      { key: "heritage", label: "Heritage", type: "select", options: OPTS.heritage },
-      { key: "gender", label: "Gender", type: "input" },
       { key: "outreach", label: "Outreach done", type: "select", options: OPTS.outreach },
       { key: "response", label: "Response", type: "input" },
       { key: "processed", label: "Processed on", type: "input" },
@@ -83,7 +100,8 @@ export default function CECReferralPayoutsPage() {
   const [selected, setSelected] = useState<ReferralPayout | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_REFERRAL_PAYOUTS, "cec-referral-payouts");
+  const { saveChanges, removeRow } = useCecRowEditor<ReferralPayout>(ADMIN_CEC_REFERRAL_PAYOUTS, "cec-referral-payouts");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as ReferralPayout[]); }, [serverRows]);
 
@@ -93,29 +111,31 @@ export default function CECReferralPayoutsPage() {
     return rows;
   })();
 
-  const handleRowClick = (row: ReferralPayout) => { setSelected(row); setDrawerOpen(true); };
+  const handleRowClick = (row: ReferralPayout) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-    if (String(selected.id).startsWith("temp-")) {
-      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          setSelected(saved);
-          setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.id, field: key, value });
-    }
+  };
+
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleAddRow = () => {
     const tempId = `temp-${Date.now()}`;
-    const row = { id: tempId, date: "", amount: 0, account: "", type: "", details: "", heritage: "", gender: "", outreach: "", response: "", processed: "" } as ReferralPayout;
+    const row = { id: tempId, hasLog: false, logId: null, date: "", amount: 0, account: "", type: "", details: "", outreach: "", response: "", processed: "" } as ReferralPayout;
     setData((prev) => [row, ...prev]);
     setSelected(row);
     setDrawerOpen(true);
@@ -123,17 +143,16 @@ export default function CECReferralPayoutsPage() {
 
   const handleDelete = async () => {
     if (!selected) return;
-    if (String(selected.id).startsWith("temp-")) {
+    if (!selected.hasLog) {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.id }).then(() => {
-      setData((prev) => prev.filter((r) => r.id !== selected.id));
-      setDrawerOpen(false);
-      setSelected(null);
-    });
+    await removeRow(selected);
+    setData((prev) => prev.filter((r) => r.id !== selected.id));
+    setDrawerOpen(false);
+    setSelected(null);
   };
 
   if (isLoading) {
@@ -164,7 +183,7 @@ export default function CECReferralPayoutsPage() {
         <CECKPICard label="No outreach" value={stats.noOutreach} hint="follow-up owed" bad />
       </div>
       <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.details || "Untitled row"} subtitle="Referral Payout" pills={selected ? [selected.outreach, selected.heritage, selected.response].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.details || "Untitled row"} subtitle="Referral Payout" pills={selected ? [selected.outreach, selected.response, selected.processed].filter(Boolean).map((t) => ({ text: t, style: getPillStyle(t) })) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }

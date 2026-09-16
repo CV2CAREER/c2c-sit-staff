@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StyledDataGridPro } from "@/utils/table";
 import { TrendingUp } from "lucide-react";
+import { GridToolbar } from "@mui/x-data-grid-pro";
 import type { GridColDef, GridRenderCellParams, GridRowId, GridRowParams } from "@mui/x-data-grid-pro";
 
 const RANGE_TABS: { key: PerformanceRange; label: string }[] = [
@@ -453,6 +454,9 @@ export default function PerformanceTables() {
                 getDetailPanelHeight={() => "auto" as const}
                 detailPanelExpandedRowIds={league.expanded}
                 onDetailPanelExpandedRowIdsChange={(ids: Set<GridRowId>) => league.setExpanded(new Set(ids))}
+                showToolbar
+                slots={{ toolbar: GridToolbar }}
+                slotProps={{ toolbar: { showQuickFilter: false } as any }}
                 sx={{
                   border: "1px solid #f1f5f9",
                   borderRadius: "12px",

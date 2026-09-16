@@ -250,7 +250,8 @@ export function useRunLogStream(runId: string | null) {
     const token = getStoredAccessToken();
     const baseUrl = (axiosInstance.defaults.baseURL || "").replace(/\/+$/, "");
     const apiPath = ADMIN_DISCOVERY_AGENT.replace(/^\/+/, "");
-    const url = `${baseUrl}/${apiPath}/runs/${runId}/logs/stream`;
+    const safeRunId = encodeURIComponent(runId);
+    const url = `${baseUrl}/${apiPath}/runs/${safeRunId}/logs/stream`;
     const abortController = new AbortController();
     abortRef.current = abortController;
 
@@ -260,8 +261,7 @@ export function useRunLogStream(runId: string | null) {
     fetch(url, { headers, signal: abortController.signal, credentials: "include" })
       .then(async (response) => {
         if (!response.ok) {
-          const body = await response.text();
-          console.error(`[SSE] HTTP ${response.status}:`, body);
+          console.error(`[SSE] HTTP ${response.status}`);
           setConnected(false);
           return;
         }

@@ -148,7 +148,7 @@ const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonS
                         <Button
                             className="flex-1"
                             onClick={() => {
-                                if (action === "Accept") {
+                                if (action === "Accept" || action === "Suspend" || action === "Restrict") {
                                     acceptMutation.mutate({ userId, action: action.toLowerCase() })
                                 } else if (action === "Delete") {
                                     deleteMutation.mutate({ userId })

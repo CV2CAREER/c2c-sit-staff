@@ -285,6 +285,7 @@ export default function OverviewDashboard() {
               pagination
               pageSizeOptions={[10, 25]}
               initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+              showToolbar
               slots={{ toolbar: GridToolbar }}
               slotProps={{ toolbar: { showQuickFilter: false } as any }}
               sx={{

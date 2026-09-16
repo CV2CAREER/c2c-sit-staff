@@ -15,6 +15,7 @@ import Icon from "../../../../../public/icons";
 
 import MutateAccountModal from "@/components/ActionModal/MutateAccountModal";
 import { useQueryClient } from "@tanstack/react-query";
+import { AssignReferrerModal } from "./UserAccountOptions";
 import {
   useApproveDocument,
   useGetUserPendingDocuments,
@@ -273,6 +274,12 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
       setMutateActionText(option.actionText!);
       setMutateButtonText(option.modalButtonText!);
       setActiveAction(option.key);
+    } else if (
+      option.key === "assign-referrer" ||
+      option.key === "update-referral-numbers" ||
+      option.key === "allow-free-before-referral"
+    ) {
+      setActiveAction(option.key);
     } else {
       console.log(`Action not implemented yet: ${option.label}`);
     }
@@ -399,6 +406,20 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
             action={mutateButtonText}
             userId={userId}
             acceptMutation={acceptMutation}
+          />
+        )}
+
+      {/* Assign Referrer Modal — same modal the "Assign Referrer"
+          button on UserAccountOptions opens; wires the three referrer
+          menu entries so they no longer no-op. SPR-19-16-005. */}
+      {activeAction &&
+        ["assign-referrer", "update-referral-numbers", "allow-free-before-referral"].includes(
+          activeAction,
+        ) && (
+          <AssignReferrerModal
+            isOpen={true}
+            toggleOpen={(open) => { if (!open) closeAll(); }}
+            userId={userId}
           />
         )}
 
