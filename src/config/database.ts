@@ -109,6 +109,12 @@ export const connectDB = async (): Promise<void> => {
         await CECSalesOutreach.sync({ force: false });
         await CECAmbassadorScout.sync({ force: false });
 
+        // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
+        // purge and the campaignCredentialId / discovery_source_register columns)
+        // are applied via the SQL migration in c2c-cleanup:
+        //   c2c-cleanup/c2c_cec_discovery_migration.sql
+        //   node c2c-cleanup/run_cec_discovery_migration.js [db_name]
+
         // Add discovery_method column to manual_applications if missing
         try {
           await newSequelize.query(`

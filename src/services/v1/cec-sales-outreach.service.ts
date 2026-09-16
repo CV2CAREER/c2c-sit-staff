@@ -11,7 +11,8 @@ export class CECSalesOutreachService {
     if (search) {
       (where as any)[Op.or] = [
         { persona: { [Op.iLike]: `%${search}%` } },
-        { heritage: { [Op.iLike]: `%${search}%` } },
+        { state: { [Op.iLike]: `%${search}%` } },
+        { sentiment: { [Op.iLike]: `%${search}%` } },
       ];
     }
     if (persona) where.persona = persona;

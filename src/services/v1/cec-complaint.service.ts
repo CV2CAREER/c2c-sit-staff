@@ -48,8 +48,25 @@ export class CECComplaintService {
     return record;
   }
 
+  // Complaint IDs are generated server-side so two clients creating at once
+  // can never collide on the same human-readable reference.
+  static async generateComplaintId(): Promise<string> {
+    const last = await CECComplaint.findOne({
+      where: { complaintId: { [Op.like]: "C2C-CMP-%" } },
+      order: [["complaintId", "DESC"]],
+      attributes: ["complaintId"],
+      raw: true,
+    });
+    let next = 1;
+    const match = last?.complaintId ? String(last.complaintId).match(/(\d+)$/) : null;
+    if (match) next = parseInt(match[1], 10) + 1;
+    return `C2C-CMP-${String(next).padStart(3, "0")}`;
+  }
+
   static async create(data: Record<string, any>, user: any) {
-    return CECComplaint.create({ ...data, createdBy: user?.id });
+    const { complaintId: _ignored, age: _age, ...rest } = data || {};
+    const complaintId = await this.generateComplaintId();
+    return CECComplaint.create({ ...rest, complaintId, createdBy: user?.id });
   }
 
   static async update(id: string, data: Record<string, any>, user: any) {

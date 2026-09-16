@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { Credentials } from "../../models/v1/credentials.model";
+import { User } from "../../models/v1/user.model";
 import { CECDailyLog } from "../../models/v1/cec-daily-log.model";
 import { CECIssueBurndown } from "../../models/v1/cec-issue-burndown.model";
 import { CECComplaint } from "../../models/v1/cec-complaint.model";
@@ -21,9 +22,43 @@ const TrackerModels: Record<string, any> = {
   "ambassador-scouting": CECAmbassadorScout,
 };
 
-function baseClientRow(cred: any, existingLog: any, tourCount: number) {
+// Client-anchored trackers render one merged row per client credential, with an
+// optional CEC log attached. Everything else is a record list — each saved row
+// is its own row (complaints, referral payouts, sales outreach, ambassador).
+const CLIENT_ANCHORED = new Set(["daily-log", "issue-burndown"]);
+
+// Single source of truth for the key used to link a CEC log back to a client
+// credential. Previously the merge used `sec.CustomerId` only while the row
+// builder fell back to `cred.clientId`, so logs saved for clients with no
+// CustomerId were orphaned and appeared to vanish on refresh.
+function resolveCustomerId(cred: any): string {
+  const sec = cred?.seekExternalCredentials || {};
+  return sec.CustomerId || cred?.clientId || "";
+}
+
+// Subscription status is derived from the existing campaign flight state
+// (`capitalized`) plus the computed campaign end — not a separate CEC concept.
+function deriveSubscriptionStatus(cred: any, computed: { CampaignEnd?: string }): string {
+  const capitalized = String(cred?.capitalized || "").toUpperCase();
+  const expiredFlag = cred?.SeekSubExpired === true || cred?.SeekSubExpired === "true";
+  const end = computed?.CampaignEnd ? new Date(computed.CampaignEnd) : null;
+  const past = !!end && !isNaN(end.getTime()) && end.getTime() < Date.now();
+
+  if (expiredFlag || past) return "Expired";
+  if (capitalized === "HOLD") return "Active-Paused";
+  if (capitalized === "INFLIGHT" || capitalized === "FLIGHT") return "Active-Inflight";
+  return "";
+}
+
+// Loyalty: 0–1 tours = still on the first tour (Newcomer); 2+ = renewed
+// (Returnee). Mirrors the derivation in user.service.ts.
+function deriveLoyalty(tourCount: number): string {
+  return tourCount >= 2 ? "Returnee" : "Newcomer";
+}
+
+function baseClientRow(cred: any, existingLog: any, tourCount: number, mobile: string) {
   const sec = cred.seekExternalCredentials || {};
-  const customerId = sec.CustomerId || cred.clientId || "";
+  const customerId = resolveCustomerId(cred);
   const computed = calculateCampaignFields({
     SeekSubStartDate: sec.SeekSubStartDate || cred.SeekSubStartDate,
     createdAt: cred.createdAt,
@@ -39,6 +74,9 @@ function baseClientRow(cred: any, existingLog: any, tourCount: number) {
     customerId,
     plan: sec.Plan || "",
     flightStatus: cred.capitalized || "",
+    status: deriveSubscriptionStatus(cred, computed),
+    loyalty: deriveLoyalty(tourCount),
+    mobile: mobile || "",
     subDate: computed.SeekSubStartDate || "",
     subEnd: computed.CampaignEnd || "",
     seekEmail: sec.Alias_Email || "",
@@ -48,20 +86,84 @@ function baseClientRow(cred: any, existingLog: any, tourCount: number) {
   };
 }
 
-const STANDALONE = new Set(["sales-outreach", "ambassador-scouting"]);
+// Saved log values win where present; blanks fall back to the client-record
+// derived values so a half-filled log never erases Account data.
+function mergeClientRow(base: any, existingLog: any) {
+  if (!existingLog) return base;
+  return {
+    ...base,
+    ...existingLog,
+    id: existingLog.id,
+    logId: existingLog.id,
+    hasLog: true,
+    campaignCredentialId: base.campaignCredentialId,
+    customerId: existingLog.customerId || base.customerId,
+    name: existingLog.name || base.name,
+    status: existingLog.status || base.status,
+    loyalty: existingLog.loyalty || base.loyalty,
+    mobile: existingLog.mobile || base.mobile,
+    subDate: existingLog.subDate || base.subDate,
+    subEnd: existingLog.subEnd || base.subEnd,
+    // Read-only, always from the client record
+    plan: base.plan,
+    flightStatus: base.flightStatus,
+    seekEmail: base.seekEmail,
+    country: base.country,
+    submissions: base.submissions,
+  };
+}
+
+function parseDateLoose(val: any): Date | null {
+  if (!val) return null;
+  const s = String(val).trim();
+  if (!s) return null;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d;
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const d2 = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    if (!isNaN(d2.getTime())) return d2;
+  }
+  return null;
+}
+
+// Record-list rows expose the same `hasLog`/`logId` contract as client-anchored
+// rows so the frontend editor is identical across every tracker. Complaints
+// also get their age computed live from the logged date (SPR-19-10-008).
+function decorateRecord(trackerKey: string, row: any) {
+  const out: any = { ...row, hasLog: true, logId: row.id };
+  if (trackerKey === "complaints") {
+    const logged = parseDateLoose(row.logged);
+    out.age = logged ? Math.max(0, Math.floor((Date.now() - logged.getTime()) / 86400000)) : 0;
+  }
+  return out;
+}
 
 export async function getClientsWithTracker(trackerKey: string, filters: Record<string, any> = {}) {
   const { search, filter, page = 1, limit = 50 } = filters;
   const TrackerModel = TrackerModels[trackerKey];
+  if (!TrackerModel) return { rows: [], totalCount: 0, page: 1, limit: 0 };
 
-  if (STANDALONE.has(trackerKey)) {
-    const rows = await TrackerModel.findAll({
+  // ── Record-list trackers ─────────────────────────────────────────────────
+  if (!CLIENT_ANCHORED.has(trackerKey)) {
+    const raw = await TrackerModel.findAll({
       where: { isDeleted: false },
+      order: [["createdAt", "DESC"]],
       raw: true,
     });
+    let rows = raw.map((r: any) => decorateRecord(trackerKey, r));
+
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter((r: any) =>
+        Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q)),
+      );
+    }
+
     return { rows, totalCount: rows.length, page: 1, limit: rows.length };
   }
 
+  // ── Client-anchored trackers ─────────────────────────────────────────────
   const credentials = await Credentials.findAll({
     where: { isDeleted: false },
     order: [["createdAt", "DESC"]],
@@ -71,6 +173,25 @@ export async function getClientsWithTracker(trackerKey: string, filters: Record<
 
   logger.info(`Fetched ${plainCredentials.length} campaign credentials for ${trackerKey}`);
 
+  // Mobile lives on User.phoneNumber, which is PII-encrypted — requesting the
+  // field in `attributes` triggers the model's batch-decrypt AfterFind hook.
+  const clientIds = [...new Set(plainCredentials.map((c: any) => c.clientId).filter(Boolean))];
+  const mobileByClientId = new Map<string, string>();
+  if (clientIds.length) {
+    try {
+      const users = await User.findAll({
+        where: { id: { [Op.in]: clientIds as string[] } },
+        attributes: ["id", "phoneNumber", "whatsappNumber"],
+      });
+      for (const u of users) {
+        const m = (u.phoneNumber || u.whatsappNumber || "").trim();
+        if (m) mobileByClientId.set(u.id, m);
+      }
+    } catch (err: any) {
+      logger.warn(`Failed to load client mobile numbers: ${err.message}`);
+    }
+  }
+
   let filtered = plainCredentials;
   if (search) {
     const q = search.toLowerCase();
@@ -79,7 +200,7 @@ export async function getClientsWithTracker(trackerKey: string, filters: Record<
       const fullName = (sec.Full_Name || "").toLowerCase();
       const firstName = (sec.First_Name || "").toLowerCase();
       const lastName = (sec.Last_Name || "").toLowerCase();
-      const customerId = (sec.CustomerId || "").toLowerCase();
+      const customerId = resolveCustomerId(c).toLowerCase();
       return fullName.includes(q) || firstName.includes(q) || lastName.includes(q) || customerId.includes(q);
     });
   }
@@ -97,27 +218,38 @@ export async function getClientsWithTracker(trackerKey: string, filters: Record<
     tourCountByCredId.set((tc as any).credentialsId, (tc as any).count ?? 0);
   }
 
-  const customerIds = filtered
-    .map((c: any) => c.seekExternalCredentials?.CustomerId)
-    .filter((id): id is string => !!id);
+  const customerIds = [...new Set(filtered.map((c: any) => resolveCustomerId(c)).filter(Boolean))];
 
-  const trackerRows = customerIds.length
+  const orClauses: any[] = [];
+  if (credentialsIds.length) orClauses.push({ campaignCredentialId: { [Op.in]: credentialsIds } });
+  if (customerIds.length) orClauses.push({ customerId: { [Op.in]: customerIds } });
+
+  const trackerRows = orClauses.length
     ? await TrackerModel.findAll({
-        where: { customerId: { [Op.in]: customerIds }, isDeleted: false },
+        where: { isDeleted: false, [Op.or]: orClauses } as any,
+        order: [["updatedAt", "DESC"]],
         raw: true,
       })
     : [];
 
-  const trackerByCustomerId = new Map<string, any>();
+  // Newest-first ordering means the first row seen per key is the most recent,
+  // so a stale duplicate can never clobber the live log.
+  const byCredId = new Map<string, any>();
+  const byCustomerId = new Map<string, any>();
   for (const row of trackerRows) {
-    if (row.customerId) trackerByCustomerId.set(row.customerId, row);
+    if (row.campaignCredentialId && !byCredId.has(row.campaignCredentialId)) byCredId.set(row.campaignCredentialId, row);
+    if (row.customerId && !byCustomerId.has(row.customerId)) byCustomerId.set(row.customerId, row);
   }
 
   let merged = filtered.map((cred: any) => {
-    const sec = cred.seekExternalCredentials || {};
-    const customerId = sec.CustomerId || "";
-    const existingLog = trackerByCustomerId.get(customerId);
-    return { ...baseClientRow(cred, existingLog, tourCountByCredId.get(cred.id) ?? 0), ...existingLog };
+    const existingLog = byCredId.get(cred.id) || byCustomerId.get(resolveCustomerId(cred)) || null;
+    const base = baseClientRow(
+      cred,
+      existingLog,
+      tourCountByCredId.get(cred.id) ?? 0,
+      mobileByClientId.get(cred.clientId) ?? "",
+    );
+    return mergeClientRow(base, existingLog);
   });
 
   if (filter === "critical") merged = merged.filter((r) => r.sentimentBefore === "Critical");
