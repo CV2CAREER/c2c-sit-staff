@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, fn, col } from "sequelize";
 import { Credentials } from "../../models/v1/credentials.model";
 import { User } from "../../models/v1/user.model";
 import { CECDailyLog } from "../../models/v1/cec-daily-log.model";
@@ -8,6 +8,7 @@ import { CECReferralPayout } from "../../models/v1/cec-referral-payout.model";
 import { CECSalesOutreach } from "../../models/v1/cec-sales-outreach.model";
 import { CECAmbassadorScout } from "../../models/v1/cec-ambassador-scout.model";
 import { TourCount } from "../../models/v1/tour-count.model";
+import { Application } from "../../models/v1/application.model";
 import { getServiceLogger } from "../../utils/createLogger";
 import { calculateCampaignFields } from "../../utils/campaign-calculator";
 
@@ -56,7 +57,7 @@ function deriveLoyalty(tourCount: number): string {
   return tourCount >= 2 ? "Returnee" : "Newcomer";
 }
 
-function baseClientRow(cred: any, existingLog: any, tourCount: number, mobile: string) {
+function baseClientRow(cred: any, existingLog: any, tourCount: number, mobile: string, submissions: number) {
   const sec = cred.seekExternalCredentials || {};
   const customerId = resolveCustomerId(cred);
   const computed = calculateCampaignFields({
@@ -81,7 +82,7 @@ function baseClientRow(cred: any, existingLog: any, tourCount: number, mobile: s
     subEnd: computed.CampaignEnd || "",
     seekEmail: sec.Alias_Email || "",
     country: sec.Country || "",
-    submissions: tourCount,
+    submissions,
     hasLog: !!existingLog,
   };
 }
@@ -218,6 +219,22 @@ export async function getClientsWithTracker(trackerKey: string, filters: Record<
     tourCountByCredId.set((tc as any).credentialsId, (tc as any).count ?? 0);
   }
 
+  // "Submissions" is the client's job-application count (Application records),
+  // NOT the tour/subscription-cycle count. Mirrors campaign management's
+  // "Submissions" tab (Application where client_id = user AND isDeleted = false).
+  const appCounts = clientIds.length
+    ? await Application.findAll({
+        where: { client_id: { [Op.in]: clientIds as string[] }, isDeleted: false } as any,
+        attributes: ["client_id", [fn("COUNT", col("id")), "count"]],
+        group: ["client_id"],
+        raw: true,
+      })
+    : [];
+  const submissionsByClientId = new Map<string, number>();
+  for (const row of appCounts as any[]) {
+    submissionsByClientId.set(row.client_id, parseInt(row.count, 10) || 0);
+  }
+
   const customerIds = [...new Set(filtered.map((c: any) => resolveCustomerId(c)).filter(Boolean))];
 
   const orClauses: any[] = [];
@@ -248,6 +265,7 @@ export async function getClientsWithTracker(trackerKey: string, filters: Record<
       existingLog,
       tourCountByCredId.get(cred.id) ?? 0,
       mobileByClientId.get(cred.clientId) ?? "",
+      submissionsByClientId.get(cred.clientId) ?? 0,
     );
     return mergeClientRow(base, existingLog);
   });
