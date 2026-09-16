@@ -4,6 +4,9 @@ import path from "path";
 const moduleAlias = require("module-alias");
 moduleAlias.addAlias("@", path.join(__dirname));
 
+// Install DNS cache/serve-stale patch before anything opens a DB connection.
+import "./config/dns-cache";
+
 import http from "http";
 import { app } from "./app";
 import dotenv from "dotenv";

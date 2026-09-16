@@ -58,7 +58,14 @@ export class CECAmbassadorScoutService {
 
   static async getStats() {
     const { rows: merged } = await this.getClientsWithLogs({ page: 1, limit: 99999 });
-    const countries = merged.length;
+    // Distinct countries being worked — not the row count (several rows can share
+    // a country as candidates move through the pipeline).
+    const countrySet = new Set<string>();
+    for (const r of merged) {
+      const c = String((r as any).country || "").trim().toLowerCase();
+      if (c) countrySet.add(c);
+    }
+    const countries = countrySet.size;
     const nominations = merged.filter((r: any) => r.nominations && r.nominations !== "" && r.nominations !== null).length;
     return { countries, nominations };
   }

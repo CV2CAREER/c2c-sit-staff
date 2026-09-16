@@ -5,7 +5,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const cecIssueBurndownRouterV1 = Router();
-cecIssueBurndownRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "cec"));
+cecIssueBurndownRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 cecIssueBurndownRouterV1.get("/", getCECIssueBurndowns);
 cecIssueBurndownRouterV1.get("/clients-with-logs", getCECClientsWithIssueBurndowns);

@@ -8,17 +8,29 @@ import { Credentials } from '../../models/v1/credentials.model';
 import { Op, fn, col } from 'sequelize';
 import { getServiceLogger } from '../../utils/createLogger';
 import { pushLogEntry, pushRunComplete } from './discovery-sse';
+import { AI_COST_PER_1M_TOKENS } from '../../config/env';
 
 const logger = getServiceLogger('discovery-source-register');
 
+// SPR-19-03-017 — the vendor being evaluated was abandoned by their own team
+// over unprojectable AI cost (~$8,000, architecture called "unsustainable").
+// This must stay visible before it becomes the same problem, hence "current
+// volume" AND a 3x-client-growth projection, not just a running total.
+const CLIENT_GROWTH_PROJECTION_MULTIPLIER = 3;
+
+const estimateCostUsd = (tokens: number): number => (tokens / 1_000_000) * AI_COST_PER_1M_TOKENS;
+
 export const listSources = async (): Promise<DiscoverySourceRegister[]> => {
   return DiscoverySourceRegister.findAll({
+    attributes: { exclude: ['api_key', 'app_id'] },
     order: [['name', 'ASC']],
   });
 };
 
 export const getSource = async (id: string): Promise<DiscoverySourceRegister | null> => {
-  return DiscoverySourceRegister.findByPk(id);
+  return DiscoverySourceRegister.findByPk(id, {
+    attributes: { exclude: ['api_key', 'app_id'] },
+  });
 };
 
 export const getSourceBySlug = async (slug: string): Promise<DiscoverySourceRegister | null> => {
@@ -31,7 +43,9 @@ export const pauseSource = async (id: string): Promise<DiscoverySourceRegister |
   source.enabled = false;
   await source.save();
   logger.info(`Source paused: ${source.name} (${source.slug})`);
-  return source;
+  // Return without sensitive fields
+  const { api_key, app_id, ...safe } = source.get({ plain: true }) as any;
+  return safe as DiscoverySourceRegister;
 };
 
 export const resumeSource = async (id: string): Promise<DiscoverySourceRegister | null> => {
@@ -40,7 +54,9 @@ export const resumeSource = async (id: string): Promise<DiscoverySourceRegister 
   source.enabled = true;
   await source.save();
   logger.info(`Source resumed: ${source.name} (${source.slug})`);
-  return source;
+  // Return without sensitive fields
+  const { api_key, app_id, ...safe } = source.get({ plain: true }) as any;
+  return safe as DiscoverySourceRegister;
 };
 
 export const getDashboardStats = async (): Promise<{
@@ -53,11 +69,19 @@ export const getDashboardStats = async (): Promise<{
   runsToday: number;
   sourcesActive: number;
   sourcesTotal: number;
+  aiUsage: {
+    tokensThisMonth: number;
+    requestsThisMonth: number;
+    estimatedMonthlyCostUsd: number;
+    projectedCostAt3xVolumeUsd: number;
+    costPer1mTokensUsd: number;
+  };
 }> => {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [totalJobs, uniqueJobs, hqaCount, mqaCount, lqaCount, totalRuns, runsToday, sourcesActive, sourcesTotal] =
+  const [totalJobs, uniqueJobs, hqaCount, mqaCount, lqaCount, totalRuns, runsToday, sourcesActive, sourcesTotal, monthlyUsage] =
     await Promise.all([
       DiscoveryJob.count(),
       DiscoveryJob.count({ distinct: true, col: 'fingerprint_hash' }),
@@ -68,7 +92,19 @@ export const getDashboardStats = async (): Promise<{
       DiscoveryRun.count({ where: { started_at: { [Op.gte]: todayStart } } }),
       DiscoverySourceRegister.count({ where: { enabled: true } }),
       DiscoverySourceRegister.count(),
+      DiscoveryRun.findOne({
+        where: { started_at: { [Op.gte]: monthStart } },
+        attributes: [
+          [fn('COALESCE', fn('SUM', col('tokens_used')), 0), 'tokensThisMonth'],
+          [fn('COALESCE', fn('SUM', col('ai_request_count')), 0), 'requestsThisMonth'],
+        ],
+        raw: true,
+      }),
     ]);
+
+  const tokensThisMonth = parseInt((monthlyUsage as any)?.tokensThisMonth || '0', 10);
+  const requestsThisMonth = parseInt((monthlyUsage as any)?.requestsThisMonth || '0', 10);
+  const estimatedMonthlyCostUsd = estimateCostUsd(tokensThisMonth);
 
   return {
     totalJobs,
@@ -80,6 +116,13 @@ export const getDashboardStats = async (): Promise<{
     runsToday,
     sourcesActive,
     sourcesTotal,
+    aiUsage: {
+      tokensThisMonth,
+      requestsThisMonth,
+      estimatedMonthlyCostUsd,
+      projectedCostAt3xVolumeUsd: estimatedMonthlyCostUsd * CLIENT_GROWTH_PROJECTION_MULTIPLIER,
+      costPer1mTokensUsd: AI_COST_PER_1M_TOKENS,
+    },
   };
 };
 
@@ -128,6 +171,8 @@ export const completeRun = async (
     hqa_count?: number;
     mqa_count?: number;
     lqa_count?: number;
+    tokens_used?: number;
+    ai_request_count?: number;
     error_message?: string;
   }
 ): Promise<void> => {
@@ -145,6 +190,8 @@ export const completeRun = async (
     hqa_count: data.hqa_count,
     mqa_count: data.mqa_count,
     lqa_count: data.lqa_count,
+    tokens_used: data.tokens_used,
+    ai_request_count: data.ai_request_count,
   });
 };
 

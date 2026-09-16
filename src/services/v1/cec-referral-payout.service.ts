@@ -11,7 +11,6 @@ export class CECReferralPayoutService {
     if (search) {
       (where as any)[Op.or] = [
         { details: { [Op.iLike]: `%${search}%` } },
-        { heritage: { [Op.iLike]: `%${search}%` } },
         { account: { [Op.iLike]: `%${search}%` } },
       ];
     }

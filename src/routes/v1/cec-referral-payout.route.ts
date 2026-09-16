@@ -5,7 +5,7 @@ import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
 
 const cecReferralPayoutRouterV1 = Router();
-cecReferralPayoutRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "cec"));
+cecReferralPayoutRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 cecReferralPayoutRouterV1.get("/", getCECReferralPayouts);
 cecReferralPayoutRouterV1.get("/clients-with-logs", getCECClientsWithReferralPayouts);
