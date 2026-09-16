@@ -127,6 +127,9 @@ export function useCecMutations(apiBase: string, queryKey: string) {
 // NOTE: `campaignCredentialId` is intentionally NOT stripped — it is a real FK
 // column on the client-anchored trackers and must be persisted so the log can be
 // linked back to its campaign credential on refresh.
+// NOTE: `country` is intentionally NOT stripped — it is a real, editable column
+// on the ambassador-scouting tracker. On daily-log it is a derived display field
+// (CECDailyLog has no country column), and Sequelize ignores unknown attributes.
 const SYNTHETIC_FIELDS = new Set([
   "id",
   "logId",
@@ -134,7 +137,6 @@ const SYNTHETIC_FIELDS = new Set([
   "plan",
   "flightStatus",
   "seekEmail",
-  "country",
   "submissions",
   "age",
   "createdAt",
@@ -165,23 +167,25 @@ function stripSynthetic(row: Record<string, any>): Record<string, any> {
  */
 export function useCecRowEditor<T extends Record<string, any>>(apiBase: string, queryKey: string) {
   const { createRow, updateRow, deleteRow } = useCecMutations(apiBase, queryKey);
-  const createInFlight = useRef<Promise<string | null> | null>(null);
+  const createInFlight = useRef<Promise<Record<string, any> | null> | null>(null);
 
-  const ensureCreated = async (row: T): Promise<{ id: string | null; created: boolean }> => {
+  // Returns the full saved record (not just the id) so server-generated values
+  // such as complaintId appear immediately without waiting for a refetch.
+  const ensureCreated = async (row: T): Promise<{ saved: Record<string, any> | null; created: boolean }> => {
     if (createInFlight.current) {
-      const id = await createInFlight.current;
-      return { id, created: false };
+      const saved = await createInFlight.current;
+      return { saved, created: false };
     }
     const payload = stripSynthetic(row);
     const promise = createRow
       .mutateAsync(payload)
-      .then((res) => ((res?.data?.id as string) ?? null))
+      .then((res) => ((res?.data as Record<string, any>) ?? null))
       .finally(() => {
         createInFlight.current = null;
       });
     createInFlight.current = promise;
-    const id = await promise;
-    return { id, created: true };
+    const saved = await promise;
+    return { saved, created: true };
   };
 
   /**
@@ -202,16 +206,27 @@ export function useCecRowEditor<T extends Record<string, any>>(apiBase: string, 
       return;
     }
 
-    const { id, created } = await ensureCreated({ ...row, ...changes } as T);
-    if (!id) return;
+    const { saved, created } = await ensureCreated({ ...row, ...changes } as T);
+    if (!saved?.id) return;
 
     // A create was already in flight for this row — push the remaining changes
     // as an update rather than dropping them.
     if (!created) {
-      await updateRow.mutateAsync({ id, fields: changes });
+      await updateRow.mutateAsync({ id: saved.id, fields: changes });
     }
 
-    onSaved?.({ ...row, ...changes, id, logId: id, hasLog: true } as T);
+    // Adopt server-generated values (e.g. complaintId) only where the local row
+    // has nothing yet, so derived display fields (e.g. submissions) are never
+    // clobbered by an empty column value.
+    const serverFills: Record<string, any> = {};
+    for (const [k, v] of Object.entries(saved)) {
+      const local = (row as any)[k];
+      if ((local === undefined || local === null || local === "") && v !== undefined && v !== null && v !== "") {
+        serverFills[k] = v;
+      }
+    }
+
+    onSaved?.({ ...row, ...changes, ...serverFills, id: saved.id, logId: saved.id, hasLog: true } as T);
   };
 
   const removeRow = (row: T) => deleteRow.mutateAsync({ id: row.logId || row.id });
