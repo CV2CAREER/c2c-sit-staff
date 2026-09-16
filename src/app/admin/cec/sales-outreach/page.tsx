@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
 import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_SALES_OUTREACH } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface SalesOutreach {
   id: string;
+  hasLog?: boolean;
+  logId?: string | null;
   persona: string;
   state: string;
   sentiment: string;
-  heritage: string;
   available: string;
   reached: string;
 }
@@ -24,7 +25,6 @@ const COLUMNS: { key: string; label: string; wide?: boolean }[] = [
   { key: "persona", label: "Persona" },
   { key: "state", label: "State" },
   { key: "sentiment", label: "Sentiment" },
-  { key: "heritage", label: "Heritage" },
   { key: "available", label: "Available" },
   { key: "reached", label: "Reached" },
 ];
@@ -33,6 +33,15 @@ const PILL_KEYS = ["sentiment", "state"];
 
 const FILTERS = [
   { key: "all", label: "All" },
+  { key: "guest", label: "Guest" },
+  { key: "client", label: "Client" },
+  { key: "alumni", label: "Alumni" },
+  { key: "dormant", label: "Dormant" },
+  { key: "active", label: "Active" },
+  { key: "lapsed", label: "Lapsed" },
+  { key: "critical", label: "Critical" },
+  { key: "satisfied", label: "Satisfied" },
+  { key: "advocate", label: "Advocate" },
 ];
 
 const DRAWER_SECTIONS: DrawerSection[] = [
@@ -42,7 +51,6 @@ const DRAWER_SECTIONS: DrawerSection[] = [
       { key: "persona", label: "Persona", type: "select", options: OPTS.persona },
       { key: "state", label: "State", type: "select", options: OPTS.state },
       { key: "sentiment", label: "Sentiment", type: "select", options: OPTS.sentiment },
-      { key: "heritage", label: "Heritage", type: "select", options: OPTS.heritage },
       { key: "available", label: "Available", type: "input" },
       { key: "reached", label: "Reached", type: "input" },
     ],
@@ -63,33 +71,50 @@ export default function CECSalesOutreachPage() {
   const [selected, setSelected] = useState<SalesOutreach | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_SALES_OUTREACH, "cec-sales-outreach");
+  const { saveChanges, removeRow } = useCecRowEditor<SalesOutreach>(ADMIN_CEC_SALES_OUTREACH, "cec-sales-outreach");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as SalesOutreach[]); }, [serverRows]);
 
-  const handleRowClick = (row: SalesOutreach) => { setSelected(row); setDrawerOpen(true); };
+  const filteredData = (() => {
+    let rows = data;
+    if (activeFilter === "guest") rows = rows.filter((r) => r.persona === "Guest");
+    else if (activeFilter === "client") rows = rows.filter((r) => r.persona === "Client");
+    else if (activeFilter === "alumni") rows = rows.filter((r) => r.persona === "Alumni");
+    else if (activeFilter === "dormant") rows = rows.filter((r) => r.state === "Dormant");
+    else if (activeFilter === "active") rows = rows.filter((r) => r.state === "Active");
+    else if (activeFilter === "lapsed") rows = rows.filter((r) => r.state === "Lapsed");
+    else if (activeFilter === "critical") rows = rows.filter((r) => r.sentiment === "Critical");
+    else if (activeFilter === "satisfied") rows = rows.filter((r) => r.sentiment === "Satisfied");
+    else if (activeFilter === "advocate") rows = rows.filter((r) => r.sentiment === "Advocate");
+    return rows;
+  })();
+
+  const handleRowClick = (row: SalesOutreach) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-    if (String(selected.id).startsWith("temp-")) {
-      createRow.mutateAsync({ ...updated, id: undefined }).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          setSelected(saved);
-          setData((prev) => prev.map((r) => r.id === updated.id ? saved : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.id, field: key, value });
-    }
+  };
+
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleAddRow = () => {
     const tempId = `temp-${Date.now()}`;
-    const row = { id: tempId, persona: "", state: "", sentiment: "", heritage: "", available: "", reached: "" } as SalesOutreach;
+    const row = { id: tempId, hasLog: false, logId: null, persona: "", state: "", sentiment: "", available: "", reached: "" } as SalesOutreach;
     setData((prev) => [row, ...prev]);
     setSelected(row);
     setDrawerOpen(true);
@@ -97,17 +122,16 @@ export default function CECSalesOutreachPage() {
 
   const handleDelete = async () => {
     if (!selected) return;
-    if (String(selected.id).startsWith("temp-")) {
+    if (!selected.hasLog) {
       setData((prev) => prev.filter((r) => r.id !== selected.id));
       setDrawerOpen(false);
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.id }).then(() => {
-      setData((prev) => prev.filter((r) => r.id !== selected.id));
-      setDrawerOpen(false);
-      setSelected(null);
-    });
+    await removeRow(selected);
+    setData((prev) => prev.filter((r) => r.id !== selected.id));
+    setDrawerOpen(false);
+    setSelected(null);
   };
 
   if (isLoading) {
@@ -135,8 +159,8 @@ export default function CECSalesOutreachPage() {
         <CECKPICard label="Segments" value={stats.segments} hint="persona x state" />
         <CECKPICard label="Reached" value={stats.reached} hint="logged as reached" />
       </div>
-      <CECDataTable columns={COLUMNS} data={data} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.persona || "Untitled row"} subtitle="Sales Outreach" sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.persona || "Untitled row"} subtitle="Sales Outreach" sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }

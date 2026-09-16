@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
@@ -9,7 +9,7 @@ import CECPill, { getPillStyle } from "@/components/cec/CECPill";
 import { OPTS } from "@/components/cec/cec-constants";
 import { fmtDate } from "@/components/cec/cec-constants";
 import CECDatePicker from "@/components/cec/CECDatePicker";
-import { useCecMutations, useCecTracker } from "@/hooks/api/cec/cec-tracker";
+import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_DAILY_LOG } from "@/constants/apiEndpoints/admin.endpoint";
 
 interface DailyLog {
@@ -133,7 +133,8 @@ export default function CECDailyLogPage() {
   const [selected, setSelected] = useState<DailyLog | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("all");
-  const { createRow, updateRow, deleteRow } = useCecMutations(ADMIN_CEC_DAILY_LOG, "cec-daily-log");
+  const { saveChanges, removeRow } = useCecRowEditor<DailyLog>(ADMIN_CEC_DAILY_LOG, "cec-daily-log");
+  const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as DailyLog[]); }, [serverRows]);
 
@@ -146,43 +147,28 @@ export default function CECDailyLogPage() {
     return rows;
   })();
 
-  const handleRowClick = (row: DailyLog) => { setSelected(row); setDrawerOpen(true); };
+  const handleRowClick = (row: DailyLog) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
+  // Live edit: reflect the change in the table immediately, but hold it in
+  // pendingRef until the drawer's Done button persists everything at once.
   const handleChange = (key: string, value: string) => {
     if (!selected) return;
+    pendingRef.current = { ...pendingRef.current, [key]: value };
     const updated = { ...selected, [key]: value };
     setSelected(updated);
     setData((prev) => prev.map((r) => r.id === updated.id ? updated : r));
-
-    if (!selected.hasLog) {
-      const { id, logId, campaignCredentialId, hasLog, plan, flightStatus, seekEmail, ...logData } = updated as any;
-      createRow.mutateAsync(logData).then((res) => {
-        const saved = res.data;
-        if (saved) {
-          const merged = { ...updated, id: saved.id, logId: saved.id, hasLog: true };
-          setSelected(merged);
-          setData((prev) => prev.map((r) => r.id === updated.id ? merged : r));
-        }
-      });
-    } else {
-      updateRow.mutateAsync({ id: selected.logId || selected.id, field: key, value });
-    }
   };
 
-  const handleAddRow = () => {
-    const tempId = `temp-${Date.now()}`;
-    const row = {
-      id: tempId, logId: null, campaignCredentialId: "", hasLog: false,
-      name: "", customerId: "", plan: "", flightStatus: "", mobile: "",
-      status: "Active-Inflight", loyalty: "", submissions: 0, lastCall: "",
-      callEstablished: "", sentimentBefore: "", sentimentAfter: "", migration: "",
-      survey: "", referral: "", blockerFixed: "", notes: "", postCall: "",
-      subDate: "", subEnd: "", reviewDate: "", qqa: "", cvFidelity: "",
-      prefs: "", historyReviewed: "", briefing: "", followUp: "",
-    } as DailyLog;
-    setData((prev) => [row, ...prev]);
-    setSelected(row);
-    setDrawerOpen(true);
+  const handleSave = () => {
+    if (!selected) return Promise.resolve();
+    const changes = pendingRef.current;
+    pendingRef.current = {};
+    if (Object.keys(changes).length === 0) return Promise.resolve();
+    const current = selected;
+    return saveChanges(current, changes, (merged) => {
+      setSelected((prev) => (prev && prev.id === current.id ? merged : prev));
+      setData((prev) => prev.map((r) => r.id === current.id ? merged : r));
+    });
   };
 
   const handleDelete = async () => {
@@ -193,11 +179,10 @@ export default function CECDailyLogPage() {
       setSelected(null);
       return;
     }
-    deleteRow.mutateAsync({ id: selected.logId || selected.id }).then(() => {
-      const reset = { ...selected, hasLog: false, logId: null, callEstablished: "", sentimentBefore: "", sentimentAfter: "", survey: "", referral: "", notes: "", postCall: "", blockerFixed: "", followUp: "", briefing: "", migration: "", qqa: "", cvFidelity: "", prefs: "", historyReviewed: "", lastCall: "" };
-      setSelected(reset);
-      setData((prev) => prev.map((r) => r.id === selected.id ? reset : r));
-    });
+    await removeRow(selected);
+    const reset = { ...selected, hasLog: false, logId: null, callEstablished: "", sentimentBefore: "", sentimentAfter: "", survey: "", referral: "", notes: "", postCall: "", blockerFixed: "", followUp: "", briefing: "", migration: "", qqa: "", cvFidelity: "", prefs: "", historyReviewed: "", lastCall: "" };
+    setSelected(reset);
+    setData((prev) => prev.map((r) => r.id === selected.id ? reset : r));
   };
 
   const getPills = (row: DailyLog) => {
@@ -236,8 +221,8 @@ export default function CECDailyLogPage() {
         <CECKPICard label="Validated migrations" value={stats.validatedMigrations} hint="sentiment movement" />
         <CECKPICard label="Survey in 5 mins" value={stats.surveyIn5mins} hint="logged on time" />
       </div>
-      <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
-      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle={selected ? `Customer ${selected.customerId || "---"} · ${selected.plan || "no plan"}` : undefined} pills={selected ? getPills(selected) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onDelete={handleDelete} />
+      <CECDataTable columns={COLUMNS} data={filteredData} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} totalCount={data.length} />
+      <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.name || "Untitled row"} subtitle={selected ? `Customer ${selected.customerId || "---"} · ${selected.plan || "no plan"}` : undefined} pills={selected ? getPills(selected) : undefined} sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );
 }

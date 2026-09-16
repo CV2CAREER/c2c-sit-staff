@@ -102,6 +102,10 @@ export const ADMIN_ASSIGN_REFERRER = (userId: string) =>
   `/api/v1/user-management/users/${userId}/referrer`;
 export const ADMIN_APPROVE_USER_ACCOUNT = (userId: string) =>
   `/api/v1/user-management/users/${userId}/approve`;
+export const ADMIN_SUSPEND_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/suspend`;
+export const ADMIN_RESTRICT_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/restrict`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';
