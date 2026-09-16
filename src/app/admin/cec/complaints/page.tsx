@@ -60,7 +60,7 @@ const DRAWER_SECTIONS: DrawerSection[] = [
   {
     title: "Complaint",
     fields: [
-      { key: "complaintId", label: "Complaint ID", type: "input" },
+      { key: "complaintId", label: "Complaint ID", type: "static" },
       { key: "name", label: "Client name", type: "input" },
       { key: "logged", label: "Date logged", type: "date" },
       { key: "channel", label: "Channel", type: "select", options: OPTS.channel },

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import CECKPICard from "@/components/cec/CECKPICard";
 import CECDataTable from "@/components/cec/CECDataTable";
 import CECDetailDrawer, { DrawerSection } from "@/components/cec/CECDetailDrawer";
 import CECTrackerHeader from "@/components/cec/CECTrackerHeader";
+import CECPill from "@/components/cec/CECPill";
+import { OPTS } from "@/components/cec/cec-constants";
 import { useCecRowEditor, useCecTracker } from "@/hooks/api/cec/cec-tracker";
 import { ADMIN_CEC_AMBASSADOR_SCOUTING } from "@/constants/apiEndpoints/admin.endpoint";
 
@@ -23,23 +25,25 @@ const COLUMNS: { key: string; label: string; wide?: boolean }[] = [
   { key: "nominations", label: "Nominations", wide: true },
 ];
 
-const FILTERS = [
-  { key: "all", label: "All" },
-];
+const PILL_KEYS = ["pipeline"];
 
 const DRAWER_SECTIONS: DrawerSection[] = [
   {
     title: "Pipeline",
     fields: [
-      { key: "country", label: "Country", type: "input" },
-      { key: "pipeline", label: "Pipeline", type: "input" },
+      { key: "country", label: "Country", type: "input", required: true },
+      { key: "pipeline", label: "Pipeline stage", type: "select", options: OPTS.ambassadorPipeline },
       { key: "nominations", label: "Nominations", type: "area" },
     ],
   },
 ];
 
 function renderCell(key: string, row: AmbassadorScout) {
-  return <span>{(row as any)[key] || "---"}</span>;
+  const val = (row as any)[key];
+  if (PILL_KEYS.includes(key)) {
+    return <CECPill label={val || "---"} />;
+  }
+  return <span>{val || "---"}</span>;
 }
 
 export default function CECAmbassadorScoutingPage() {
@@ -52,6 +56,34 @@ export default function CECAmbassadorScoutingPage() {
   const pendingRef = useRef<Record<string, any>>({});
 
   useEffect(() => { if (serverRows.length) setData(serverRows as AmbassadorScout[]); }, [serverRows]);
+
+  // Country pipelines are the unit of work, so the filter is built from the
+  // distinct countries actually present (case-insensitive), newest data first.
+  const countryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of data) {
+      const c = (r.country || "").trim();
+      if (c) set.add(c);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const filters = useMemo(
+    () => [
+      { key: "all", label: "All" },
+      ...countryOptions.map((c) => ({ key: `country:${c}`, label: c })),
+    ],
+    [countryOptions],
+  );
+
+  const filteredData = useMemo(() => {
+    if (activeFilter === "all") return data;
+    if (activeFilter.startsWith("country:")) {
+      const c = activeFilter.slice("country:".length).trim().toLowerCase();
+      return data.filter((r) => (r.country || "").trim().toLowerCase() === c);
+    }
+    return data;
+  }, [data, activeFilter]);
 
   const handleRowClick = (row: AmbassadorScout) => { pendingRef.current = {}; setSelected(row); setDrawerOpen(true); };
 
@@ -122,7 +154,7 @@ export default function CECAmbassadorScoutingPage() {
         <CECKPICard label="Countries" value={stats.countries} hint="in scouting" />
         <CECKPICard label="Nominations" value={stats.nominations} hint="named" />
       </div>
-      <CECDataTable columns={COLUMNS} data={data} filters={FILTERS} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
+      <CECDataTable columns={COLUMNS} data={filteredData} filters={filters} activeFilter={activeFilter} onFilterChange={setActiveFilter} onRowClick={handleRowClick} selectedRow={selected} renderCell={renderCell} onAddRow={handleAddRow} totalCount={data.length} />
       <CECDetailDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected?.country || "Untitled row"} subtitle="Ambassador Scouting" sections={DRAWER_SECTIONS} data={selected || {}} onChange={handleChange} onSave={handleSave} onDelete={handleDelete} />
     </section>
   );

@@ -52,4 +52,6 @@ export const OPTS: Record<string, string[]> = {
   persona: ["Guest", "Client", "Alumni"],
   state: ["Dormant", "Active", "Lapsed"],
   sentiment: ["Critical", "Satisfied", "Advocate"],
+  // Ordered sourcing pipeline for prospective ambassadors (SPR-19-10-012).
+  ambassadorPipeline: ["Prospect", "Contacted", "Shortlisted", "Nominated", "Signed"],
 };

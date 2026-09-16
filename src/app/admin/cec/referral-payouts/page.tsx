@@ -42,14 +42,34 @@ const FILTERS = [
   { key: "noreach", label: "No outreach" },
 ];
 
+const MAX_AMOUNT = 99999999.99; // fits the DECIMAL(10,2) column
+
 const DRAWER_SECTIONS: DrawerSection[] = [
   {
     title: "Payment",
     fields: [
-      { key: "date", label: "Date", type: "date" },
-      { key: "amount", label: "Amount", type: "input" },
-      { key: "type", label: "Transaction type", type: "input" },
-      { key: "account", label: "Account number", type: "input" },
+      { key: "date", label: "Date", type: "date", required: true },
+      {
+        key: "amount",
+        label: "Amount",
+        type: "input",
+        inputType: "number",
+        required: true,
+        validate: (v) => {
+          if (!/^\d+(\.\d{1,2})?$/.test(v)) return "Enter a valid amount (numbers, up to 2 decimals)";
+          const n = Number(v);
+          if (n <= 0) return "Amount must be greater than 0";
+          if (n > MAX_AMOUNT) return "Amount is too large";
+          return null;
+        },
+      },
+      { key: "type", label: "Transaction type", type: "input", required: true },
+      {
+        key: "account",
+        label: "Account number",
+        type: "input",
+        validate: (v) => (v && !/^\d+$/.test(v) ? "Account number must be digits only" : null),
+      },
       { key: "details", label: "Transaction details", type: "area" },
     ],
   },
