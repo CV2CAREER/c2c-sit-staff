@@ -238,6 +238,50 @@ export const approveUserAccount = catchAsyncError(
 );
 
 /**
+ * Suspend user account
+ */
+export const suspendUserAccount = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+    const { userId } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    logger.info(`User ${authorizedUser.email} suspending account for user ${userId}`);
+
+    const result = await userManagementService.suspendUserAccount(
+      userId,
+      authorizedUser.id,
+      authorizedUser.email,
+      host,
+    );
+
+    res.apiSuccess(result, result.message);
+  },
+);
+
+/**
+ * Restrict user account
+ */
+export const restrictUserAccount = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+    const { userId } = req.params;
+    const host = req.headers.host || req.headers.origin || "localhost";
+
+    logger.info(`User ${authorizedUser.email} restricting account for user ${userId}`);
+
+    const result = await userManagementService.restrictUserAccount(
+      userId,
+      authorizedUser.id,
+      authorizedUser.email,
+      host,
+    );
+
+    res.apiSuccess(result, result.message);
+  },
+);
+
+/**
  * Assign / update / allow a referrer relationship for a client.
  */
 export const assignReferrer = catchAsyncError(
