@@ -198,29 +198,24 @@ export const getVcsPrompt = async (): Promise<{ prompt: string; version: string 
   const vcsRow = await VCS.findOne({
     where: { key: AI_VETTING_PROMPT_KEY, active: true },
   });
-
   if (!vcsRow) {
     throw new ErrorHandler(
       `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" is not configured — run seed-vcs-ai-vetting-prompt.ts`,
       500,
     );
   }
-
   const promptRow = await VCSPrompt.findByPk(vcsRow.activePromptId);
-
   if (!promptRow) {
     throw new ErrorHandler(
       `AI vetting prompt "${AI_VETTING_PROMPT_KEY}" has no active version deployed`,
       500,
     );
   }
-
   return { prompt: promptRow.prompt, version: promptRow.version };
 };
 
 const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "promptVersion"> => {
   const trimmed = raw.trim();
-
   let json: any;
   try {
     json = JSON.parse(trimmed);
@@ -243,10 +238,8 @@ const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "prompt
       };
     }
   }
-
   const score = json?.score?.toUpperCase?.();
   const reason = json?.reason?.trim?.();
-
   if (!score || !["HQA", "MQA", "LQA"].includes(score)) {
     return {
       score: null,
@@ -254,7 +247,6 @@ const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "prompt
       status: "failed",
     };
   }
-
   if (!reason) {
     return {
       score,
@@ -262,7 +254,6 @@ const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "prompt
       status: "failed",
     };
   }
-
   return { score: score as "HQA" | "MQA" | "LQA", reason, status: "classified" };
 };
 
@@ -278,11 +269,9 @@ export const classifyJob = async (
   const prompt = promptTemplate
     .replace(/\{\{CLIENT_PROFILE\}\}/g, clientContext.text)
     .replace(/\{\{JOB_DETAILS\}\}/g, jobDetails);
-
   logger.info(
     `Classifying job ${job.id} for client ${job.client_id} (${job.Job_Title})`
   );
-
   try {
     // jsonMode enforces valid JSON at the API level instead of relying
     // purely on the prompt's own "return ONLY JSON" instruction, with
