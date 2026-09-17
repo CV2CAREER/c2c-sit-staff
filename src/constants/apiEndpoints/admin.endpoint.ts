@@ -1,6 +1,17 @@
 export const ADMIN_STATS = '/api/v1/admin/analytics';
+export const ADMIN_PIPELINE_STATS = '/api/v1/admin/pipeline-stats';
+export const ADMIN_PIPELINE_LISTS = '/api/v1/admin/pipeline-lists';
+export const ADMIN_PLACEMENT_ASSIGNMENTS = '/api/v1/admin/placement-assignments';
+export const ADMIN_PLACEMENT_ASSIGNMENTS_BULK = '/api/v1/admin/placement-assignments/bulk-assign';
+export const ADMIN_PLACEMENT_CLIENT_COMMENTS = (credId: string) => `/api/v1/admin/placement-assignments/${credId}/comments`;
+export const ADMIN_PLACEMENT_ASSIGNMENT_DETAIL = (credId: string) => `/api/v1/admin/placement-assignments/${credId}`;
+export const ADMIN_PLACEMENT_EXCEPTIONS = '/api/v1/admin/placement-exceptions';
+export const ADMIN_PLACEMENT_PERFORMANCE = '/api/v1/admin/placement-performance';
+export const ADMIN_PLACEMENT_OVERVIEW = '/api/v1/admin/placement-overview';
+export const ADMIN_USER_SEGMENTS = '/api/v1/admin/user-segments';
+export const ADMIN_USER_SEGMENT_DETAIL = (id: string) => `/api/v1/admin/user-segments/${id}`;
 export const ADMIN_APPLICATION_STATS = '/api/v1/admin/analytics'; // Both maps to analytics in v1
-export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/in-flight/staff'; // Closest match for staff list
+export const ADMIN_CLIENT_ALLOCATION = '/api/v1/admin/client-allocation';
 export const ADMIN_CLIENT_MILESTONE_STATS =
   '/api/v1/admin/analytics/milestones'; // Note: Might need backend update
 export const ADMIN_ONBOARDED_CLIENTS = '/api/v1/admin/analytics/onboarded'; // Note: Might need backend update
@@ -87,6 +98,14 @@ export const ADMIN_DEACTIVATE_CORAL = (userId: string) =>
   `/api/v1/admin/users/${userId}/activate-coral`;
 export const ADMIN_GENERATE_AMBASSADOR_LINK = (userId: string) =>
   `/api/v1/admin/ambassador/generate-link/${userId}`;
+export const ADMIN_ASSIGN_REFERRER = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/referrer`;
+export const ADMIN_APPROVE_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/approve`;
+export const ADMIN_SUSPEND_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/suspend`;
+export const ADMIN_RESTRICT_USER_ACCOUNT = (userId: string) =>
+  `/api/v1/user-management/users/${userId}/restrict`;
 export const ADMIN_PLANS = '/api/v1/admin/plans';
 export const ADMIN_ACCOUNT_ACTION = '/api/v1/admin/account-action';
 export const ADMIN_DELETE_USER = '/api/v1/admin/users';
@@ -101,12 +120,16 @@ export const ADMIN_DOCUMENT_REVIEW =
   '/api/v1/admin/documents/upload-cv-cover-letter'; // /v1/admin/documents/upload-cv-cover-letter
 export const ADMIN_GENERATE_COVER_LETTER =
   '/api/v1/admin/documents/generate-cover-letter';
+export const ADMIN_PREVIEW_COVER_LETTER =
+  '/api/v1/admin/documents/preview-cover-letter';
 export const ADMIN_SAVE_COVER_LETTER =
   '/api/v1/admin/documents/save-cover-letter';
 export const ADMIN_GENERATE_ROLE_TITLES =
   '/api/v1/admin/documents/generate-role-titles';
 export const ADMIN_GENERATE_CV_VARIANT =
   '/api/v1/admin/documents/generate-cv-variant';
+export const ADMIN_PREVIEW_CV_VARIANT =
+  '/api/v1/admin/documents/preview-cv-variant';
 export const ADMIN_SAVE_CV_VARIANT =
   '/api/v1/admin/documents/save-cv-variant';
 export const ADMIN_START_INTERVIEW_PACK =
@@ -115,6 +138,8 @@ export const ADMIN_RUN_INTERVIEW_PACK_STAGE =
   '/api/v1/admin/documents/generate-interview-pack/run-stage';
 export const ADMIN_GET_INTERVIEW_PACK_PROCESS = (processId: string) =>
   `/api/v1/admin/documents/generate-interview-pack/${processId}`;
+export const ADMIN_PREVIEW_INTERVIEW_PACK =
+  '/api/v1/admin/documents/preview-interview-pack';
 export const ADMIN_SAVE_INTERVIEW_PACK =
   '/api/v1/admin/documents/save-interview-pack';
 export const ADMIN_CLIENT_SUPPORT_DOCUMENTS =
@@ -133,6 +158,7 @@ export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
 export const ADMIN_DISCOVERY_TRACKER = '/api/v1/admin/discovery-tracker';
 export const ADMIN_DISCOVERY_TRACKER_FILTER_VALUES =
   '/api/v1/admin/discovery-tracker/filter-values';
+export const ADMIN_DISCOVERY_AGENT = '/api/v1/admin/discovery';
 export const ADMIN_ACCESS_LEVELS = '/api/v1/admin/access-levels';
 export const ADMIN_PERSONA_RULES = '/api/v1/admin/persona-rules';
 export const ADMIN_UPDATE_USER_PREFERENCES =
@@ -228,6 +254,7 @@ export const ADMIN_VCS_PROMPT_BY_ID = (id: string) =>
 export const ADMIN_VCS_PROMPT_RESTORE = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_PERMANENT = '/api/v1/admin/prompts';
 export const ADMIN_VCS_PROMPT_USAGE_SUMMARY = '/api/v1/admin/prompts/usage/summary';
+export const ADMIN_VCS_PROMPT_USAGE_LAST_USED = '/api/v1/admin/prompts/usage/last-used';
 export const ADMIN_VCS_PROMPT_USAGE_LOGS = '/api/v1/admin/prompts/usage';
 export const ADMIN_VCS_PROMPT_VERSIONS = (vcsId: string) =>
   `/api/v1/admin/prompts/${vcsId}/versions`;
@@ -293,6 +320,14 @@ export const ADMIN_SUPPORT_DESK_END = (sessionId: string) =>
 export const ADMIN_TEMPLATES = '/api/v1/admin/templates';
 export const COMMUNICATION_TEMPLATE_NOTIFY_MISSING_INFO =
   '/api/v1/communication-template/notify-missing-info';
+export const ADMIN_EMAIL_TRIGGERS = '/api/v1/admin/templates/triggers';
+export const ADMIN_EMAIL_TRIGGER_BINDING = (triggerKey: string) =>
+  `/api/v1/admin/templates/triggers/${encodeURIComponent(triggerKey)}`;
+export const ADMIN_TEMPLATE_TEST_SEND_RESOLVE = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send/resolve`;
+export const ADMIN_TEMPLATE_TEST_SEND = (templateId: string) =>
+  `/api/v1/admin/templates/${templateId}/test-send`;
+export const ADMIN_TEMPLATE_TEST_SEND_DRAFT = '/api/v1/admin/templates/test-send-draft';
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
@@ -304,3 +339,11 @@ export const ADMIN_SALES_OPERATION = '/api/v1/sales-operation';
 
 // Jobsite v2 Endpoints
 export const ADMIN_JOBSITE = '/api/v1/jobsite';
+
+// CEC Tracker Endpoints
+export const ADMIN_CEC_DAILY_LOG = '/api/v1/admin/cec/daily-log';
+export const ADMIN_CEC_ISSUE_BURNDOWN = '/api/v1/admin/cec/issue-burndown';
+export const ADMIN_CEC_COMPLAINTS = '/api/v1/admin/cec/complaints';
+export const ADMIN_CEC_REFERRAL_PAYOUTS = '/api/v1/admin/cec/referral-payouts';
+export const ADMIN_CEC_SALES_OUTREACH = '/api/v1/admin/cec/sales-outreach';
+export const ADMIN_CEC_AMBASSADOR_SCOUTING = '/api/v1/admin/cec/ambassador-scouting';

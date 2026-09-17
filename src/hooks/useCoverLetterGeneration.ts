@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/services/api-client";
 import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { ApiSuccess } from "@/types/apiResponse.types";
+import { rethrowWithBlobErrorMessage } from "@/lib/axios-blob-error";
 
 export type SaveCoverLetterFormat = "pdf" | "docx";
 
@@ -27,6 +28,23 @@ type CoverLetterDocument = {
 
 type SaveCoverLetterResponse = {
   upload: { document: CoverLetterDocument };
+};
+
+type PreviewCoverLetterPayload = {
+  userId: string;
+  resumeUploadId: string;
+  coverLetter: string;
+  format: SaveCoverLetterFormat;
+};
+
+// Pulls the filename the backend set via Content-Disposition — falls back to
+// a generic name if it's ever missing rather than failing the download.
+const filenameFromContentDisposition = (
+  header: string | undefined,
+  fallback: string,
+): string => {
+  const match = header?.match(/filename="?([^";]+)"?/);
+  return match?.[1] || fallback;
 };
 
 /**
@@ -70,9 +88,31 @@ export function useCoverLetterGeneration() {
     return response.data.data.url;
   };
 
+  // Renders a not-yet-saved cover letter to a real file so an admin can
+  // check it before deciding to save — nothing here touches the client's
+  // Document History.
+  const previewMutation = useMutation({
+    mutationFn: async (payload: PreviewCoverLetterPayload) => {
+      try {
+        const response = await axiosInstance.post(endpoints.ADMIN_PREVIEW_COVER_LETTER, payload, {
+          responseType: "blob",
+        });
+        const filename = filenameFromContentDisposition(
+          response.headers["content-disposition"],
+          `Cover_Letter_Preview.${payload.format}`,
+        );
+        return { blob: response.data as Blob, filename };
+      } catch (error) {
+        return rethrowWithBlobErrorMessage(error);
+      }
+    },
+  });
+
   return {
     generateCoverLetter: generateMutation.mutateAsync,
     isGenerating: generateMutation.isPending,
+    previewCoverLetter: previewMutation.mutateAsync,
+    isPreviewing: previewMutation.isPending,
     saveCoverLetter: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
     savingFormat: saveMutation.variables?.format,

@@ -603,7 +603,23 @@ export const useUsersMutations = () => {
       { userId: string; action: string }
     >({
       method: 'POST',
-      url: endpoints.ADMIN_ACCOUNT_ACTION,
+      // Each account action has its own dedicated endpoint on
+      // user-management. SPR-19-16-001 completed suspend + restrict; accept
+      // (approve) was already wired by PR #198.
+      url: (params) => {
+        const action = params?.action?.toLowerCase();
+        if (!params?.userId) return endpoints.ADMIN_ACCOUNT_ACTION;
+        if (action === 'accept' || action === 'approve') {
+          return endpoints.ADMIN_APPROVE_USER_ACCOUNT(params.userId);
+        }
+        if (action === 'suspend') {
+          return endpoints.ADMIN_SUSPEND_USER_ACCOUNT(params.userId);
+        }
+        if (action === 'restrict') {
+          return endpoints.ADMIN_RESTRICT_USER_ACCOUNT(params.userId);
+        }
+        return endpoints.ADMIN_ACCOUNT_ACTION;
+      },
       mutationKey: ['admin-account-action'],
       onSuccess: () => {
         invalidateAllUsersQueries();
@@ -644,7 +660,7 @@ export const useUsersMutations = () => {
         credId: string;
         vaEmail: string | null;
         host?: string;
-        variant?: 'DPC' | 'VPC' | 'SPC';
+        variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
       }
     >({
       method: 'POST',

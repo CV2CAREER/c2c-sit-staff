@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { parseVariables } from "./PromptMetadataPanel";
+import HintMark from "./HintMark";
 import { useRunVcsPromptSimulation, VcsPromptSimulationRun } from "../hooks/use-vcs-prompt-simulations";
 
 // Variables like CV_TEXT or JOB_CONTEXT can easily run past 3000 chars —
@@ -57,8 +58,9 @@ const SimulateTab = ({
   return (
     <div className="flex flex-1 flex-col gap-4 sm:flex-row">
       <div className="flex w-full flex-col gap-3 border-gray-100 sm:w-64 sm:shrink-0 sm:border-r sm:pr-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
           Variable Inputs · {versionLabel}
+          <HintMark text="Fill in a value for each {{variable}} to test how the AI responds — this doesn't affect production." />
         </p>
 
         {hasUnsavedChanges && (
@@ -108,13 +110,18 @@ const SimulateTab = ({
         >
           <Play size={14} />
           {isPending ? "Running..." : "Run simulation"}
+          <HintMark
+            text="Sends this prompt and the values above to the AI as a test run — doesn't touch production."
+            className="bg-white/20 text-white hover:bg-white/30"
+          />
         </Button>
       </div>
 
       <div className="flex flex-1 flex-col gap-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
             Simulation output
+            <HintMark text="What the AI returned for the values you entered on the left." />
           </p>
           {lastRun && (
             <span

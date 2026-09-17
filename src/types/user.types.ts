@@ -18,7 +18,8 @@ export type StaffRole =
   | "client"
   | "guest"
   | "test"
-  | "pc";
+  | "pc"
+  | "cec";
 
 export type IUser = {
   _id: string;

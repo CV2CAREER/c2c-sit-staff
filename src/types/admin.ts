@@ -71,6 +71,10 @@ export type CampaignMgtQueriedDataType = {
   VetEmail: string | null;
   CompletedName: string | null;
   CompletedEmail: string | null;
+  InterimDPCName: string | null;
+  InterimDPCEmail: string | null;
+  InterimSPCName: string | null;
+  InterimSPCEmail: string | null;
   ProfileId: string | null;
   CustomerId: string | null;
   Plan: string | null;

@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { CampaignTableActions } from "./Actions";
 import Link from "next/link";
 import { CampaignClientActions } from "./CampaignClientActions";
+import { Loader2 } from "lucide-react";
 
 const campaignTableKeys: (keyof CampaignTableColType)[] = [
   "id",
@@ -55,6 +56,10 @@ const campaignTableKeys: (keyof CampaignTableColType)[] = [
   "VetEmail",
   "CompletedName",
   "CompletedEmail",
+  "InterimDPCName",
+  "InterimDPCEmail",
+  "InterimSPCName",
+  "InterimSPCEmail",
   "Last_Application",
   "First_Application",
   "First_Application_Aggregator",
@@ -153,6 +158,22 @@ const handleTableHeader = (key: string) => {
 
   if (key === "CompletedEmail") {
     return "SPC Email"
+  }
+
+  if (key === "InterimDPCName") {
+    return "Interim DPC Name"
+  }
+
+  if (key === "InterimDPCEmail") {
+    return "Interim DPC Email"
+  }
+
+  if (key === "InterimSPCName") {
+    return "Interim SPC Name"
+  }
+
+  if (key === "InterimSPCEmail") {
+    return "Interim SPC Email"
   }
 
   if (key === "TourCount") {
@@ -298,7 +319,8 @@ export const modifyCampaignActionsColAndRows = (
   rowsData: any,
   setRowsData: (data: any) => void,
   generateAQFn?: (clientId: any) => void,
-  handleFlight?: (clientId: string) => void
+  handleFlight?: (clientId: string) => void,
+  flightTogglingId?: string | null
 ) => {
   const newArr = columnArr.reduce((acc: GridColDef[], el: GridColDef) => {
 
@@ -396,13 +418,33 @@ export const modifyCampaignActionsColAndRows = (
       const flightEl: GridColDef = {
         ...el,
         renderCell: (params) => {
+          const isInflight = params.row.capitalized === 'INFLIGHT';
+          const isExpired = params.row.SeekSubExpired === 'YES';
+          const isToggling = flightTogglingId === params.id;
           return (
-            <Button 
-              className={params.row.capitalized === 'INFLIGHT' ? "bg-red-600 text-white" : "bg-green-600 text-white"} 
-              onClick={() => handleFlight?.(params.id as string)}
-            >
-              {params.row.capitalized === 'INFLIGHT' ? 'Land' : 'Launch'}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                className={isInflight ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+                onClick={() => handleFlight?.(params.id as string)}
+                disabled={isToggling}
+              >
+                {isToggling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Toggling...
+                  </>
+                ) : (
+                  isInflight ? 'Land' : 'Launch'
+                )}
+              </Button>
+              {isInflight && isExpired && (
+                <span
+                  className="px-2 py-1 rounded-md bg-red-600 text-white text-xs font-semibold whitespace-nowrap"
+                  title={`Campaign End: ${params.row.CampaignEnd ?? 'N/A'}`}
+                >
+                  {'\u{1F6AB}'} Expired
+                </span>
+              )}
+            </div>
           );
         },
       };

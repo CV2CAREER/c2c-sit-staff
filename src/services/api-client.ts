@@ -49,7 +49,7 @@ const AUTH_STORAGE_KEY = "c2c-staff-auth-storage";
  * whenever a stored token exists is what actually uses that path; without
  * it, the cross-portal redirect had no way to authenticate at all.
  */
-const getStoredAccessToken = (): string | null => {
+export const getStoredAccessToken = (): string | null => {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
