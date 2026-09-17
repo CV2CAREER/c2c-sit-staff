@@ -15,6 +15,8 @@ import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 import { createBlogPublishJob } from './blog-publish.job';
 import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
+import { createDiscoveryScheduleJob } from './discovery-schedule.job';
+import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -49,6 +51,14 @@ export function startAllCronJobs() {
     {
       name: 'Missing Info Expiry Job',
       task: createMissingInfoExpiryJob(),
+    },
+    {
+      name: 'Discovery Schedule Job',
+      task: createDiscoveryScheduleJob(),
+    },
+    {
+      name: 'Discovery Daily Summary Job',
+      task: createDiscoveryDailySummaryJob(),
     },
   ];
 

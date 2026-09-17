@@ -204,6 +204,11 @@ export class ManualApplication extends Model {
   @Column(DataType.STRING)
   ai_prompt_version?: string | null;
 
+  @AllowNull(true)
+  @Default('staff')
+  @Column(DataType.STRING)
+  discovery_method?: string; // 'machine' | 'staff'
+
   @CreatedAt
   createdAt!: Date;
 

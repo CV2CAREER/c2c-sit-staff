@@ -18,6 +18,8 @@ import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { Credentials } from "../../models/v1/credentials.model";
 import { setCachedUser } from "../cache/user.cache.service";
 import { markDocumentAccepted } from "../client-journey.service";
+import { sendMail } from "../../config/sendGrid";
+import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../../config/env";
 
 export interface IJobPreferenceQuery {
   step01?: boolean;
@@ -571,22 +573,34 @@ class UserManagementService {
       // Now delete the user permanently
       await user.destroy({ force: true });
 
-     // Slack notification
+     // Snapshot the user we just purged so downstream side effects can
+     // still render the person's details after the row is gone.
+     const purgedSnapshot = {
+       id: userId,
+       firstName: user.firstName,
+       lastName: user.lastName,
+       email: user.email,
+       toJSON: () => user.toJSON(),
+     };
+     const purgedByLabel = actorEmail || actorUserId;
+     const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+     const currentYear = new Date().getFullYear();
+
+     // Audit trail — must persist before the async fan-out, so a Slack
+     // failure never leaves the deletion off the record.
+     await AuditTrail.create({
+       action: "USER_PURGE",
+       actorUserId,
+       actorEmail: actorEmail || null,
+       targetType: "User",
+       targetKey: userId,
+       before: purgedSnapshot.toJSON(),
+       after: { purged: true },
+       metadata: { mode: "permanent-delete" }
+     });
+
      setImmediate(async () => {
        try {
-
-        // Audit trail
-        await AuditTrail.create({
-          action: "USER_PURGE",
-          actorUserId,
-          actorEmail: actorEmail || null,
-          targetType: "User",
-          targetKey: userId,
-          before: user.toJSON(),
-          after: { purged: true },
-          metadata: { mode: "permanent-delete" }
-        });
-
          const slackHost = host || 'localhost';
          const environment = getEnvironmentFromHost(slackHost);
          await SlackService.notify({
@@ -595,15 +609,54 @@ class UserManagementService {
            node: SlackNode.USER_MANAGEMENT,
            provider: SlackProvider.SYSTEM,
            severity: SlackSeverity.CRITICAL,
-           trigger: `User Permanently Deleted: ${user.email}`,
+           trigger: `User Permanently Deleted: ${purgedSnapshot.email}`,
            type: SlackEventType.USER_TRIGGERED,
            channel: SlackChannel.TOWN_CRIER,
-           teamMentions: "CSM",
-           body: `User account has been PERMANENTLY DELETED.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n⚠️ Purged by: ${actorEmail || actorUserId}\nThis action cannot be undone.`
+           teamMentions: "CSM,WFC",
+           body: `User account has been PERMANENTLY DELETED.\n\n👤 User: ${purgedSnapshot.firstName} ${purgedSnapshot.lastName} (${purgedSnapshot.email})\n⚠️ Purged by: ${purgedByLabel}\nThis action cannot be undone.`
          });
-         logger.info(`✅ User ${userId} permanently deleted by admin ${actorEmail || actorUserId}`);
+         logger.info(`✅ User ${userId} permanently deleted Slack posted`);
        } catch (err) {
-         logger.error(`❌ Slack notification failed: ${err}`);
+         logger.error(`❌ Slack notification failed for purge: ${err}`);
+       }
+     });
+
+     // Customer notification — an account they own has been permanently
+     // deleted; still fire the email even though the account row is gone,
+     // since the recipient address was captured before destroy().
+     setImmediate(async () => {
+       try {
+         await sendMail({
+           email: purgedSnapshot.email,
+           subject: "Your CVtoCAREER account has been deleted",
+           templateName: "account-deleted-user.ejs",
+           templateData: {
+             name: purgedSnapshot.firstName,
+             frontendUrl,
+             currentYear,
+           },
+         });
+       } catch (err) {
+         logger.error(`❌ Customer purge email failed for user ${userId}: ${err}`);
+       }
+     });
+
+     setImmediate(async () => {
+       try {
+         await sendMail({
+           email: TEAM_EMAIL,
+           subject: `Account Permanently Deleted — ${purgedSnapshot.firstName} ${purgedSnapshot.lastName}`,
+           templateName: "account-deleted-admin.ejs",
+           templateData: {
+             clientName: `${purgedSnapshot.firstName} ${purgedSnapshot.lastName}`,
+             clientEmail: purgedSnapshot.email,
+             purgedBy: purgedByLabel,
+             frontendUrl,
+             currentYear,
+           },
+         });
+       } catch (err) {
+         logger.error(`❌ Delivery team purge email failed for user ${userId}: ${err}`);
        }
      });
 
@@ -871,7 +924,13 @@ class UserManagementService {
       metadata: { mode: "account-approval" }
     });
 
-    // Slack notification
+    // Slack + email side effects fire in the background so the admin
+    // response returns immediately; each catches its own error so a
+    // failing side channel never breaks the others.
+    const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+    const currentYear = new Date().getFullYear();
+    const approvedByLabel = actorEmail || actorUserId;
+
     setImmediate(async () => {
       try {
         const slackHost = host || 'localhost';
@@ -885,22 +944,284 @@ class UserManagementService {
           trigger: `Account Approved: ${user.email}`,
           type: SlackEventType.ADMIN_ACTION,
           channel: SlackChannel.TOWN_CRIER,
-          teamMentions: "CSM",
-          body: `User account has been approved.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n✅ Approved by: ${actorEmail || actorUserId}`
+          teamMentions: "CSM,WFC",
+          body: `User account has been approved.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n✅ Approved by: ${approvedByLabel}`
         });
-        logger.info(`✅ Account approved for user ${user.id}`);
+        logger.info(`✅ Account approved Slack posted for user ${user.id}`);
       } catch (err) {
         logger.error(`❌ Slack notification failed for account approval: ${err}`);
       }
     });
 
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: user.email,
+          subject: "Your CVtoCAREER account has been approved",
+          templateName: "account-approved-user.ejs",
+          templateData: {
+            name: user.firstName,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Customer approval email failed for user ${user.id}: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: TEAM_EMAIL,
+          subject: `Account Approved — ${user.firstName} ${user.lastName}`,
+          templateName: "account-approved-admin.ejs",
+          templateData: {
+            clientName: `${user.firstName} ${user.lastName}`,
+            clientEmail: user.email,
+            approvedBy: approvedByLabel,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Delivery team approval email failed for user ${user.id}: ${err}`);
+      }
+    });
+
     const { password, ...userWithoutPassword } = user.toJSON();
-    
+
     return {
       success: true,
       alreadyApproved: false,
       message: "Account approved successfully",
       user: userWithoutPassword
+    };
+  }
+
+  /**
+   * Suspend user account — flips isActive to false and notifies both the
+   * customer and the delivery team. Login is blocked on customer BE while
+   * isActive is false (see customer BE auth service).
+   */
+  async suspendUserAccount(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
+    if (!userId) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    if (user.isActive === false) {
+      return {
+        success: true,
+        alreadySuspended: true,
+        message: "Account already suspended",
+        user: user.toJSON(),
+      };
+    }
+
+    const beforeState = user.toJSON();
+
+    user.isActive = false;
+    user.updatedBy = actorEmail || actorUserId;
+    await user.save();
+
+    await AuditTrail.create({
+      action: "USER_ACCOUNT_SUSPEND",
+      actorUserId,
+      actorEmail: actorEmail || null,
+      targetType: "User",
+      targetKey: user.id,
+      before: beforeState,
+      after: user.toJSON(),
+      metadata: { mode: "account-suspend" },
+    });
+
+    const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+    const currentYear = new Date().getFullYear();
+    const suspendedByLabel = actorEmail || actorUserId;
+
+    setImmediate(async () => {
+      try {
+        const slackHost = host || "localhost";
+        const environment = getEnvironmentFromHost(slackHost);
+        await SlackService.notify({
+          location: environment,
+          host: slackHost,
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: `Account Suspended: ${user.email}`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM,WFC",
+          body: `User account has been suspended.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n🚫 Suspended by: ${suspendedByLabel}`,
+        });
+        logger.info(`✅ Account suspended Slack posted for user ${user.id}`);
+      } catch (err) {
+        logger.error(`❌ Slack notification failed for account suspension: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: user.email,
+          subject: "Your CVtoCAREER account has been suspended",
+          templateName: "account-suspended-user.ejs",
+          templateData: {
+            name: user.firstName,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Customer suspension email failed for user ${user.id}: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: TEAM_EMAIL,
+          subject: `Account Suspended — ${user.firstName} ${user.lastName}`,
+          templateName: "account-suspended-admin.ejs",
+          templateData: {
+            clientName: `${user.firstName} ${user.lastName}`,
+            clientEmail: user.email,
+            suspendedBy: suspendedByLabel,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Delivery team suspension email failed for user ${user.id}: ${err}`);
+      }
+    });
+
+    const { password, ...userWithoutPassword } = user.toJSON();
+
+    return {
+      success: true,
+      alreadySuspended: false,
+      message: "Account suspended successfully",
+      user: userWithoutPassword,
+    };
+  }
+
+  /**
+   * Restrict user account — flips isRestricted to true and notifies both
+   * the customer and the delivery team. Login is blocked on customer BE
+   * while isRestricted is true (see customer BE auth service).
+   */
+  async restrictUserAccount(userId: string, actorUserId: string, actorEmail?: string, host?: string) {
+    if (!userId) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    if (user.isRestricted === true) {
+      return {
+        success: true,
+        alreadyRestricted: true,
+        message: "Account already restricted",
+        user: user.toJSON(),
+      };
+    }
+
+    const beforeState = user.toJSON();
+
+    user.isRestricted = true;
+    user.updatedBy = actorEmail || actorUserId;
+    await user.save();
+
+    await AuditTrail.create({
+      action: "USER_ACCOUNT_RESTRICT",
+      actorUserId,
+      actorEmail: actorEmail || null,
+      targetType: "User",
+      targetKey: user.id,
+      before: beforeState,
+      after: user.toJSON(),
+      metadata: { mode: "account-restrict" },
+    });
+
+    const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+    const currentYear = new Date().getFullYear();
+    const restrictedByLabel = actorEmail || actorUserId;
+
+    setImmediate(async () => {
+      try {
+        const slackHost = host || "localhost";
+        const environment = getEnvironmentFromHost(slackHost);
+        await SlackService.notify({
+          location: environment,
+          host: slackHost,
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: `Account Restricted: ${user.email}`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM,WFC",
+          body: `User account has been restricted.\n\n👤 User: ${user.firstName} ${user.lastName} (${user.email})\n⚠️ Restricted by: ${restrictedByLabel}`,
+        });
+        logger.info(`✅ Account restricted Slack posted for user ${user.id}`);
+      } catch (err) {
+        logger.error(`❌ Slack notification failed for account restriction: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: user.email,
+          subject: "Your CVtoCAREER account has been restricted",
+          templateName: "account-restricted-user.ejs",
+          templateData: {
+            name: user.firstName,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Customer restriction email failed for user ${user.id}: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: TEAM_EMAIL,
+          subject: `Account Restricted — ${user.firstName} ${user.lastName}`,
+          templateName: "account-restricted-admin.ejs",
+          templateData: {
+            clientName: `${user.firstName} ${user.lastName}`,
+            clientEmail: user.email,
+            restrictedBy: restrictedByLabel,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Delivery team restriction email failed for user ${user.id}: ${err}`);
+      }
+    });
+
+    const { password, ...userWithoutPassword } = user.toJSON();
+
+    return {
+      success: true,
+      alreadyRestricted: false,
+      message: "Account restricted successfully",
+      user: userWithoutPassword,
     };
   }
 
@@ -1202,19 +1523,21 @@ class UserManagementService {
   }
 
   /**
-   * Get all users with INFLIGHT campaigns for Dashboard display
+   * Get all users with in-flight campaigns (capitalized INFLIGHT or FLIGHT)
+   * for Dashboard display — same population as the Pipeline card's
+   * "In-Flight" tile.
    */
   async getInflightUsers() {
-    logger.info(`Retrieving users with INFLIGHT campaigns`);
+    logger.info(`Retrieving users with in-flight campaigns`);
 
     const inflightCredentials = await Credentials.findAll({
       where: {
-        capitalized: "INFLIGHT",
+        capitalized: { [Op.in]: ["INFLIGHT", "FLIGHT"] },
         isDeleted: false
       }
     });
 
-    logger.info(`Retrieved ${inflightCredentials.length} users with INFLIGHT campaigns`);
+    logger.info(`Retrieved ${inflightCredentials.length} users with in-flight campaigns`);
 
     return {
       inflightCredentials,
@@ -1471,6 +1794,152 @@ class UserManagementService {
       success: true,
       message: `${profileType} job preference updated successfully`,
       profile: updatedProfile,
+    };
+  }
+
+  /**
+   * Assign, update, or (re)allow a referrer relationship for a client.
+   * Idempotent: if a Referrer row already exists for the client it is
+   * updated in place rather than duplicated. Fires a #town-crier Slack
+   * post (CSM,WFC) and a delivery-team email as confirmation side channels.
+   */
+  async assignReferrer(
+    userId: string,
+    payload: {
+      referrer: string;
+      referralNumber?: string | null;
+      freeBeforeReferral?: boolean;
+    },
+    actorUserId: string,
+    actorEmail?: string,
+    host?: string,
+  ) {
+    if (!userId) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+    const referrerLabel = (payload.referrer || "").trim();
+    if (!referrerLabel) {
+      throw new ErrorHandler("Referrer is required.", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    const existing = await Referrer.findOne({ where: { userId } });
+    const nextValues = {
+      userId,
+      referrer: referrerLabel,
+      referralNumber: payload.referralNumber?.trim() || null,
+      freeBeforeReferral: !!payload.freeBeforeReferral,
+      updatedBy: actorEmail || actorUserId,
+    };
+
+    let mode: "assigned" | "updated";
+    let record: Referrer;
+    if (existing) {
+      await existing.update(nextValues);
+      record = existing;
+      mode = "updated";
+    } else {
+      record = await Referrer.create(nextValues as any);
+      mode = "assigned";
+    }
+
+    await AuditTrail.create({
+      action: mode === "assigned" ? "REFERRER_ASSIGNED" : "REFERRER_UPDATED",
+      actorUserId,
+      actorEmail: actorEmail || null,
+      targetType: "Referrer",
+      targetKey: record.id,
+      before: existing ? existing.toJSON() : null,
+      after: record.toJSON(),
+      metadata: { userId, mode },
+    });
+
+    const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+    const currentYear = new Date().getFullYear();
+    const assignedByLabel = actorEmail || actorUserId;
+    const humanMode =
+      mode === "assigned" ? "Referrer Assigned" : "Referral Numbers Updated";
+    const freeLabel = nextValues.freeBeforeReferral ? "Yes" : "No";
+
+    setImmediate(async () => {
+      try {
+        const slackHost = host || "localhost";
+        const environment = getEnvironmentFromHost(slackHost);
+        await SlackService.notify({
+          location: environment,
+          host: slackHost,
+          node: SlackNode.USER_MANAGEMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: `${humanMode}: ${user.email}`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM,WFC",
+          body:
+            `👥 ${humanMode}\n\n` +
+            `Client: ${user.firstName} ${user.lastName} (${user.email})\n` +
+            `Referrer: ${referrerLabel}\n` +
+            `Referral Number: ${nextValues.referralNumber ?? "—"}\n` +
+            `Free plan before referral: ${freeLabel}\n` +
+            `Actioned by: ${assignedByLabel}`,
+        });
+      } catch (err) {
+        logger.error(`❌ Slack notification failed for referrer ${mode}: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: TEAM_EMAIL,
+          subject: `${humanMode} — ${user.firstName} ${user.lastName}`,
+          templateName: "referrer-assigned-admin.ejs",
+          templateData: {
+            clientName: `${user.firstName} ${user.lastName}`,
+            clientEmail: user.email,
+            referrerLabel,
+            referralNumber: nextValues.referralNumber ?? "—",
+            freeBeforeReferral: freeLabel,
+            assignedBy: assignedByLabel,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Delivery team ${mode} email failed for user ${userId}: ${err}`);
+      }
+    });
+
+    setImmediate(async () => {
+      try {
+        await sendMail({
+          email: user.email,
+          subject: `${humanMode} on your CVtoCAREER account`,
+          templateName: "referrer-assigned-user.ejs",
+          templateData: {
+            name: user.firstName,
+            humanMode,
+            referrerLabel,
+            referralNumber: nextValues.referralNumber ?? "—",
+            freeBeforeReferral: freeLabel,
+            frontendUrl,
+            currentYear,
+          },
+        });
+      } catch (err) {
+        logger.error(`❌ Client ${mode} email failed for user ${userId}: ${err}`);
+      }
+    });
+
+    return {
+      success: true,
+      mode,
+      message: `${humanMode} successfully`,
+      referrer: record.toJSON(),
     };
   }
 }

@@ -11,6 +11,7 @@ import { TEAM_EMAIL, CLIENT_APP_DOMAIN } from "../../config/env";
 import { User } from "../../models/v1/user.model";
 import { UploadType, SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
+import { getFullName } from "../../utils/helpers";
 import {
   generateUniqueFilename,
   uploadBufferToStorage,
@@ -144,6 +145,15 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
         const slackHost = req.get("host") || process.env.CLIENT_APP_DOMAIN || "localhost";
         const environment = getEnvironmentFromHost(slackHost);
 
+        // Fetch the target client up-front so the same record can back both
+        // the Slack alert (needs a real name for follow-up) and the client
+        // confirmation email further down — one DB hit instead of two.
+        const targetUser = await User.findByPk(userId).catch(() => null);
+        const clientDisplayName = targetUser
+          ? getFullName(targetUser).trim() || "Unknown client"
+          : "Unknown client";
+        const clientEmail = targetUser?.email || "unknown";
+
         // Send Slack notification
         SlackService.notify({
           location: environment,
@@ -154,8 +164,8 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
           type: SlackEventType.DOCUMENT_UPLOAD,
           trigger: `Documents Uploaded by ${(req as any).user?.firstName} ${(req as any).user?.lastName}`,
           channel: SlackChannel.TOWN_CRIER,
-          teamMentions: "CSM",
-          body: `Admin has uploaded revised documents for user.\n\n👤 User ID: ${userId}\n📄 Documents: ${documentTypes}\n📊 Count: ${uploads.length}`,
+          teamMentions: "CSM,WFC",
+          body: `Admin has uploaded revised documents for user.\n\n👤 Client: ${clientDisplayName} (${clientEmail})\n🆔 User ID: ${userId}\n📄 Documents: ${documentTypes}\n📊 Count: ${uploads.length}`,
         }).catch((err) => {
           logger.error(
             `Failed to send Slack notification for CV/Cover Letter upload: ${err.message}`,
@@ -187,16 +197,22 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
           }
         }
 
-        // Send email notification to the client (user)
+        // Send email notification to the client (user) — reuses targetUser
+        // fetched above so this path avoids a second DB round-trip.
+        // Client-facing "Revised Document Available" is meant for CVs only —
+        // a cover-letter-only batch (no resume in this upload) must not
+        // trigger it, even though the team Slack/email notifications above
+        // still cover every upload type.
+        const hasRevisedResume = documents.some(
+          (doc) => doc.type === UploadType.RESUME,
+        );
         try {
-          const user = await User.findByPk(userId);
-
-          if (user?.email) {
+          if (targetUser?.email && hasRevisedResume) {
             const clientName =
-              `${user.firstName || ""} ${user.lastName || ""}`.trim() || "there";
+              `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() || "there";
 
             await sendMail({
-              email: user.email,
+              email: targetUser.email,
               subject: `📄 Your Revised Document is Ready - CVtoCAREER`,
               templateName: "client-revised-documents.ejs",
               templateData: {
@@ -213,6 +229,10 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
             });
             logger.info(
               `✅ Client notification email sent for revised document upload to user ${userId}`,
+            );
+          } else if (!hasRevisedResume) {
+            logger.info(
+              `Skipped client email for revised document upload: cover-letter-only batch (no resume) for user ${userId}`,
             );
           } else {
             logger.warn(

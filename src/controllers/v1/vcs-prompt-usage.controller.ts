@@ -16,3 +16,8 @@ export const listVcsPromptUsageSummary = catchAsyncError(async (_req: any, res: 
   const data = await VcsPromptUsageService.listSummary();
   return res.apiSuccess(data, "Usage summary retrieved successfully");
 });
+
+export const listVcsPromptLastUsed = catchAsyncError(async (_req: any, res: Response) => {
+  const data = await VcsPromptUsageService.listLastUsedByKey();
+  return res.apiSuccess(data, "Last-used prompt usage retrieved successfully");
+});

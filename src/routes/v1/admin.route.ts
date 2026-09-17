@@ -2,6 +2,19 @@ import { Router } from "express";
 import {
   assignPlacementController,
   getAdminAnalytics,
+  getAdminPipelineStats,
+  getAdminPipelineLists,
+  getPlacementAssignments,
+  bulkAssignPlacement,
+  getPlacementAssignmentDetail,
+  getPlacementExceptions,
+  getPlacementPerformance,
+  getPlacementOverview,
+  getClientComments,
+  addClientComment,
+  getUserSegments,
+  createUserSegment,
+  deleteUserSegment,
   getAdminLocations,
   patchAdminLocationMultiplier,
   getAdminStatus,
@@ -105,6 +118,13 @@ import communicationTemplateRouterV1 from "./communication-template.route";
 import clientContentRouterV1 from "./client-content.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
 import discoveryTrackerRouterV1 from "./discovery-tracker.route";
+import adminDiscoveryRouterV1 from "./admin-discovery.route";
+import cecDailyLogRouterV1 from "./cec-daily-log.route";
+import cecIssueBurndownRouterV1 from "./cec-issue-burndown.route";
+import cecComplaintRouterV1 from "./cec-complaint.route";
+import cecReferralPayoutRouterV1 from "./cec-referral-payout.route";
+import cecSalesOutreachRouterV1 from "./cec-sales-outreach.route";
+import cecAmbassadorScoutRouterV1 from "./cec-ambassador-scout.route";
 const adminRouterV1 = Router();
 
 // Baseline role gates for routes defined directly in this file: GET reads are
@@ -473,6 +493,97 @@ adminRouterV1.get(
   getAdminAnalytics,
 );
 adminRouterV1.get(
+  "/pipeline-stats",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineStats,
+);
+adminRouterV1.get(
+  "/pipeline-lists",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getAdminPipelineLists,
+);
+adminRouterV1.get(
+  "/placement-assignments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignments,
+);
+adminRouterV1.post(
+  "/placement-assignments/bulk-assign",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  bulkAssignPlacement,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getClientComments,
+);
+adminRouterV1.post(
+  "/placement-assignments/:credId/comments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  addClientComment,
+);
+adminRouterV1.get(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getUserSegments,
+);
+adminRouterV1.post(
+  "/user-segments",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  createUserSegment,
+);
+adminRouterV1.delete(
+  "/user-segments/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  deleteUserSegment,
+);
+adminRouterV1.get(
+  "/placement-assignments/:credId",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementAssignmentDetail,
+);
+adminRouterV1.get(
+  "/placement-exceptions",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementExceptions,
+);
+adminRouterV1.get(
+  "/placement-performance",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementPerformance,
+);
+adminRouterV1.get(
+  "/placement-overview",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  readAccess,
+  getPlacementOverview,
+);
+adminRouterV1.get(
   "/campaign",
   checkBlacklistedTokens,
   isUserAuthenticated,
@@ -757,6 +868,20 @@ adminRouterV1.use(
   isUserAuthenticated,
   discoveryTrackerRouterV1,
 );
+
+adminRouterV1.use(
+  "/discovery",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  adminDiscoveryRouterV1,
+);
+
+adminRouterV1.use("/cec/daily-log", checkBlacklistedTokens, isUserAuthenticated, cecDailyLogRouterV1);
+adminRouterV1.use("/cec/issue-burndown", checkBlacklistedTokens, isUserAuthenticated, cecIssueBurndownRouterV1);
+adminRouterV1.use("/cec/complaints", checkBlacklistedTokens, isUserAuthenticated, cecComplaintRouterV1);
+adminRouterV1.use("/cec/referral-payouts", checkBlacklistedTokens, isUserAuthenticated, cecReferralPayoutRouterV1);
+adminRouterV1.use("/cec/sales-outreach", checkBlacklistedTokens, isUserAuthenticated, cecSalesOutreachRouterV1);
+adminRouterV1.use("/cec/ambassador-scouting", checkBlacklistedTokens, isUserAuthenticated, cecAmbassadorScoutRouterV1);
 
 adminRouterV1.use("/", clientAllocationRouterV1);
 export default adminRouterV1;

@@ -123,6 +123,9 @@ export const TEAM_EMAIL = process.env.TEAM_EMAIL!;
 export const PRODUCT_OWNER_EMAIL = process.env.PRODUCT_OWNER_EMAIL || process.env.TEAM_EMAIL!;
 // BCC'd on every customer-facing email (not internal/admin notifications) — see sendMail() in config/sendGrid.ts
 export const CUSTOMER_EMAIL_BCC = process.env.CUSTOMER_EMAIL_BCC;
+// Fixed destination for admin "test send" — deliberately never a real
+// customer or the clicking admin's own inbox, see CommunicationTemplateService.sendTestEmail
+export const EMAIL_TEST_RECIPIENT = process.env.EMAIL_TEST_RECIPIENT;
 
 // ACCESS TOKEN SECRET
 export const SIGN_IN_ACCESS_SECRET_KEY = process.env.SIGN_IN_ACCESS_SECRET_KEY;
@@ -170,6 +173,29 @@ export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
 export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
 export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;
+// Blended per-1M-token rate for the model behind GRADIENT_AGENT_ENDPOINT
+// ('llama3.3-70b-instruct'), used only to project AI Discovery Agent spend
+// (SPR-19-03-017) — not billed against directly, so an approximate default
+// is fine, but finance/ops should override via env with the actual
+// DigitalOcean Gradient rate once confirmed.
+export const AI_COST_PER_1M_TOKENS = parseFloat(process.env.AI_COST_PER_1M_TOKENS || '0.65');
+
+// ADZUNA API (AI Discovery Agent)
+export const ADZUNA_API_KEY = process.env.ADZUNA_API_KEY || '';
+export const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID || '';
+
+// JOOBLE API (AI Discovery Agent)
+export const JOOBLE_API_KEY = process.env.JOOBLE_API_KEY || '';
+
+// DISCOVERY EMAIL ALERT IMAP
+export const DISCOVERY_IMAP_HOST = process.env.DISCOVERY_IMAP_HOST || '';
+export const DISCOVERY_IMAP_PORT = parseInt(process.env.DISCOVERY_IMAP_PORT || '993', 10);
+export const DISCOVERY_IMAP_USER = process.env.DISCOVERY_IMAP_USER || '';
+export const DISCOVERY_IMAP_PASS = process.env.DISCOVERY_IMAP_PASS || '';
+export const DISCOVERY_IMAP_SECURE = process.env.DISCOVERY_IMAP_SECURE !== 'false';
+
+// DISCOVERY INBOUND PARSE (SendGrid)
+export const DISCOVERY_PARSE_DOMAIN = process.env.DISCOVERY_PARSE_DOMAIN || '';
 
 // VIEW AS USER
 export const CLIENT_APP_DOMAIN =

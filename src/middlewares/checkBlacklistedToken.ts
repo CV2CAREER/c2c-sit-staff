@@ -15,12 +15,13 @@ export const checkBlacklistedTokens = catchAsyncError(
 
     let token: string | undefined;
 
-    // User route - Try Authorization header first, then cookie
+    // Try Authorization header first, then cookie, then query param (for SSE)
     const authHeader = req.headers.authorization;
     
     token = authHeader?.startsWith("Bearer ")
       ? authHeader.split(" ")[1]
-      : req.cookies[ACCESS_TOKEN_COOKIE_NAME];
+      : req.cookies[ACCESS_TOKEN_COOKIE_NAME]
+        || (typeof req.query.token === 'string' ? req.query.token : undefined);
 
     if (token) {
       req.authToken = token;

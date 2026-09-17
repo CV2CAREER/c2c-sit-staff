@@ -3,6 +3,7 @@ import path from "path";
 import ejs from "ejs";
 import { getServiceLogger } from "../utils/createLogger";
 import { EmailTemplate, EmailTemplateType } from "../models/v1/email-template.model";
+import { EmailTemplateTrigger } from "../models/v1/email-template-trigger.model";
 import { EmailLog, EmailLogStatus } from "../models/v1/email-log.model";
 import { User } from "../models/v1/user.model";
 import { SlackService } from "../services/slack.service";
@@ -146,13 +147,28 @@ interface EmailOptions {
 export const sendMail = async (options: EmailOptions): Promise<void> => {
   initializeSendGrid();
 
+  // A trigger can be rebound to a different template, or explicitly
+  // disabled (templateId null — admin chose "send nothing" for this
+  // trigger). Absence of a row means "use the default" — today's only
+  // behavior — so an unbound trigger is completely unaffected.
+  const binding = await EmailTemplateTrigger.findOne({
+    where: { triggerKey: options.templateName },
+  });
+
+  if (binding && binding.templateId === null) {
+    logger.info(
+      `Skipped sending "${options.templateName}" to ${options.email} — trigger disabled by an admin (set to send nothing).`,
+    );
+    return;
+  }
+
   let html: string;
   let usedFallback = false;
   let template: EmailTemplate | null = null;
   try {
-    template = await EmailTemplate.findOne({
-      where: { key: options.templateName },
-    });
+    template = binding?.templateId
+      ? await EmailTemplate.findByPk(binding.templateId)
+      : await EmailTemplate.findOne({ where: { key: options.templateName } });
     if (!template) {
       throw new Error(
         `Email template "${options.templateName}" not found in database`,
@@ -227,6 +243,42 @@ export const sendMail = async (options: EmailOptions): Promise<void> => {
     await notifySendFailure(options, sgError);
     await logEmail(options, EmailLogStatus.FAILED, sgError);
     throw new Error(`Email failed: ${sgError}`);
+  }
+};
+
+interface RawTestEmailOptions {
+  email: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Sends pre-rendered HTML as-is — no DB template lookup, no on-disk
+ * fallback, no BCC, and (deliberately) no EmailLog write. Used only for
+ * admin "test send," which already resolved/rendered its own HTML from a
+ * specific template and must not be conflated with real send analytics —
+ * see EmailTestSendLog in CommunicationTemplateService.sendTestEmail.
+ */
+export const sendRawTestEmail = async (options: RawTestEmailOptions): Promise<void> => {
+  initializeSendGrid();
+
+  const msg: MailDataRequired = {
+    to: options.email,
+    from: {
+      email: SENDGRID_FROM_EMAIL,
+      name: SENDGRID_FROM_NAME,
+    },
+    subject: options.subject,
+    html: options.html,
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info(`✅ Test email sent to ${options.email} — subject: "${options.subject}"`);
+  } catch (error: any) {
+    const sgError = error?.response?.body?.errors?.[0]?.message || error.message;
+    logger.error(`Failed to send test email to ${options.email}: ${sgError}`);
+    throw new Error(`Test email failed: ${sgError}`);
   }
 };
 
