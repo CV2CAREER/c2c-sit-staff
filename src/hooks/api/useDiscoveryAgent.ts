@@ -10,6 +10,7 @@ import type {
   DiscoveryRun,
   DiscoverySource,
   DiscoverySchedule,
+  LiveMatch,
 } from "@/types/discovery-agent.types";
 
 const TOAST_ID = "discovery-agent-action";
@@ -35,17 +36,6 @@ export function useDiscoveryDashboard() {
       return res.data?.data;
     },
     refetchInterval: 30_000,
-  });
-}
-
-// ─── GET Sources ─────────────────────────────────────────────────
-export function useDiscoverySources() {
-  return useQuery<DiscoverySource[]>({
-    queryKey: ["discovery-dashboard", "sources"],
-    queryFn: async () => {
-      const res = await axiosInstance.get(`${ADMIN_DISCOVERY_AGENT}/sources`);
-      return res.data?.data;
-    },
   });
 }
 
@@ -209,6 +199,31 @@ export function useKillDiscoveryRun() {
   });
 }
 
+// ─── POST Backfill AI Vetting ───────────────────────────────────
+export function useBackfillAiVetting() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ApiSuccess<{ scanned: number; scored: number; failed: number }>,
+    ApiError,
+    void
+  >({
+    mutationKey: ["discovery-backfill-vetting"],
+    mutationFn: async () => {
+      const res = await axiosInstance.post(`${ADMIN_DISCOVERY_AGENT}/ai-vetting/backfill`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(`AI backfill complete: ${data.data?.scored} scored, ${data.data?.failed} failed`, { id: TOAST_ID });
+      queryClient.invalidateQueries({ queryKey: ["discovery-dashboard"] });
+    },
+    onError: (error) => {
+      const apiErr = toApiError(error);
+      toast.error(apiErr.message || "Failed to backfill AI vetting", { id: TOAST_ID });
+    },
+  });
+}
+
 // ─── SSE Log Stream ─────────────────────────────────────────────
 export interface LogEntry {
   ts: string;
@@ -231,6 +246,7 @@ export interface RunCompleteEvent {
 
 export function useRunLogStream(runId: string | null) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [matches, setMatches] = useState<LiveMatch[]>([]);
   const [status, setStatus] = useState<string>("running");
   const [connected, setConnected] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -238,12 +254,14 @@ export function useRunLogStream(runId: string | null) {
   useEffect(() => {
     if (!runId) {
       setLogs([]);
+      setMatches([]);
       setStatus("running");
       setConnected(false);
       return;
     }
 
     setLogs([]);
+    setMatches([]);
     setStatus("running");
     setConnected(false);
 
@@ -287,6 +305,19 @@ export function useRunLogStream(runId: string | null) {
               if (data.type === "complete") {
                 setStatus(data.status);
                 setConnected(false);
+              } else if (data.type === "match") {
+                setMatches((prev) => [
+                  ...prev,
+                  {
+                    jobTitle: data.jobTitle || "",
+                    company: data.company || "",
+                    location: data.location || "",
+                    clientName: data.clientName || "",
+                    score: data.score || 0,
+                    rationale: data.rationale || "",
+                    source: data.source || "",
+                  },
+                ]);
               } else if (data.type === "log") {
                 setLogs((prev) => [...prev, { ts: data.ts, level: data.level, message: data.message }]);
               }
@@ -311,5 +342,5 @@ export function useRunLogStream(runId: string | null) {
     setLogs([]);
   }, []);
 
-  return { logs, status, connected, clearLogs };
+  return { logs, matches, status, connected, clearLogs };
 }
