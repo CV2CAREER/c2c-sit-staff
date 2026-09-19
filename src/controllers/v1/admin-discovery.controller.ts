@@ -7,7 +7,9 @@ import { AdzunaAdapter } from '../../services/discovery/adapters/adzuna.adapter'
 import { JoobleAdapter } from '../../services/discovery/adapters/jooble.adapter';
 import { PageScrapeAdapter } from '../../services/discovery/adapters/page-scrape.adapter';
 import { HttpScrapeAdapter } from '../../services/discovery/adapters/http-scrape.adapter';
+import { SendGridInboundAdapter } from '../../services/discovery/adapters/sendgrid-inbound.adapter';
 import { getScraperConfig, getRegion } from '../../services/discovery/adapters/scraper-config';
+import { DISCOVERY_PARSE_DOMAIN } from '../../config/env';
 import { normaliseJob, validateDraft } from '../../services/discovery/discovery-normalise.service';
 import { loadActiveClientProfiles, getCombinedSearchParams, matchJobToClients, createClientApplications } from '../../services/discovery/discovery-client-matcher';
 import { extractJobFieldsFromText } from '../../services/discovery/discovery-ai-extract.service';
@@ -25,6 +27,14 @@ import { SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel }
 const logger = getServiceLogger('admin-discovery-controller');
 
 const FETCH_TIMEOUT_MS = 300_000; // 5 min per API source fetch
+
+// Hard cap per source — if a Playwright source hangs on Cloudflare, it must not
+// block the semaphore slot (and thus the entire run) forever. API sources get
+// 5 min; browser/scrape sources get 10 min. Configurable via env.
+const SOURCE_TIMEOUT_MS = (() => {
+  const mins = parseInt(process.env.DISCOVERY_SOURCE_TIMEOUT_MINUTES || '10', 10);
+  return Number.isFinite(mins) && mins > 0 ? mins * 60 * 1000 : 10 * 60 * 1000;
+})();
 
 // Global run timeout, in minutes. Default 0 = NO auto-kill — a run keeps going
 // until every enabled source+location+keyword is exhausted, or an admin clicks
@@ -60,7 +70,8 @@ const throwAborted = (): never => {
 
 // Pick the right adapter for a source based on its config strategy:
 //   - Adzuna → API adapter
-//   - http    → HttpScrapeAdapter (axios+cheerio, no browser)
+//   - email  → SendGridInboundAdapter (processes inbound email alerts via webhook)
+//   - http   → HttpScrapeAdapter (axios+cheerio, no browser)
 //   - browser → PageScrapeAdapter (Playwright+stealth)
 function buildAdapter(source: DiscoverySourceRegister, country: string) {
   if (source.route === 'api' && source.slug === 'adzuna') {
@@ -68,6 +79,9 @@ function buildAdapter(source: DiscoverySourceRegister, country: string) {
   }
   if (source.route === 'api' && source.slug === 'jooble') {
     return new JoobleAdapter();
+  }
+  if (source.route === 'email') {
+    return new SendGridInboundAdapter({ parseDomain: DISCOVERY_PARSE_DOMAIN }, source.slug);
   }
   const cfg = getScraperConfig(source.slug);
   if (cfg?.strategy === 'http') {
@@ -113,10 +127,11 @@ function sourceRegion(source: DiscoverySourceRegister): string {
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout;
   return Promise.race([
-    promise,
+    promise.finally(() => clearTimeout(timer)),
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
     ),
   ]);
 }
@@ -652,7 +667,8 @@ async function runFetchJob(
   }
 }
 
-// Internal: run all enabled sources sequentially
+// Internal: run all enabled sources with parallelization.
+// API sources run all-at-once; browser/scrape sources run with concurrency ≤ 3.
 export async function runAllSources(
   sources: any[],
   runId: string,
@@ -664,15 +680,10 @@ export async function runAllSources(
   const controller = new AbortController();
   activeControllers.set(runId, controller);
 
-  // Optional global timeout (0 = run to completion; admin can Kill).
   const globalTimer = armRunTimeout(controller, runId, 'Run All');
 
-  let totalFetched = 0;
-  let totalDedup = 0;
-  let totalMatched = 0;
-  let totalHqa = 0;
-  let totalMqa = 0;
-  let totalLqa = 0;
+  // Atomic counters — shared across parallel source tasks.
+  const counters = { fetched: 0, dedup: 0, matched: 0, hqa: 0, mqa: 0, lqa: 0 };
   let sourcesCompleted = 0;
   const allMatchedClientIds = new Set<string>();
   const allLocations = searchLocations.map((s) => s.location);
@@ -684,26 +695,43 @@ export async function runAllSources(
 
   await log('info', `Run All starting — ${sources.length} sources, keywords: ${keywords.join(', ')}, locations: ${searchLocations.map((s) => `${s.location}[${s.country}]`).join(', ')}`);
 
-  // Load client profiles for matching (use pre-loaded if available)
   const resolvedProfiles = clientProfiles || await loadActiveClientProfiles();
   await log('info', `Loaded ${resolvedProfiles.size} active client profiles for matching`);
 
+  // ── Classify sources into API vs browser vs email ──────────────────────────
+  // Email-route sources are processed via SendGrid Inbound Parse webhook, not
+  // via polling — skip them in the run pipeline.
+  const apiSources: any[] = [];
+  const browserSources: any[] = [];
+  const skippedEmailSources: any[] = [];
   for (const source of sources) {
-    if (controller.signal.aborted) {
-      await log('warn', `Run aborted — stopping source loop`);
-      break;
+    if (source.route === 'api') {
+      apiSources.push(source);
+    } else if (source.route === 'email') {
+      skippedEmailSources.push(source);
+    } else {
+      browserSources.push(source);
     }
+  }
+
+  await log('info', `Parallelization: ${apiSources.length} API sources (all-at-once), ${browserSources.length} browser sources (concurrency 3), ${skippedEmailSources.length} email sources (skipped — webhook only)`);
+
+  // ── Helper: run a single source (fetch + dedup + match) ────────────────────
+  async function runSingleSource(source: any): Promise<void> {
+    if (controller.signal.aborted) return;
+
+    let sourceFetched = 0;
+    let sourceDedup = 0;
+    let sourceMatched = 0;
 
     let adapter: any;
     try {
       await log('info', `Starting ${source.name} (${source.route})...`);
-
       adapter = buildAdapter(source, searchLocations[0]?.country || 'au');
 
       const qualifyResult = await adapter.qualify();
       if (!qualifyResult.permitted) {
         await log('warn', `Skipping ${source.name} — ${qualifyResult.reason}`);
-        // Auto-pause source and send permission-signal alert
         const permError = qualifyResult.reason?.match(/403|429/)?.[0] || 'PERMISSION_DENIED';
         source.enabled = false;
         source.auto_paused_at = new Date();
@@ -718,20 +746,16 @@ export async function runAllSources(
           teamMentions: 'CSM',
           body: `🛑 [${source.name}] returned [${permError}]. Source auto-paused. Business decision required.\n• Run: ${runId}\n• Reason: ${qualifyResult.reason}\n• Source: ${source.slug}`,
         }).catch(() => {});
-        continue;
+        return;
       }
 
       let drafts: any[];
       try {
-        // Skip timeout for Playwright scraping (Cloudflare + infinite scroll can take minutes)
         const isPageScrape = adapter instanceof PageScrapeAdapter;
         const region = sourceRegion(source);
-        // Fetch for each (country, location) pair separately, then aggregate.
         drafts = [];
-        let searched = 0;
         for (const sl of searchLocations) {
           if (region !== 'global' && region !== sl.country) continue;
-          searched++;
           await log('info', `Fetching ${source.name} for location: ${sl.location} [${sl.country}]`);
           const locationDrafts: any[] = isPageScrape
             ? await adapter.fetch(keywords, sl.location, sl.country, controller.signal)
@@ -741,7 +765,7 @@ export async function runAllSources(
         }
       } catch (err: any) {
         await log('warn', `${source.name} fetch failed — ${err.message}`);
-        continue;
+        return;
       }
 
       await log('info', `${source.name} returned ${drafts.length} total raw listings`);
@@ -773,11 +797,9 @@ export async function runAllSources(
           await source.save();
         }
       }
-      let sourceFetched = 0;
-      let sourceDedup = 0;
-      let sourceMatched = 0;
 
       for (const draft of drafts) {
+        if (controller.signal.aborted) break;
         const validation = validateDraft(draft);
         if (!validation.valid) continue;
 
@@ -814,26 +836,19 @@ export async function runAllSources(
 
         sourceFetched++;
 
-        // Match against clients and create ManualApplication records
         const matches = matchJobToClients(job, resolvedProfiles);
         if (matches.length > 0) {
-          const created = await createClientApplications(job, matches, source.slug);
+          const created = await createClientApplications(job, matches, source.slug, runId);
           sourceMatched += created;
           for (const m of matches) allMatchedClientIds.add(m.credentialsId);
         }
 
         const score = calculateMatchScore(keywords, allLocations, normalised);
-        if (score >= 80) totalHqa++;
-        else if (score >= 50) totalMqa++;
-        else totalLqa++;
+        if (score >= 80) counters.hqa++;
+        else if (score >= 50) counters.mqa++;
+        else counters.lqa++;
       }
 
-      totalFetched += sourceFetched;
-      totalDedup += sourceDedup;
-      totalMatched += sourceMatched;
-      sourcesCompleted++;
-
-      // Reset consecutive zero runs on successful fetch, update source
       source.consecutive_zero_runs = 0;
       source.last_fetched_at = new Date();
       await source.save();
@@ -843,8 +858,61 @@ export async function runAllSources(
       await log('warn', `${source.name} failed — ${err.message}`);
     } finally {
       if (adapter?.close) await adapter.close().catch(() => {});
+      counters.fetched += sourceFetched;
+      counters.dedup += sourceDedup;
+      counters.matched += sourceMatched;
+      sourcesCompleted++;
     }
   }
+
+  // ── Semaphore for browser sources ───────────────────────────────────────────
+  const BROWSER_CONCURRENCY = 3;
+  let browserInFlight = 0;
+  const browserQueue: Array<() => void> = [];
+
+  function drainBrowserQueue(): void {
+    while (browserInFlight < BROWSER_CONCURRENCY && browserQueue.length > 0) {
+      const next = browserQueue.shift()!;
+      browserInFlight++;
+      next();
+    }
+  }
+
+  function runBrowserWithSemaphore(source: any): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const task = async () => {
+        try {
+          await withSourceTimeout(source, () => runSingleSource(source));
+        } finally {
+          browserInFlight--;
+          drainBrowserQueue();
+          resolve();
+        }
+      };
+      browserQueue.push(task);
+      drainBrowserQueue();
+    });
+  }
+
+  // ── Execute: API sources all-at-once, browser sources with concurrency 3 ───
+  // Each source is wrapped in a hard timeout so a hung Playwright/Cloudflare
+  // source can't hold a semaphore slot (or the entire run) forever.
+  function withSourceTimeout(source: any, fn: () => Promise<void>): Promise<void> {
+    return Promise.race([
+      fn(),
+      new Promise<void>((resolve) => {
+        setTimeout(async () => {
+          await log('warn', `${source.name} hit ${SOURCE_TIMEOUT_MS / 60000}-min timeout — skipping`).catch(() => {});
+          resolve();
+        }, SOURCE_TIMEOUT_MS);
+      }),
+    ]);
+  }
+
+  const apiPromises = apiSources.map((s) => withSourceTimeout(s, () => runSingleSource(s)));
+  const browserPromises = browserSources.map((s) => runBrowserWithSemaphore(s));
+
+  await Promise.allSettled([...apiPromises, ...browserPromises]);
 
   const durationMs = Date.now() - startTime;
 
@@ -853,27 +921,26 @@ export async function runAllSources(
       status: 'killed',
       duration_ms: durationMs,
       clients_count: allMatchedClientIds.size,
-      fetched_count: totalFetched,
-      dedup_count: totalDedup,
-      hqa_count: totalHqa,
-      mqa_count: totalMqa,
-      lqa_count: totalLqa,
+      fetched_count: counters.fetched,
+      dedup_count: counters.dedup,
+      hqa_count: counters.hqa,
+      mqa_count: counters.mqa,
+      lqa_count: counters.lqa,
     });
-    await log('warn', `Run ${runId} killed by admin — ${totalFetched} jobs saved, ${totalMatched} matched to ${allMatchedClientIds.size} clients`);
+    await log('warn', `Run ${runId} killed by admin — ${counters.fetched} jobs saved, ${counters.matched} matched to ${allMatchedClientIds.size} clients`);
   } else {
     await discoveryService.completeRun(runId, {
       status: 'success',
       duration_ms: durationMs,
       clients_count: allMatchedClientIds.size,
-      fetched_count: totalFetched,
-      dedup_count: totalDedup,
-      hqa_count: totalHqa,
-      mqa_count: totalMqa,
-      lqa_count: totalLqa,
+      fetched_count: counters.fetched,
+      dedup_count: counters.dedup,
+      hqa_count: counters.hqa,
+      mqa_count: counters.mqa,
+      lqa_count: counters.lqa,
     });
-    await log('ok', `Run All complete — ${sourcesCompleted} sources, ${totalFetched} unique jobs, ${totalMatched} matched to ${allMatchedClientIds.size} clients, ${(durationMs / 1000).toFixed(1)}s`);
+    await log('ok', `Run All complete — ${sourcesCompleted} sources, ${counters.fetched} unique jobs, ${counters.matched} matched to ${allMatchedClientIds.size} clients, ${(durationMs / 1000).toFixed(1)}s`);
 
-    // Post-run Slack notification
     const adminUrl = process.env.NODE_ENV === 'prod'
       ? `https://uat.cvtocareer.com/admin/Discovery`
       : `http://localhost:3000/admin/Discovery`;
@@ -883,15 +950,13 @@ export async function runAllSources(
       severity: SlackSeverity.INFO,
       type: SlackEventType.SYSTEM_JOB,
       channel: SlackChannel.JOB_PIPELINE,
-      body: `🤖 AI Discovery Agent — ${runId} complete. ${sourcesCompleted} sources · ${totalFetched} fetched · ${totalDedup} unique · ${totalHqa} HQA · ${totalMqa} MQA · ${totalLqa} LQA · ${allMatchedClientIds.size} clients updated.\n• Duration: ${(durationMs / 1000).toFixed(1)}s\n• Admin: ${adminUrl}`,
+      body: `🤖 AI Discovery Agent — ${runId} complete. ${sourcesCompleted} sources · ${counters.fetched} fetched · ${counters.dedup} unique · ${counters.hqa} HQA · ${counters.mqa} MQA · ${counters.lqa} LQA · ${allMatchedClientIds.size} clients updated.\n• Duration: ${(durationMs / 1000).toFixed(1)}s\n• Admin: ${adminUrl}`,
     }).catch(() => {});
   }
 
   if (globalTimer) clearTimeout(globalTimer);
   activeControllers.delete(runId);
 
-  // Heal any scores that failed to persist during this run (transient DB/DNS
-  // blips) so the manual-application page shows AI scores for the new jobs.
   reclassifyUnscoredDiscovery(150).catch((err) => {
     logger.warn(`Post-run AI vetting backfill failed: ${err.message}`);
   });

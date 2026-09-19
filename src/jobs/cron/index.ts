@@ -15,7 +15,7 @@ import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 import { createBlogPublishJob } from './blog-publish.job';
 import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
-import { createDiscoveryScheduleJob } from './discovery-schedule.job';
+import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
 import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 
 const logger = getServiceLogger('app-cron-jobs');
@@ -27,8 +27,14 @@ interface NamedJob {
 
 let jobInstances: NamedJob[] = [];
 
-export function startAllCronJobs() {
+export async function startAllCronJobs() {
   logger.info('Starting cron jobs...');
+
+  // Reap any discovery runs orphaned by a previous server restart. This is
+  // async but intentionally awaited so the scheduler starts clean.
+  await reapStaleRunsOnStartup().catch((err: any) => {
+    logger.error(`Startup stale-run reaper failed: ${err.message}`);
+  });
 
   jobInstances = [
     { name: 'Token Clean Up Job', task: createTokenCleanUpJob() },
