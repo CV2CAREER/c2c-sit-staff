@@ -20,7 +20,7 @@ import { DiscoveryRun } from '../../models/v1/discovery-run.model';
 import { Op } from 'sequelize';
 import { getServiceLogger } from '../../utils/createLogger';
 import { registerClient, removeClient } from '../../services/discovery/discovery-sse';
-import { sendStandardSlackNotification } from '../../utils/slack-helpers';
+import { sendStandardSlackNotification, getDefaultHost } from '../../utils/slack-helpers';
 import { SlackNode, SlackProvider, SlackSeverity, SlackEventType, SlackChannel } from '../../utils/enum';
 
 
@@ -604,9 +604,7 @@ async function runFetchJob(
     await log('ok', `Run ${runId} completed in ${(durationMs / 1000).toFixed(1)}s`);
 
     // Post-run Slack notification
-    const adminUrl = process.env.NODE_ENV === 'prod'
-      ? `https://uat.cvtocareer.com/admin/Discovery`
-      : `http://localhost:3000/admin/Discovery`;
+    const adminUrl = `${getDefaultHost()}/admin/Discovery`;
     await sendStandardSlackNotification({
       node: SlackNode.AI,
       provider: SlackProvider.DIGITAL_OCEAN_AI,
@@ -941,9 +939,7 @@ export async function runAllSources(
     });
     await log('ok', `Run All complete — ${sourcesCompleted} sources, ${counters.fetched} unique jobs, ${counters.matched} matched to ${allMatchedClientIds.size} clients, ${(durationMs / 1000).toFixed(1)}s`);
 
-    const adminUrl = process.env.NODE_ENV === 'prod'
-      ? `https://uat.cvtocareer.com/admin/Discovery`
-      : `http://localhost:3000/admin/Discovery`;
+    const adminUrl = `${getDefaultHost()}/admin/Discovery`;
     await sendStandardSlackNotification({
       node: SlackNode.AI,
       provider: SlackProvider.DIGITAL_OCEAN_AI,
