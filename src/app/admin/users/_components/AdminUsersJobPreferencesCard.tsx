@@ -32,7 +32,7 @@ const AdminUsersJobPreferencesCard = ({
   const { updateUserPreferencesByProfileMutation } = useAdminMutations();
 
   const [editedFormData, setEditedFormData] = useState<AdminPreferencesType>({
-    role: preferences?.role || "",
+    role: preferences?.courseOfStudy || preferences?.role || "",
     titles: preferences?.titles || [],
     titlesExcluded: preferences?.titlesExcluded || [],
     keywords: preferences?.keywords || [],
