@@ -32,7 +32,6 @@ import {
   useUpdateDiscoverySchedule,
   useKillDiscoveryRun,
   useRunLogStream,
-  useBackfillAiVetting,
 } from "@/hooks/api/useDiscoveryAgent";
 import { useCampaignQueries } from "@/hooks/api/admin/campaign";
 
@@ -40,12 +39,8 @@ import { useCampaignQueries } from "@/hooks/api/admin/campaign";
 interface SourceItem {
   id: string;
   name: string;
-  slug: string;
   enabled: boolean;
   count: number;
-  consecutiveZeroRuns: number | null;
-  autoPausedAt: string | null;
-  lastPermissionError: string | null;
 }
 
 interface RunItem {
@@ -62,16 +57,7 @@ interface RunItem {
   mqa: number | string | null;
   lqa: number | string | null;
   tokens: number | string;
-  error_message: string | null;
   log_entries?: Array<{ ts?: string; level?: string; message: string }> | null;
-}
-
-interface ConfirmDialogState {
-  open: boolean;
-  title: string;
-  message: string;
-  variant: "danger" | "warning";
-  onConfirm: () => void;
 }
 
 // ─── Style tokens (translated 1:1 from the removed discovery-agent.css) ───────
@@ -118,28 +104,26 @@ export default function AIDiscoveryAgentPage() {
   const { data: schedule } = useDiscoverySchedule();
   const updateSchedule = useUpdateDiscoverySchedule();
   const killRunMutation = useKillDiscoveryRun();
-  const backfillAiVetting = useBackfillAiVetting();
 
   // Campaign clients (for "Select Client" dropdown)
   const { campaignClientsDomain } = useCampaignQueries({ fetchCampaignClients: true });
 
   // Local UI state
+  const [historyFilter,  setHistoryFilter]  = useState<"today" | "week" | "all">("today");
   const [sourcesState,   setSourcesState]   = useState<SourceItem[]>([]);
   const [runsState,      setRunsState]      = useState<RunItem[]>([]);
   const [isRunning,      setIsRunning]      = useState(false);
   const [selectedClient, setSelectedClient] = useState("All Clients");
   const [selectedEnv,    setSelectedEnv]    = useState("Production");
   const [selectedJobsite,setSelectedJobsite]= useState("All");
-  const [selectedRange,  setSelectedRange]  = useState<"today" | "week" | "all">("today");
+  const [selectedRange,  setSelectedRange]  = useState("Today");
   const [overrideKeywords, setOverrideKeywords] = useState("");
   const [overrideLocation, setOverrideLocation] = useState("");
-  const [expandedRunId,  setExpandedRunId]  = useState<string | null>(null);
-  const [confirmDialog,  setConfirmDialog]  = useState<ConfirmDialogState>({ open: false, title: "", message: "", variant: "danger", onConfirm: () => {} });
 
   const logRef = useRef<HTMLDivElement>(null);
 
   // ── Run history with filter ─────────────────────────────────────────────────
-  const { data: apiRuns } = useDiscoveryRuns(20, selectedRange);
+  const { data: apiRuns } = useDiscoveryRuns(20, historyFilter);
 
   // ── Sync API sources ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -148,12 +132,8 @@ export default function AIDiscoveryAgentPage() {
         dashboard.sources.map((s: any) => ({
           id:      s.id,
           name:    s.name,
-          slug:    s.slug ?? "",
           enabled: s.enabled ?? true,
           count:   s.count ?? 0,
-          consecutiveZeroRuns: s.consecutive_zero_runs ?? null,
-          autoPausedAt: s.auto_paused_at ?? null,
-          lastPermissionError: s.last_permission_error ?? null,
         }))
       );
     }
@@ -181,7 +161,6 @@ export default function AIDiscoveryAgentPage() {
           mqa:        r.mqa_count     ?? null,
           lqa:        r.lqa_count     ?? null,
           tokens:     r.tokens_used   ?? "—",
-          error_message: r.error_message ?? null,
           log_entries: r.log_entries  ?? null,
         }))
       );
@@ -199,34 +178,16 @@ export default function AIDiscoveryAgentPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleRunNow = () => {
-    setConfirmDialog({
-      open: true,
-      title: "Run Discovery Now",
-      message: `This will trigger a discovery run across all active sources${selectedEnv !== "Production" ? ` in ${selectedEnv}` : ""}. Continue?`,
-      variant: "warning",
-      onConfirm: () => {
-        setIsRunning(true);
-        const payload: any = {};
-        if (overrideKeywords.trim()) {
-          payload.keywords = overrideKeywords.split(',').map(k => k.trim().replace(/[^\w\s\-]/g, '')).filter(Boolean);
-        }
-        if (overrideLocation.trim()) {
-          payload.location = overrideLocation.trim().replace(/[^\w\s,\-]/g, '');
-        }
-        triggerRunAll.mutate(payload, {
-          onSettled: () => setTimeout(() => setIsRunning(false), 3000),
-        });
-      },
-    });
-  };
-
-  const handleKillRun = (runId: string) => {
-    setConfirmDialog({
-      open: true,
-      title: "Kill Running Discovery",
-      message: `Are you sure you want to kill run ${runId}? Partial results will be saved.`,
-      variant: "danger",
-      onConfirm: () => killRunMutation.mutate(runId),
+    setIsRunning(true);
+    const payload: any = {};
+    if (overrideKeywords.trim()) {
+      payload.keywords = overrideKeywords.split(',').map(k => k.trim().replace(/[^\w\s\-]/g, '')).filter(Boolean);
+    }
+    if (overrideLocation.trim()) {
+      payload.location = overrideLocation.trim().replace(/[^\w\s,\-]/g, '');
+    }
+    triggerRunAll.mutate(payload, {
+      onSettled: () => setTimeout(() => setIsRunning(false), 3000),
     });
   };
 
@@ -235,6 +196,10 @@ export default function AIDiscoveryAgentPage() {
       prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s))
     );
     toggleSourceMutation.mutate(id);
+  };
+
+  const handleKillRun = (runId: string) => {
+    killRunMutation.mutate(runId);
   };
 
   // ── Derived values ────────────────────────────────────────────────────────
@@ -277,7 +242,7 @@ export default function AIDiscoveryAgentPage() {
 
   // SSE log stream — connect to active run for real-time updates
   const activeRunId = activeRun?.run_id ?? null;
-  const { logs: sseLogs, matches: sseMatches, status: sseStatus, connected: sseConnected } = useRunLogStream(activeRunId);
+  const { logs: sseLogs, status: sseStatus, connected: sseConnected } = useRunLogStream(activeRunId);
 
   // Use SSE logs if available, fall back to stored log_entries
   const logLines: Array<{ ts: string; cls: string; msg: string }> =
@@ -323,7 +288,7 @@ export default function AIDiscoveryAgentPage() {
           <span>Back</span>
         </button>
         <span>›</span>
-        <a href="/admin/jm-applications" className="text-primary font-medium hover:text-[#0066b2] transition-colors">Job Mgt</a>
+        <a href="#" className="text-primary font-medium hover:text-[#0066b2] transition-colors">Job Mgt</a>
         <span>›</span>
         <span className="text-slate-900 font-semibold">AI Discovery Agent</span>
       </div>
@@ -457,10 +422,11 @@ export default function AIDiscoveryAgentPage() {
             <Calendar size={12} className="text-gray-400" />
             Range
           </div>
-          <select className={SELECT} value={selectedRange} onChange={(e) => setSelectedRange(e.target.value as "today" | "week" | "all")}>
-            <option value="today">Today</option>
-            <option value="week">Last 7 days</option>
-            <option value="all">All</option>
+          <select className={SELECT} value={selectedRange} onChange={(e) => setSelectedRange(e.target.value)}>
+            <option>Today</option>
+            <option>Last 7 days</option>
+            <option>Last 30 days</option>
+            <option>Custom</option>
           </select>
         </div>
       </div>
@@ -614,7 +580,7 @@ export default function AIDiscoveryAgentPage() {
             </div>
             {schedule?.next_run_at && (
               <div className="mt-2 text-[11px] text-slate-500">
-                Next: {new Date(schedule.next_run_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} {Intl.DateTimeFormat().resolvedOptions().timeZone.split("/").pop()}
+                Next: {new Date(schedule.next_run_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })} AEST
               </div>
             )}
           </div>
@@ -627,27 +593,23 @@ export default function AIDiscoveryAgentPage() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                 <Globe size={14} />
               </span>
-              <span className={CARD_TITLE}>Sources</span>
+              <span className={CARD_TITLE}>Sources — AU Market</span>
             </div>
             <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2.5 py-1 rounded-full">
               {sourcesState.length} configured · {activeSourcesCount} active
             </span>
           </div>
-          <div className="p-5">
-            <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          <div className={CARD_BODY}>
+            <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
               {sourcesState.map((source) => (
                 <div
                   key={source.id}
-                  className="flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-[10px] text-[12.5px] bg-white cursor-pointer transition-all duration-[180ms] hover:bg-slate-50 hover:border-primary hover:-translate-y-px min-w-0"
+                  className="flex items-center gap-2 px-3 py-[9px] border border-slate-200 rounded-[10px] text-[12.5px] bg-white cursor-pointer transition-all duration-[180ms] hover:bg-slate-50 hover:border-primary hover:-translate-y-px"
                   onClick={() => handleToggleSource(source.id)}
-                  title={source.autoPausedAt ? `Auto-paused: ${source.lastPermissionError || "Zero results"}` : undefined}
                 >
                   <span className={`w-2 h-2 rounded-full shrink-0 transition-all duration-200 ${source.enabled ? "bg-[#1eb62d] shadow-[0_0_0_3px_rgba(30,182,45,0.2)]" : "bg-slate-400"}`} />
-                  <span className="font-medium text-slate-700 truncate">{source.name}</span>
-                  {source.autoPausedAt && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" title={`Auto-paused: ${source.lastPermissionError || "Zero results"}`} />
-                  )}
-                  <span className="ml-auto text-[11px] text-slate-500 font-bold bg-slate-100 px-[7px] py-0.5 rounded-full shrink-0">{source.count}</span>
+                  <span className="font-medium text-slate-700">{source.name}</span>
+                  <span className="ml-auto text-[11px] text-slate-500 font-bold bg-slate-100 px-[7px] py-0.5 rounded-full">{source.count}</span>
                 </div>
               ))}
             </div>
@@ -664,22 +626,6 @@ export default function AIDiscoveryAgentPage() {
             </span>
             <span className={CARD_TITLE}>AI Usage & Cost — This Month</span>
           </div>
-          <button
-            className="inline-flex items-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 hover:border-violet-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              setConfirmDialog({
-                open: true,
-                title: "Backfill AI Scores",
-                message: "This will re-score all unscored discovery entries. This may take a few minutes. Continue?",
-                variant: "warning",
-                onConfirm: () => backfillAiVetting.mutate(),
-              });
-            }}
-            disabled={backfillAiVetting.isPending}
-          >
-            {backfillAiVetting.isPending ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-            Backfill AI Scores
-          </button>
         </div>
         <div className={`${CARD_BODY} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5`}>
           <div>
@@ -719,11 +665,11 @@ export default function AIDiscoveryAgentPage() {
               <button
                 key={f}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedRange === f
+                  historyFilter === f
                     ? "bg-white text-[#008ED3] shadow-sm"
                     : "text-gray-500 hover:text-gray-800"
                 }`}
-                onClick={() => setSelectedRange(f)}
+                onClick={() => setHistoryFilter(f)}
               >
                 {f === "today" ? "Today" : f === "week" ? "This week" : "All"}
               </button>
@@ -752,70 +698,52 @@ export default function AIDiscoveryAgentPage() {
               </thead>
               <tbody>
                 {runsState.map((run) => (
-                  <React.Fragment key={run.id}>
-                    <tr className="hover:bg-primary/[0.02]">
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle font-mono text-[11px] text-slate-500">
-                        {run.run_id}
-                      </td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
-                        {run.status === "running" ? (
-                          <span className={`${PILL} ${pillClass("running")}`}>● Running</span>
-                        ) : run.trigger === "manual" ? (
-                          <span className="text-[11px] text-primary font-semibold">Manual</span>
-                        ) : (
-                          <span className="text-[11px] text-slate-500">{run.trigger}</span>
-                        )}
-                      </td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.started}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.duration}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
-                        {run.status === "running"  ? <span className={`${PILL} ${pillClass("running")}`}>In progress</span>
-                         : run.status === "success" ? <span className={`${PILL} ${pillClass("success")}`}>✓ Success</span>
-                         : run.status === "failed"  ? <span className={`${PILL} ${pillClass("failed")}`}>✗ Failed</span>
-                         :                           <span className={`${PILL} ${pillClass("killed")}`}>Killed</span>}
-                      </td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.clients}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.fetched}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.dedup}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.hqa !== null ? <span className={`${PILL} ${pillClass("hqa")}`}>{run.hqa}</span> : "—"}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.mqa !== null ? <span className={`${PILL} ${pillClass("mqa")}`}>{run.mqa}</span> : "—"}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.lqa !== null ? <span className={`${PILL} ${pillClass("lqa")}`}>{run.lqa}</span> : "—"}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700 font-mono text-[11px]">{typeof run.tokens === "number" ? run.tokens.toLocaleString() : run.tokens}</td>
-                      <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
-                        {run.status === "running" ? (
-                          <button
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 transition-all"
-                            onClick={() => handleKillRun(run.run_id)}
-                          >
-                            Kill
-                          </button>
-                        ) : run.error_message ? (
-                          <button
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:border-amber-300 transition-all"
-                            onClick={() => setExpandedRunId(expandedRunId === run.run_id ? null : run.run_id)}
-                          >
-                            {expandedRunId === run.run_id ? "Hide" : "Error"}
-                          </button>
-                        ) : (
-                          <a
-                            href="#log-card"
-                            className="inline-flex items-center justify-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-slate-200 bg-white text-slate-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:bg-slate-100 hover:text-slate-900 transition-all no-underline"
-                          >
-                            Log
-                          </a>
-                        )}
-                      </td>
-                    </tr>
-                    {expandedRunId === run.run_id && run.error_message && (
-                      <tr key={`${run.id}-error`}>
-                        <td colSpan={13} className="px-3.5 py-2.5 border-b border-slate-100 bg-red-50/50">
-                          <div className="text-[11.5px] text-red-700 font-mono leading-relaxed">
-                            <span className="font-semibold text-red-800">Error:</span> {run.error_message}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                  <tr key={run.id} className="hover:bg-primary/[0.02]">
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle font-mono text-[11px] text-slate-500">
+                      {run.run_id}
+                    </td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
+                      {run.status === "running" ? (
+                        <span className={`${PILL} ${pillClass("running")}`}>● Running</span>
+                      ) : run.trigger === "manual" ? (
+                        <span className="text-[11px] text-primary font-semibold">Manual</span>
+                      ) : (
+                        <span className="text-[11px] text-slate-500">{run.trigger}</span>
+                      )}
+                    </td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.started}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.duration}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
+                      {run.status === "running"  ? <span className={`${PILL} ${pillClass("running")}`}>In progress</span>
+                       : run.status === "success" ? <span className={`${PILL} ${pillClass("success")}`}>✓ Success</span>
+                       : run.status === "failed"  ? <span className={`${PILL} ${pillClass("failed")}`}>✗ Failed</span>
+                       :                           <span className={`${PILL} ${pillClass("killed")}`}>Killed</span>}
+                    </td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.clients}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.fetched}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.dedup}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.hqa !== null ? <span className={`${PILL} ${pillClass("hqa")}`}>{run.hqa}</span> : "—"}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.mqa !== null ? <span className={`${PILL} ${pillClass("mqa")}`}>{run.mqa}</span> : "—"}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">{run.lqa !== null ? <span className={`${PILL} ${pillClass("lqa")}`}>{run.lqa}</span> : "—"}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700 font-mono text-[11px]">{typeof run.tokens === "number" ? run.tokens.toLocaleString() : run.tokens}</td>
+                    <td className="px-3.5 py-2.5 border-b border-slate-100 align-middle text-slate-700">
+                      {run.status === "running" ? (
+                        <button
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 hover:border-red-300 transition-all"
+                          onClick={() => handleKillRun(run.run_id)}
+                        >
+                          Kill
+                        </button>
+                      ) : (
+                        <a
+                          href="#log-card"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-[5px] rounded-[10px] text-[11.5px] font-semibold border border-slate-200 bg-white text-slate-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:bg-slate-100 hover:text-slate-900 transition-all no-underline"
+                        >
+                          Log
+                        </a>
+                      )}
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -876,63 +804,6 @@ export default function AIDiscoveryAgentPage() {
         </div>
       </div>
 
-      {/* LIVE MATCHES — real-time matches during active run */}
-      {activeRun && sseMatches.length > 0 && (
-        <div className={`${CARD} mt-4`}>
-          <div className={CARD_HEADER}>
-            <div className={CARD_HEADER_LEFT}>
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <Zap size={14} />
-              </span>
-              <span className={CARD_TITLE}>
-                Live Matches ({sseMatches.length})
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400">
-              Score ≥50 · green ≥70 · amber 50–69
-            </span>
-          </div>
-          <div className="px-4 py-3 bg-white">
-            <div className="max-h-[200px] overflow-y-auto">
-              <table className="w-full text-[11.5px]">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-slate-500">
-                    <th className="pb-2 font-semibold">Job Title</th>
-                    <th className="pb-2 font-semibold">Company</th>
-                    <th className="pb-2 font-semibold">Location</th>
-                    <th className="pb-2 font-semibold">Client</th>
-                    <th className="pb-2 font-semibold text-right">Score</th>
-                    <th className="pb-2 font-semibold">Rationale</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sseMatches.map((m, i) => (
-                    <tr key={i} className="border-b border-slate-50 last:border-b-0 hover:bg-slate-50/50">
-                      <td className="py-1.5 pr-3 font-medium text-slate-900 max-w-[200px] truncate">{m.jobTitle}</td>
-                      <td className="py-1.5 pr-3 text-slate-600 max-w-[120px] truncate">{m.company}</td>
-                      <td className="py-1.5 pr-3 text-slate-600">{m.location}</td>
-                      <td className="py-1.5 pr-3 text-slate-500 font-mono text-[10px]">{m.clientName.slice(0, 8)}…</td>
-                      <td className="py-1.5 pr-3 text-right">
-                        <span
-                          className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            m.score >= 70
-                              ? "bg-[#f0fff1] text-[#1eb62d] border border-green-200"
-                              : "bg-amber-50 text-amber-600 border border-amber-200"
-                          }`}
-                        >
-                          {m.score}
-                        </span>
-                      </td>
-                      <td className="py-1.5 text-slate-500 max-w-[180px] truncate">{m.rationale}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* SOURCE BREAKDOWN — dynamic, bar widths computed from real data */}
       <div className={`${CARD} mt-4`}>
         <div className={CARD_HEADER}>
@@ -982,41 +853,6 @@ export default function AIDiscoveryAgentPage() {
           entries from the DPC. The DPC workflow is not replaced — both channels feed the same table.
         </div>
       </div>
-
-      {/* CONFIRM DIALOG */}
-      {confirmDialog.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[14px] shadow-xl border border-slate-200 w-full max-w-md mx-4 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">{confirmDialog.title}</h3>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-[13px] text-slate-600 leading-relaxed">{confirmDialog.message}</p>
-            </div>
-            <div className="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
-              <button
-                className="px-4 py-2 text-[12.5px] font-semibold text-slate-600 bg-slate-100 rounded-[10px] hover:bg-slate-200 transition-all"
-                onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}
-              >
-                Cancel
-              </button>
-              <button
-                className={`px-4 py-2 text-[12.5px] font-semibold rounded-[10px] transition-all ${
-                  confirmDialog.variant === "danger"
-                    ? "bg-red-500 text-white hover:bg-red-600"
-                    : "bg-amber-500 text-white hover:bg-amber-600"
-                }`}
-                onClick={() => {
-                  confirmDialog.onConfirm();
-                  setConfirmDialog({ ...confirmDialog, open: false });
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
