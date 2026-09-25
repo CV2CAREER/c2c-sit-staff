@@ -15,6 +15,7 @@ import { useGridApiContext } from "@mui/x-data-grid-pro";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
 import { getCountries } from "../table-services";
 import { roleMap } from "../constants";
+import { ROLE_LABELS, getRoleLabel } from "@/constants/persona";
 import { handleAccountApproval } from "../table-helpers";
 import { PreProgress } from "@/types/enum";
 
@@ -177,16 +178,15 @@ export const applyUserTableColumn = (el: any, actions?: any, mutate?: any) => {
         ...el,
         type: "singleSelect",
         headerName: "Persona",
-        valueOptions: Object.entries(roleMap).map(([key, data]) => ({
-          value: key,
-          label: data.label,
+        valueOptions: Object.entries(ROLE_LABELS).map(([value, label]) => ({
+          value,
+          label,
         })),
+        valueFormatter: (value: any) => getRoleLabel(value),
 
         renderCell: (params: { value: any }) => {
           const value = params?.value ? params?.value : "N/A";
-          return (
-            <p className="capitalize">{roleMap[value]?.label || value}</p>
-          );
+          return <p className="capitalize">{getRoleLabel(value)}</p>;
         },
       };
 

@@ -4,6 +4,7 @@ import { Switch } from "@mui/material";
 import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
 import { PreProgress } from "@/types/enum";
+import { getRoleLabel } from "@/constants/persona";
 
 /**
  * @title Table Columns
@@ -31,7 +32,13 @@ export const tableColumns: GridColDef[] = [
   { field: "lastName", headerName: "Last Name", width: 150 },
   { field: "isActive", headerName: "Active", width: 100 },
   { field: "email", headerName: "Email", width: 200 },
-  { field: "role", headerName: "Persona", width: 150 },
+  {
+    field: "role",
+    headerName: "Persona",
+    width: 150,
+    valueGetter: (_value, row) => getRoleLabel(row?.role),
+    valueFormatter: (value) => (value ? String(value) : "Not Set"),
+  },
   { field: "customerClass", headerName: "Customer Class", width: 200 },
   { field: "plan", headerName: "Plan", width: 150 },
   { field: "signUpAs", headerName: "Sign Up As", width: 160 },
@@ -251,6 +258,8 @@ export const modifyTableActionsColAndRows = (
     };
     const personaCol: GridColDef = {
       ...el,
+      valueGetter: (_value, row) => getRoleLabel(row?.role),
+      valueFormatter: (value: unknown) => (value ? String(value) : "Not Set"),
       renderCell: (params: any) => {
         const val = params?.row?.role;
         const entry = val ? roleConfig[val] : null;
