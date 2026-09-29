@@ -39,6 +39,8 @@ const logger = getServiceLogger("client-support-document-service");
 const CATEGORY_LABELS: Record<ClientSupportDocumentCategory, string> = {
   [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]:
     "Role Title Recommendations",
+  [ClientSupportDocumentCategory.INTERVIEW_INTELLIGENCE_PACK]:
+    "Interview Intelligence Pack",
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: "Support Images",
   [ClientSupportDocumentCategory.SUPPORT_SPREADSHEETS]: "Support Spreadsheets",
 };
@@ -191,6 +193,10 @@ const ALLOWED_EXTENSIONS: Record<ClientSupportDocumentCategory, string[]> = {
     "xlsx",
     "pdf",
   ],
+  [ClientSupportDocumentCategory.INTERVIEW_INTELLIGENCE_PACK]: [
+    "pdf",
+    "docx",
+  ],
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: [
     "png",
     "jpg",
@@ -267,6 +273,22 @@ const extractRoleTitles = async (
   return { rows, rowCount, extractionMethod: "csv" };
 };
 
+let enumEnsured = false;
+const ensureCategoryEnum = async () => {
+  if (enumEnsured) return;
+  try {
+    const sequelize = ClientSupportDocument.sequelize;
+    if (sequelize) {
+      await sequelize.query(`
+        ALTER TYPE "enum_client_support_documents_category" ADD VALUE IF NOT EXISTS 'interviewIntelligencePack';
+      `);
+      enumEnsured = true;
+    }
+  } catch (err: any) {
+    logger.warn(`Failed to auto-ensure enum_client_support_documents_category: ${err.message}`);
+  }
+};
+
 /**
  * Uploads each file to Firebase Storage under the client's folder and records
  * it against the client. Role Title files are content-validated/extracted
@@ -278,6 +300,8 @@ export const uploadClientSupportDocuments = async ({
   files,
   isActive = true,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
+  await ensureCategoryEnum();
+
   const client = await User.findByPk(clientId, {
     attributes: ["id", "firstName", "lastName", "email"],
   });

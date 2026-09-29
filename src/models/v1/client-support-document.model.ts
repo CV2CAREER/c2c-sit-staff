@@ -21,6 +21,7 @@ import type { RoleTitleRow } from "../../utils/roleTitleCsv";
  */
 export enum ClientSupportDocumentCategory {
   ROLE_TITLE_RECOMMENDATIONS = "roleTitleRecommendations",
+  INTERVIEW_INTELLIGENCE_PACK = "interviewIntelligencePack",
   SUPPORT_IMAGES = "supportImages",
   SUPPORT_SPREADSHEETS = "supportSpreadsheets",
 }

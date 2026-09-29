@@ -125,6 +125,15 @@ export const connectDB = async (): Promise<void> => {
           logger.warn(`discovery_method column check: ${colErr.message}`);
         }
 
+        // Add interviewIntelligencePack to enum_client_support_documents_category if missing
+        try {
+          await newSequelize.query(`
+            ALTER TYPE "enum_client_support_documents_category" ADD VALUE IF NOT EXISTS 'interviewIntelligencePack';
+          `);
+        } catch (enumErr: any) {
+          logger.warn(`enum_client_support_documents_category check: ${enumErr.message}`);
+        }
+
         // SPR-19-07-005: add users.socialVerificationExempt column as a
         // safety net if customer BE hasn't run first. Uses addColumn instead
         // of User.sync({ alter: true }) because the users table has columns
