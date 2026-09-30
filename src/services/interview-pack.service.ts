@@ -203,7 +203,13 @@ export class InterviewPackService {
       const startedAt = Date.now();
       let aiResponse: string;
       try {
-        aiResponse = await queryDigitalOceanAI(prompt, undefined, undefined, undefined, model);
+        // jsonMode: every stage's output is parsed as JSON (parseStageJson
+        // below) — asking the API for it directly, and retrying on a
+        // malformed response, catches a weaker model's non-JSON output
+        // before it ever reaches that parse step. (Previously relied only
+        // on the prompt template's own "respond in JSON" instruction, with
+        // no enforcement or retry if a model ignored it.)
+        aiResponse = await queryDigitalOceanAI(prompt, undefined, true, undefined, model);
         VcsPromptUsageService.record({
           key,
           vcsId,

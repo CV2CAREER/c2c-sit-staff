@@ -339,16 +339,35 @@ const resolveAgentOverride = (model?: string | null): AgentOverride | undefined 
   return override;
 };
 
+// Same tolerant extraction every caller already does on the far side of
+// queryDigitalOceanAI (strip a markdown code fence, pull out the first
+// {...} or [...] block, JSON.parse it) — duplicated narrowly here just to
+// decide whether an attempt counts as a failure worth retrying, not to
+// replace each caller's own parsing.
+const looksLikeParseableJson = (text: string): boolean => {
+  const cleaned = text.replace(/```(?:json)?\s*|\s*```/gi, '').trim();
+  const match = cleaned.match(/[\{\[][\s\S]*[\}\]]/);
+  try {
+    JSON.parse(match ? match[0] : cleaned);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Queries Digital Ocean AI with retry logic.
  *
  * `jsonMode` requests `response_format: { type: "json_object" }` from the
  * underlying API — opt-in per call since only some callers (e.g. CV variant
  * generation) parse the response as JSON; cover letter generation and others
- * expect plain text and must not set this. It guarantees the response is
- * *parseable* JSON, not that its keys match any particular schema — schema
- * drift (e.g. `experience` vs `jobs`) is handled separately by each caller's
- * own normalization.
+ * expect plain text and must not set this. That request alone doesn't
+ * guarantee compliance (weaker models can still ignore it), so when set,
+ * each attempt's response is also checked here and retried like any other
+ * failure if it isn't parseable JSON — a caller only ever sees a non-JSON
+ * result after every retry has been exhausted. Never guarantees the JSON's
+ * *keys* match any particular schema — schema drift (e.g. `experience` vs
+ * `jobs`) is handled separately by each caller's own normalization.
  *
  * `model` is the calling prompt's own `VCS.model` field (Admin > AI Prompts
  * > Model) — omit it (or pass an unconfigured model) to use the shared
@@ -391,6 +410,20 @@ export const queryDigitalOceanAIWithUsage = async (
 
       if (!result.text || result.text.trim().length === 0) {
         throw new Error('Empty response');
+      }
+
+      // jsonMode is a request, not a guarantee — a smaller/weaker model can
+      // still ignore it and return prose, a truncated object, or JSON
+      // wrapped in commentary. Observed directly on gpt-oss-20b: identical
+      // prompt, one attempt returned malformed output, a retry returned
+      // clean JSON — non-deterministic, not something a single attempt can
+      // catch. Treating it as a failed attempt lets it use the exact same
+      // retry/backoff loop as an empty response or network error, instead
+      // of silently handing the caller text that will fail to parse further
+      // down (interview pack's parseStageJson, ai-vetting's
+      // parseClassificationResponse, etc.).
+      if (jsonMode && !looksLikeParseableJson(result.text)) {
+        throw new Error('Response did not contain valid JSON (jsonMode requested)');
       }
 
       logger.info(`[DigitalOcean AI] Success on attempt ${attempt} — ${result.usage.total_tokens} tokens`);

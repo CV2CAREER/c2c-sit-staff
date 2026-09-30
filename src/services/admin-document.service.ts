@@ -842,7 +842,10 @@ export class AdminDocumentService {
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            aiResponse = await queryDigitalOceanAI(prompt, undefined, undefined, undefined, model);
+            // jsonMode: the result is a JSON object (role_title/classification/
+            // craft/... per row) — request it directly and retry on a
+            // malformed response, same reasoning as interview-pack.service.ts.
+            aiResponse = await queryDigitalOceanAI(prompt, undefined, true, undefined, model);
             VcsPromptUsageService.record({
                 key: 'role_title_generation_prompt',
                 vcsId,
