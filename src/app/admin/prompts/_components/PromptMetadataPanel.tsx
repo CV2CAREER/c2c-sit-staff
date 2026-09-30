@@ -25,6 +25,7 @@ const AVAILABLE_MODELS = [
   "gpt-4o",
   "gpt-4o-mini",
   "gpt-oss-20b",
+  "claude-fable-5",
 ];
 
 // No override UI in this phase — type is inferred from the variable name
