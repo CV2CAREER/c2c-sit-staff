@@ -30,12 +30,17 @@ export const AI_MODEL_GPT_4O = 'gpt-4o';
 export const AI_MODEL_GPT_4O_MINI = 'gpt-4o-mini';
 export const AI_MODEL_GPT_OSS_20B = 'gpt-oss-20b';
 
+// The most expensive model in the set ($10/1M input, $50/1M output) —
+// same dedicated-agent shape as the rest.
+export const AI_MODEL_CLAUDE_FABLE = 'claude-fable-5';
+
 export const SUPPORTED_AI_MODELS = [
   AI_MODEL_SHARED_DEFAULT,
   AI_MODEL_CLAUDE_SONNET,
   AI_MODEL_GPT_4O,
   AI_MODEL_GPT_4O_MINI,
   AI_MODEL_GPT_OSS_20B,
+  AI_MODEL_CLAUDE_FABLE,
 ] as const;
 
 export type SupportedAiModel = (typeof SUPPORTED_AI_MODELS)[number];
