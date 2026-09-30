@@ -195,13 +195,14 @@ export class VcsPromptService {
 
   static async createPrompt(
     req: Request | undefined,
-    data: { key: unknown; prompt: unknown; active?: unknown },
+    data: { key: unknown; prompt: unknown; active?: unknown; model?: unknown },
     actor: Actor,
   ) {
     try {
       const key = normalizeKey(data.key);
       const prompt = String(data.prompt || "").trim();
       const active = data.active !== undefined ? Boolean(data.active) : true;
+      const model = data.model ? String(data.model).trim() : undefined;
 
       assertValidKey(key);
 
@@ -221,6 +222,7 @@ export class VcsPromptService {
       const vcsRow = await VCS.create({
         key,
         active,
+        model,
         updatedBy: actorLabel(actor),
       });
 

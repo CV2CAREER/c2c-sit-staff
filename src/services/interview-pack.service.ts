@@ -55,7 +55,7 @@ export class InterviewPackService {
     jobContent: string,
     jobLink: string | undefined,
     previousContext: Record<string, unknown> | null,
-  ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
+  ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null; model: string | null }> {
     const { VCS, VCSPrompt } = await import("../models/v1/keyword-population.model");
     const foundVCS = await VCS.findOne({ where: { active: true, key } });
     const promptRow = foundVCS ? await VCSPrompt.findByPk(foundVCS.activePromptId) : null;
@@ -70,7 +70,7 @@ export class InterviewPackService {
       .replace(/\{\{JOB_LINK\}\}/g, jobLink || "Not provided")
       .replace(/\{\{PREVIOUS_CONTEXT\}\}/g, previousContext ? JSON.stringify(previousContext) : "");
 
-    return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
+    return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version, model: foundVCS.model ?? null };
   }
 
   private static parseStageJson<T>(aiResponse: string, stageLabel: string): T {
@@ -192,7 +192,7 @@ export class InterviewPackService {
 
       const key = STAGE_PROMPT_KEYS[stage - 1];
       const stageLabel = STAGE_LABELS[stage - 1];
-      const { prompt, vcsId, promptId, version } = await this.getStagePrompt(
+      const { prompt, vcsId, promptId, version, model } = await this.getStagePrompt(
         key,
         resumeText,
         process.jobContent,
@@ -203,7 +203,13 @@ export class InterviewPackService {
       const startedAt = Date.now();
       let aiResponse: string;
       try {
-        aiResponse = await queryDigitalOceanAI(prompt);
+        // jsonMode: every stage's output is parsed as JSON (parseStageJson
+        // below) — asking the API for it directly, and retrying on a
+        // malformed response, catches a weaker model's non-JSON output
+        // before it ever reaches that parse step. (Previously relied only
+        // on the prompt template's own "respond in JSON" instruction, with
+        // no enforcement or retry if a model ignored it.)
+        aiResponse = await queryDigitalOceanAI(prompt, undefined, true, undefined, model);
         VcsPromptUsageService.record({
           key,
           vcsId,

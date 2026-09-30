@@ -173,12 +173,39 @@ export const ZOHO_BOOKS_GENERATED_AT_FIELD_API_NAME =
 export const GRADIENT_ACCESS_TOKEN = process.env.GRADIENT_ACCESS_TOKEN;
 export const GRADIENT_AGENT_ACCESS_KEY = process.env.GRADIENT_AGENT_ACCESS_KEY;
 export const GRADIENT_AGENT_ENDPOINT = process.env.GRADIENT_AGENT_ENDPOINT;
-// Blended per-1M-token rate for the model behind GRADIENT_AGENT_ENDPOINT
-// ('llama3.3-70b-instruct'), used only to project AI Discovery Agent spend
-// (SPR-19-03-017) — not billed against directly, so an approximate default
-// is fine, but finance/ops should override via env with the actual
-// DigitalOcean Gradient rate once confirmed.
+// Blended per-1M-token rate for the model behind GRADIENT_AGENT_ENDPOINT.
+// That agent's real model is 'gpt-oss-120b' (confirmed in the DO console) —
+// this codebase spent a while calling it 'llama3.3-70b-instruct' in
+// comments/logs and in the literal `model:` field sent to it, which was
+// just wrong labeling (see digital-factory.ts). Used only to project AI
+// Discovery Agent spend (SPR-19-03-017) — not billed against directly, so
+// an approximate default is fine, but finance/ops should override via env
+// with the actual DigitalOcean Gradient rate once confirmed.
 export const AI_COST_PER_1M_TOKENS = parseFloat(process.env.AI_COST_PER_1M_TOKENS || '0.65');
+
+// A second, dedicated DO Gradient agent (own endpoint + access key, same
+// shape as GRADIENT_AGENT_ENDPOINT/GRADIENT_AGENT_ACCESS_KEY above) running
+// Claude Sonnet 4.6 — used when a VCS prompt's `model` field is set to
+// 'claude-sonnet-4.6' (see src/config/ai-models.ts and digital-factory.ts).
+// DO has no single endpoint where a `model:` parameter switches models on an
+// agent-bound call — each model is its own agent with its own endpoint/key,
+// confirmed in the DO console. Optional — a prompt set to
+// 'claude-sonnet-4.6' silently falls back to the shared gpt-oss-120b agent
+// until both of these are configured, same additive philosophy as
+// everything else in this file.
+export const GRADIENT_CLAUDE_SONNET_AGENT_ENDPOINT = process.env.GRADIENT_CLAUDE_SONNET_AGENT_ENDPOINT;
+export const GRADIENT_CLAUDE_SONNET_AGENT_ACCESS_KEY = process.env.GRADIENT_CLAUDE_SONNET_AGENT_ACCESS_KEY;
+
+// Three more dedicated DO Gradient agents, same shape/optionality as the
+// Claude Sonnet 4.6 pair above.
+export const GRADIENT_GPT4O_AGENT_ENDPOINT = process.env.GRADIENT_GPT4O_AGENT_ENDPOINT;
+export const GRADIENT_GPT4O_AGENT_ACCESS_KEY = process.env.GRADIENT_GPT4O_AGENT_ACCESS_KEY;
+export const GRADIENT_GPT4O_MINI_AGENT_ENDPOINT = process.env.GRADIENT_GPT4O_MINI_AGENT_ENDPOINT;
+export const GRADIENT_GPT4O_MINI_AGENT_ACCESS_KEY = process.env.GRADIENT_GPT4O_MINI_AGENT_ACCESS_KEY;
+export const GRADIENT_GPT_OSS_20B_AGENT_ENDPOINT = process.env.GRADIENT_GPT_OSS_20B_AGENT_ENDPOINT;
+export const GRADIENT_GPT_OSS_20B_AGENT_ACCESS_KEY = process.env.GRADIENT_GPT_OSS_20B_AGENT_ACCESS_KEY;
+export const GRADIENT_CLAUDE_FABLE_AGENT_ENDPOINT = process.env.GRADIENT_CLAUDE_FABLE_AGENT_ENDPOINT;
+export const GRADIENT_CLAUDE_FABLE_AGENT_ACCESS_KEY = process.env.GRADIENT_CLAUDE_FABLE_AGENT_ACCESS_KEY;
 
 // ADZUNA API (AI Discovery Agent)
 export const ADZUNA_API_KEY = process.env.ADZUNA_API_KEY || '';

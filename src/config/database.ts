@@ -75,6 +75,8 @@ export const connectDB = async (): Promise<void> => {
         // missing tables, it won't ALTER an existing one to add a column, so
         // this needs alter:true specifically. Remove after first deploy.
         // await VCSPrompt.sync({ alter: true });
+        // model column added to vcs_prompt_simulation_runs — remove after first deploy
+        // await VCSPromptSimulationRun.sync({ alter: true });
         // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
         // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
         // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy
