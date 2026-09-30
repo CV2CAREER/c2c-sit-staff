@@ -77,9 +77,33 @@ export const renderCvVariantHtmlToPdf = async (html: string): Promise<Buffer> =>
 
 /**
  * Best-effort DOCX conversion of the same AI-authored HTML. Word can't
- * replicate arbitrary CSS (grid layouts, custom positioning), so this will
- * generally look plainer than the PDF — expected for any HTML-to-DOCX
- * conversion, not something to chase pixel parity on.
+ * replicate arbitrary CSS (grid layouts, custom positioning, gradients), so
+ * this will generally look plainer than the PDF — expected for any
+ * HTML-to-DOCX conversion, not something to chase pixel parity on.
+ *
+ * KNOWN ISSUE (confirmed, not yet fixed): html-to-docx only reads *inline*
+ * `style="..."` attributes — it has no CSS cascade, so it never applies
+ * rules from a `<style>` block. The AI almost always authors its design as a
+ * `<style>` block with classes (`.header`, `.skill-chip`, ...), not inline
+ * styles, so nearly every color/background/layout choice is silently
+ * dropped — verified directly: a real generated CV with ~15 distinct
+ * declared colors produced a DOCX with exactly 1 surviving color and 0
+ * background/shading elements.
+ *
+ * The obvious fix — resolving that cascade with `juice` before handing the
+ * HTML to html-to-docx — was tried and reverted: on real, complex
+ * AI-generated CVs it made things categorically worse. Once most elements
+ * carry a long inlined `style` attribute, html-to-docx silently truncates
+ * partway through the document (73 text runs survived unjuiced; 6 survived
+ * juiced, on the identical source). Bisected against gradients, a curated
+ * property allowlist, the leftover `<style>` block juice keeps for `@media`
+ * rules, HTML comments, and redundant `class` attributes — none of those
+ * changed the outcome, so this is a structural parser limitation in
+ * html-to-docx itself, not a property-value issue. A real fix needs either
+ * a different DOCX conversion approach entirely (e.g. a server-side
+ * LibreOffice conversion, matching how PDF generation already moved off a
+ * fragile approach onto a real rendering engine) or patching/replacing
+ * html-to-docx — both bigger than this pass.
  */
 export const renderCvVariantHtmlToDocx = async (html: string): Promise<Buffer> => {
   const safeHtml = sanitizeAiHtml(html);
