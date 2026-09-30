@@ -184,14 +184,16 @@ export default function GenerateInterviewPackButton({
     setIsRejecting(false);
   };
 
-  const handleDownloadPreview = async () => {
+  const [previewingFormat, setPreviewingFormat] = useState<SaveInterviewPackFormat | null>(null);
+  const handleDownloadPreview = async (format: SaveInterviewPackFormat) => {
     const toastId = toast.loading("Preparing preview...");
+    setPreviewingFormat(format);
     try {
       const { blob, filename } = await previewInterviewPack({
         userId,
         resumeUploadId,
         interviewPack: editedHtml,
-        format: "pdf",
+        format,
       });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -207,6 +209,8 @@ export default function GenerateInterviewPackButton({
         ? error?.response?.data?.message || "Failed to generate preview"
         : error?.message || "Failed to generate preview";
       toast.error(message);
+    } finally {
+      setPreviewingFormat(null);
     }
   };
 
@@ -444,9 +448,16 @@ export default function GenerateInterviewPackButton({
                 <Button
                   variant="outline"
                   disabled={isPreviewing || isRejecting}
-                  onClick={handleDownloadPreview}
+                  onClick={() => handleDownloadPreview("docx")}
                 >
-                  {isPreviewing ? "Preparing..." : "Download"}
+                  {isPreviewing && previewingFormat === "docx" ? "Preparing..." : "Download DOC"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={() => handleDownloadPreview("pdf")}
+                >
+                  {isPreviewing && previewingFormat === "pdf" ? "Preparing..." : "Download PDF"}
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"
