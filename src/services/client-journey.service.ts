@@ -135,7 +135,15 @@ async function completeStep(
 // SPR-21-11-005 / SPR-21-11-013: completing these subscription-scoped steps
 // by hand must fire the same notifications as the customer-triggered payment
 // path (the audit flagged the admin-attest path as silent).
-const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>(["service_selection", "payment_confirmed"]);
+// SPR-21-11-012: the two Final Checks quality gates the Notification Audit
+// (steps 20-22) found silent are wired in here too — attesting them now mails
+// the customer and posts to #town-crier.
+const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
+  "service_selection",
+  "payment_confirmed",
+  "profile_alignment_check",
+  "campaign_readiness_confirmed",
+]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
 // so an attest only notifies when it newly completes the step, never on a
