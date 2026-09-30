@@ -92,7 +92,6 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "cv_variant_dispatch",
   "cv_approved",
   "cv_variant_uploaded",
-  "rtr_dispatched",
   "preference_review_session",
   "job_credentials_provided",
   "jobsite_verification",
