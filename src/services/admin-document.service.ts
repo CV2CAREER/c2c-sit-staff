@@ -110,6 +110,7 @@ export class AdminDocumentService {
         vcsId: string | null;
         promptId: string | null;
         version: string | null;
+        model: string | null;
         timestamp: number;
     } | null = null;
     static async getActivePrompt(
@@ -117,7 +118,7 @@ export class AdminDocumentService {
         increment: boolean,
         resumeText: string,
         existing?: string
-    ): Promise<{ prompt: string; vcsId: string | null; promptId: string | null; version: string | null }> {
+    ): Promise<{ prompt: string; vcsId: string | null; promptId: string | null; version: string | null; model: string | null }> {
         // Cache prompts for 5 minutes
         if (!this.promptCache || Date.now() - this.promptCache.timestamp > 5 * 60 * 1000) {
             try {
@@ -136,6 +137,7 @@ export class AdminDocumentService {
                             vcsId: foundVCS.id,
                             promptId: foundPrompt.id,
                             version: foundPrompt.version,
+                            model: foundVCS.model ?? null,
                             timestamp: Date.now()
                         };
                     }
@@ -166,6 +168,7 @@ export class AdminDocumentService {
             vcsId: this.promptCache?.vcsId ?? null,
             promptId: this.promptCache?.promptId ?? null,
             version: this.promptCache?.version ?? null,
+            model: this.promptCache?.model ?? null,
         };
     }
 
@@ -388,12 +391,12 @@ export class AdminDocumentService {
             }
 
             // Get prompt and generate content with AI
-            const { prompt, vcsId, promptId, version } = await this.getActivePrompt(type, increment, resumeText, existingContent);
+            const { prompt, vcsId, promptId, version, model } = await this.getActivePrompt(type, increment, resumeText, existingContent);
 
             const startedAt = Date.now();
             let aiResponse: string;
             try {
-                aiResponse = await queryDigitalOceanAI(prompt);
+                aiResponse = await queryDigitalOceanAI(prompt, undefined, undefined, undefined, model);
                 VcsPromptUsageService.record({
                     key: 'upload_role_titles_prompt',
                     vcsId,
@@ -580,7 +583,7 @@ export class AdminDocumentService {
         cvText: string,
         jobContent: string,
         jobLink?: string,
-    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null; model: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cover_letter_generation_prompt' },
@@ -602,7 +605,7 @@ export class AdminDocumentService {
             .replace(/\{\{CV_TEXT\}\}/g, cvText)
             .replace(/\{\{JOB_CONTEXT\}\}/g, jobContext);
 
-        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version, model: foundVCS.model ?? null };
     }
 
     /**
@@ -632,11 +635,11 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const { prompt, vcsId, promptId, version } = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
+        const { prompt, vcsId, promptId, version, model } = await this.getCoverLetterPrompt(resumeText, jobContent, jobLink);
 
         const startedAt = Date.now();
         try {
-            const coverLetter = await queryDigitalOceanAI(prompt);
+            const coverLetter = await queryDigitalOceanAI(prompt, undefined, undefined, undefined, model);
             VcsPromptUsageService.record({
                 key: 'cover_letter_generation_prompt',
                 vcsId,
@@ -792,7 +795,7 @@ export class AdminDocumentService {
      */
     private static async getRoleTitlePrompt(
         cvText: string,
-    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null; model: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'role_title_generation_prompt' },
@@ -806,7 +809,7 @@ export class AdminDocumentService {
         }
 
         const prompt = promptRow.prompt.replace(/\{\{CV_TEXT\}\}/g, cvText);
-        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version, model: foundVCS.model ?? null };
     }
 
     /**
@@ -834,12 +837,12 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const { prompt, vcsId, promptId, version } = await this.getRoleTitlePrompt(resumeText);
+        const { prompt, vcsId, promptId, version, model } = await this.getRoleTitlePrompt(resumeText);
 
         const startedAt = Date.now();
         let aiResponse: string;
         try {
-            aiResponse = await queryDigitalOceanAI(prompt);
+            aiResponse = await queryDigitalOceanAI(prompt, undefined, undefined, undefined, model);
             VcsPromptUsageService.record({
                 key: 'role_title_generation_prompt',
                 vcsId,
@@ -1019,7 +1022,7 @@ export class AdminDocumentService {
     private static async getCvVariantPrompt(
         cvText: string,
         confirmedAnswers?: { question: string; answer: string }[],
-    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null }> {
+    ): Promise<{ prompt: string; vcsId: string; promptId: string; version: string | null; model: string | null }> {
         const { VCS, VCSPrompt } = await import('../models/v1/keyword-population.model');
         const foundVCS = await VCS.findOne({
             where: { active: true, key: 'cv_variant_generation_prompt' },
@@ -1061,7 +1064,7 @@ export class AdminDocumentService {
             : "";
 
         const prompt = CV_VARIANT_REQUIRED_PROMPT.replace(/\{\{CV_TEXT\}\}/g, confirmedBlock + cvTextWithSection);
-        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version };
+        return { prompt, vcsId: foundVCS.id, promptId: promptRow.id, version: promptRow.version, model: foundVCS.model ?? null };
     }
 
     /**
@@ -1093,7 +1096,7 @@ export class AdminDocumentService {
         }
 
         const resumeText = await this.extractResumeText(fileUrl);
-        const { prompt, vcsId, promptId, version } = await this.getCvVariantPrompt(resumeText, confirmedAnswers);
+        const { prompt, vcsId, promptId, version, model } = await this.getCvVariantPrompt(resumeText, confirmedAnswers);
 
         const startedAt = Date.now();
         let aiResponse: string;
@@ -1104,7 +1107,7 @@ export class AdminDocumentService {
             // plain-text/JSON callers — a tight budget here means the model
             // has to choose between finishing the content and spending
             // tokens on decorative styling, and it reliably chooses content.
-            aiResponse = await queryDigitalOceanAI(prompt, 2, false, 8000);
+            aiResponse = await queryDigitalOceanAI(prompt, 2, false, 8000, model);
             VcsPromptUsageService.record({
                 key: 'cv_variant_generation_prompt',
                 vcsId,

@@ -64,7 +64,10 @@ export class VcsPromptSimulationService {
     const startedAt = Date.now();
 
     try {
-      const output = await queryDigitalOceanAI(renderedPrompt);
+      // Use the key's own configured model, same as a real production call
+      // would — otherwise Simulate could pass on a model that then behaves
+      // differently (or errors) once actually live.
+      const output = await queryDigitalOceanAI(renderedPrompt, undefined, undefined, undefined, vcsRow.model);
       const run = await VCSPromptSimulationRun.create({
         vcsId,
         versionId,
