@@ -27,7 +27,7 @@
 // well past: the AI's actual color and heading choices are visibly present,
 // not almost entirely absent.
 import * as cheerio from "cheerio";
-import { AlignmentType, BorderStyle, Document, Packer, Paragraph, TextRun } from "docx";
+import { AlignmentType, BorderStyle, Document, Packer, Paragraph, ShadingType, TextRun } from "docx";
 import { getServiceLogger } from "./createLogger";
 
 const logger = getServiceLogger("cv-variant-docx-builder");
@@ -185,11 +185,20 @@ const isBoldValue = (value: string | undefined): boolean => {
 interface TextBlock {
   text: string;
   color: string | null;
+  background: string | null;
   bold: boolean;
   italic: boolean;
   fontSizePt: number | null;
   isListItem: boolean;
 }
+
+/** Perceived luminance (0-255) — used only to decide whether a light text color is safe to keep without a resolved background behind it. */
+const luminanceOf = (hex: string): number => {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+};
 
 const BLOCK_SKIP_TAGS = new Set(["script", "style", "head", "meta", "link", "title", "svg"]);
 
@@ -203,12 +212,21 @@ const BLOCK_SKIP_TAGS = new Set(["script", "style", "head", "meta", "link", "tit
  * a `<p>`) still contributes to the same block's text, just without a
  * separate bold run for that portion (a deliberate simplification; the
  * block's own resolved bold/color still reflects its dominant styling).
+ *
+ * `background` is propagated down the same way `color` is — real CSS
+ * doesn't inherit background-color, but visually a child with no box of its
+ * own sits on whatever its nearest ancestor painted, which is exactly what
+ * a leaf block needs to know to shade its own paragraph correctly (e.g. a
+ * `.header` div's dark background behind its `.header-name` child's white
+ * text — without this, that white text would be applied with no shading
+ * behind it and be invisible on the page).
  */
 const collectTextBlocks = (
   $: cheerio.CheerioAPI,
   root: any,
   rules: CssRules,
   inheritedColor: string | null,
+  inheritedBackground: string | null,
   inheritedBold: boolean,
   blocks: TextBlock[],
 ): void => {
@@ -222,6 +240,7 @@ const collectTextBlocks = (
       const $el = $(node);
       const own = resolveOwnStyle($el, rules);
       const color = parseColor(own.color) ?? inheritedColor;
+      const background = parseColor(own.background || own["background-color"]) ?? inheritedBackground;
       const bold = isBoldValue(own["font-weight"]) || inheritedBold;
       const italic = (own["font-style"] || "").toLowerCase() === "italic";
       const fontSizePt = parseFontSizePt(own["font-size"]);
@@ -234,7 +253,14 @@ const collectTextBlocks = (
       if (hasDirectText) {
         const text = $el.text().replace(/\s+/g, " ").trim();
         if (text) {
-          blocks.push({ text, color, bold, italic, fontSizePt, isListItem: tag === "li" });
+          // Safety net, not just fidelity: if this text resolved to a light
+          // color with nothing behind it, it would render invisible on the
+          // page rather than just "less styled". Fall back to a safe dark
+          // color in that specific case only — a resolved background is
+          // trusted as-is, however light or dark.
+          const safeColor =
+            !background && color && luminanceOf(color) > 200 ? "1F2937" : color;
+          blocks.push({ text, color: safeColor, background, bold, italic, fontSizePt, isListItem: tag === "li" });
         }
         // A leaf's own descendants (e.g. a <strong> inside this <p>)
         // already contributed their text via $el.text() above — don't
@@ -243,9 +269,9 @@ const collectTextBlocks = (
       }
 
       // Pure container (no direct text of its own) — recurse, carrying
-      // color/bold down since CSS `color`/`font-weight` inherit and a
-      // wrapper's declared color is otherwise invisible to its children.
-      collectTextBlocks($, node, rules, color, bold, blocks);
+      // color/background/bold down since a wrapper's declared styling is
+      // otherwise invisible to its children.
+      collectTextBlocks($, node, rules, color, background, bold, blocks);
     });
 };
 
@@ -315,8 +341,13 @@ const buildParagraphs = (blocks: ClassifiedBlock[], accent: string): Paragraph[]
         }),
       ],
       bullet: block.isListItem ? { level: 0 } : undefined,
+      shading: block.background ? { type: ShadingType.CLEAR, fill: block.background } : undefined,
+      // A banner block (its own resolved background) already carries its
+      // own visual weight — an accent-colored rule under it as well reads
+      // as a duplicate emphasis, so only add the rule when there's no
+      // shading doing that job already.
       border:
-        block.kind === "title" || block.kind === "section"
+        !block.background && (block.kind === "title" || block.kind === "section")
           ? { bottom: { style: BorderStyle.SINGLE, size: block.kind === "title" ? 12 : 6, color: accent, space: 4 } }
           : undefined,
       alignment: AlignmentType.LEFT,
@@ -337,7 +368,7 @@ export const buildCvVariantDocx = async (html: string): Promise<Buffer> => {
 
   const blocks: TextBlock[] = [];
   const bodyEl = $("body").get(0) ?? $.root().get(0);
-  collectTextBlocks($, bodyEl, rules, null, false, blocks);
+  collectTextBlocks($, bodyEl, rules, null, null, false, blocks);
 
   if (!blocks.length) {
     logger.warn("[buildCvVariantDocx] No text blocks found — falling back to a single empty paragraph");
