@@ -7,6 +7,7 @@ import { ClientJourneyStep } from "../models/v1/client-journey-step.model";
 import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { CredentialsTour } from "../models/v1/credentials-tour.model";
+import { notifySubscriptionStepCompletedByAdmin } from "./client-journey-notify.service";
 
 const logger = getServiceLogger("ClientJourneyService");
 
@@ -131,6 +132,20 @@ async function completeStep(
   } as any);
 }
 
+// SPR-21-11-005 / SPR-21-11-013: completing these subscription-scoped steps
+// by hand must fire the same notifications as the customer-triggered payment
+// path (the audit flagged the admin-attest path as silent).
+const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>(["service_selection", "payment_confirmed"]);
+
+// Whether a step already has a completion row for its (per-tour) scope — used
+// so an attest only notifies when it newly completes the step, never on a
+// repeat attest of an already-done step.
+async function isJourneyStepCompleted(userId: string, stepKey: string): Promise<boolean> {
+  const { tourId } = await resolveTourIdForStep(userId, stepKey);
+  const existing = await ClientJourneyStep.findOne({ where: { userId, stepKey, tourId } });
+  return Boolean(existing);
+}
+
 export async function attestClientJourneyStep(
   userId: string,
   stepKey: string,
@@ -144,13 +159,22 @@ export async function attestClientJourneyStep(
 
   logger.info(`Admin ${adminId} attesting client journey step "${stepKey}" for client ${userId}`);
 
-  return completeStep(
+  const shouldNotify = ADMIN_ATTEST_NOTIFY_STEPS.has(stepKey);
+  const wasCompleted = shouldNotify ? await isJourneyStepCompleted(userId, stepKey) : false;
+
+  const step = await completeStep(
     userId,
     stepKey,
     adminId,
     ClientJourneyActorType.ADMIN,
     ClientJourneySource.MANUAL,
   );
+
+  if (shouldNotify && !wasCompleted) {
+    notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId);
+  }
+
+  return step;
 }
 
 // Side-effect hook for the existing document-approval flow
@@ -176,6 +200,34 @@ export async function markPaymentConfirmed(userId: string, actorId: string): Pro
   await completeStep(
     userId,
     "payment_confirmed",
+    actorId,
+    ClientJourneyActorType.ADMIN,
+    ClientJourneySource.AUTOMATIC,
+  );
+}
+
+// SPR-21-11-005: assigning a paid plan is the admin equivalent of the
+// customer's Service Selection — recording it here keeps the step consistent
+// with manual plan assignment (previously it stayed Attest-only, so the
+// customer's journey never advanced past it).
+export async function markServiceSelection(userId: string, actorId: string): Promise<void> {
+  await completeStep(
+    userId,
+    "service_selection",
+    actorId,
+    ClientJourneyActorType.ADMIN,
+    ClientJourneySource.AUTOMATIC,
+  );
+}
+
+// SPR-21-11-003: the RTR document becoming customer-visible IS the "RTR
+// Dispatched" event — record the step so the journey advances without an admin
+// having to press Attest. Tour-scoped: requires an active tour (callers wrap
+// this so a missing tour never breaks the upload/activation).
+export async function markRtrDispatched(userId: string, actorId: string): Promise<void> {
+  await completeStep(
+    userId,
+    "rtr_dispatched",
     actorId,
     ClientJourneyActorType.ADMIN,
     ClientJourneySource.AUTOMATIC,
