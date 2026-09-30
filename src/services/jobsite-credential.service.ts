@@ -17,8 +17,11 @@ import { JobsiteCredential } from "../models/v1/jobsite-credential.model";
 import { JobsiteCredentialAudit } from "../models/v1/jobsite-credential-audit.model";
 import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
+import { Plan } from "../models/v1/plan.model";
 import { SlackService } from "./slack.service";
 import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
+import { activateCoralPlan } from "./admin-plan.service";
+import { isSocialVerificationCompleteForUser } from "./admin/social-verification.service";
 
 const logger = getServiceLogger("JobsiteCredentialService");
 
@@ -600,6 +603,53 @@ export async function approveJobsiteCredential(
         logger.error("Background active notification error:", err);
       }
     });
+
+    // Coral auto-activation for Ambassador (SPR-21-43-008): once the
+    // client's jobsite credential is approved AND their social
+    // verification is complete, activate the 14-day Coral trial without
+    // any further admin action. The activateCoralPlan service already
+    // guards on isAmbassador and rejects if an active plan exists, so
+    // extra guards here would only duplicate its checks. Non-ambassador
+    // approvals fall through untouched. Emerald activation is not
+    // triggered here — for partner-referred guests the Emerald plan is
+    // created by the customer BE at signup (handleEmeraldPlanCreation),
+    // so by the time credential approval runs the plan already exists.
+    const client = (credential as any).client as User;
+    if (client?.isAmbassador) {
+      setImmediate(async () => {
+        try {
+          const socialComplete = await isSocialVerificationCompleteForUser(client.id);
+          if (!socialComplete) {
+            logger.info(
+              `[CoralAutoActivate] Skipping — social verification incomplete for ambassador ${client.id}`,
+            );
+            return;
+          }
+          const activePlan = await Plan.findOne({
+            where: { userId: client.id, hasExpired: false },
+          });
+          if (activePlan) {
+            logger.info(
+              `[CoralAutoActivate] Skipping — ambassador ${client.id} already has an active plan (${activePlan.id})`,
+            );
+            return;
+          }
+          logger.info(
+            `[CoralAutoActivate] Activating Coral for ambassador ${client.id} via credential approval`,
+          );
+          await activateCoralPlan(host, client.id);
+        } catch (err: any) {
+          // Best-effort — activation failures must not roll back the
+          // credential approval itself. Slack alert is already fired by
+          // activateCoralPlan for its own internal errors; log here for
+          // failures before it runs (e.g. social-verification lookup
+          // error).
+          logger.error(
+            `[CoralAutoActivate] Failed for ambassador ${client.id}: ${err?.message || err}`,
+          );
+        }
+      });
+    }
 
     return credential;
   } catch (error: any) {
