@@ -280,8 +280,6 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
       option.key === "allow-free-before-referral"
     ) {
       setActiveAction(option.key);
-    } else {
-      console.log(`Action not implemented yet: ${option.label}`);
     }
   };
 
@@ -360,7 +358,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
     <>
       <Menu placement="bottom-end">
         <MenuHandler>
-          <button className="bg-primary/10 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-lg transition-colors hover:bg-primary/20">
+          <button className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20">
             <Icon name="more" />
           </button>
         </MenuHandler>
