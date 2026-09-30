@@ -85,7 +85,6 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // also starts here — none of them have a real automatic trigger yet.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
-  "payment_receipt_sent",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
