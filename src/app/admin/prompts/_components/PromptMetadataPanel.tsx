@@ -13,13 +13,19 @@ const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 // to its own DigitalOcean Gradient agent (own endpoint + access key; DO has
 // no single endpoint where a model param switches models on an agent-bound
 // call). 'gpt-oss-120b' is the shared default every prompt uses until it's
-// changed here; 'claude-sonnet-4.6' is a second, already-configured agent.
-// Keep this in sync with SUPPORTED_AI_MODELS in the backend's
-// src/config/ai-models.ts (c2c-iat-staff-backend) — the two aren't derived
-// from a shared source since they live in separate repos. Adding a third
-// model: create its DO agent, wire its endpoint/key into the backend, add it
-// there, then add its name here.
-const AVAILABLE_MODELS = ["gpt-oss-120b", "claude-sonnet-4.6"];
+// changed here; the rest are dedicated agents. Keep this in sync with
+// SUPPORTED_AI_MODELS in the backend's src/config/ai-models.ts
+// (c2c-iat-staff-backend) — the two aren't derived from a shared source
+// since they live in separate repos. Adding another model: create its DO
+// agent, wire its endpoint/key into the backend, add it there, then add its
+// name here.
+const AVAILABLE_MODELS = [
+  "gpt-oss-120b",
+  "claude-sonnet-4.6",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-oss-20b",
+];
 
 // No override UI in this phase — type is inferred from the variable name
 // each time the panel renders, not persisted.
