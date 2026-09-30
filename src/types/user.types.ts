@@ -77,6 +77,7 @@ export interface IUserDetail {
   profile: ProfileType | undefined | null;
   phoneNumber: string | undefined | null;
   currentCityOfResidence: string | null | undefined;
+  isAmbassador?: boolean;
 }
 
 
