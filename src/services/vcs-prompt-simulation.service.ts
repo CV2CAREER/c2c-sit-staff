@@ -5,6 +5,7 @@
 // it and the full output, so the "History" tab can show past test runs.
 import { getServiceLogger } from "../utils/createLogger";
 import { queryDigitalOceanAI } from "../utils/digital-factory";
+import { AI_MODEL_SHARED_DEFAULT } from "../config/ai-models";
 import { VCS } from "../models/v1/keyword-population.model";
 import { VCSPromptSimulationRun } from "../models/v1/vcs-prompt-simulation.model";
 import { VcsPromptService } from "./vcs-prompt.service";
@@ -31,6 +32,7 @@ const serializeRun = (run: VCSPromptSimulationRun) => ({
   variables: run.variables ?? {},
   renderedPrompt: run.renderedPrompt,
   output: run.output ?? null,
+  model: run.model ?? null,
   status: run.status,
   errorMessage: run.errorMessage ?? null,
   durationMs: run.durationMs,
@@ -62,6 +64,11 @@ export class VcsPromptSimulationService {
 
     const renderedPrompt = renderPrompt(version.prompt, cleanVariables);
     const startedAt = Date.now();
+    // What the run actually resolves to — vcsRow.model may be
+    // unset/unrecognized, in which case queryDigitalOceanAI silently falls
+    // back to the shared default. Record that resolved value (not the raw,
+    // possibly-null config) so History always shows the real model used.
+    const effectiveModel = vcsRow.model || AI_MODEL_SHARED_DEFAULT;
 
     try {
       // Use the key's own configured model, same as a real production call
@@ -75,6 +82,7 @@ export class VcsPromptSimulationService {
         variables: cleanVariables,
         renderedPrompt,
         output,
+        model: effectiveModel,
         status: "success",
         durationMs: Date.now() - startedAt,
         triggeredBy: actorLabel(actor),
@@ -88,6 +96,7 @@ export class VcsPromptSimulationService {
         version: version.version,
         variables: cleanVariables,
         renderedPrompt,
+        model: effectiveModel,
         status: "failed",
         errorMessage: String(error.message || "Simulation failed").slice(0, 2048),
         durationMs: Date.now() - startedAt,
