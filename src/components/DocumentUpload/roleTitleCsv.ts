@@ -193,19 +193,65 @@ export function buildRoleTitleTemplate(): string {
   ].join("\r\n");
 }
 
-export function downloadRoleTitleTemplate(): void {
+function downloadCsvBlob(csvText: string, filename: string): void {
   // Excel needs the BOM to read the file as UTF-8.
-  const blob = new Blob(["﻿", buildRoleTitleTemplate()], {
-    type: "text/csv;charset=utf-8;",
-  });
+  const blob = new Blob(["﻿", csvText], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = ROLE_TITLE_TEMPLATE_FILENAME;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
   URL.revokeObjectURL(url);
+}
+
+export function downloadRoleTitleTemplate(): void {
+  downloadCsvBlob(buildRoleTitleTemplate(), ROLE_TITLE_TEMPLATE_FILENAME);
+}
+
+// One row per generated recommendation — same headers as the manual-upload
+// template, so a downloaded CSV can be edited and re-uploaded through that
+// same flow without a format mismatch.
+export interface RoleTitleCsvRow {
+  role_title: string;
+  classification: string;
+  craft: string;
+  industry: string;
+  status: string;
+  ai_career_resilience_rating: string;
+}
+
+export function buildRoleTitleCsv(rows: RoleTitleCsvRow[]): string {
+  const escape = (value: string) =>
+    /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+  const lines = [ROLE_TITLE_HEADERS.map(escape).join(",")];
+  rows.forEach((row) => {
+    lines.push(
+      [
+        row.role_title,
+        row.classification,
+        row.craft,
+        row.industry,
+        row.status,
+        row.ai_career_resilience_rating,
+      ]
+        .map((value) => escape(value ?? ""))
+        .join(","),
+    );
+  });
+
+  return lines.join("\r\n");
+}
+
+export function downloadRoleTitleCsv(rows: RoleTitleCsvRow[], candidateName?: string): void {
+  const safeName = (candidateName || "role-title-recommendations")
+    .trim()
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  downloadCsvBlob(buildRoleTitleCsv(rows), `${safeName || "role-title-recommendations"}.csv`);
 }

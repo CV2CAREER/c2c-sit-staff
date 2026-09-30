@@ -67,6 +67,7 @@ export interface CreateVcsPromptInput {
   key: string;
   prompt: string;
   active?: boolean;
+  model?: string;
 }
 
 // POST /api/v1/admin/prompts

@@ -12,6 +12,7 @@ export interface VcsPromptSimulationRun {
   variables: Record<string, string>;
   renderedPrompt: string;
   output: string | null;
+  model: string | null;
   status: VcsPromptSimulationStatus;
   errorMessage: string | null;
   durationMs: number;
