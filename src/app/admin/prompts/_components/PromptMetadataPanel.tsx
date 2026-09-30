@@ -19,7 +19,7 @@ const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 // since they live in separate repos. Adding another model: create its DO
 // agent, wire its endpoint/key into the backend, add it there, then add its
 // name here.
-const AVAILABLE_MODELS = [
+export const AVAILABLE_MODELS = [
   "gpt-oss-120b",
   "claude-sonnet-4.6",
   "gpt-4o",
