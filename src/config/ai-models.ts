@@ -23,6 +23,19 @@ export const AI_MODEL_SHARED_DEFAULT = 'gpt-oss-120b';
 // Sonnet 4.6 — confirmed working live prior to this feature's build.
 export const AI_MODEL_CLAUDE_SONNET = 'claude-sonnet-4.6';
 
-export const SUPPORTED_AI_MODELS = [AI_MODEL_SHARED_DEFAULT, AI_MODEL_CLAUDE_SONNET] as const;
+// Three more dedicated DO agents, same shape as Claude Sonnet 4.6 above —
+// each its own endpoint/access key in src/config/env.ts, each falls back to
+// the shared default until configured with real credentials.
+export const AI_MODEL_GPT_4O = 'gpt-4o';
+export const AI_MODEL_GPT_4O_MINI = 'gpt-4o-mini';
+export const AI_MODEL_GPT_OSS_20B = 'gpt-oss-20b';
+
+export const SUPPORTED_AI_MODELS = [
+  AI_MODEL_SHARED_DEFAULT,
+  AI_MODEL_CLAUDE_SONNET,
+  AI_MODEL_GPT_4O,
+  AI_MODEL_GPT_4O_MINI,
+  AI_MODEL_GPT_OSS_20B,
+] as const;
 
 export type SupportedAiModel = (typeof SUPPORTED_AI_MODELS)[number];
