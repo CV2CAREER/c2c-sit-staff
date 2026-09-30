@@ -35,11 +35,11 @@ import {
   useGetUserPendingDocuments,
 } from "../hooks/users-all";
 import {
-  CLIENT_JOURNEY_PHASES,
   NO_AUTO_TRIGGER_STEP_KEYS,
   deriveJourneyState,
 } from "@/constants/clientJourneySteps";
 import { ClientJourneyPhaseKey } from "@/types/client-journey.types";
+import TriggerApplicationAction from "./ApplicationAction";
 
 // document_accepted has no "Attest" action — it's driven by the existing
 // document-approval pipeline (UserManagementService.approveUserDocument),
@@ -232,9 +232,16 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   };
 
   const [expandedPhase, setExpandedPhase] = useState<ClientJourneyPhaseKey | null>(null);
+  // SPR-21-02-006 fix: until the user picks a phase dot themselves, the open
+  // section must keep tracking the profile's real current phase. Without this
+  // the first render derives "getting-started" from the still-empty journey
+  // response and latches expandedPhase to it forever, hiding the wrong
+  // section (and Commence/End) on every fresh page load.
+  const [phaseWasManuallySelected, setPhaseWasManuallySelected] = useState(false);
   const [stepsOpen, setStepsOpen] = useState(true);
   const [pendingStepKey, setPendingStepKey] = useState<string | null>(null);
   const [reopenTarget, setReopenTarget] = useState<{ stepKey: string; label: string } | null>(null);
+  const [showFullJourney, setShowFullJourney] = useState(false);
 
   const { phases, currentPhaseKey } = useMemo(
     () => deriveJourneyState(clientJourney?.steps ?? []),
@@ -252,10 +259,10 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   const overallPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
   useEffect(() => {
-    if (!expandedPhase && currentPhaseKey) {
+    if (!phaseWasManuallySelected && currentPhaseKey) {
       setExpandedPhase(currentPhaseKey);
     }
-  }, [currentPhaseKey, expandedPhase]);
+  }, [currentPhaseKey, phaseWasManuallySelected]);
 
   useEffect(() => {
     setStepsOpen(true);
@@ -297,25 +304,8 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
           </span>
           <div>
             <h3 className="text-xl font-semibold text-career-black-200 md:text-2xl">Customer Journey</h3>
-            <p className="text-xs text-career-gray-200">
-              {isClientJourneyLoading ? "Loading progress…" : `${doneCount} of ${totalCount} steps complete`}
-            </p>
           </div>
         </div>
-
-        {!isClientJourneyLoading && (
-          <div className="flex w-full items-center gap-3 md:w-56">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${overallPercent}%` }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-career-blue-800"
-              />
-            </div>
-            <span className="text-xs font-bold text-career-blue-800">{overallPercent}%</span>
-          </div>
-        )}
       </div>
 
       <div className="relative z-10 p-4 md:p-6">
@@ -323,48 +313,6 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
           <div className="h-24 animate-pulse rounded-md bg-gray-100" />
         ) : (
           <>
-            <div className="mb-6 flex items-start gap-0 overflow-x-auto overflow-y-visible pt-4 pb-1">
-              {phases.map((phase, index) => {
-                const PhaseIcon = PHASE_ICON[phase.key];
-
-                return (
-                <button
-                  key={phase.key}
-                  type="button"
-                  onClick={() => setExpandedPhase(phase.key)}
-                  className="group relative min-w-[104px] flex-1 px-1 text-center"
-                >
-                  {index > 0 && (
-                    <span
-                      className={`absolute left-[-50%] top-[17px] h-[3px] w-full transition-colors ${PHASE_LINE_STYLE[phase.state]}`}
-                    />
-                  )}
-                  <span className="relative z-10 mx-auto mb-2 block h-9 w-9">
-                    {phase.state === "current" && (
-                      <span className="absolute inset-0 animate-ping rounded-full bg-career-blue-800 opacity-75" />
-                    )}
-                    <motion.span
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.96 }}
-                      className={`relative flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${PHASE_DOT_STYLE[phase.state]}`}
-                    >
-                      {phase.state === "done" ? <CheckCircle2 size={17} /> : <PhaseIcon size={15} />}
-                    </motion.span>
-                  </span>
-                  <span
-                    className={`block text-[10.5px] font-semibold leading-tight transition-colors ${
-                      phase.key === expandedPhase
-                        ? "text-career-blue-800"
-                        : "text-gray-400 group-hover:text-gray-600"
-                    }`}
-                  >
-                    {phase.label}
-                  </span>
-                </button>
-                );
-              })}
-            </div>
-
             <AnimatePresence mode="wait">
               {activePhase && (
                 <motion.div
@@ -375,29 +323,108 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className="border-t border-gray-100 pt-4"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setStepsOpen((prev) => !prev)}
-                    aria-expanded={stepsOpen}
-                    className="mb-3 flex w-full items-center justify-between gap-2 rounded-lg text-left transition-colors hover:text-career-blue-800"
-                  >
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-semibold text-career-black-200">{activePhase.label}</h4>
-                      {activePhase.key === currentPhaseKey && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-career-blue-800/10 px-2.5 py-0.5 text-[10.5px] font-bold text-career-blue-800">
-                          <Sparkles size={11} />
-                          Current phase
-                        </span>
-                      )}
-                    </div>
-                    <motion.span
-                      animate={{ rotate: stepsOpen ? 180 : 0 }}
-                      transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="shrink-0 text-gray-400"
+                  {/* SPR-21-02-006: Commence/End moved here from the old
+                      standalone Trigger Action card — each button lives only
+                      in its own phase section header, and only while the
+                      profile is actually in that phase. */}
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStepsOpen((prev) => !prev)}
+                      aria-expanded={stepsOpen}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left transition-colors hover:text-career-blue-800"
                     >
-                      <ChevronDown size={16} />
-                    </motion.span>
-                  </button>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-career-black-200">{activePhase.label}</h4>
+                        {activePhase.key === currentPhaseKey && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-career-blue-800/10 px-2.5 py-0.5 text-[10.5px] font-bold text-career-blue-800">
+                            <Sparkles size={11} />
+                            Current phase
+                          </span>
+                        )}
+                      </div>
+                      <motion.span
+                        animate={{ rotate: stepsOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="shrink-0 text-gray-400"
+                      >
+                        <ChevronDown size={16} />
+                      </motion.span>
+                    </button>
+                    {activePhase.key === "campaign-live" && currentPhaseKey === "campaign-live" && (
+                      <TriggerApplicationAction action="commence" userId={userId} />
+                    )}
+                    {activePhase.key === "campaign-ended" && currentPhaseKey === "campaign-ended" && (
+                      <TriggerApplicationAction action="end" userId={userId} />
+                    )}
+                  </div>
+
+                  {/* SPR-21-02-007: sim order is phase cardhead (with
+                      Commence/End) -> compact-phase -> phaselist: the
+                      one-line indicator replaces the icon stepper, the
+                      "X of Y steps complete" label and the progress bar;
+                      the full stepper opens on demand below it. */}
+                  <div className="mb-4 flex items-center gap-2.5 overflow-x-auto whitespace-nowrap text-[11.5px] text-[#0F1E2E]">
+                    <span>
+                      <b className="font-bold">Phase:</b>{" "}
+                      {activePhase.label}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#0876A8]">· {overallPercent}% ·</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowFullJourney((prev) => !prev)}
+                      className="text-[10.5px] text-[#5B6B7C] underline transition-colors hover:text-[#0876A8]"
+                    >
+                      {showFullJourney ? "hide full journey ↑" : "view full journey >"}
+                    </button>
+                  </div>
+
+                  {showFullJourney && (
+                    <div className="mb-6 flex items-start gap-0 overflow-x-auto overflow-y-visible pt-4 pb-1">
+                      {phases.map((phase, index) => {
+                        const PhaseIcon = PHASE_ICON[phase.key];
+
+                        return (
+                          <button
+                            key={phase.key}
+                            type="button"
+                            onClick={() => {
+                              setPhaseWasManuallySelected(true);
+                              setExpandedPhase(phase.key);
+                            }}
+                            className="group relative min-w-[104px] flex-1 px-1 text-center"
+                          >
+                            {index > 0 && (
+                              <span
+                                className={`absolute left-[-50%] top-[17px] h-[3px] w-full transition-colors ${PHASE_LINE_STYLE[phase.state]}`}
+                              />
+                            )}
+                            <span className="relative z-10 mx-auto mb-2 block h-9 w-9">
+                              {phase.state === "current" && (
+                                <span className="absolute inset-0 animate-ping rounded-full bg-career-blue-800 opacity-75" />
+                              )}
+                              <motion.span
+                                whileHover={{ scale: 1.08 }}
+                                whileTap={{ scale: 0.96 }}
+                                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${PHASE_DOT_STYLE[phase.state]}`}
+                              >
+                                {phase.state === "done" ? <CheckCircle2 size={17} /> : <PhaseIcon size={15} />}
+                              </motion.span>
+                            </span>
+                            <span
+                              className={`block text-[10.5px] font-semibold leading-tight transition-colors ${
+                                phase.key === expandedPhase
+                                  ? "text-career-blue-800"
+                                  : "text-gray-400 group-hover:text-gray-600"
+                              }`}
+                            >
+                              {phase.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   <AnimatePresence initial={false}>
                     {stepsOpen && (

@@ -1,89 +1,82 @@
 "use client"
 import { useState } from "react";
-import { useParams } from "next/navigation";
-import { HiOutlineLightningBolt, HiOutlinePlay, HiOutlineFlag, HiOutlineMail } from "react-icons/hi";
-import { useAdminMutations } from "@/hooks/api/admin.api";
-import { useAdminUserDetailContext } from "../context/userDetailContext";
+import { HiOutlinePlay, HiOutlineFlag, HiOutlineMail } from "react-icons/hi";
+import { useAdminMutations, useAdminQueries } from "@/hooks/api/admin.api";
 import AppModal from "@/components/modals/AppModal";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-const TriggerApplicationAction = () => {
-  const { user: userContext } = useAdminUserDetailContext();
-  // The context stores the raw API payload ({ user: {...} }), not the flat
-  // user record — unwrap it the same way onboarding-progress.tsx does.
-  const user = (userContext as any)?.user ?? userContext;
-  const { id: userId } = useParams<{ id: string }>();
+// SPR-21-02-006: this was the standalone "Trigger Action" card at the top of
+// the Customer Profile. It now renders a single trigger button (Commence or
+// End) that lives inside its own phase section header inside
+// AdminClientJourney. User detail comes from the shared user-detail query
+// instead of the page context, so the button renders safely on both the
+// admin and pc routes (the admin context has no provider on pc).
+const TriggerApplicationAction = ({
+  action,
+  userId,
+}: {
+  action: "commence" | "end";
+  userId: string;
+}) => {
+  const isStart = action === "commence";
+  const [open, setOpen] = useState(false);
   const { applicationEmailMutation } = useAdminMutations();
-  const [confirmType, setConfirmType] = useState<"START" | "END" | null>(null);
+  const { userDetailDomain } = useAdminQueries({
+    userId,
+    fetchUserDetail: true,
+  });
+  const user = (userDetailDomain.data as any)?.user ?? userDetailDomain.data;
 
   const isPending = applicationEmailMutation.isPending;
 
   const handleConfirm = () => {
-    if (!confirmType || !userId) return;
+    if (!userId) return;
     applicationEmailMutation.mutate(
       {
-        type: confirmType === "START" ? "ADMIN-APPLICATION-START" : "ADMIN-APPLICATION-END",
+        type: isStart ? "ADMIN-APPLICATION-START" : "ADMIN-APPLICATION-END",
         name: `${user?.firstName} ${user?.lastName}`,
         email: user?.email ?? "",
         userId,
       },
-      { onSettled: () => setConfirmType(null) }
+      { onSettled: () => setOpen(false) }
     );
   };
 
   return (
     <>
-      <div className="relative h-full overflow-hidden rounded-xl border border-primary/15 bg-white shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <div className="flex h-full flex-col justify-center gap-3 p-4 md:p-5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <HiOutlineLightningBolt size={16} />
-            </span>
-            <h2 className="text-sm font-medium text-career-black-200">Trigger Action</h2>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setConfirmType("START")}
-              disabled={isPending}
-              title="Commence Application — starts the application process and notifies the client"
-              className="flex-1 gap-1.5 text-xs"
-              size="sm"
-            >
-              {isPending && confirmType === "START" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <HiOutlinePlay className="w-3.5 h-3.5" />
-              )}
-              Commence
-            </Button>
-            <Button
-              onClick={() => setConfirmType("END")}
-              disabled={isPending}
-              title="End Application — closes out the application cycle and notifies the client"
-              className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs"
-              size="sm"
-            >
-              {isPending && confirmType === "END" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <HiOutlineFlag className="w-3.5 h-3.5" />
-              )}
-              End
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Button
+        onClick={() => setOpen(true)}
+        disabled={isPending}
+        title={
+          isStart
+            ? "Commence Application — starts the application process and notifies the client"
+            : "End Application — closes out the application cycle and notifies the client"
+        }
+        className={`min-w-[100px] shrink-0 gap-1.5 text-xs ${
+          isStart ? "" : "bg-emerald-600 hover:bg-emerald-700"
+        }`}
+        size="sm"
+      >
+        {isPending && open ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : isStart ? (
+          <HiOutlinePlay className="w-3.5 h-3.5" />
+        ) : (
+          <HiOutlineFlag className="w-3.5 h-3.5" />
+        )}
+        {isStart ? "Commence" : "End"}
+      </Button>
 
       <AppModal
-        isOpen={confirmType !== null}
-        onClose={() => setConfirmType(null)}
+        isOpen={open}
+        onClose={() => setOpen(false)}
         closeOnOutsideClick={!isPending}
         contentClassName="max-w-sm w-full !p-0 [&_.lucide-x]:text-white/80 [&_.lucide-x:hover]:text-white"
       >
         <div
           className={`relative overflow-hidden px-8 pt-9 pb-8 text-center ${
-            confirmType === "END"
+            !isStart
               ? "bg-gradient-to-b from-emerald-500 to-emerald-600"
               : "bg-gradient-to-b from-sky-400 to-primary"
           }`}
@@ -92,7 +85,7 @@ const TriggerApplicationAction = () => {
           <div className="pointer-events-none absolute -bottom-14 -left-8 h-28 w-28 rounded-full bg-white/10" />
 
           <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm">
-            {confirmType === "START" ? (
+            {isStart ? (
               <HiOutlinePlay size={26} />
             ) : (
               <HiOutlineFlag size={26} />
@@ -100,10 +93,10 @@ const TriggerApplicationAction = () => {
           </span>
 
           <h2 className="relative mt-4 text-xl font-semibold text-white">
-            {confirmType === "START" ? "Commence Application?" : "End Application?"}
+            {isStart ? "Commence Application?" : "End Application?"}
           </h2>
           <p className="relative mt-1.5 text-sm text-white/80 max-w-[260px] mx-auto leading-relaxed">
-            {confirmType === "START"
+            {isStart
               ? "This kicks off the application process and notifies the client."
               : "This closes out the current application cycle and notifies the client."}
           </p>
@@ -127,14 +120,14 @@ const TriggerApplicationAction = () => {
             <HiOutlineMail className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
             <p className="text-xs text-gray-500 leading-relaxed">
               They&apos;ll receive an email letting them know their application has{" "}
-              {confirmType === "START" ? "commenced" : "ended"}.
+              {isStart ? "commenced" : "ended"}.
             </p>
           </div>
 
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => setConfirmType(null)}
+              onClick={() => setOpen(false)}
               disabled={isPending}
               className="flex-1 border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
             >
@@ -143,10 +136,10 @@ const TriggerApplicationAction = () => {
             <Button
               onClick={handleConfirm}
               disabled={isPending}
-              className={`flex-1 gap-2 ${confirmType === "END" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+              className={`flex-1 gap-2 ${!isStart ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
             >
               {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-              {confirmType === "START" ? "Yes" : "Yes"}
+              Yes
             </Button>
           </div>
         </div>

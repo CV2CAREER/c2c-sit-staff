@@ -24,9 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import toast from "react-hot-toast";
 import ImportData from "./ImportData";
 import CRUDDropDown from "@/app/admin/_components/DropDown/crud-dropdown";
-import SearchInput from "@/components/ui/search";
 import LoadingSpinner from "@/components/reusable/LoadingSpinner";
-import { aggregatorsList } from "./constant";
 import { MasterSheetDropDownModal } from "./CampaignFillDown";
 import CustomModal from "@/components/CustomModal/CustomModal";
 import {
@@ -51,12 +49,6 @@ import {
   Upload,
   ListRestart,
   Save,
-  RadioTower,
-  PencilLine,
-  Users2,
-  Archive,
-  LayoutGrid,
-  Settings2,
   Trash2,
 } from "lucide-react";
 
@@ -130,7 +122,6 @@ export type Pred = {
 const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) => {
   const [clientDataState, setClientDataState] = useState<"active" | "recycle" | "all">("active");
   const [columnHeaders, setColumnHeaders] = useState<GridColDef[]>(tableColumns);
-  const [templateNamesList, setTemplateNamesList] = useState<{ label: string, value: string }[]>([])
   const [isEditable, setIsEditable] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false)
   const [fillDownIsOpen, setFillDownIsOpen] = useState<boolean>(false);
@@ -140,8 +131,6 @@ const CampaignDataTable: React.FC<{route:string}> = ({route}:{route: string}) =>
   const [selectedClient, setSelectedClient] = useState<{label: string; value: string;} | null>(null);
   const [usersSkip, setusersSkip] = useState(0)
   const [shouldFetchMoreUsers, setShouldFetchMoreUsers] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<{label: string; value: string | number;} | null>(null);
-  const [selectedAggregator, setSelectedAggregator] = useState<{label: string; value: string;} | null>(null);
   const [tableData, setTableData] = useState<any[any]>([]);
   const tableDataRef = useRef(tableData);
   useEffect(() => { tableDataRef.current = tableData; }, [tableData]);
@@ -175,8 +164,8 @@ const queryClient = useQueryClient();
     fetchCampaignClients: true,
     campaignActive: clientDataState === "all" ? "all" : (clientDataState === "active" ? "true" : "false"),
     campaignSearch: searchQuery,
-    fetchSheetsTemplates: true,
     fetchJobPreferences: true,
+    fetchRegexQueue: true,
     fetchUserDocsAndPreferences: !!usersId,
     userId: usersId || "",
   }), [usersSkip, clientDataState, searchQuery, usersId]);
@@ -184,9 +173,9 @@ const queryClient = useQueryClient();
   const {
     usersFullNameDomain,
     campaignClientsDomain,
-    sheetsTemplatesDomain,
     jobPreferencesOptionsDomain,
     userDocsAndPreferencesDomain,
+    regexQueueDomain,
   } = useAdminQueries(adminQueriesOptions);
   const { documentReviewDomain } = useCampaignQueries({
     userId: usersId || "",
@@ -199,30 +188,41 @@ const queryClient = useQueryClient();
     flightCampaignMutation,
     bulkSoftDeleteCampaignMutation,
     bulkPermanentDeleteCampaignMutation,
+    updateRegexQueueMutation,
   } = useAdminMutations();
   const { toggleFlightStatusMutation } = useCampaignMutations();
 
   const usersItems = usersFullNameDomain.data || [];
   const rowsData = campaignClientsDomain.data || [];
-  const templatesData = sheetsTemplatesDomain.data;
   const jobPreferencesOptionsData = jobPreferencesOptionsDomain.data;
   
   const isLoading = usersFullNameDomain.isLoading || campaignClientsDomain.isLoading;
 
-  // Create new user
-  const createNewRecord = (): void => {
-    if (!selectedClient || !selectedTemplate || !selectedAggregator) {
-      toast.error("Please select all fields")
+  // SPR-21-02-001: "Trigger regex for all users" — server-backed switch
+  // (variant "all"), same endpoints the header control already uses.
+  const [triggerValue, setTriggerValue] = useState(false);
+
+  useEffect(() => {
+    if (regexQueueDomain.data) {
+      setTriggerValue(regexQueueDomain.data.data === "True");
     }
-    const data = { client: selectedClient, template: selectedTemplate, aggregrator: selectedAggregator }
+  }, [regexQueueDomain.data]);
+
+  // SPR-21-02-001/003: Client + Search merge into one combobox, so the retired
+  // Template and Aggregator selects no longer gate record creation.
+  const createNewRecord = (): void => {
+    if (!selectedClient) {
+      toast.error("Please select a client")
+    }
+    const data = { client: selectedClient }
   }
 
   // Reverted: Update data on the table to its old no-op state (as per old code)
   const updateRecord = (): void => {
-    if (!selectedClient || !selectedTemplate || !selectedAggregator) {
-      toast.error("Please select all fields")
+    if (!selectedClient) {
+      toast.error("Please select a client")
     }
-    const data = { client: selectedClient, template: selectedTemplate, aggregrator: selectedAggregator }
+    const data = { client: selectedClient }
   }
 
   useEffect(() => {
@@ -231,15 +231,6 @@ const queryClient = useQueryClient();
       setShouldFetchMoreUsers(false)
     }
   }, [shouldFetchMoreUsers])
-
-  useEffect(() => {
-    if (templatesData) {
-      setTemplateNamesList((prev) => {
-        if (JSON.stringify(prev) === JSON.stringify(templatesData)) return prev;
-        return templatesData;
-      });
-    }
-  }, [templatesData])
 
   useEffect(() => {
     const preferencesArray = Array.isArray(jobPreferencesOptionsData)
@@ -523,12 +514,13 @@ const queryClient = useQueryClient();
     <main className="flex flex-col gap-4 mb-10">
       <ImportData isModalOpen={isImportModalOpen} setShowModal={setIsImportModalOpen} />
 
-      {/* Bulk Template Update */}
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="flex flex-col gap-4 p-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Client</span>
+      {/* SPR-21-02-001/003: flat toolbar container (design .toolbar) — white
+          box, hairline border, 8px radius, 8/10px padding, no shadow; every
+          control is a sibling in one wrapping row. Client + Search are merged
+          into one combobox; the retired Template and Aggregator filters are
+          gone. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-[#E5E9EF] bg-white px-3 py-2.5">
+            <div className="flex min-w-[200px] flex-1 sm:max-w-[300px]">
               <Combobox
                 list={rows
                   .map((user: any) => ({
@@ -536,66 +528,42 @@ const queryClient = useQueryClient();
                     label: `${user.Full_Name}`,
                   }))
                   .sort((a, b) => a.label.localeCompare(b.label))}
-                placeholder="Client Name"
+                placeholder="Search or select client..."
                 selectedItem={selectedClient}
                 setSelectedItem={setSelectedClient}
                 noItemsMessage="No client found"
                 loadingMore={shouldFetchMoreUsers}
                 setLoadingMore={setShouldFetchMoreUsers}
-                btnTriggerStyles="w-full sm:w-[200px] justify-between"
+                searchValue={searchQuery}
+                onInputChange={setSearchQuery}
+                hideChevron
+                btnTriggerStyles="w-full rounded-lg border-[1.5px] border-[#0B96D6] bg-white px-3 text-[#5B6B7C] shadow-none hover:bg-white justify-between"
               />
             </div>
-
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Search</span>
-              <SearchInput
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                className="h-9 w-full min-w-[200px] rounded-md border border-input bg-white px-3 py-2 shadow-sm text-sm sm:w-auto"
-              />
-            </div>
-
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Template</span>
-              <Combobox
-                list={[...templateNamesList].sort((a, b) => a.label.localeCompare(b.label))}
-                placeholder="Template Name"
-                selectedItem={selectedTemplate}
-                setSelectedItem={setSelectedTemplate}
-                noItemsMessage="No template found"
-                btnTriggerStyles="w-full sm:w-[200px] justify-between"
-              />
-            </div>
-
-            <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 sm:flex-none">
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Aggregator</span>
-              <Combobox
-                list={[...aggregatorsList].sort((a, b) => a.label.localeCompare(b.label))}
-                placeholder="Aggregator"
-                selectedItem={selectedAggregator}
-                setSelectedItem={setSelectedAggregator}
-                noItemsMessage="No aggregator found"
-                btnTriggerStyles="w-full sm:w-[200px] justify-between"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Regex Trigger, Allow Editing, Table View & Dropdown Config */}
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <Settings2 size={16} className="hidden text-gray-400 sm:block" />
             <CRUDDropDown columnHeaders={columnHeaders} />
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
-              <RadioTower size={16} className="text-primary" />
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-[#5B6B7C] transition-colors hover:bg-gray-50">
+              <Switch
+                checked={triggerValue}
+                onCheckedChange={(checked) => {
+                  setTriggerValue(checked);
+                  updateRegexQueueMutation.mutate(
+                    { value: checked ? "True" : "False", variant: "all" },
+                    {
+                      onSuccess: (data: any) =>
+                        toast.success(data?.message || "Trigger updated"),
+                      onError: () => {
+                        setTriggerValue(!checked);
+                        toast.error("Failed to update trigger");
+                      },
+                    }
+                  );
+                }}
+              />
               Trigger regex for all users
-              <Switch checked={false} />
             </label>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-[#5B6B7C] transition-colors hover:bg-gray-50">
               <Checkbox
                 checked={isEditable}
                 onClick={() =>
@@ -605,7 +573,6 @@ const queryClient = useQueryClient();
                   })
                 }
               />
-              <PencilLine size={16} className="text-primary" />
               Allow Editing
             </label>
 
@@ -624,7 +591,7 @@ const queryClient = useQueryClient();
                 }
               }}
             >
-              <SelectTrigger className="w-full sm:w-[200px] bg-white">
+              <SelectTrigger className="w-auto shrink-0 whitespace-nowrap rounded-md border-0 bg-[#f1f4f8] px-3 py-1.5 text-xs font-semibold text-[#5B6B7C] shadow-none hover:bg-[#e8edf3] [&>span]:truncate">
                 <SelectValue
                   placeholder=
                   "Record Actions"
@@ -636,41 +603,39 @@ const queryClient = useQueryClient();
                 <SelectItem value="update-record">Update Record</SelectItem>
               </SelectContent>
             </Select>
-          </div>
 
           <Tabs
+            className="ml-auto"
             value={clientDataState}
             onValueChange={(value) => {
               setClientDataState(value as "active" | "recycle" | "all");
               clearSelection();
             }}
           >
-            <TabsList className="rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
+            {/* SPR-21-02-001: pill group restored inside its grey container —
+                solid brand active state, no icons */}
+            <TabsList className="h-auto gap-1 rounded-xl border border-gray-100 bg-gray-50 p-1 shadow-sm">
               <TabsTrigger
                 value="all"
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-[#5B6B7C] transition-colors hover:bg-white hover:text-[#0876A8] data-[state=active]:bg-[#0876A8] data-[state=active]:text-white data-[state=active]:hover:bg-[#0876A8]"
               >
-                <LayoutGrid size={14} />
                 All Clients
               </TabsTrigger>
               <TabsTrigger
                 value="active"
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-[#5B6B7C] transition-colors hover:bg-white hover:text-[#0876A8] data-[state=active]:bg-[#0876A8] data-[state=active]:text-white data-[state=active]:hover:bg-[#0876A8]"
               >
-                <Users2 size={14} />
                 Active Users
               </TabsTrigger>
               <TabsTrigger
                 value="recycle"
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors hover:text-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-[#5B6B7C] transition-colors hover:bg-white hover:text-[#0876A8] data-[state=active]:bg-[#0876A8] data-[state=active]:text-white data-[state=active]:hover:bg-[#0876A8]"
               >
-                <Archive size={14} />
                 Recycle Bin
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Campaign Table Section */}
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">

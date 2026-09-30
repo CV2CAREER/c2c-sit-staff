@@ -14,8 +14,10 @@ const clientCampaignApplicationColumns = [
   "Application_Source",
   "Category",
   "Classification",
-  "Client",
-  "Country",
+  // SPR-21-02-005: commented out, not deleted — Client/Country repeat on
+  // every row of a single-client page; hoisted to the table header label.
+  // "Client",
+  // "Country",
   "Date_Advertised",
   "External_Jobsite",
   "Internal_Jobsite",
