@@ -75,16 +75,15 @@ export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefin
 // Steps with no code path anywhere that completes them automatically —
 // email_verified, document_uploaded, document_accepted, service_selection,
 // payment_confirmed, payment_receipt_sent, social_follow, preference_update,
-// rtr_dispatched, job_credentials_provided and campaign_ended are the only
-// ones wired to a real trigger elsewhere; everything else (including every
-// newly added step below) requires an admin Attest until a real automatic
-// trigger is built for it.
+// rtr_dispatched, cv_uploaded, job_credentials_provided and campaign_ended
+// are the only ones wired to a real trigger elsewhere; everything else
+// (including every newly added step below) requires an admin Attest until a
+// real automatic trigger is built for it.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
-  "cv_uploaded",
   "cv_variant_dispatch",
   "cv_approved",
   "cv_variant_uploaded",
