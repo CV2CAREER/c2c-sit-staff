@@ -167,6 +167,14 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // customer + delivery team; a manual attest of the same step sends the
   // same set (the wasCompleted guard keeps the two paths from doubling up).
   "applications_started",
+  // SPR-21-13-004 — Interview Milestone Reached (audit step 27): either-side
+  // attest (staff form or the client's self-report endpoint) mails the
+  // customer + delivery team and posts to #town-crier.
+  "interview_milestone",
+  // SPR-21-13-004 — IPP Dispatched (audit step 28): auto-completed by
+  // saveInterviewPackController when the pack lands in document history;
+  // the customer email carries the pack's direct download link.
+  "interview_prep_pack_dispatched",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -234,6 +242,7 @@ export async function completeJourneyStepOnce(
   actorType: ClientJourneyActorType,
   source: ClientJourneySource,
   host?: string,
+  details?: AttestDetails,
 ): Promise<boolean> {
   try {
     const wasCompleted = await isJourneyStepCompleted(userId, stepKey);
@@ -247,7 +256,7 @@ export async function completeJourneyStepOnce(
     await completeStep(userId, stepKey, actorId, actorType, source);
 
     if (ADMIN_ATTEST_NOTIFY_STEPS.has(stepKey)) {
-      notifySubscriptionStepCompletedByAdmin(userId, stepKey, actorId, host);
+      notifySubscriptionStepCompletedByAdmin(userId, stepKey, actorId, host, details);
     }
     return true;
   } catch (error) {

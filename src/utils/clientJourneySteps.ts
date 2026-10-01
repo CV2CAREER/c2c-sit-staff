@@ -76,10 +76,13 @@ export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefin
 // email_verified, document_uploaded, document_accepted, service_selection,
 // payment_confirmed, payment_receipt_sent, social_follow, preference_update,
 // rtr_dispatched, cv_uploaded, job_credentials_provided, cv_variant_dispatch,
-// cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron)
-// and campaign_ended are the only ones wired to a real trigger elsewhere;
+// cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron),
+// interview_prep_pack_dispatched (SPR-21-13-004 IPP upload hook) and
+// campaign_ended are the only ones wired to a real trigger elsewhere;
 // everything else (including every newly added step below) requires an admin
-// Attest until a real automatic trigger is built for it.
+// Attest until a real automatic trigger is built for it. Note the attest-only
+// steps can still NOTIFY on first completion (ADMIN_ATTEST_NOTIFY_STEPS) —
+// this set only tracks which ones have a non-attest trigger.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
@@ -93,7 +96,6 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "campaign_launched",
   "week4_checkin",
   "interview_milestone",
-  "interview_prep_pack_dispatched",
   "offer_placement_recorded",
   "expiration_notice_14day",
   "expiration_notice_7day",

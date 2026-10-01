@@ -774,6 +774,22 @@ export const saveInterviewPackController = catchAsyncError(
       const location = getEnvironmentFromHost(host);
       const fileName = upload.document?.name || `Interview_Pack.${format}`;
 
+      // SPR-21-13-004 — the IPP upload landing in document history IS the
+      // dispatch (audit step 28): auto-attest interview_prep_pack_dispatched
+      // once and notify the customer (email with the pack's direct download
+      // link) + #town-crier. Fire-and-forget, same contract as the
+      // cv_variant_dispatch hook in saveCvVariantController: a journey tick
+      // must never fail the save, and it stays silent if already complete.
+      void completeJourneyStepOnce(
+        userId,
+        "interview_prep_pack_dispatched",
+        adminUser?.id ?? "system",
+        ClientJourneyActorType.ADMIN,
+        ClientJourneySource.AUTOMATIC,
+        host,
+        { downloadUrl: upload.document?.url },
+      );
+
       setImmediate(async () => {
         try {
           await SlackService.notify({

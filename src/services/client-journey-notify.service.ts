@@ -55,6 +55,8 @@ export type AttestDetails = {
   scheduledAt?: Date;
   note?: string;
   mode?: "scheduled" | "completed";
+  /** SPR-21-13-004 — direct download URL for the IPP dispatch email. */
+  downloadUrl?: string;
 };
 
 type StepMail = {
@@ -240,6 +242,52 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
   ],
   service_selection: subscriptionStepMails,
   payment_confirmed: subscriptionStepMails,
+  // SPR-21-13-004 — Interview Milestone Reached (audit step 27). Fired on the
+  // FIRST completion from EITHER side: a staff attest (ADMIN_ATTEST_NOTIFY_STEPS
+  // below) or the client's new self-report endpoint on the customer backend.
+  // Audit alignment: Slack + customer + delivery-team emails.
+  interview_milestone: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Interview Milestone Reached",
+      templateName: "interview-milestone-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `Interview Milestone Reached - ${ctx.fullName}`,
+      templateName: "interview-milestone-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
+  // SPR-21-13-004 — Interview Preparation Pack Dispatched (audit step 28):
+  // auto-attested when the IPP upload lands in document history; the customer
+  // email carries the direct download link (DoD2; customer copy only — the
+  // admin already got the existing "Interview Pack Generated" town-crier post).
+  interview_prep_pack_dispatched: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Interview Preparation Pack Is Ready",
+      templateName: "interview-pack-dispatched-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        downloadUrl: ctx.details?.downloadUrl || `${ctx.frontendUrl}/dashboard/profile`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -398,6 +446,10 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Campaign launched \u2014 the client's campaign is live; applications begin now.",
   applications_started:
     "First application sent \u2014 the client's first job application has gone out on their behalf.",
+  interview_milestone:
+    "Interview milestone reached \u2014 recorded by the client or the team; interview follow-up begins.",
+  interview_prep_pack_dispatched:
+    "Interview Preparation Pack dispatched \u2014 emailed to the client with a direct download link.",
   profile_alignment_check:
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:
