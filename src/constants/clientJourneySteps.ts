@@ -85,15 +85,14 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // also starts here — none of them have a real automatic trigger yet.
 // job_credentials_provided dropped out (SPR-21-11-011): the customer's own
 // credential submission now completes it. cv_uploaded dropped out
-// (SPR-21-11-008): a resume upload now completes it.
+// (SPR-21-11-008): a resume upload now completes it. cv_variant_dispatch,
+// cv_approved and cv_variant_uploaded dropped out (SPR-21-11-009): admin save
+// of the variant and the client's approving re-upload now complete them.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
-  "cv_variant_dispatch",
-  "cv_approved",
-  "cv_variant_uploaded",
   "preference_review_session",
   "jobsite_verification",
   "jobsite_credentials_approved",
