@@ -138,11 +138,18 @@ async function completeStep(
 // SPR-21-11-012: the two Final Checks quality gates the Notification Audit
 // (steps 20-22) found silent are wired in here too — attesting them now mails
 // the customer and posts to #town-crier.
+// SPR-21-11-009: the three CV Toolkit steps (12-14) join as well, so a manual
+// attest of a step the customer/admin upload path already completed stays
+// silent (wasCompleted guard below) — the manual half of the DoD's
+// duplicate-notification safeguard.
 const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   "service_selection",
   "payment_confirmed",
   "profile_alignment_check",
   "campaign_readiness_confirmed",
+  "cv_variant_dispatch",
+  "cv_approved",
+  "cv_variant_uploaded",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -183,6 +190,44 @@ export async function attestClientJourneyStep(
   }
 
   return step;
+}
+
+/**
+ * SPR-21-11-009 — the automatic side of the duplicate-notification
+ * safeguard. Completes a journey step only when it is not already complete
+ * (no matter who completed it), fires that step's notifications only on this
+ * first transition, and returns whether it completed the step. Never throws:
+ * a journey tick must not break the action that triggered it.
+ */
+export async function completeJourneyStepOnce(
+  userId: string,
+  stepKey: string,
+  actorId: string,
+  actorType: ClientJourneyActorType,
+  source: ClientJourneySource,
+  host?: string,
+): Promise<boolean> {
+  try {
+    const wasCompleted = await isJourneyStepCompleted(userId, stepKey);
+    if (wasCompleted) {
+      logger.info(
+        `Step "${stepKey}" already complete for ${userId} — skipping completion and notification`,
+      );
+      return false;
+    }
+
+    await completeStep(userId, stepKey, actorId, actorType, source);
+
+    if (ADMIN_ATTEST_NOTIFY_STEPS.has(stepKey)) {
+      notifySubscriptionStepCompletedByAdmin(userId, stepKey, actorId, host);
+    }
+    return true;
+  } catch (error) {
+    logger.error(
+      `Automatic completion of step "${stepKey}" failed for ${userId}: ${error}`,
+    );
+    return false;
+  }
 }
 
 // Side-effect hook for the existing document-approval flow

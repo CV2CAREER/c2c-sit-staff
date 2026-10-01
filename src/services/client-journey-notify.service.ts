@@ -121,6 +121,48 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-11-009 — CV Toolkit steps 12-14. The same content is sent by the
+  // customer backend's own notify module when the upload path completes 13/14
+  // automatically; these entries cover the manual-attest half of the
+  // duplicate-notification safeguard.
+  cv_variant_dispatch: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your CV Variant Is Ready to Review",
+      templateName: "cv-variant-dispatched-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
+  cv_approved: (ctx) => [
+    {
+      email: TEAM_EMAIL!,
+      subject: `CV Approved by ${ctx.fullName}`,
+      templateName: "cv-approved-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
+  cv_variant_uploaded: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Final CV Is Locked In",
+      templateName: "cv-variant-uploaded-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
 };
 
 /** First Slack line for 012's gates; other steps keep the generic body only. */
@@ -129,6 +171,12 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:
     "Campaign Readiness Confirmed \u2014 final quality gate passed; the campaign is ready to launch.",
+  cv_variant_dispatch:
+    "CV Variant dispatched \u2014 ready for the client to review.",
+  cv_approved:
+    "CV approved by the client \u2014 feedback returned, delivery can pick up the final CV.",
+  cv_variant_uploaded:
+    "Final CV variant uploaded \u2014 locked in for applications.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
