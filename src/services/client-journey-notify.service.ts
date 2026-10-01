@@ -181,6 +181,34 @@ const subscriptionStepMails = (ctx: StepMailContext): StepMail[] => [
  * kept byte-for-byte).
  */
 const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
+  // SPR-21-13-002 — Campaign Commenced (audit step 23). On admin attest the
+  // customer gets the "campaign is live" email and the delivery team their
+  // copy; the Town Crier Slack post is the shared notify path below.
+  campaign_launched: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Campaign Is Now Live",
+      templateName: "campaign-launched-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `Campaign Launched - ${ctx.fullName}`,
+      templateName: "campaign-launched-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   service_selection: subscriptionStepMails,
   payment_confirmed: subscriptionStepMails,
   profile_alignment_check: (ctx) => [
@@ -337,6 +365,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
 
 /** First Slack line for 012's gates; other steps keep the generic body only. */
 const STEP_SLACK_HEADLINES: Record<string, string> = {
+  campaign_launched:
+    "Campaign launched \u2014 the client's campaign is live; applications begin now.",
   profile_alignment_check:
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:

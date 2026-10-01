@@ -159,6 +159,9 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   "welcome_call_scheduled",
   "welcome_call_completed",
   "preference_review_session",
+  // SPR-21-13-002 — Campaign Commenced (audit step 23): attest now emails the
+  // customer ("campaign is live") + the delivery team and posts to #town-crier.
+  "campaign_launched",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
