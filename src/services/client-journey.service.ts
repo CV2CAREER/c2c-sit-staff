@@ -8,6 +8,7 @@ import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { CredentialsTour } from "../models/v1/credentials-tour.model";
 import { notifySubscriptionStepCompletedByAdmin } from "./client-journey-notify.service";
+import { dispatchConfirmationMessages } from "./journey-confirmation-messages.service";
 
 const logger = getServiceLogger("ClientJourneyService");
 
@@ -175,7 +176,13 @@ export async function attestClientJourneyStep(
   logger.info(`Admin ${adminId} attesting client journey step "${stepKey}" for client ${userId}`);
 
   const shouldNotify = ADMIN_ATTEST_NOTIFY_STEPS.has(stepKey);
-  const wasCompleted = shouldNotify ? await isJourneyStepCompleted(userId, stepKey) : false;
+  // SPR-21-11-007: attesting `confirmation_sent` dispatches the three
+  // component messages (social follow, session details, RTR/CV info) — but
+  // only the first time the step completes, the same duplicate guard the
+  // notification steps use.
+  const shouldDispatchConfirmations = stepKey === "confirmation_sent";
+  const needsCompletionCheck = shouldNotify || shouldDispatchConfirmations;
+  const wasCompleted = needsCompletionCheck ? await isJourneyStepCompleted(userId, stepKey) : false;
 
   const step = await completeStep(
     userId,
@@ -184,6 +191,10 @@ export async function attestClientJourneyStep(
     ClientJourneyActorType.ADMIN,
     ClientJourneySource.MANUAL,
   );
+
+  if (shouldDispatchConfirmations && !wasCompleted) {
+    dispatchConfirmationMessages(userId, adminId);
+  }
 
   if (shouldNotify && !wasCompleted) {
     notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId);

@@ -77,6 +77,7 @@ import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { EmailTemplateTrigger } from "../models/v1/email-template-trigger.model";
 import { EmailTestSendLog } from "../models/v1/email-test-send-log.model";
+import { JourneyMessageLog } from "../models/v1/journey-message-log.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
@@ -195,6 +196,7 @@ export const modelList = [
   EmailTemplate,
   EmailTemplateTrigger,
   EmailTestSendLog,
+  JourneyMessageLog,
   InterviewPackProcess,
   TourCount,
   CredentialsTour,

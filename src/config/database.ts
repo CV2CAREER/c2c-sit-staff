@@ -22,6 +22,7 @@ import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { EmailTemplateTrigger } from '../models/v1/email-template-trigger.model';
 import { EmailTestSendLog } from '../models/v1/email-test-send-log.model';
+import { JourneyMessageLog } from '../models/v1/journey-message-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
@@ -92,7 +93,9 @@ export const connectDB = async (): Promise<void> => {
         await EmailTemplateTrigger.sync({ force: false }); // new table (FK -> email_templates) — remove after first deploy
         await EmailTestSendLog.sync({ force: false }); // new table (FK -> email_templates, users) — remove after first deploy
         await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
-        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
+        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) - remove after first deploy
+        // SPR-21-11-007: audit trail for the confirmation-message dispatch.
+        await JourneyMessageLog.sync({ force: false }); // new table - remove after first deploy
         // SPR-19-07-005: mirror sync for the shared social_verifications
         // table so admin BE boots cleanly regardless of whether customer BE
         // ran first. Remove after first deploy.
