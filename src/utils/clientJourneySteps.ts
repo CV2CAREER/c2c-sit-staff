@@ -72,6 +72,52 @@ export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefin
   CLIENT_JOURNEY_STEPS.map((step) => [step.stepKey, step]),
 );
 
+// SPR-21-13-007 — customer-facing label per step, mirrored from the staff
+// frontend's registry (constants/clientJourneySteps.ts) so the campaign-ended
+// journey-summary email can list completed steps in plain English. The backend
+// registry itself stays label-free; this map is presentation only.
+export const STEP_LABELS: Record<string, string> = {
+  account_signup: "Account signup",
+  email_verified: "Email verified",
+  document_uploaded: "Document uploaded",
+  document_accepted: "Document accepted",
+  service_selection: "Service selection",
+  payment_confirmed: "Payment confirmed",
+  payment_receipt_sent: "Payment receipt sent",
+  welcome_call_scheduled: "Welcome call scheduled",
+  welcome_call_completed: "Welcome call completed",
+  confirmation_sent: "Confirmation sent",
+  social_follow: "Social follow",
+  cv_uploaded: "CV uploaded",
+  cv_variant_dispatch: "CV variant dispatch",
+  cv_approved: "CV approved",
+  cv_variant_uploaded: "CV variant uploaded",
+  rtr_dispatched: "RTR dispatched",
+  preference_update: "Preference update",
+  preference_review_session: "Preference review session",
+  job_credentials_provided: "Job credentials provided",
+  jobsite_verification: "Jobsite verification",
+  jobsite_credentials_approved: "Jobsite credentials approved",
+  profile_alignment_check: "Profile alignment check",
+  campaign_readiness_confirmed: "Campaign readiness confirmed",
+  campaign_launched: "Campaign launched",
+  applications_started: "Applications started",
+  week4_checkin: "Week 4 check-in",
+  interview_milestone: "Interview milestone",
+  interview_prep_pack_dispatched: "Interview prep pack dispatched",
+  offer_placement_recorded: "Offer/placement recorded",
+  expiration_notice_14day: "Expiration notice (14 day)",
+  expiration_notice_7day: "Expiration notice (7 day)",
+  extension_eligibility_check: "Extension eligibility check",
+  extension_decision_made: "Extension decision made",
+  extension_granted: "Extension granted",
+  expiration_notice_0day: "Expiration notice (0 day)",
+  campaign_ended: "Campaign ended",
+  exit_survey: "Exit survey",
+  referral_eligibility: "Referral eligibility",
+  renewal_offered: "Renewal offered",
+};
+
 // Steps with no code path anywhere that completes them automatically —
 // email_verified, document_uploaded, document_accepted, service_selection,
 // payment_confirmed, payment_receipt_sent, social_follow, preference_update,

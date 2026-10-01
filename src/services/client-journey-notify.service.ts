@@ -6,6 +6,11 @@ import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { fieldEncryption } from "../utils/field-encryption";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { SlackService } from "./slack.service";
+// 007 — cycle with client-journey.service (it imports this module): both
+// sides only touch each other inside function bodies, which is safe under
+// CommonJS, same convention as the admin-plan ↔ client-journey cycle.
+import { getClientJourney } from "./client-journey.service";
+import { CLIENT_JOURNEY_STEPS, STEP_LABELS } from "../utils/clientJourneySteps";
 import {
   SlackChannel,
   SlackEventType,
@@ -43,6 +48,12 @@ type StepMailContext = {
   currentYear: number;
   /** 006/010 — what the admin entered on the attest form. */
   details?: AttestDetails;
+  /**
+   * SPR-21-13-007 — the campaign-ended email leads with a summary of every
+   * step the client has completed (label + completion date, registry order).
+   * Prefetched by notifySubscriptionStepCompletedByAdmin for that step only.
+   */
+  journeySummary?: { label: string; completedAt: Date }[];
 };
 
 /**
@@ -346,6 +357,40 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-007 — Campaign Ended (audit step 36). Fired on the FIRST
+  // completion from EITHER side: the journey-panel attest or the users-table
+  // "Campaign Ended" progress milestone (confirmUserProgressController). The
+  // customer copy leads with their completed-step summary and links to the
+  // exit survey; the delivery team gets their copy; #town-crier fires via the
+  // shared path below.
+  campaign_ended: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Campaign Has Ended — Journey Summary & Feedback",
+      templateName: "campaign-ended-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        journeySummary: ctx.journeySummary ?? [],
+        surveyUrl: `${ctx.frontendUrl}/dashboard/exit-survey`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `Campaign Ended - ${ctx.fullName}`,
+      templateName: "campaign-ended-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        stepsCompleted: (ctx.journeySummary ?? []).length,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -527,6 +572,9 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Final CV variant uploaded — locked in for applications.",
   welcome_call_scheduled: "Welcome call scheduled — date and time emailed to the client.",
   welcome_call_completed: "Welcome call completed — follow-up with next steps emailed to the client.",
+  // SPR-21-13-007 — Campaign Ended (audit step 36).
+  campaign_ended:
+    "Campaign ended — journey summary and exit-survey link emailed to the client.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
@@ -552,6 +600,33 @@ export const notifySubscriptionStepCompletedByAdmin = (
       const frontendUrl = getFrontendUrl();
       const currentYear = new Date().getFullYear();
 
+      // SPR-21-13-007 — the campaign-ended email leads with the client's
+      // completed steps. Prefetched here (registry order, plain-English
+      // labels) so the STEP_MAILS builders stay synchronous; a failed
+      // prefetch degrades to an empty summary rather than dropping the mail.
+      let journeySummary: { label: string; completedAt: Date }[] | undefined;
+      if (stepKey === "campaign_ended") {
+        try {
+          const journey = await getClientJourney(userId);
+          const orderOf = new Map(CLIENT_JOURNEY_STEPS.map((s, i) => [s.stepKey, i]));
+          journeySummary = journey.steps
+            .slice()
+            .sort(
+              (a, b) =>
+                (orderOf.get(a.stepKey) ?? Number.MAX_SAFE_INTEGER) -
+                (orderOf.get(b.stepKey) ?? Number.MAX_SAFE_INTEGER),
+            )
+            .map((s) => ({
+              label: STEP_LABELS[s.stepKey] ?? s.stepKey,
+              completedAt: s.completedAt,
+            }));
+        } catch (journeyError) {
+          logger.warn(
+            `Journey summary for campaign_ended (user ${userId}) unavailable: ${journeyError} — sending without it`,
+          );
+        }
+      }
+
       const buildMails = STEP_MAILS[stepKey];
       if (!buildMails) {
         logger.warn(
@@ -573,6 +648,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
             frontendUrl,
             currentYear,
             details,
+            journeySummary,
           });
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));

@@ -4,7 +4,8 @@ import catchAsyncError from "../../utils/catchAsyncError";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { updateUserPlanByFeature, confirmUserProgress, activateCoralPlan, deactivateCoralPlan, extendUserPlan, getUserPlanSummary } from "../../services/admin-plan.service";
-import { Progress } from "../../utils/enum";
+import { completeJourneyStepOnce } from "../../services/client-journey.service";
+import { Progress, ClientJourneyActorType, ClientJourneySource } from "../../utils/enum";
 import { User } from "../../models/v1/user.model";
 import { Plan } from "../../models/v1/plan.model";
 import { getFrontendUrl } from "../../utils/helpers";
@@ -217,6 +218,28 @@ export const confirmUserProgressController = catchAsyncError(
       confirmPayment === true,
       amount !== undefined ? Number(amount) : undefined,
     );
+
+    // SPR-21-13-007 — the users-table "Campaign Ended" milestone is the
+    // second trigger for audit step 36: complete the journey step (which
+    // mails the customer their summary + the delivery team their copy and
+    // posts #town-crier) unless the journey-panel attest already did. Awaited
+    // rather than fire-and-forget so the completion row exists before any
+    // client request can observe the new progress value — otherwise the
+    // customer backend's legacy backfill could create the row silently and
+    // swallow the notification. Never throws; the first-transition guard
+    // inside keeps both trigger paths single-fire.
+    if (progress === Progress.CAMPAIGN_ENDED) {
+      const host = req.headers.host || req.headers.origin || "localhost";
+      const reqUser = req.user as any;
+      await completeJourneyStepOnce(
+        userId,
+        "campaign_ended",
+        reqUser?.id ?? "system",
+        ClientJourneyActorType.ADMIN,
+        ClientJourneySource.MANUAL,
+        host,
+      );
+    }
 
     return res.apiSuccess(
       { user },

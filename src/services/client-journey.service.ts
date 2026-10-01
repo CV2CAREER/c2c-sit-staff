@@ -194,6 +194,12 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   "extension_eligibility_check",
   "extension_decision_made",
   "extension_granted",
+  // SPR-21-13-007 — Campaign Ended (audit step 36): first completion from
+  // EITHER side — this attest or the users-table progress milestone
+  // (confirmUserProgressController) — mails the customer their journey
+  // summary with the exit-survey CTA, mails the delivery team their copy,
+  // and posts to #town-crier.
+  "campaign_ended",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
