@@ -31,9 +31,18 @@ export const useClientJourneyMutations = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-client-journey"] });
   };
 
+  // SPR-21-11-006 / 010 — scheduledAt/note/mode are the attest details the
+  // modal collects for the welcome-call and preference-review steps; every
+  // other step still attests with just clientId + stepKey.
   const { mutate: attestStep, isPending: isAttesting } = useMutateData<
     ClientJourneyStepRow,
-    { clientId: string; stepKey: string }
+    {
+      clientId: string;
+      stepKey: string;
+      scheduledAt?: string;
+      note?: string;
+      mode?: "scheduled" | "completed";
+    }
   >({
     method: "POST",
     mutationKey: ["attest-client-journey-step"],
