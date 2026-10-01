@@ -34,6 +34,8 @@ export const useClientJourneyMutations = () => {
   // SPR-21-11-006 / 010 — scheduledAt/note/mode are the attest details the
   // modal collects for the welcome-call and preference-review steps; every
   // other step still attests with just clientId + stepKey.
+  // SPR-21-13-006 — `outcome` carries the structured picker value for the
+  // extension eligibility/decision steps (e.g. "Approved", "Eligible").
   const { mutate: attestStep, isPending: isAttesting } = useMutateData<
     ClientJourneyStepRow,
     {
@@ -42,6 +44,7 @@ export const useClientJourneyMutations = () => {
       scheduledAt?: string;
       note?: string;
       mode?: "scheduled" | "completed";
+      outcome?: string;
     }
   >({
     method: "POST",
