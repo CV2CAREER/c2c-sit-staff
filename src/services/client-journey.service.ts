@@ -162,6 +162,11 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // SPR-21-13-002 — Campaign Commenced (audit step 23): attest now emails the
   // customer ("campaign is live") + the delivery team and posts to #town-crier.
   "campaign_launched",
+  // SPR-21-13-003 — First Application Sent (audit step 24): the cron
+  // auto-attests on the client's first `applications` row and mails the
+  // customer + delivery team; a manual attest of the same step sends the
+  // same set (the wasCompleted guard keeps the two paths from doubling up).
+  "applications_started",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -248,6 +253,37 @@ export async function completeJourneyStepOnce(
   } catch (error) {
     logger.error(
       `Automatic completion of step "${stepKey}" failed for ${userId}: ${error}`,
+    );
+    return false;
+  }
+}
+
+/**
+ * SPR-21-13-003 — the backfill half of the First Application auto-attest.
+ * Completes the step WITHOUT firing any notification, for clients whose
+ * first `applications` row predates the feature (a "your first application
+ * has been submitted!" email months after the fact would be wrong). Same
+ * first-transition guard and never-throws contract as
+ * completeJourneyStepOnce; returns whether it completed the step.
+ */
+export async function completeJourneyStepSilently(
+  userId: string,
+  stepKey: string,
+  actorId: string,
+  actorType: ClientJourneyActorType,
+  source: ClientJourneySource,
+): Promise<boolean> {
+  try {
+    const wasCompleted = await isJourneyStepCompleted(userId, stepKey);
+    if (wasCompleted) {
+      return false;
+    }
+
+    await completeStep(userId, stepKey, actorId, actorType, source);
+    return true;
+  } catch (error) {
+    logger.error(
+      `Silent completion of step "${stepKey}" failed for ${userId}: ${error}`,
     );
     return false;
   }

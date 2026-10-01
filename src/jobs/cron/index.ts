@@ -17,6 +17,7 @@ import { createBlogPublishJob } from './blog-publish.job';
 import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
 import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
 import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
+import { createApplicationsStartedJob } from './applications-started.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -65,6 +66,13 @@ export async function startAllCronJobs() {
     {
       name: 'Discovery Daily Summary Job',
       task: createDiscoveryDailySummaryJob(),
+    },
+    // SPR-21-13-003 — derives the applications_started journey tick from the
+    // shared `applications` table (written by the external extractor); runs on
+    // every environment so IAT exercises the same path prod will.
+    {
+      name: 'Applications Started Job',
+      task: createApplicationsStartedJob(),
     },
   ];
 

@@ -209,6 +209,35 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-003 — First Application Sent (audit step 24). Fired by the
+  // applications-started cron the moment a client's first `applications` row
+  // lands (and by a manual attest of the same step): the customer gets the
+  // "first application submitted" confirmation, the delivery team their copy.
+  applications_started: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your First Application Has Been Submitted",
+      templateName: "first-application-submitted-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `First Application Sent - ${ctx.fullName}`,
+      templateName: "first-application-submitted-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   service_selection: subscriptionStepMails,
   payment_confirmed: subscriptionStepMails,
   profile_alignment_check: (ctx) => [
@@ -367,6 +396,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
 const STEP_SLACK_HEADLINES: Record<string, string> = {
   campaign_launched:
     "Campaign launched \u2014 the client's campaign is live; applications begin now.",
+  applications_started:
+    "First application sent \u2014 the client's first job application has gone out on their behalf.",
   profile_alignment_check:
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:

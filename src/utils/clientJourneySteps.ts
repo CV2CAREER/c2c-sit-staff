@@ -76,10 +76,10 @@ export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefin
 // email_verified, document_uploaded, document_accepted, service_selection,
 // payment_confirmed, payment_receipt_sent, social_follow, preference_update,
 // rtr_dispatched, cv_uploaded, job_credentials_provided, cv_variant_dispatch,
-// cv_approved, cv_variant_uploaded and campaign_ended are the only ones wired
-// to a real trigger elsewhere; everything else (including every newly added
-// step below) requires an admin Attest until a real automatic trigger is
-// built for it.
+// cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron)
+// and campaign_ended are the only ones wired to a real trigger elsewhere;
+// everything else (including every newly added step below) requires an admin
+// Attest until a real automatic trigger is built for it.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
@@ -91,7 +91,6 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "profile_alignment_check",
   "campaign_readiness_confirmed",
   "campaign_launched",
-  "applications_started",
   "week4_checkin",
   "interview_milestone",
   "interview_prep_pack_dispatched",
