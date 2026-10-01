@@ -9,11 +9,24 @@ import { getPromptUsedByLabel } from "./promptUsedBy";
 
 const VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 
-// The only model any prompt actually runs on today — every queryDigitalOceanAI
-// call site hardcodes this in digital-factory.ts, so a prompt's `model` field
-// isn't read at execution time yet. Add new entries here once a second model
-// is wired into the backend; until then this stays a display/label choice.
-const AVAILABLE_MODELS = ["llama3.3-70b-instruct"];
+// Every model a prompt can be routed to — each one resolves, on the backend,
+// to its own DigitalOcean Gradient agent (own endpoint + access key; DO has
+// no single endpoint where a model param switches models on an agent-bound
+// call). 'gpt-oss-120b' is the shared default every prompt uses until it's
+// changed here; the rest are dedicated agents. Keep this in sync with
+// SUPPORTED_AI_MODELS in the backend's src/config/ai-models.ts
+// (c2c-iat-staff-backend) — the two aren't derived from a shared source
+// since they live in separate repos. Adding another model: create its DO
+// agent, wire its endpoint/key into the backend, add it there, then add its
+// name here.
+export const AVAILABLE_MODELS = [
+  "gpt-oss-120b",
+  "claude-sonnet-4.6",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-oss-20b",
+  "claude-fable-5",
+];
 
 // No override UI in this phase — type is inferred from the variable name
 // each time the panel renders, not persisted.
@@ -106,7 +119,7 @@ const PromptMetadataPanel = ({
 
       <Field
         label="Model"
-        hint="Which AI model this prompt is tagged with. Currently display-only — every prompt runs on the same backend model."
+        hint="Which AI model this prompt actually runs on. Leave unset to use the shared default — switching this takes effect on the next AI call, no redeploy needed."
       >
         <Select value={model || undefined} onValueChange={onModelChange}>
           <SelectTrigger className="h-9 text-xs">
