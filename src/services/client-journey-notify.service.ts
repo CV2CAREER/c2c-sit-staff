@@ -41,6 +41,20 @@ type StepMailContext = {
   planTitle: string;
   frontendUrl: string;
   currentYear: number;
+  /** 006/010 — what the admin entered on the attest form. */
+  details?: AttestDetails;
+};
+
+/**
+ * SPR-21-11-006 / SPR-21-11-010 — optional details an admin supplies when
+ * attesting the welcome-call / preference-review steps: the appointment's
+ * date & time, an outcome note, and (for the single preference-review step)
+ * which moment is being recorded — the session being scheduled or completed.
+ */
+export type AttestDetails = {
+  scheduledAt?: Date;
+  note?: string;
+  mode?: "scheduled" | "completed";
 };
 
 type StepMail = {
@@ -48,6 +62,56 @@ type StepMail = {
   subject: string;
   templateName: string;
   templateData: Record<string, unknown>;
+  /** 010 — the preference-review scheduling mail carries an .ics invite. */
+  attachments?: {
+    filename: string;
+    content: string; // base64
+    type?: string;
+    disposition?: "attachment" | "inline";
+  }[];
+};
+
+/** Human date for the 006/010 emails and the Slack body. */
+const formatDateTime = (d?: Date): string =>
+  d
+    ? d.toLocaleString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "to be confirmed";
+
+/**
+ * 010 DoD — attach a 1-hour VEVENT for the preference review session to the
+ * scheduling email so the customer can drop it straight into their calendar.
+ */
+const buildPreferenceReviewIcs = (scheduledAt: Date) => {
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const end = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//CVtoCAREER//Preference Review Session//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:preference-review-${scheduledAt.getTime()}@cvtocareer.com`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(scheduledAt)}`,
+    `DTEND:${fmt(end)}`,
+    "SUMMARY:Preference Review Session - CVtoCAREER",
+    "DESCRIPTION:Your CVtoCAREER team will walk you through your job preferences\\, realities and expectations.",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  return {
+    filename: "preference-review-session.ics",
+    content: Buffer.from(lines.join("\r\n"), "utf-8").toString("base64"),
+    type: "text/calendar",
+    disposition: "attachment" as const,
+  };
 };
 
 /** 005/013 — mirrors the customer-triggered payment path exactly. */
@@ -163,6 +227,75 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-11-006 — Welcome Call, steps 7 and 8.
+  welcome_call_scheduled: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Welcome Call Is Scheduled",
+      templateName: "welcome-call-scheduled-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        dateTime: formatDateTime(ctx.details?.scheduledAt),
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
+  welcome_call_completed: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Your Welcome Call Is Complete — Next Steps",
+      templateName: "welcome-call-completed-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        dateTime: ctx.details?.scheduledAt
+          ? formatDateTime(ctx.details.scheduledAt)
+          : undefined,
+        note: ctx.details?.note,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
+  // SPR-21-11-010 — Preference Review Session, step 17. One journey step
+  // covers both moments the DoD asks for, so the admin picks which one the
+  // attest is recording: scheduled → invite email with the .ics attached,
+  // completed → outcome/next-steps email.
+  preference_review_session: (ctx) => {
+    if (ctx.details?.mode === "completed") {
+      return [
+        {
+          email: ctx.userEmail,
+          subject: "Preference Review Session Complete — Outcomes and Next Steps",
+          templateName: "preference-review-completed-client.ejs",
+          templateData: {
+            name: ctx.firstName,
+            dateTime: ctx.details?.scheduledAt
+              ? formatDateTime(ctx.details.scheduledAt)
+              : undefined,
+            note: ctx.details?.note,
+            frontendUrl: ctx.frontendUrl,
+            currentYear: ctx.currentYear,
+          },
+        },
+      ];
+    }
+    const scheduledAt = ctx.details?.scheduledAt;
+    return [
+      {
+        email: ctx.userEmail,
+        subject: "Your Preference Review Session Is Scheduled",
+        templateName: "preference-review-scheduled-client.ejs",
+        templateData: {
+          name: ctx.firstName,
+          dateTime: formatDateTime(scheduledAt),
+          frontendUrl: ctx.frontendUrl,
+          currentYear: ctx.currentYear,
+        },
+        attachments: scheduledAt ? [buildPreferenceReviewIcs(scheduledAt)] : [],
+      },
+    ];
+  },
 };
 
 /** First Slack line for 012's gates; other steps keep the generic body only. */
@@ -176,7 +309,9 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
   cv_approved:
     "CV approved by the client \u2014 feedback returned, delivery can pick up the final CV.",
   cv_variant_uploaded:
-    "Final CV variant uploaded \u2014 locked in for applications.",
+    "Final CV variant uploaded — locked in for applications.",
+  welcome_call_scheduled: "Welcome call scheduled — date and time emailed to the client.",
+  welcome_call_completed: "Welcome call completed — follow-up with next steps emailed to the client.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
@@ -184,6 +319,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
   stepKey: string,
   actorId: string,
   host?: string,
+  details?: AttestDetails,
 ): void => {
   setImmediate(async () => {
     try {
@@ -221,6 +357,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
             planTitle,
             frontendUrl,
             currentYear,
+            details,
           });
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));
@@ -237,7 +374,17 @@ export const notifySubscriptionStepCompletedByAdmin = (
       }
 
       const slackHost = host || "localhost";
-      const headline = STEP_SLACK_HEADLINES[stepKey];
+      // 010's single step has two moments — pick the headline that matches
+      // what the admin recorded on the attest form.
+      const headline =
+        stepKey === "preference_review_session"
+          ? details?.mode === "completed"
+            ? "Preference Review Session completed — outcome summary and next steps emailed to the client."
+            : "Preference Review Session scheduled — date, time and calendar invite emailed to the client."
+          : STEP_SLACK_HEADLINES[stepKey];
+      const whenLine = details?.scheduledAt
+        ? `\nScheduled for: ${formatDateTime(details.scheduledAt)}`
+        : "";
       await SlackService.notify({
         location: getEnvironmentFromHost(slackHost),
         host: slackHost,
@@ -251,7 +398,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
         body: `${headline ? `${headline}\n` : ""}An admin completed the "${stepKey}" journey step.
 User: ${fullName} (${userEmail || userId})
 Completed by (admin id): ${actorId}
-Plan: ${planTitle}`,
+Plan: ${planTitle}${whenLine}`,
       });
 
       logger.info(

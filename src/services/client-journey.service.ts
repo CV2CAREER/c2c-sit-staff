@@ -8,6 +8,7 @@ import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { CredentialsTour } from "../models/v1/credentials-tour.model";
 import { notifySubscriptionStepCompletedByAdmin } from "./client-journey-notify.service";
+import type { AttestDetails } from "./client-journey-notify.service";
 import { dispatchConfirmationMessages } from "./journey-confirmation-messages.service";
 
 const logger = getServiceLogger("ClientJourneyService");
@@ -151,6 +152,13 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   "cv_variant_dispatch",
   "cv_approved",
   "cv_variant_uploaded",
+  // SPR-21-11-006 / SPR-21-11-010 — the Welcome Call pair (7, 8) and the
+  // Preference Review Session (17): the attest form now collects the
+  // date/time (and outcome note), and these steps email the customer and
+  // post to #town-crier on first completion.
+  "welcome_call_scheduled",
+  "welcome_call_completed",
+  "preference_review_session",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -166,6 +174,7 @@ export async function attestClientJourneyStep(
   userId: string,
   stepKey: string,
   adminId: string,
+  details?: AttestDetails,
 ): Promise<ClientJourneyStep> {
   const client = await User.findByPk(userId, { attributes: ["id"] });
 
@@ -197,7 +206,7 @@ export async function attestClientJourneyStep(
   }
 
   if (shouldNotify && !wasCompleted) {
-    notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId);
+    notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId, undefined, details);
   }
 
   return step;
