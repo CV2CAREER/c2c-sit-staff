@@ -175,6 +175,11 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // saveInterviewPackController when the pack lands in document history;
   // the customer email carries the pack's direct download link.
   "interview_prep_pack_dispatched",
+  // SPR-21-13-005 — Offer / Placement Recorded (audit step 29): either-side
+  // attest mails the congratulations copy to the customer, the delivery team
+  // their copy, and the minute watcher (see offer-placement-watch.job.ts)
+  // refreshes the leaderboard so rankings pick up the placement.
+  "offer_placement_recorded",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used

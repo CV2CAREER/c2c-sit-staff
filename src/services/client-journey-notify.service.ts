@@ -288,6 +288,35 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-005 — Offer / Placement Recorded (audit step 29). Fired on the
+  // FIRST completion from EITHER side: a staff attest (ADMIN_ATTEST_NOTIFY_STEPS
+  // below) or the client's self-report endpoint on the customer backend.
+  // Audit alignment: Slack + customer congratulations + delivery-team copy.
+  offer_placement_recorded: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Congratulations on Your Offer!",
+      templateName: "offer-placement-recorded-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `Offer / Placement Recorded - ${ctx.fullName}`,
+      templateName: "offer-placement-recorded-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -450,6 +479,8 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Interview milestone reached \u2014 recorded by the client or the team; interview follow-up begins.",
   interview_prep_pack_dispatched:
     "Interview Preparation Pack dispatched \u2014 emailed to the client with a direct download link.",
+  offer_placement_recorded:
+    "Offer / placement recorded — congratulations to the client; the leaderboard picks up the new placement.",
   profile_alignment_check:
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:

@@ -18,6 +18,7 @@ import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
 import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
 import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 import { createApplicationsStartedJob } from './applications-started.job';
+import { createOfferPlacementWatchJob } from './offer-placement-watch.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -73,6 +74,15 @@ export async function startAllCronJobs() {
     {
       name: 'Applications Started Job',
       task: createApplicationsStartedJob(),
+    },
+    // SPR-21-13-005 — offer/placement recordings (either side, shared
+    // client_journey_steps table) re-fire the Pipeline Performance
+    // Leaderboard within a minute; every environment so IAT can verify the
+    // "leaderboard update fires" DoD check (Slack routes to CRY_WOLF
+    // off-prod).
+    {
+      name: 'Offer Placement Leaderboard Watch Job',
+      task: createOfferPlacementWatchJob(),
     },
   ];
 
