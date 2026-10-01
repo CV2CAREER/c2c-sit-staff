@@ -10,6 +10,12 @@ import { CredentialsTour } from "../models/v1/credentials-tour.model";
 import { notifySubscriptionStepCompletedByAdmin } from "./client-journey-notify.service";
 import type { AttestDetails } from "./client-journey-notify.service";
 import { dispatchConfirmationMessages } from "./journey-confirmation-messages.service";
+// SPR-21-13-006 — the Granted attest performs the actual +14-day extension.
+// admin-plan.service already imports this module (markPaymentConfirmed /
+// markServiceSelection), so this closes a require cycle; it is safe under
+// this repo's CommonJS build because both sides only call into the other at
+// runtime, never at module-init.
+import { extendUserPlan } from "./admin-plan.service";
 
 const logger = getServiceLogger("ClientJourneyService");
 
@@ -180,6 +186,14 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // their copy, and the minute watcher (see offer-placement-watch.job.ts)
   // refreshes the leaderboard so rankings pick up the placement.
   "offer_placement_recorded",
+  // SPR-21-13-006 — Extension trio (audit steps 32-34). Eligibility check →
+  // #town-crier with the picker result (DoD1). Decision made → customer email
+  // stating approved/declined + #town-crier (DoD2). Granted → extendUserPlan
+  // adds 14 days, emails plan-extended.ejs and posts PAID_SUB (DoD3) before
+  // the town-crier line fires below.
+  "extension_eligibility_check",
+  "extension_decision_made",
+  "extension_granted",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -191,11 +205,16 @@ async function isJourneyStepCompleted(userId: string, stepKey: string): Promise<
   return Boolean(existing);
 }
 
+// SPR-21-13-006 — days added when "Extension Granted / +14 Days" is attested.
+const EXTENSION_GRANT_DAYS = 14;
+
 export async function attestClientJourneyStep(
   userId: string,
   stepKey: string,
   adminId: string,
   details?: AttestDetails,
+  host?: string,
+  adminUser?: { id: string; firstName?: string; lastName?: string; role?: string },
 ): Promise<ClientJourneyStep> {
   const client = await User.findByPk(userId, { attributes: ["id"] });
 
@@ -213,6 +232,19 @@ export async function attestClientJourneyStep(
   const shouldDispatchConfirmations = stepKey === "confirmation_sent";
   const needsCompletionCheck = shouldNotify || shouldDispatchConfirmations;
   const wasCompleted = needsCompletionCheck ? await isJourneyStepCompleted(userId, stepKey) : false;
+
+  // SPR-21-13-006 — the grant runs BEFORE the step completes, so a failure
+  // (e.g. no active plan) surfaces as an attest error with nothing ticked
+  // instead of a ticked step whose subscription date never moved. Guarded by
+  // !wasCompleted so a repeat attest can never stack another 14 days.
+  if (stepKey === "extension_granted" && !wasCompleted) {
+    await extendUserPlan(host || "localhost", userId, EXTENSION_GRANT_DAYS, {
+      reason: "Extension granted via journey step (SPR-21-13-006)",
+      notifyClient: true,
+      adminUser,
+      triggeredBy: `JOURNEY — admin ${adminId}`,
+    });
+  }
 
   const step = await completeStep(
     userId,

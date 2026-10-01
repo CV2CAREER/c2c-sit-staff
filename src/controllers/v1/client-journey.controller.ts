@@ -35,7 +35,7 @@ export const attestClientJourneyStep = catchAsyncError(
     }
 
     const { clientId } = req.params;
-    const { stepKey, scheduledAt, note, mode } = req.body;
+    const { stepKey, scheduledAt, note, mode, outcome } = req.body;
 
     if (!stepKey) {
       throw new ErrorHandler("stepKey is required", 400);
@@ -45,12 +45,35 @@ export const attestClientJourneyStep = catchAsyncError(
       throw new ErrorHandler('mode must be "scheduled" or "completed"', 400);
     }
 
+    if (
+      outcome !== undefined &&
+      outcome !== null &&
+      outcome !== "" &&
+      (typeof outcome !== "string" || outcome.trim().length > 60)
+    ) {
+      throw new ErrorHandler("outcome must be a string of at most 60 characters", 400);
+    }
+
     // SPR-21-11-006 / 010 — optional attest details: the appointment's
     // date/time and an outcome note, both carried into the customer emails
     // and the #town-crier Slack post. A malformed date is rejected rather
     // than silently dropped — the customer email is the record.
-    let details: { scheduledAt?: Date; note?: string; mode?: "scheduled" | "completed" } | undefined;
-    if (scheduledAt !== undefined || note !== undefined || mode !== undefined) {
+    // SPR-21-13-006 — `outcome` carries the structured picker value for the
+    // extension eligibility/decision steps.
+    let details:
+      | {
+          scheduledAt?: Date;
+          note?: string;
+          mode?: "scheduled" | "completed";
+          outcome?: string;
+        }
+      | undefined;
+    if (
+      scheduledAt !== undefined ||
+      note !== undefined ||
+      mode !== undefined ||
+      outcome !== undefined
+    ) {
       details = {};
       if (scheduledAt !== undefined && scheduledAt !== null && scheduledAt !== "") {
         const parsed = new Date(scheduledAt);
@@ -65,11 +88,34 @@ export const attestClientJourneyStep = catchAsyncError(
       if (mode) {
         details.mode = mode;
       }
+      if (typeof outcome === "string" && outcome.trim()) {
+        details.outcome = outcome.trim();
+      }
     }
 
     logger.info(`Admin ${adminId} attesting step "${stepKey}" for client ${clientId}`);
 
-    const step = await attestClientJourneyStepService(clientId, stepKey, adminId, details);
+    // SPR-21-13-006 — host routes the grant's Slack post; adminUser makes the
+    // +14-day extension's audit log attribute the real admin, not "System".
+    const host = req.headers.host || req.headers.origin || "localhost";
+    const reqUser = (req as any).user;
+    const adminUser = reqUser
+      ? {
+          id: reqUser.id,
+          firstName: reqUser.firstName,
+          lastName: reqUser.lastName,
+          role: reqUser.role,
+        }
+      : undefined;
+
+    const step = await attestClientJourneyStepService(
+      clientId,
+      stepKey,
+      adminId,
+      details,
+      host,
+      adminUser,
+    );
 
     res.apiSuccess(step, "Client journey step attested");
   },

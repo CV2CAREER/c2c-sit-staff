@@ -57,6 +57,8 @@ export type AttestDetails = {
   mode?: "scheduled" | "completed";
   /** SPR-21-13-004 — direct download URL for the IPP dispatch email. */
   downloadUrl?: string;
+  /** SPR-21-13-006 — structured attest outcome ("Approved", "Eligible"…). */
+  outcome?: string;
 };
 
 type StepMail = {
@@ -71,6 +73,14 @@ type StepMail = {
     type?: string;
     disposition?: "attachment" | "inline";
   }[];
+};
+
+/** SPR-21-13-006 — approved/declined label for the decision mail and Slack line. */
+const decisionLabel = (outcome?: string): string => {
+  const v = (outcome || "").trim().toLowerCase();
+  if (v === "approved") return "Approved";
+  if (v === "declined") return "Declined";
+  return "A decision has been recorded";
 };
 
 /** Human date for the 006/010 emails and the Slack body. */
@@ -317,6 +327,25 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-006 — Extension Decision Made (audit step 33). Customer copy
+  // only (DoD2): the email states whether the extension was approved or
+  // declined; the team-facing line goes to #town-crier instead of an admin
+  // mail (the team made the decision and already knows it).
+  extension_decision_made: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: `Your Extension Decision: ${decisionLabel(ctx.details?.outcome)}`,
+      templateName: "extension-decision-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        decision: decisionLabel(ctx.details?.outcome),
+        note: ctx.details?.note || "",
+        plan: ctx.planTitle,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -481,6 +510,11 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Interview Preparation Pack dispatched \u2014 emailed to the client with a direct download link.",
   offer_placement_recorded:
     "Offer / placement recorded — congratulations to the client; the leaderboard picks up the new placement.",
+  // SPR-21-13-006 — Extension Granted / +14 Days: extendUserPlan has bumped
+  // the subscription end date; the confirmation email is plan-extended.ejs
+  // (sent by extendUserPlan itself), so no STEP_MAILS entry here.
+  extension_granted:
+    "Extension granted — +14 days added to the subscription end date; the confirmation email is on its way.",
   profile_alignment_check:
     "Profile Alignment Check passed \u2014 the client's profile has been aligned and verified.",
   campaign_readiness_confirmed:
@@ -556,16 +590,24 @@ export const notifySubscriptionStepCompletedByAdmin = (
 
       const slackHost = host || "localhost";
       // 010's single step has two moments — pick the headline that matches
-      // what the admin recorded on the attest form.
+      // what the admin recorded on the attest form. 006's two outcome steps
+      // embed the picker value (eligibility result / approved-vs-declined).
       const headline =
         stepKey === "preference_review_session"
           ? details?.mode === "completed"
             ? "Preference Review Session completed — outcome summary and next steps emailed to the client."
             : "Preference Review Session scheduled — date, time and calendar invite emailed to the client."
-          : STEP_SLACK_HEADLINES[stepKey];
+          : stepKey === "extension_eligibility_check"
+            ? details?.outcome
+              ? `Extension eligibility check — result: ${details.outcome}.`
+              : "Extension eligibility check completed — no structured result recorded."
+            : stepKey === "extension_decision_made"
+              ? `Extension decision made — ${decisionLabel(details?.outcome)}; the customer has been emailed.`
+              : STEP_SLACK_HEADLINES[stepKey];
       const whenLine = details?.scheduledAt
         ? `\nScheduled for: ${formatDateTime(details.scheduledAt)}`
         : "";
+      const noteLine = details?.note ? `\nNote: ${details.note}` : "";
       await SlackService.notify({
         location: getEnvironmentFromHost(slackHost),
         host: slackHost,
@@ -579,7 +621,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
         body: `${headline ? `${headline}\n` : ""}An admin completed the "${stepKey}" journey step.
 User: ${fullName} (${userEmail || userId})
 Completed by (admin id): ${actorId}
-Plan: ${planTitle}${whenLine}`,
+Plan: ${planTitle}${whenLine}${noteLine}`,
       });
 
       logger.info(
