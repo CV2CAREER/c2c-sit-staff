@@ -84,35 +84,67 @@ const formatDateTime = (d?: Date): string =>
       })
     : "to be confirmed";
 
+/** ICS text values escape comma/semicolon/backslash per RFC 5545. */
+const icsEscape = (text: string) => text.replace(/([,;\\])/g, "\\$1");
+
+type IcsEventOptions = {
+  /** Unique-ish event id prefix, e.g. "welcome-call". */
+  uidPrefix: string;
+  summary: string;
+  description: string;
+  start: Date;
+  filename: string;
+};
+
 /**
- * 010 DoD — attach a 1-hour VEVENT for the preference review session to the
- * scheduling email so the customer can drop it straight into their calendar.
+ * 006/010 DoD — attach a 1-hour VEVENT to the appointment's scheduling email
+ * so the customer can drop it straight into their calendar (audit step 7 and
+ * step 17 both ask for a calendar invite).
  */
-const buildPreferenceReviewIcs = (scheduledAt: Date) => {
+const buildIcsEvent = ({ uidPrefix, summary, description, start, filename }: IcsEventOptions) => {
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const end = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//CVtoCAREER//Preference Review Session//EN",
+    `PRODID:-//CVtoCAREER//${uidPrefix}//EN`,
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
-    `UID:preference-review-${scheduledAt.getTime()}@cvtocareer.com`,
+    `UID:${uidPrefix}-${start.getTime()}@cvtocareer.com`,
     `DTSTAMP:${fmt(new Date())}`,
-    `DTSTART:${fmt(scheduledAt)}`,
+    `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,
-    "SUMMARY:Preference Review Session - CVtoCAREER",
-    "DESCRIPTION:Your CVtoCAREER team will walk you through your job preferences\\, realities and expectations.",
+    `SUMMARY:${icsEscape(summary)}`,
+    `DESCRIPTION:${icsEscape(description)}`,
     "END:VEVENT",
     "END:VCALENDAR",
   ];
   return {
-    filename: "preference-review-session.ics",
+    filename,
     content: Buffer.from(lines.join("\r\n"), "utf-8").toString("base64"),
     type: "text/calendar",
     disposition: "attachment" as const,
   };
 };
+
+const welcomeCallIcs = (start: Date) =>
+  buildIcsEvent({
+    uidPrefix: "welcome-call",
+    summary: "Welcome Call - CVtoCAREER",
+    description: "Your CVtoCAREER team will introduce the platform and answer your questions.",
+    start,
+    filename: "welcome-call.ics",
+  });
+
+const preferenceReviewIcs = (start: Date) =>
+  buildIcsEvent({
+    uidPrefix: "preference-review",
+    summary: "Preference Review Session - CVtoCAREER",
+    description:
+      "Your CVtoCAREER team will walk you through your job preferences, realities and expectations.",
+    start,
+    filename: "preference-review-session.ics",
+  });
 
 /** 005/013 — mirrors the customer-triggered payment path exactly. */
 const subscriptionStepMails = (ctx: StepMailContext): StepMail[] => [
@@ -227,7 +259,9 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
-  // SPR-21-11-006 — Welcome Call, steps 7 and 8.
+  // SPR-21-11-006 — Welcome Call, steps 7 and 8. The scheduling mail carries
+  // the .ics invite too: audit step 7 asks for "email + calendar invite" in
+  // all three personas.
   welcome_call_scheduled: (ctx) => [
     {
       email: ctx.userEmail,
@@ -239,6 +273,9 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
         frontendUrl: ctx.frontendUrl,
         currentYear: ctx.currentYear,
       },
+      attachments: ctx.details?.scheduledAt
+        ? [welcomeCallIcs(ctx.details.scheduledAt)]
+        : [],
     },
   ],
   welcome_call_completed: (ctx) => [
@@ -292,7 +329,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
           frontendUrl: ctx.frontendUrl,
           currentYear: ctx.currentYear,
         },
-        attachments: scheduledAt ? [buildPreferenceReviewIcs(scheduledAt)] : [],
+        attachments: scheduledAt ? [preferenceReviewIcs(scheduledAt)] : [],
       },
     ];
   },
