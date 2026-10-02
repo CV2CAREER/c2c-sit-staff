@@ -8,111 +8,172 @@ import Link from "next/link";
 import { CampaignClientActions } from "./CampaignClientActions";
 import { Loader2 } from "lucide-react";
 
+// const campaignTableKeys: (keyof CampaignTableColType)[] = [
+//   "id",
+//   "CustomerId",
+//   "Full_Name",
+//   "First_Name",
+//   "Middle_Name",
+//   "Last_Name",
+//   "Plan",
+//   "ReturnCount",
+//   "TourCount",
+//   "Order",
+//   "SeekSubStartDate",
+//   "Assurance",
+//   "SeekWeeklyMax",
+//   "SeekSubDurDays",
+//   "SeekSubEndDate",
+//   "GraceDuration",
+//   "CampaignEnd",
+//   "Capitalized",
+//   "SeekSubToExpireDays",
+//   "SeekSubExpired",
+//   "Country",
+//   "Active",
+//   "isActiveTriggeredByAdmin",
+//   "SeekAnswerPriority",
+//   "Seek_Aggregator",
+//   "Linkedin_Aggregator",
+//   "Jobserve_Aggregator",
+//   "EscapeCity_Aggregator",
+//   "WorkforceAustralia_Aggregator",
+//   "Indeed_Aggregator",
+//   "Monster_Aggregator",
+//   "Jora_Aggregator",
+//   "Adzuna_Aggregator",
+//   "CareerOne_Aggregator",
+//   "Reed_Aggregator",
+//   "Adecco_Aggregator",
+//   "CVLibrary_Aggregator",
+//   "NHSJobs_Aggregator",
+//   "Alias_Email",
+//   "Alias_Password",
+//   "ExternalPassword",
+//   "VaName",
+//   "VaEmail",
+//   "VetName",
+//   "VetEmail",
+//   "CompletedName",
+//   "CompletedEmail",
+//   "InterimDPCName",
+//   "InterimDPCEmail",
+//   "InterimSPCName",
+//   "InterimSPCEmail",
+//   "Last_Application",
+//   "First_Application",
+//   "First_Application_Aggregator",
+//   "Throttle_Listing",
+//   "Throttle_Duration",
+//   "Last_Application_Source",
+//   "Done",
+//   "Done_Source",
+//   "Batch",
+//   "Craft",
+//   "updateBy",
+//   "createdAt",
+//   "updatedAt",
+// ]
+
 const campaignTableKeys: (keyof CampaignTableColType)[] = [
-  "id",
-  "CustomerId",
-  "Full_Name",
-  "First_Name",
-  "Middle_Name",
-  "Last_Name",
-  "Plan",
-  "ReturnCount",
-  "TourCount",
-  "Order",
-  "SeekSubStartDate",
-  "Assurance",
-  "SeekWeeklyMax",
-  "SeekSubDurDays",
-  "SeekSubEndDate",
-  "GraceDuration",
-  "CampaignEnd",
-  "Capitalized",
-  "SeekSubToExpireDays",
-  "SeekSubExpired",
-  "Country",
-  "Active",
-  "isActiveTriggeredByAdmin",
-  "SeekAnswerPriority",
-  "Seek_Aggregator",
-  "Linkedin_Aggregator",
-  "Jobserve_Aggregator",
-  "EscapeCity_Aggregator",
-  "WorkforceAustralia_Aggregator",
-  "Indeed_Aggregator",
-  "Monster_Aggregator",
-  "Jora_Aggregator",
-  "Adzuna_Aggregator",
-  "CareerOne_Aggregator",
-  "Reed_Aggregator",
-  "Adecco_Aggregator",
-  "CVLibrary_Aggregator",
-  "NHSJobs_Aggregator",
-  "Alias_Email",
-  "Alias_Password",
-  "ExternalPassword",
-  "VaName",
-  "VaEmail",
-  "VetName",
-  "VetEmail",
-  "CompletedName",
-  "CompletedEmail",
-  "InterimDPCName",
-  "InterimDPCEmail",
-  "InterimSPCName",
-  "InterimSPCEmail",
-  "Last_Application",
-  "First_Application",
-  "First_Application_Aggregator",
-  "Throttle_Listing",
-  "Throttle_Duration",
-  "Last_Application_Source",
-  "Done",
-  "Done_Source",
-  "Batch",
-  "Craft",
-  "updateBy",
-  "createdAt",
-  "updatedAt",
+"id",
+"CustomerId",
+"Full_Name",
+"First_Name",
+"Middle_Name",
+"Last_Name",
+"Plan",
+"TourCount",
+"Order",
+"SeekSubStartDate",
+"Assurance",
+"SeekWeeklyMax",
+"SeekSubDurDays",
+"SeekSubEndDate",
+"GraceDuration",
+"CampaignEnd",
+"Capitalized",
+"SeekSubToExpireDays",
+"SeekSubExpired",
+"Active",
+"Alias_Email",
+"Alias_Password",
+"VaName",
+"VetName",
+"CompletedName",
+"InterimDPCName",
+"InterimSPCName",
+"Last_Application",
+"First_Application",
+"Craft",
+"updateBy",
+"createdAt",
+"updatedAt",
 ]
+
+// const initialTableColumns: GridColDef[] = [
+//   {
+//     field: "actions",
+//     headerName: "Actions",
+//     width: 80,
+//   },
+//   {
+//     field: "flight",
+//     headerName: "Flight",
+//     width: 150,
+//   },
+//   {
+//     field: "generate-aq",
+//     headerName: "Generate AQ",
+//     width: 150,
+//   },
+
+// ]
+
+// const renderCellAsSwitchArr = [
+//   "Seek_Aggregator",
+//   "Linkedin_Aggregator",
+//   "Jobserve_Aggregator",
+//   "EscapeCity_Aggregator",
+//   "WorkforceAustralia_Aggregator",
+//   "Indeed_Aggregator",
+//   "Monster_Aggregator",
+//   "Jora_Aggregator",
+//   "Adzuna_Aggregator",
+//   "CareerOne_Aggregator",
+//   "Reed_Aggregator",
+//   "Adecco_Aggregator",
+//   "CVLibrary_Aggregator",
+//   "NHSJobs_Aggregator",
+//   "Active",
+//   "SeekAnswerPriority",
+//   "isActiveTriggeredByAdmin",
+//   "Throttle_Listing"
+// ];
 
 const initialTableColumns: GridColDef[] = [
   {
     field: "actions",
     headerName: "Actions",
     width: 80,
+    disableExport: true,
   },
   {
     field: "flight",
     headerName: "Flight",
     width: 150,
+    disableExport: true,
   },
   {
     field: "generate-aq",
     headerName: "Generate AQ",
     width: 150,
+    disableExport: true,
   },
 
 ]
-
 const renderCellAsSwitchArr = [
-  "Seek_Aggregator",
-  "Linkedin_Aggregator",
-  "Jobserve_Aggregator",
-  "EscapeCity_Aggregator",
-  "WorkforceAustralia_Aggregator",
-  "Indeed_Aggregator",
-  "Monster_Aggregator",
-  "Jora_Aggregator",
-  "Adzuna_Aggregator",
-  "CareerOne_Aggregator",
-  "Reed_Aggregator",
-  "Adecco_Aggregator",
-  "CVLibrary_Aggregator",
-  "NHSJobs_Aggregator",
-  "Active",
-  "SeekAnswerPriority",
-  "isActiveTriggeredByAdmin",
-  "Throttle_Listing"
+  "Active"
 ];
 
 const handleTableHeader = (key: string) => {
@@ -130,6 +191,10 @@ const handleTableHeader = (key: string) => {
 
   if (key === "id") {
     return "Client Id"
+  }
+
+  if (key === "Craft") {
+    return "Course of Study"
   }
 
   if (key === "Keyword_Option") {
@@ -150,6 +215,14 @@ const handleTableHeader = (key: string) => {
 
   if (key === "VetEmail") {
     return "VPC Email"
+  }
+
+    if (key === "Alias_Email") {
+    return "Proxy Email"
+  }
+
+  if (key === "Alias_Password") {
+    return "Proxy Password"
   }
 
   if (key === "CompletedName") {
@@ -203,6 +276,17 @@ export const tableColumns: GridColDef[] = [
   ...initialTableColumns,
   ...campaignTableKeys.map((key) => {
     const headerName = handleTableHeader(key);
+
+        // Proxy Password — masked in the grid AND in the CSV export.
+    // valueGetter (not renderCell) so exportDataAsCsv cannot leak the raw value.
+    if (key === 'Alias_Password') {
+      return {
+        field: key,
+        headerName,
+        width: 150,
+        valueGetter: (value: any) => (value ? '\u2022'.repeat(8) : ''),
+      };
+    }
 
     // Custom renderer for SeekSubToExpireDays
     if (key === 'SeekSubToExpireDays') {

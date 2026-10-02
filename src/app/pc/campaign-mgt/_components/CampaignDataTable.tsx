@@ -111,6 +111,28 @@ export type Pred = {
   questions: ({ question: string; answer: string; private: boolean } | null)[];
 };
 
+const initialTableColumns: GridColDef[] = [
+  {
+    field: "actions",
+    headerName: "Actions",
+    width: 80,
+    disableExport: true,
+  },
+  {
+    field: "flight",
+    headerName: "Flight",
+    width: 150,
+    disableExport: true,
+  },
+  {
+    field: "generate-aq",
+    headerName: "Generate AQ",
+    width: 150,
+    disableExport: true,
+  },
+
+]
+
 /**
  * @title CampaignDataTable
  * @description This component fetches user data from an API and renders it in a grid using DataGridPro.
@@ -242,6 +264,7 @@ const queryClient = useQueryClient();
     return rowsData.map((client: any) => {
       // Shorthand for the credentials JSONB so we don't repeat optional chaining
       const cred = client.seekExternalCredentials ?? {};
+      
 
       return {
         // Spread raw API response first so action buttons and any extra fields are available

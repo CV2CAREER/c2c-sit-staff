@@ -35,6 +35,8 @@ import { validateHeaderName } from 'http';
 import { VACell } from './AssignVA';
 import { PencilLine } from 'lucide-react';
 import { useAdminMutations } from '@/hooks/api/admin.api';
+import { CAPITALIZED_OPTIONS } from '@/utils/enum-options';
+import { FieldLegend, FieldSwitch, LockedField, MaskedPassword } from "@/components/ui/form-field";
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
@@ -108,20 +110,7 @@ interface EditTableModalProps {
   >;
 }
 
-const capitalizedData = [
-  {
-    value: 'HOLD',
-    label: 'HOLD',
-  },
-  {
-    value: 'FLIGHT',
-    label: 'FLIGHT',
-  },
-  {
-    value: 'EMPLOYED',
-    label: 'EMPLOYED',
-  },
-];
+   
 
 export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   client,
@@ -153,6 +142,8 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
     if (top !== undefined && top !== null) return top;
     return (client as any)?.seekExternalCredentials?.[key] ?? null;
   };
+
+  
 
   // Form Definition
   const form = useForm<CampaignFormValues>({
@@ -413,11 +404,9 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                             Alias_Email. Read-only here — it's managed
                             through the Jobsite Credentials accept/approve
                             flow, not editable from Campaign Management. */}
-                        <Input
-                          placeholder="Application Email"
-                          {...field}
+                          <LockedField 
                           value={field.value ?? ''}
-                          disabled
+                          hint="Managed by the Jobsite Credentials flow"
                         />
                       </FormControl>
                       <FormMessage />
@@ -431,10 +420,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel> Alias Password</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Alias Password"
-                          {...field}
+                        <MaskedPassword
+                          name="Alias_Password"
                           value={field.value ?? ''}
+                          onChange={field.onChange}
                         />
                       </FormControl>
                       <FormMessage />
@@ -588,7 +577,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                           name="Capitalized"
                           placeholder="Capitalized"
                           className="col-span-full text-[#455A64] w-full"
-                          options={capitalizedData}
+                          options={CAPITALIZED_OPTIONS}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
                               form.setValue('Capitalized', e.value);
@@ -598,7 +587,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                           onBlur={field.onBlur}
                           value={
                             (form.getValues('Capitalized') &&
-                              capitalizedData.find(
+                              CAPITALIZED_OPTIONS.find(
                                 (c) => c.value === form.getValues('Capitalized')
                               )) ||
                             null
@@ -651,9 +640,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Active</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                       <FormControl>
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -668,8 +658,9 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Answer Priority</FormLabel>
                       <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -683,9 +674,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
                       <FormLabel>Seek Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                        <FormControl>
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -699,9 +691,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
                       <FormLabel>Reed Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                       <FormControl>
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -716,8 +709,9 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem className="flex items-center space-x-2">
                       <FormLabel>Jora Aggregator</FormLabel>
                       <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -731,9 +725,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
                       <FormLabel>Adzuna Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                       <FormControl>
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -746,10 +741,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   name="CareerOne_Aggregator"
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
-                      <FormLabel>CareerOne Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                      <FormLabel>CareerOne Aggregator</FormLabel>                      <FormControl>
+                        <FieldSwitch
+                          label="Active"
+                          checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -783,10 +778,10 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   name="Craft"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Craft</FormLabel>
+                    <FormLabel>Course of Study</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Craft"
+                          placeholder="Course of Study"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -823,7 +818,9 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
         </DialogDescription>
       </DialogHeader>
 
-      <DialogFooter>
+    <DialogFooter className="sm:justify-between">
+        <FieldLegend />
+        <div className="flex gap-2">
         <Button
           variant="outline"
           className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
@@ -847,6 +844,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
         >
           Update
         </Button>
+              </div>
       </DialogFooter>
     </DialogContent>
   );
