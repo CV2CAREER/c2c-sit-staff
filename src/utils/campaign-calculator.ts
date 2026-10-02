@@ -3,8 +3,10 @@ export interface CampaignData {
   SeekSubStartDate?: string;
   createdAt?: string | Date;
   SeekSubDurDays?: string | number;
+  SeekSubDurDaysFromPlan?: boolean;
   SeekSubEndDate?: string;
   GraceDuration?: string | number | null;
+  ValidityPeriod?: string | null;
   CampaignEnd?: string;
   SeekSubRemainingDays?: number;
   SeekSubToExpireDays?: number;
@@ -52,6 +54,43 @@ function diffDays(a: Date, b: Date): number {
 }
 
 /**
+ * Convert a plan validityPeriod into a duration in days, measured from the
+ * resolved start date. validityPeriod examples: "30 days", "6 months", "1 year".
+ *
+ * Month and year arithmetic has to be applied against a concrete date, so this
+ * takes the start date rather than returning a fixed day count.
+ *
+ * The arithmetic is UTC, matching addDays() and diffDays() above. The previous
+ * implementation used local-time setMonth()/setFullYear(), which shifted the
+ * result by a day whenever a DST boundary fell inside the period.
+ *
+ * Returns null for an unparseable or unrecognised period rather than guessing.
+ */
+export function validityPeriodToDurationDays(
+  startDate: Date,
+  period?: string | null
+): number | null {
+  if (!period) return null;
+  const [rawAmount, rawUnit = ""] = period.trim().split(/\s+/);
+  const amount = parseInt(rawAmount, 10);
+  if (!amount || isNaN(amount)) return null;
+
+  const unit = rawUnit.toLowerCase();
+  const end = new Date(startDate);
+  if (unit.startsWith("day")) {
+    end.setUTCDate(end.getUTCDate() + amount);
+  } else if (unit.startsWith("month")) {
+    end.setUTCMonth(end.getUTCMonth() + amount);
+  } else if (unit.startsWith("year")) {
+    end.setUTCFullYear(end.getUTCFullYear() + amount);
+  } else {
+    return null;
+  }
+
+  return Math.round((end.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
  * Fast, production-ready campaign calculator
  */
 export function calculateCampaignFields(data: CampaignData): CampaignData {
@@ -59,14 +98,45 @@ export function calculateCampaignFields(data: CampaignData): CampaignData {
 
   // Fall back to createdAt when SeekSubStartDate wasn't set (legacy rows)
   const startDate = parseDate(result.SeekSubStartDate) ?? parseISODate(result.createdAt);
-  const durDays = Number(result.SeekSubDurDays || 0);
-  const graceDays = Number(result.GraceDuration || 0);
 
   if (!startDate) {
     result.SeekSubRemainingDays = 0;
     result.SeekSubToExpireDays = 0;
     return result;
   }
+
+  // Duration resolution: the plan is the authority.
+  //
+  // When the governing plan has a usable validityPeriod, its duration wins over
+  // any stored value, so a client who upgrades is measured against their new plan
+  // rather than staying pinned to whatever was saved last time. A stored duration
+  // is only used when there is no plan period to derive from - that keeps clients
+  // with no plan, or a plan with an unrecognised unit, still carrying the number
+  // somebody entered for them instead of silently dropping to 0.
+  //
+  // SeekSubDurDaysFromPlan tells callers which of the two happened, so the edit
+  // modal can render the field read-only when the plan is driving it and leave it
+  // editable when a human is the only possible source. It is never persisted.
+  const fromPlan = validityPeriodToDurationDays(
+    startDate,
+    result.ValidityPeriod
+  );
+  let durDays: number;
+  if (fromPlan !== null) {
+    durDays = fromPlan;
+    result.SeekSubDurDays = fromPlan;
+    result.SeekSubDurDaysFromPlan = true;
+  } else {
+    const explicitDurDays = result.SeekSubDurDays;
+    const hasExplicitDuration =
+      explicitDurDays !== undefined &&
+      explicitDurDays !== null &&
+      String(explicitDurDays).trim() !== "";
+    durDays = hasExplicitDuration ? Number(explicitDurDays) : 0;
+    result.SeekSubDurDaysFromPlan = false;
+  }
+
+  const graceDays = Number(result.GraceDuration || 0);
 
   // Reflect the resolved start date back so callers/UI see what was actually used
   result.SeekSubStartDate = formatDate(startDate);
