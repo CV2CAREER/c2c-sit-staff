@@ -36,6 +36,9 @@ import { CECComplaint } from '../models/v1/cec-complaint.model';
 import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
 import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
 import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
+import { FaqCategory } from '../models/v1/faq-category.model';
+import { FaqArticle } from '../models/v1/faq-article.model';
+import { FaqService } from '../services/admin/faq.service';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -108,6 +111,9 @@ export const connectDB = async (): Promise<void> => {
         await CECReferralPayout.sync({ force: false });
         await CECSalesOutreach.sync({ force: false });
         await CECAmbassadorScout.sync({ force: false });
+        // INN-20 FAQ Knowledge Base — new tables (articles FK -> categories). Remove after first deploy.
+        await FaqCategory.sync({ force: false });
+        await FaqArticle.sync({ force: false });
 
         // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
         // purge and the campaignCredentialId / discovery_source_register columns)
@@ -165,6 +171,48 @@ export const connectDB = async (): Promise<void> => {
           logger.error(
             `${ENVIRONMENTNAME}: failed to add users.hear_about_us column: ${err.message}`,
           );
+        }
+
+        // INN-20 Human Support: chatbot-handoff columns on support_sessions.
+        // The DB-level default matters — customer BE creates sessions through
+        // its own model, which doesn't know these columns. Remove after first deploy.
+        try {
+          const supportCols = await queryInterface.describeTable("support_sessions");
+          if (!("fromBot" in supportCols)) {
+            await queryInterface.addColumn("support_sessions", "fromBot", {
+              type: DataTypes.BOOLEAN,
+              allowNull: false,
+              defaultValue: false,
+            });
+            logger.info(`${ENVIRONMENTNAME}: added support_sessions.fromBot column`);
+          }
+          if (!("transcript" in supportCols)) {
+            await queryInterface.addColumn("support_sessions", "transcript", {
+              type: DataTypes.JSONB,
+              allowNull: true,
+            });
+            logger.info(`${ENVIRONMENTNAME}: added support_sessions.transcript column`);
+          }
+        } catch (err: any) {
+          logger.error(
+            `${ENVIRONMENTNAME}: failed to add support_sessions handoff columns: ${err.message}`,
+          );
+        }
+
+        // FAQ view counts (opens on the public /faq page). faq_articles was
+        // created before this column existed. Remove after first deploy.
+        try {
+          const faqCols = await queryInterface.describeTable("faq_articles");
+          if (!("viewCount" in faqCols)) {
+            await queryInterface.addColumn("faq_articles", "viewCount", {
+              type: DataTypes.INTEGER,
+              allowNull: false,
+              defaultValue: 0,
+            });
+            logger.info(`${ENVIRONMENTNAME}: added faq_articles.viewCount column`);
+          }
+        } catch (err: any) {
+          logger.error(`${ENVIRONMENTNAME}: failed to add faq_articles.viewCount column: ${err.message}`);
         }
 
         // 📸 Snapshot AFTER your targeted syncs
@@ -236,6 +284,15 @@ export const connectDB = async (): Promise<void> => {
         logger.info(
           `LOCAL: Total tables in DB: ${tablesAfter.length} Tables (took ${duration}s)`
         );
+      }
+
+      // Starting FAQ taxonomy (only while faq_categories is empty), then the
+      // FAQs migrated from the public /faq page (only ones not already there).
+      try {
+        await FaqService.seedDefaultCategories();
+        await FaqService.seedWebsiteArticles();
+      } catch (seedErr: any) {
+        logger.warn(`FAQ seed skipped: ${seedErr.message}`);
       }
 
       return; // ✅ exit once connected

@@ -27,7 +27,7 @@ export class SubscriptionAllocation extends Model {
 
   @ForeignKey(() => Plan)
   @AllowNull(false)
-  @Column(DataType.UUID)
+  @Column(DataType.STRING)
   planId!: string;
 
   @BelongsTo(() => Plan, {
