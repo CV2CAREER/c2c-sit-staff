@@ -5,38 +5,6 @@ import { getSequelize, resetSequelize } from '../utils/sequelize';
 import { NODE_ENV } from './env';
 // Ensure DNS cache/serve-stale is active before any connection is opened.
 import './dns-cache';
-// import { JustCallEvent } from '../models/v1/justcall-event.model';
-// import { JustCallEventLog } from '../models/v1/justcall-event-log.model';
-// import { JustCallMessageEvent } from '../models/v1/justcall-message.model';
-// import { JustCallMessageEventLog } from '../models/v1/justcall-message-log.model';
-// import { JustCallWhatsAppMessage } from '../models/v1/justcall-whatsapp-message.model';
-// import { JustCallWhatsAppMessageLog } from '../models/v1/justcall-whatsapp-message-log.model';
-// import { JustCallSalesDialerCall } from '../models/v1/justcall-sales-dialer-call.model';
-// import { JustCallSalesDialerCallLog } from '../models/v1/justcall-sales-dialer-call-log.model';
-// import { JustCallContact } from '../models/v1/justcall-contact.model';
-// import { JustCallContactLog } from '../models/v1/justcall-contact-log.model';
-// import { JustCallAppointment } from '../models/v1/justcall-appointment.model';
-// import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.model';
-import { DataTypes } from 'sequelize';
-import { SendGridEvent } from '../models/v1/sendgrid-event.model';
-import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
-import { EmailTemplateTrigger } from '../models/v1/email-template-trigger.model';
-import { EmailTestSendLog } from '../models/v1/email-test-send-log.model';
-import { CredentialsComment } from '../models/v1/credentials-comment.model';
-import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
-import { SocialVerification } from '../models/v1/social-verification.model';
-import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
-import { DiscoveryJob } from '../models/v1/discovery-job.model';
-import { DiscoveryMatch } from '../models/v1/discovery-match.model';
-import { DiscoveryRun } from '../models/v1/discovery-run.model';
-import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
-import { CECDailyLog } from '../models/v1/cec-daily-log.model';
-import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
-import { CECComplaint } from '../models/v1/cec-complaint.model';
-import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
-import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
-import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
-
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
 
@@ -71,103 +39,17 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
-        // aiPromptSection added to vcs_prompts — force:false only CREATEs
-        // missing tables, it won't ALTER an existing one to add a column, so
-        // this needs alter:true specifically. Remove after first deploy.
         // await VCSPrompt.sync({ alter: true });
         // model column added to vcs_prompt_simulation_runs — remove after first deploy
         // await VCSPromptSimulationRun.sync({ alter: true });
         // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
         // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
-        // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy
-        // await JustCallMessageEventLog.sync({ force: false }); // new table (FK -> justcall_message_events) — remove after first deploy
-        // await JustCallWhatsAppMessage.sync({ force: false }); // new table — remove after first deploy
-        // await JustCallWhatsAppMessageLog.sync({ force: false }); // new table (FK -> justcall_whatsapp_messages) — remove after first deploy
-        // await JustCallSalesDialerCall.sync({ force: false }); // new table — remove after first deploy
-        // await JustCallSalesDialerCallLog.sync({ force: false }); // new table (FK -> justcall_sales_dialer_calls) — remove after first deploy
-        // await JustCallContact.sync({ force: false }); // new table — remove after first deploy
-        // await JustCallContactLog.sync({ force: false }); // new table (FK -> justcall_contact_events) — remove after first deploy
-        // await JustCallAppointment.sync({ force: false }); // new table — remove after first deploy
-        // await JustCallAppointmentLog.sync({ force: false }); // new table (FK -> justcall_appointments) — remove after first deploy
-        await SendGridEvent.sync({ force: false }); // new table — remove after first deploy
-        await SendGridEventLog.sync({ force: false }); // new table (FK -> sendgrid_events) — remove after first deploy
-        await EmailTemplateTrigger.sync({ force: false }); // new table (FK -> email_templates) — remove after first deploy
-        await EmailTestSendLog.sync({ force: false }); // new table (FK -> email_templates, users) — remove after first deploy
-        await CredentialsComment.sync({ force: false }); // new table (FK -> credentials) — remove after first deploy
-        await UserSegmentFilter.sync({ force: false }); // new table (FK -> users) — remove after first deploy
-        // SPR-19-07-005: mirror sync for the shared social_verifications
-        // table so admin BE boots cleanly regardless of whether customer BE
-        // ran first. Remove after first deploy.
-        await SocialVerification.sync({ force: false });
-        await DiscoverySourceRegister.sync({ force: false });
-        await DiscoveryJob.sync({ force: false });
-        await DiscoveryMatch.sync({ force: false });
-        await DiscoveryRun.sync({ force: false });
-        await DiscoverySchedule.sync({ force: false });
-        await CECDailyLog.sync({ force: false });
-        await CECIssueBurndown.sync({ force: false });
-        await CECComplaint.sync({ force: false });
-        await CECReferralPayout.sync({ force: false });
-        await CECSalesOutreach.sync({ force: false });
-        await CECAmbassadorScout.sync({ force: false });
+        // Add discovery_method column to manual_applications if missin
 
-        // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
-        // purge and the campaignCredentialId / discovery_source_register columns)
-        // are applied via the SQL migration in c2c-cleanup:
-        //   c2c-cleanup/c2c_cec_discovery_migration.sql
-        //   node c2c-cleanup/run_cec_discovery_migration.js [db_name]
-
-        // Add discovery_method column to manual_applications if missing
-        try {
-          await newSequelize.query(`
-            ALTER TABLE manual_applications 
-            ADD COLUMN IF NOT EXISTS discovery_method VARCHAR(255) DEFAULT 'staff'
-          `);
-        } catch (colErr: any) {
-          logger.warn(`discovery_method column check: ${colErr.message}`);
-        }
-
-        // SPR-19-07-005: add users.socialVerificationExempt column as a
-        // safety net if customer BE hasn't run first. Uses addColumn instead
-        // of User.sync({ alter: true }) because the users table has columns
-        // referenced by DB views/rules — a full alter fails with
-        // "cannot alter type of a column used by a view or rule".
-        // Remove after first deploy.
-        try {
-          const userCols = await queryInterface.describeTable("users");
-          if (!("socialVerificationExempt" in userCols)) {
-            await queryInterface.addColumn("users", "socialVerificationExempt", {
-              type: DataTypes.BOOLEAN,
-              allowNull: false,
-              defaultValue: false,
-            });
-            logger.info(
-              `${ENVIRONMENTNAME}: added users.socialVerificationExempt column`,
-            );
-          }
-        } catch (err: any) {
-          logger.error(
-            `${ENVIRONMENTNAME}: failed to add users.socialVerificationExempt column: ${err.message}`,
-          );
-        }
 
         // SPR-19-16-021: mirror sync for users.hear_about_us so admin BE
         // boots cleanly regardless of whether customer BE ran first.
         // Remove after first deploy.
-        try {
-          const userColsForHearAboutUs = await queryInterface.describeTable("users");
-          if (!("hear_about_us" in userColsForHearAboutUs)) {
-            await queryInterface.addColumn("users", "hear_about_us", {
-              type: DataTypes.STRING,
-              allowNull: true,
-            });
-            logger.info(`${ENVIRONMENTNAME}: added users.hear_about_us column`);
-          }
-        } catch (err: any) {
-          logger.error(
-            `${ENVIRONMENTNAME}: failed to add users.hear_about_us column: ${err.message}`,
-          );
-        }
 
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();

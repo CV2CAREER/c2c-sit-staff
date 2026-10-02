@@ -14,104 +14,199 @@ import {
 } from "../../utils/enum";
 import {
   calculateCampaignFields,
+  formatDate,
   parseDate as parseCampaignDate,
 } from "../../utils/campaign-calculator";
 
 const logger = getServiceLogger("subscription-expiry-reminder-job");
 
-// Each bucket is [fromDays, toDays] inclusive — non-overlapping so a plan is
-// notified by exactly one milestone per run.
-const MILESTONES: Array<{ from: number; to: number; label: string; emoji: string; severity: SlackSeverity }> = [
-  { from: 8,  to: 14, label: "8–14 days",     emoji: "⚠️",  severity: SlackSeverity.INFO },
-  { from: 1,  to: 7,  label: "1–7 days",      emoji: "🚨",  severity: SlackSeverity.INFO },
-  { from: 0,  to: 0,  label: "0 days (today)", emoji: "🔴",  severity: SlackSeverity.INFO },
+// The C&S team is in Nigeria, but the server (DigitalOcean) runs on UTC. Every
+// "today" / "days remaining" decision is made on the Lagos calendar date so the
+// countdown matches what admins see locally, regardless of the host timezone.
+const TIMEZONE = "Africa/Lagos";
+
+// Ordered least → most urgent. A client is placed in the most urgent milestone
+// they have reached (daysRemaining <= days), so the buckets are inclusive on
+// both ends: 8–14, 1–7 and 0 (plus overdue catch-up). Each milestone is sent at
+// most once per campaign end date, so a client is never re-notified daily. If a
+// run is missed, the next run catches up with the milestone they are now in.
+const MILESTONES: Array<{ days: number; label: string; emoji: string; severity: SlackSeverity }> = [
+  { days: 14, label: "8–14 days",       emoji: "⚠️", severity: SlackSeverity.INFO },
+  { days: 7,  label: "1–7 days",        emoji: "🚨", severity: SlackSeverity.INFO },
+  { days: 0,  label: "0 days (expired)", emoji: "🔴", severity: SlackSeverity.INFO },
 ];
 
-// Whole days between today and the end date (0 = expires today, negative = past).
-function daysUntil(endDate: Date): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-  return Math.round((end.getTime() - today.getTime()) / 86_400_000);
+// How far past its end date a tracked subscription can still be picked up and
+// deactivated when the expiry-day run was missed (server down, job failure).
+const CATCH_UP_DAYS = 30;
+
+// Stored in seekExternalCredentials so the job remembers what it already sent
+// for the current campaign cycle. Keyed by CampaignEnd: a renewal or grace
+// change moves the end date, which starts a fresh reminder cycle.
+const MARKER_KEY = "ExpiryReminder";
+
+interface ExpiryMarker {
+  CampaignEnd: string;
+  Milestone: number;
+}
+
+// Today's calendar date in Lagos, as UTC midnight so it lines up with the
+// UTC-midnight dates produced by campaign-calculator's parseDate.
+function todayInLagos(): Date {
+  const [year, month, day] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(new Date())
+    .split("-")
+    .map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+// Whole days between two UTC-midnight dates (0 = same day, negative = past).
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
 }
 
 interface ExpiringClient {
+  credentialId: string;
   clientId: string;
-  jsonb: Record<string, any>;
+  name: string;
+  planTitle: string;
+  campaignEnd: string;
   endDate: Date;
   daysRemaining: number;
+  marker: ExpiryMarker | null;
 }
 
 // The campaign management page displays a *recomputed* CampaignEnd
 // (SeekSubStartDate + SeekSubDurDays + GraceDuration) via
 // `withRecomputedFields` in campaign.service.ts — the stored
-// seekExternalCredentials.SeekSubEndDate is a stale write-time snapshot that
-// doesn't reflect later grace-period adjustments. Reading the stored value
-// here let the reminder fire on a different date than the one admins see on
-// the page. The reminder now uses the same calculator the page uses, so the
-// countdown stays in lock-step with the source of truth.
+// seekExternalCredentials.SeekSubEndDate is a stale write-time snapshot. The
+// reminder uses the same calculator the page uses, so the countdown stays in
+// lock-step with the source of truth.
 //
-// A widened SQL predicate keeps this a cheap query — Postgres filters the
-// bulk of the table on the raw stored end date, and JS applies the exact
-// milestone match after per-row recompute. The buffer covers grace periods
-// that shift the recomputed CampaignEnd forward from the stored SeekSubEndDate.
-const SQL_LOOKAHEAD_DAYS = 90;
-const SQL_LOOKBEHIND_DAYS = 30;
+// There is deliberately no SQL date pre-filter: filtering on the stored
+// SeekSubEndDate silently dropped rows where it was missing or malformed (e.g.
+// legacy rows that only have createdAt), even though their recomputed end date
+// was in range. Only the handful of fields the calculator needs are selected,
+// so loading every client row stays cheap.
+async function loadClients(today: Date): Promise<ExpiringClient[]> {
+  const jsonField = (key: string) =>
+    [literal(`"seekExternalCredentials"->>'${key}'`), key] as [ReturnType<typeof literal>, string];
 
-async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
-  const endDateExpr = `
-    to_date(
-      CASE
-        WHEN "seekExternalCredentials"->>'SeekSubEndDate' ~ '^\\d{1,2}-\\d{1,2}-\\d{4}$'
-        THEN "seekExternalCredentials"->>'SeekSubEndDate'
-        ELSE '01-01-1970'
-      END,
-      'DD-MM-YYYY'
-    )`;
-
-  const credentials = await Credentials.findAll({
+  const credentials = (await Credentials.findAll({
     where: {
       clientId: { [Op.ne]: null },
-      [Op.and]: literal(
-        `${endDateExpr} BETWEEN CURRENT_DATE - ${SQL_LOOKBEHIND_DAYS} AND CURRENT_DATE + ${SQL_LOOKAHEAD_DAYS}`,
-      ),
+      isDeleted: false,
     },
-    attributes: ["clientId", "SeekSubStartDate", "createdAt", "seekExternalCredentials"],
+    attributes: [
+      "id",
+      "clientId",
+      "SeekSubStartDate",
+      "createdAt",
+      jsonField("SeekSubDurDays"),
+      jsonField("GraceDuration"),
+      jsonField("First_Name"),
+      jsonField("Last_Name"),
+      jsonField("Plan"),
+      [literal(`"seekExternalCredentials"->'${MARKER_KEY}'`), MARKER_KEY],
+    ],
     raw: true,
-  });
+    // Skip the @AfterFind decrypt hook — it runs a query per row and none of
+    // the encrypted fields are needed here. (Honoured at runtime by
+    // Model.findAll, just missing from the FindOptions typings.)
+    hooks: false,
+  } as any)) as unknown as Array<Record<string, any>>;
 
-  return credentials.flatMap((credential) => {
-    const jsonb = ((credential as any).seekExternalCredentials || {}) as Record<string, any>;
+  // A client can have more than one credentials row. Only the one with the
+  // latest campaign end is their current subscription — an older, stale row
+  // must not trigger reminders or deactivate a client who has renewed.
+  const latestByClient = new Map<string, ExpiringClient>();
+
+  for (const row of credentials) {
     const computed = calculateCampaignFields({
-      SeekSubStartDate: (credential as any).SeekSubStartDate,
-      createdAt: (credential as any).createdAt,
-      SeekSubDurDays: jsonb.SeekSubDurDays,
-      GraceDuration: jsonb.GraceDuration,
+      SeekSubStartDate: row.SeekSubStartDate,
+      createdAt: row.createdAt,
+      SeekSubDurDays: row.SeekSubDurDays,
+      GraceDuration: row.GraceDuration,
     });
     const endDate = parseCampaignDate(computed.CampaignEnd);
-    if (!endDate) return [];
+    if (!endDate || !computed.CampaignEnd) continue;
 
-    return [
-      {
-        clientId: credential.clientId as string,
-        jsonb: { ...jsonb, CampaignEnd: computed.CampaignEnd },
-        endDate,
-        daysRemaining: daysUntil(endDate),
-      },
-    ];
-  });
+    const client: ExpiringClient = {
+      credentialId: row.id,
+      clientId: row.clientId,
+      name: `${row.First_Name || ""} ${row.Last_Name || ""}`.trim() || `User ${row.clientId}`,
+      planTitle: row.Plan || "Unknown",
+      campaignEnd: computed.CampaignEnd,
+      endDate,
+      daysRemaining: daysBetween(today, endDate),
+      marker: row[MARKER_KEY] || null,
+    };
+
+    const existing = latestByClient.get(client.clientId);
+    if (!existing || client.endDate > existing.endDate) {
+      latestByClient.set(client.clientId, client);
+    }
+  }
+
+  return [...latestByClient.values()];
 }
 
-// Keyed by the `from` value of each milestone bucket.
+// The milestone this client should be notified for on this run, or null.
+function dueMilestone(client: ExpiringClient): number | null {
+  const { daysRemaining, marker, campaignEnd } = client;
+  if (daysRemaining > MILESTONES[0].days) return null;
+
+  const reached = MILESTONES.reduce<number | null>(
+    (current, milestone) => (daysRemaining <= milestone.days ? milestone.days : current),
+    null,
+  );
+  if (reached === null) return null;
+
+  const sameCycle = marker?.CampaignEnd === campaignEnd;
+  if (sameCycle && marker!.Milestone <= reached) return null; // already sent
+
+  if (daysRemaining < 0) {
+    // Overdue: only catch up on cycles this job was already tracking (a
+    // pre-expiry reminder was sent). Untracked past-due rows — e.g. plans
+    // deactivated by an admin, or clients reactivated manually before this
+    // tracking existed — are left alone rather than mass-deactivated.
+    if (!sameCycle || daysRemaining < -CATCH_UP_DAYS) return null;
+  }
+
+  return reached;
+}
+
+// Records the sent milestone with an atomic JSONB merge, so it can't clobber a
+// concurrent edit to other seekExternalCredentials keys.
+async function saveMarker(client: ExpiringClient, milestone: number) {
+  await Credentials.sequelize!.query(
+    `UPDATE credentials
+        SET "seekExternalCredentials" = COALESCE("seekExternalCredentials", '{}'::jsonb)
+          || jsonb_build_object(
+               '${MARKER_KEY}',
+               jsonb_build_object('CampaignEnd', CAST(:campaignEnd AS text), 'Milestone', CAST(:milestone AS int))
+             )
+      WHERE id = :id`,
+    {
+      replacements: { id: client.credentialId, campaignEnd: client.campaignEnd, milestone },
+    },
+  );
+}
+
+// Keyed by the `days` value of each milestone.
 const NEXT_STEPS: Record<number, string> = {
-  8: [
+  14: [
     "• Contact each client to discuss renewal options before the deadline",
     "• Send a personalised renewal reminder email",
     "• Review the account health and flag any outstanding issues",
     "• Confirm the preferred payment method is up to date",
   ].join("\n"),
-  1: [
+  7: [
     "• Follow up with clients who have not yet renewed",
     "• Escalate to the account manager if there is no response within 24 hours",
     "• Begin preparing any landing steps in case renewal does not proceed",
@@ -126,34 +221,44 @@ const NEXT_STEPS: Record<number, string> = {
   ].join("\n"),
 };
 
+function describeCountdown(daysRemaining: number): string {
+  if (daysRemaining > 1) return `${daysRemaining} days left`;
+  if (daysRemaining === 1) return "1 day left";
+  if (daysRemaining === 0) return "expires today";
+  const ago = -daysRemaining;
+  return `expired ${ago} day${ago === 1 ? "" : "s"} ago — missed run, caught up`;
+}
+
 async function notifyMilestone(
-  clients: ExpiringClient[],
-  from: number,
-  to: number,
-  label: string,
-  emoji: string,
-  severity: SlackSeverity,
+  expiring: ExpiringClient[],
+  milestone: (typeof MILESTONES)[number],
 ) {
-  const expiring = clients.filter(
-    (client) => client.daysRemaining >= from && client.daysRemaining <= to,
-  );
+  const { days, label, emoji, severity } = milestone;
 
   if (expiring.length === 0) {
-    logger.info(`✅ No subscriptions expiring in ${label}`);
+    logger.info(`✅ No subscriptions due a ${label} reminder`);
     return;
   }
 
+  // Show the client's real account email (User.email), not the jobsite alias.
+  // Instances (not raw) so User's @AfterFind decrypts the PII email field.
+  const clientIds = expiring.map(({ clientId }) => clientId);
+  const users = await User.findAll({
+    where: { id: clientIds },
+    attributes: ["id", "email"],
+    paranoid: false,
+  });
+  const emailByUserId = new Map(users.map((user) => [user.id, user.email]));
+
   const clientLines = expiring
-    .map(({ clientId, jsonb, endDate }) => {
-      const name =
-        `${jsonb.First_Name || ""} ${jsonb.Last_Name || ""}`.trim() ||
-        `User ${clientId}`;
-      const email = jsonb.Alias_Email || "N/A";
-      const planTitle = jsonb.Plan || "Unknown";
-      const expiryDate = endDate.toLocaleDateString("en-GB");
-      return `• *${name}* (${email}) — Plan: *${planTitle}* — Expires: ${expiryDate}`;
+    .sort((a, b) => a.daysRemaining - b.daysRemaining)
+    .map(({ clientId, name, planTitle, campaignEnd, daysRemaining }) => {
+      const email = emailByUserId.get(clientId) || "N/A";
+      return `• *${name}* (${email}) — Plan: *${planTitle}* — Expires: ${campaignEnd} (${describeCountdown(daysRemaining)})`;
     })
     .join("\n");
+
+  const runAt = new Date().toLocaleString("en-GB", { timeZone: TIMEZONE });
 
   const body = [
     `${emoji} *SUBSCRIPTION EXPIRY REMINDER — ${label.toUpperCase()} REMAINING*`,
@@ -162,9 +267,9 @@ async function notifyMilestone(
     clientLines,
     "",
     "*Next Steps:*",
-    NEXT_STEPS[from],
+    NEXT_STEPS[days],
     "",
-    `_Automated check · ${new Date().toISOString()}_`,
+    `_Automated check · ${runAt} WAT_`,
   ].join("\n");
 
   await SlackService.notify({
@@ -180,58 +285,87 @@ async function notifyMilestone(
     body,
   });
 
-  if (from === 0) {
-    await Promise.all(
-      expiring.map(async ({ clientId }) => {
-        await User.update(
-          {
-            campaignActive: false,
-            hasActiveSubscription: false,
-            selectedPlan: null,
-            plan: null,
-            planId: null,
-          },
-          { where: { id: clientId } },
-        );
-
-        logger.info(`Subscription ended for user ${clientId} — reset user subscription fields`);
-      }),
+  if (days === 0) {
+    await User.update(
+      {
+        campaignActive: false,
+        hasActiveSubscription: false,
+        selectedPlan: null,
+        plan: null,
+        planId: null,
+      },
+      { where: { id: clientIds } },
     );
+    logger.info(`Subscription ended — reset subscription fields for users: ${clientIds.join(", ")}`);
   }
+
+  // Marked only after Slack (and deactivation) succeed, so a failed send is
+  // retried on the next run instead of being silently skipped.
+  await Promise.all(expiring.map((client) => saveMarker(client, days)));
 
   logger.info(`📢 Sent ${label} expiry reminder for ${expiring.length} client(s)`);
 }
 
 /**
  * Core logic — exported so it can be triggered on-demand from a test/admin
- * endpoint without waiting for the scheduled time.
+ * endpoint without waiting for the scheduled time. Safe to re-run: milestones
+ * already sent for the current cycle are not sent again.
+ *
+ * With `dryRun`, it only reports who would be notified per milestone — no
+ * Slack post, no user deactivation, no markers written.
  */
-export async function runSubscriptionExpiryReminderJob() {
-  logger.info("🔔 Running subscription expiry reminder job...");
+export async function runSubscriptionExpiryReminderJob({ dryRun = false } = {}) {
+  const today = todayInLagos();
+  logger.info(
+    `🔔 Running subscription expiry reminder job for ${formatDate(today)} (${TIMEZONE})${dryRun ? " [DRY RUN]" : ""}...`,
+  );
 
-  const clients = await loadClientsWithEndDate();
+  const clients = await loadClients(today);
+
+  const dueByMilestone = new Map<number, ExpiringClient[]>();
+  for (const client of clients) {
+    const due = dueMilestone(client);
+    if (due === null) continue;
+    dueByMilestone.set(due, [...(dueByMilestone.get(due) || []), client]);
+  }
+
+  if (dryRun) {
+    return {
+      today: formatDate(today),
+      timezone: TIMEZONE,
+      clientsScanned: clients.length,
+      milestones: MILESTONES.map(({ days, label }) => ({
+        label,
+        clients: (dueByMilestone.get(days) || [])
+          .sort((a, b) => a.daysRemaining - b.daysRemaining)
+          .map(({ clientId, name, planTitle, campaignEnd, daysRemaining, marker }) => ({
+            clientId,
+            name,
+            planTitle,
+            campaignEnd,
+            daysRemaining,
+            previousMarker: marker,
+            wouldDeactivate: days === 0,
+          })),
+      })),
+    };
+  }
 
   for (const milestone of MILESTONES) {
-    await notifyMilestone(
-      clients,
-      milestone.from,
-      milestone.to,
-      milestone.label,
-      milestone.emoji,
-      milestone.severity,
-    );
+    await notifyMilestone(dueByMilestone.get(milestone.days) || [], milestone);
   }
   logger.info("✅ Subscription expiry reminder job completed");
 }
 
 /**
  * Cron job: runs daily at 8 AM WAT (07:00 UTC).
- * Sends Slack notifications to the C&S team for subscriptions expiring
- * in 14 days, 7 days, and on expiry day (0 days remaining).
+ * Sends Slack notifications to the C&S team once when a subscription reaches
+ * 14 days, 7 days, and expiry day (0 days remaining), and resets the user's
+ * subscription fields on expiry.
  */
 export function createSubscriptionExpiryReminderJob() {
   return cron.schedule(
-    "0 7 * * *",
+    "0 8 * * *",
     async () => {
       try {
         await runSubscriptionExpiryReminderJob();
@@ -241,7 +375,7 @@ export function createSubscriptionExpiryReminderJob() {
     },
     {
       scheduled: false,
-      timezone: "Africa/Lagos",
+      timezone: TIMEZONE,
     } as any,
   );
 }

@@ -33,6 +33,9 @@ export const sendSupportMessage = catchAsyncError(async (req: any, res: Response
     if (error.message === "Support session not found") {
       return res.apiError(new ErrorHandler(error.message, 404));
     }
+    if (error.message === "Message cannot be empty") {
+      return res.apiError(new ErrorHandler(error.message, 400));
+    }
 
     return res.apiError(new ErrorHandler(error.message || "Failed to send message", 500));
   }
