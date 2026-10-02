@@ -134,12 +134,19 @@ const NON_PAYING_HIDDEN_STEP_KEYS = new Set<string>([
 // from 7 steps to 4 by dropping the payment stages; every other persona
 // (paying guest, converted client) sees the full 39-step registry.
 export function getStepsForPersona(
-  persona: { isAmbassador?: boolean | null; plan?: string | null } | null | undefined,
+  persona:
+    | { isAmbassador?: boolean | null; plan?: string | null; isEmeraldCandidate?: boolean | null }
+    | null
+    | undefined,
 ): ClientJourneyStepDefinition[] {
   if (!persona) return CLIENT_JOURNEY_STEPS;
   const isAmbassador = persona.isAmbassador === true;
+  // Pre-approval Emerald candidates have plan === null until credential
+  // approval creates the Plan row — but we still need to hide payment steps
+  // for them, so persona-aware filtering reads either marker.
   const isEmerald =
-    typeof persona.plan === "string" && persona.plan.toLowerCase() === "emerald";
+    persona.isEmeraldCandidate === true ||
+    (typeof persona.plan === "string" && persona.plan.toLowerCase() === "emerald");
   if (!isAmbassador && !isEmerald) return CLIENT_JOURNEY_STEPS;
   return CLIENT_JOURNEY_STEPS.filter((step) => !NON_PAYING_HIDDEN_STEP_KEYS.has(step.stepKey));
 }
