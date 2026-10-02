@@ -356,16 +356,18 @@ const AdminUsersJobPreferencesCard = ({
                         </span>
                       ))}
                     </div>
-                    {titlesList.length > 4 && (
-                      <div className="pointer-events-none -mt-7 mb-2 h-7 bg-gradient-to-b from-transparent to-white" />
+                    {titlesList.length >= 4 && (
+                      <>
+                        <div className="pointer-events-none -mt-7 mb-2 h-7 bg-gradient-to-b from-transparent to-white" />
+                        <button
+                          type="button"
+                          onClick={() => setIsRoleTitlesModalOpen(true)}
+                          className="text-[12.5px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1 mt-3 mb-1.5 pt-1 transition-colors"
+                        >
+                          View all {titlesList.length} selections →
+                        </button>
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setIsRoleTitlesModalOpen(true)}
-                      className="text-[12.5px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1 mt-3 mb-1.5 pt-1 transition-colors"
-                    >
-                      View all {titlesList.length} selections →
-                    </button>
                   </div>
                 ) : (
                   <span className="text-xs text-gray-400 italic">N/A</span>
