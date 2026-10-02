@@ -198,6 +198,42 @@ const subscriptionStepMails = (ctx: StepMailContext): StepMail[] => [
 ];
 
 /**
+ * SPR-21-13-001 — Week 4 / Week 12 check-in pair (audit steps 25-26). One
+ * builder for both weeks, parameterised by week label: the client mail carries
+ * the session-booking link for their progress review call / screenshare, the
+ * delivery team gets the admin copy. Fired by the check-in cron at campaign
+ * day 28 / day 84 and by a manual attest of the same step.
+ */
+const checkinStepMails = (weekLabel: string) => (ctx: StepMailContext): StepMail[] => [
+  {
+    email: ctx.userEmail,
+    subject: `Your ${weekLabel} Check-In Is Here`,
+    templateName: "checkin-client.ejs",
+    templateData: {
+      name: ctx.firstName,
+      weekLabel,
+      bookingUrl: `${ctx.frontendUrl}/dashboard/sessions/booking`,
+      frontendUrl: ctx.frontendUrl,
+      currentYear: ctx.currentYear,
+    },
+  },
+  {
+    email: TEAM_EMAIL!,
+    subject: `${weekLabel} Check-In Due - ${ctx.fullName}`,
+    templateName: "checkin-admin.ejs",
+    templateData: {
+      clientName: ctx.fullName,
+      clientEmail: ctx.userEmail,
+      plan: ctx.planTitle,
+      weekLabel,
+      link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+      frontendUrl: ctx.frontendUrl,
+      currentYear: ctx.currentYear,
+    },
+  },
+];
+
+/**
  * SPR-21-11-012 — what each attested step mails. Customer emails are collected
  * first, admin copies second; the caller sends them in one Promise.all and
  * skips everything when no customer email could be resolved (005/013 behaviour
@@ -261,6 +297,13 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-001 — Week 4 / Week 12 check-ins (audit steps 25-26). Fired by
+  // the checkin-scheduler cron at campaign day 28 / day 84 (fresh 24h window,
+  // campaign still live, week 12 only while the plan is active) and by a
+  // manual attest of the same step: booking link to the client, admin copy
+  // to the delivery team; the Town Crier post is the shared path below.
+  week4_checkin: checkinStepMails("Week 4"),
+  week12_checkin: checkinStepMails("Week 12"),
   service_selection: subscriptionStepMails,
   payment_confirmed: subscriptionStepMails,
   // SPR-21-13-004 — Interview Milestone Reached (audit step 27). Fired on the
@@ -549,6 +592,11 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
     "Campaign launched \u2014 the client's campaign is live; applications begin now.",
   applications_started:
     "First application sent \u2014 the client's first job application has gone out on their behalf.",
+  // SPR-21-13-001 — Week 4 / Week 12 check-ins (audit steps 25-26).
+  week4_checkin:
+    "Week 4 check-in \u2014 booking link emailed to the client for their progress review call or screenshare.",
+  week12_checkin:
+    "Week 12 check-in \u2014 booking link emailed to the client for their progress review call or screenshare.",
   interview_milestone:
     "Interview milestone reached \u2014 recorded by the client or the team; interview follow-up begins.",
   interview_prep_pack_dispatched:

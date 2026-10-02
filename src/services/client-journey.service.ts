@@ -173,6 +173,13 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // customer + delivery team; a manual attest of the same step sends the
   // same set (the wasCompleted guard keeps the two paths from doubling up).
   "applications_started",
+  // SPR-21-13-001 — Week 4 / Week 12 check-ins (audit steps 25-26): the cron
+  // auto-completes on campaign day 28 / day 84 and mails the customer their
+  // booking link plus the delivery team their copy; a manual attest of the
+  // same step sends the same set (the wasCompleted guard keeps the two paths
+  // from doubling up).
+  "week4_checkin",
+  "week12_checkin",
   // SPR-21-13-004 — Interview Milestone Reached (audit step 27): either-side
   // attest (staff form or the client's self-report endpoint) mails the
   // customer + delivery team and posts to #town-crier.

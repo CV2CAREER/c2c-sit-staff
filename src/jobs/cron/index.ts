@@ -18,6 +18,7 @@ import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
 import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
 import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 import { createApplicationsStartedJob } from './applications-started.job';
+import { createCheckinSchedulerJob } from './checkin-scheduler.job';
 import { createOfferPlacementWatchJob } from './offer-placement-watch.job';
 
 const logger = getServiceLogger('app-cron-jobs');
@@ -74,6 +75,14 @@ export async function startAllCronJobs() {
     {
       name: 'Applications Started Job',
       task: createApplicationsStartedJob(),
+    },
+    // SPR-21-13-001 — Week 4 / Week 12 check-in emails at campaign day 28 /
+    // day 84; eligibility is computed entirely in SQL (fresh 24h window,
+    // campaign still live, active plan for week 12) and ineligible rows get
+    // NO action at all. Every environment so IAT exercises the same path.
+    {
+      name: 'Check-in Scheduler Job',
+      task: createCheckinSchedulerJob(),
     },
     // SPR-21-13-005 — offer/placement recordings (either side, shared
     // client_journey_steps table) re-fire the Pipeline Performance

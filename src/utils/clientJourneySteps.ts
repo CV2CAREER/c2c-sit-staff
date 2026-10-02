@@ -1,6 +1,6 @@
 import { ClientJourneyPhase } from "./enum";
 
-// Canonical 39-step client journey registry — mirrors the customer backend's
+// Canonical 40-step client journey registry — mirrors the customer backend's
 // registry exactly (kept in sync by hand, same convention as the duplicated
 // ClientJourneyStep model/enums). perTour: false steps are one-time,
 // account-level and always carry tourId: null; perTour: true steps are
@@ -49,23 +49,24 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
   { order: 23, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "campaign_launched", perTour: true },
   { order: 24, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "applications_started", perTour: true },
   { order: 25, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "week4_checkin", perTour: true },
-  { order: 26, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_milestone", perTour: true },
-  { order: 27, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_prep_pack_dispatched", perTour: true },
-  { order: 28, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "offer_placement_recorded", perTour: true },
+  { order: 26, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "week12_checkin", perTour: true },
+  { order: 27, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_milestone", perTour: true },
+  { order: 28, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_prep_pack_dispatched", perTour: true },
+  { order: 29, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "offer_placement_recorded", perTour: true },
 
   // Phase 6 — Campaign Review (tour-scoped)
-  { order: 29, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_14day", perTour: true },
-  { order: 30, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_7day", perTour: true },
-  { order: 31, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_eligibility_check", perTour: true },
-  { order: 32, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_decision_made", perTour: true },
-  { order: 33, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_granted", perTour: true },
-  { order: 34, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_0day", perTour: true },
+  { order: 30, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_14day", perTour: true },
+  { order: 31, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_7day", perTour: true },
+  { order: 32, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_eligibility_check", perTour: true },
+  { order: 33, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_decision_made", perTour: true },
+  { order: 34, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_granted", perTour: true },
+  { order: 35, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_0day", perTour: true },
 
   // Phase 7 — Campaign Ended (tour-scoped)
-  { order: 35, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "campaign_ended", perTour: true },
-  { order: 36, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "exit_survey", perTour: true },
-  { order: 37, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "referral_eligibility", perTour: true },
-  { order: 38, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "renewal_offered", perTour: true },
+  { order: 36, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "campaign_ended", perTour: true },
+  { order: 37, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "exit_survey", perTour: true },
+  { order: 38, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "referral_eligibility", perTour: true },
+  { order: 39, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "renewal_offered", perTour: true },
 ];
 
 export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefinition>(
@@ -103,6 +104,7 @@ export const STEP_LABELS: Record<string, string> = {
   campaign_launched: "Campaign launched",
   applications_started: "Applications started",
   week4_checkin: "Week 4 check-in",
+  week12_checkin: "Week 12 check-in",
   interview_milestone: "Interview milestone",
   interview_prep_pack_dispatched: "Interview prep pack dispatched",
   offer_placement_recorded: "Offer/placement recorded",
@@ -123,7 +125,8 @@ export const STEP_LABELS: Record<string, string> = {
 // payment_confirmed, payment_receipt_sent, social_follow, preference_update,
 // rtr_dispatched, cv_uploaded, job_credentials_provided, cv_variant_dispatch,
 // cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron),
-// interview_prep_pack_dispatched (SPR-21-13-004 IPP upload hook) and
+// interview_prep_pack_dispatched (SPR-21-13-004 IPP upload hook),
+// week4_checkin and week12_checkin (SPR-21-13-001 check-in cron) and
 // campaign_ended are the only ones wired to a real trigger elsewhere;
 // everything else (including every newly added step below) requires an admin
 // Attest until a real automatic trigger is built for it. Note the attest-only
@@ -140,7 +143,6 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "profile_alignment_check",
   "campaign_readiness_confirmed",
   "campaign_launched",
-  "week4_checkin",
   "interview_milestone",
   "offer_placement_recorded",
   "expiration_notice_14day",
