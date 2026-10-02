@@ -20,8 +20,10 @@ import { Credentials } from "../models/v1/credentials.model";
 import { Plan } from "../models/v1/plan.model";
 import { SlackService } from "./slack.service";
 import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
-import { activateCoralPlan } from "./admin-plan.service";
+import { activateCoralPlan, activateEmeraldPlan } from "./admin-plan.service";
 import { isSocialVerificationCompleteForUser } from "./admin/social-verification.service";
+import { Partner } from "../models/v1/partner.model";
+import { Referrer } from "../models/v1/referrer.model";
 
 const logger = getServiceLogger("JobsiteCredentialService");
 
@@ -604,16 +606,21 @@ export async function approveJobsiteCredential(
       }
     });
 
-    // Coral auto-activation for Ambassador (SPR-21-43-008): once the
-    // client's jobsite credential is approved AND their social
-    // verification is complete, activate the 14-day Coral trial without
-    // any further admin action. The activateCoralPlan service already
-    // guards on isAmbassador and rejects if an active plan exists, so
-    // extra guards here would only duplicate its checks. Non-ambassador
-    // approvals fall through untouched. Emerald activation is not
-    // triggered here — for partner-referred guests the Emerald plan is
-    // created by the customer BE at signup (handleEmeraldPlanCreation),
-    // so by the time credential approval runs the plan already exists.
+    // Plan auto-activation on credential approval (SPR-21-43-008). Once
+    // the client's jobsite credential is approved AND their social
+    // verification is complete:
+    //   * Ambassadors get a 14-day Coral plan via activateCoralPlan.
+    //   * Partner-referred (Emerald) guests get a 10-day Emerald plan via
+    //     activateEmeraldPlan — this is the single point where the Emerald
+    //     clock starts, so the guest gets a full trial window beginning
+    //     from campaign-ready, not from signup.
+    // Both paths are mutually exclusive by persona (an Ambassador is never
+    // partner-referred) and non-ambassador / non-partner-referred approvals
+    // fall through untouched. Coral activation runs fire-and-forget; Emerald
+    // activation is awaited inline so the Plan row exists before the approval
+    // response returns (the Emerald guest's dashboard polls for plan state
+    // immediately after approval). Errors on either path are logged only and
+    // must never roll back the credential approval itself.
     const client = (credential as any).client as User;
     if (client?.isAmbassador) {
       setImmediate(async () => {
@@ -639,16 +646,53 @@ export async function approveJobsiteCredential(
           );
           await activateCoralPlan(host, client.id);
         } catch (err: any) {
-          // Best-effort — activation failures must not roll back the
-          // credential approval itself. Slack alert is already fired by
-          // activateCoralPlan for its own internal errors; log here for
-          // failures before it runs (e.g. social-verification lookup
-          // error).
           logger.error(
             `[CoralAutoActivate] Failed for ambassador ${client.id}: ${err?.message || err}`,
           );
         }
       });
+    } else if (client?.id) {
+      try {
+        // Detect Emerald persona by resolving the Referrer row written
+        // at signup to an accredited Channel Partner. If either step
+        // fails this isn't an Emerald guest — silently skip.
+        const referralRow = await Referrer.findOne({ where: { userId: client.id } });
+        const referrerUserId = referralRow?.referrer
+          ? await fieldEncryption.findUserByEmail(referralRow.referrer)
+          : null;
+        const accreditedPartner = referrerUserId
+          ? await Partner.findOne({
+              where: { userId: referrerUserId, isAccredited: true },
+            })
+          : null;
+
+        if (accreditedPartner) {
+          const socialComplete = await isSocialVerificationCompleteForUser(client.id);
+          if (!socialComplete) {
+            logger.info(
+              `[EmeraldAutoActivate] Skipping — social verification incomplete for ${client.id}`,
+            );
+          } else {
+            const activePlan = await Plan.findOne({
+              where: { userId: client.id, hasExpired: false },
+            });
+            if (activePlan) {
+              logger.info(
+                `[EmeraldAutoActivate] Skipping — ${client.id} already has an active plan (${activePlan.id})`,
+              );
+            } else {
+              logger.info(
+                `[EmeraldAutoActivate] Activating Emerald for ${client.id} via credential approval`,
+              );
+              await activateEmeraldPlan(host, client.id);
+            }
+          }
+        }
+      } catch (err: any) {
+        logger.error(
+          `[EmeraldAutoActivate] Failed for ${client.id}: ${err?.message || err}`,
+        );
+      }
     }
 
     return credential;
