@@ -9,9 +9,6 @@ export interface DiscoverySource {
   enabled: boolean;
   last_fetched_at: string | null;
   config: Record<string, any> | null;
-  consecutive_zero_runs: number | null;
-  auto_paused_at: string | null;
-  last_permission_error: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,14 +75,4 @@ export interface DiscoverySchedule {
   last_run_at: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface LiveMatch {
-  jobTitle: string;
-  company: string;
-  location: string;
-  clientName: string;
-  score: number;
-  rationale: string;
-  source: string;
 }

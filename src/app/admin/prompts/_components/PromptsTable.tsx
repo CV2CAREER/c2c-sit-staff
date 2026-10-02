@@ -140,6 +140,23 @@ const PromptsTable = ({ onEdit }: PromptsTableProps) => {
         columnHeaderHint("Used By", "The feature or service that calls this prompt key."),
     },
     {
+      field: "model",
+      headerName: "Model",
+      width: 150,
+      renderHeader: () =>
+        columnHeaderHint("Model", "Which AI model this prompt runs on. — means it uses the shared default."),
+      renderCell: (params) => {
+        const model = (params.row as VcsPrompt).model;
+        return model ? (
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            {model}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400">Default</span>
+        );
+      },
+    },
+    {
       field: "lastUsedAt",
       headerName: "Last Used",
       width: 160,

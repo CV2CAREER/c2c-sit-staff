@@ -21,6 +21,7 @@ import {
   HiOutlineDocumentText,
   HiOutlineMail,
   HiOutlineBriefcase,
+  HiOutlineAcademicCap,
   HiOutlinePhotograph,
   HiOutlineTable,
 } from "react-icons/hi";
@@ -41,6 +42,7 @@ const DOCUMENT_TYPE_TABS = [
   { label: "Resume", value: "resume", icon: HiOutlineDocumentText },
   { label: "Cover Letter", value: "coverletter", icon: HiOutlineMail },
   { label: "Role Title Recommendations", value: "Role Title Recommendations", icon: HiOutlineBriefcase },
+  { label: "Interview Intelligence Pack", value: "Interview Intelligence Pack", icon: HiOutlineAcademicCap },
   { label: "Support Images", value: "Support Images", icon: HiOutlinePhotograph },
   { label: "Support Spreadsheets", value: "Support Spreadsheets", icon: HiOutlineTable },
 ] as const;

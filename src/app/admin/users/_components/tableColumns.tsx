@@ -27,9 +27,11 @@ export const tableColumns: GridColDef[] = [
     },
     width: 230,
   },
-  { field: "firstName", headerName: "First Name", width: 150 },
-  { field: "middleName", headerName: "Middle Name", width: 150 },
-  { field: "lastName", headerName: "Last Name", width: 150 },
+  // SPR-21-02-002: First/Middle/Last Name columns removed — Full Name is the
+  // single name column; values stay in the row data.
+  // { field: "firstName", headerName: "First Name", width: 150 },
+  // { field: "middleName", headerName: "Middle Name", width: 150 },
+  // { field: "lastName", headerName: "Last Name", width: 150 },
   { field: "isActive", headerName: "Active", width: 100 },
   { field: "email", headerName: "Email", width: 200 },
   {

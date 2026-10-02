@@ -10,6 +10,13 @@ const MODAL_FILE = "src/app/admin/users/_components/EditActionModal.tsx";
 // Columns that are UI affordances, not data, so no modal binding is expected.
 const GRID_NON_FIELD = new Set(["actions"]);
 
+// Fields the modal owns that the grid deliberately does not render.
+// SPR-21-02-002 collapsed the three name columns: the grid shows `fullName`
+// only, while First/Middle/Last Name stay in the row data and remain editable
+// in the modal. Listed explicitly rather than tolerated, and the stale-allowance
+// check below fails if the grid ever renders them again.
+const MODAL_OWNED = new Set(["firstName", "middleName", "lastName"]);
+
 // Grid columns with no modal binding yet.
 // Each entry must be removed from this list when its field lands in the modal.
 const PENDING = new Set([
@@ -82,16 +89,28 @@ const lockedButNotDisplayed = [...TICKET_LOCKED].filter(
 const covered = new Set([...modalFields, ...displayOnlyFields]);
 
 const missing = [...gridFields].filter((f) => !covered.has(f) && !PENDING.has(f));
-const stale = [...modalFields].filter((f) => !gridFields.has(f));
-const staleDisplayOnly = [...displayOnlyFields].filter(
-  (f) => !gridFields.has(f),
+const stale = [...modalFields].filter(
+  (f) => !gridFields.has(f) && !MODAL_OWNED.has(f),
 );
+const staleDisplayOnly = [...displayOnlyFields].filter(
+  (f) => !gridFields.has(f) && !MODAL_OWNED.has(f),
+);
+
+// An allowance that the grid now renders is dead weight: the column is being
+// checked again anyway, so leaving it here would mask a future removal.
+const ownedNowInGrid = [...MODAL_OWNED].filter((f) => gridFields.has(f));
 
 const stillPending = [...gridFields].filter((f) => PENDING.has(f));
 
 if (stale.length) {
   console.error(
     `[modal-field-bindings] Modal binds fields the grid no longer has: ${stale.join(", ")}`,
+  );
+}
+
+if (ownedNowInGrid.length) {
+  console.error(
+    `[modal-field-bindings] MODAL_OWNED lists fields the grid now renders, remove them: ${ownedNowInGrid.join(", ")}`,
   );
 }
 
@@ -136,6 +155,7 @@ if (
   missing.length ||
   stale.length ||
   staleDisplayOnly.length ||
+  ownedNowInGrid.length ||
   bothWritableAndLocked.length ||
   illegallyWritable.length ||
   wronglyWritableLocked.length ||

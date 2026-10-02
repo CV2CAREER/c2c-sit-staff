@@ -1,4 +1,3 @@
-import Icon from "../../../../../public/icons"
 import { Menu, MenuHandler, MenuItem, MenuList } from "@material-tailwind/react";
 import { useState } from "react";
 import { useAdminQueries } from "@/hooks/api/admin.api";
@@ -56,7 +55,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
         : null;
 
     return (
-        <div className="flex flex-col gap-3 w-full lg:w-auto">
+        <div className="flex flex-col gap-4 w-full">
             {/* Coral plan card */}
             {isAmbassador && hasCoralActive && activePlan && (
                 <div className="rounded-xl overflow-hidden border border-orange-200 shadow-sm">
@@ -93,8 +92,9 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                 </div>
             )}
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Action buttons — uniform toolbar: equal-height items that
+                stretch evenly across the card (sim .btnrow) */}
+            <div className="flex flex-wrap items-stretch gap-3">
                 <UpgradePlanOptions
                     setSelectedPlan={setSelectedPlan}
                     setSelectedFeatureId={setSelectedFeatureId}
@@ -107,7 +107,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                         {hasCoralActive ? (
                             <button
                                 onClick={() => setShowDeactivateModal(true)}
-                                className="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                                className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap bg-red-50 border border-red-200 text-red-700 px-5 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
                             >
                                 <PowerOff className="w-4 h-4" />
                                 Deactivate Coral
@@ -115,7 +115,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                         ) : (
                             <button
                                 onClick={() => setShowCoralModal(true)}
-                                className="inline-flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
+                                className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap bg-orange-50 border border-orange-200 text-orange-700 px-5 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
                             >
                                 <ShieldCheck className="w-4 h-4" />
                                 Activate Coral
@@ -124,7 +124,7 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
                         <button
                             onClick={handleGenerateAmbassadorLink}
                             disabled={isGeneratingLink}
-                            className="inline-flex items-center gap-2 bg-career-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-career-blue-900 transition-colors disabled:opacity-60"
+                            className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap bg-career-blue-800 text-white px-5 rounded-lg text-sm font-medium hover:bg-career-blue-900 transition-colors disabled:opacity-60"
                         >
                             <Link2 className="w-4 h-4" />
                             {isGeneratingLink ? "Copying..." : "Copy Ambassador Link"}
@@ -134,12 +134,12 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
 
                 <button
                     onClick={() => setShowReferrerModal(true)}
-                    className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                    className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap border border-gray-200 bg-white text-gray-700 px-5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
                     <Users className="w-4 h-4" />
                     Assign Referrer
                 </button>
-                <button className="inline-flex items-center gap-2 border border-gray-200 bg-white text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
+                <button className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap border border-gray-200 bg-white text-gray-700 px-5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
                     <Upload className="w-4 h-4" />
                     Export
                 </button>
@@ -555,7 +555,7 @@ const UpgradePlanOptions = ({
     return (
         <Menu placement="bottom-start">
             <MenuHandler>
-                <Button className="inline-flex items-center gap-2 bg-career-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-career-blue-900 transition-colors h-auto">
+                <Button className="inline-flex h-10 min-w-[9rem] flex-1 items-center justify-center gap-2 whitespace-nowrap bg-career-blue-800 text-white px-4 rounded-lg text-sm font-medium hover:bg-career-blue-900 transition-colors">
                     <ArrowUp className="w-4 h-4" />
                     Upgrade Account
                     <ChevronDown className="w-3.5 h-3.5 opacity-70" />

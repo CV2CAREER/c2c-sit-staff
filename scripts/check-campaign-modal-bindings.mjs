@@ -12,9 +12,18 @@
  *   - edits it through a Placement Controller cell (`<VACell field="Field" />`),
  *     which is staged and saved outside the form payload.
  *
- * It also enforces two invariants that are easy to regress:
- *   1. Every retained column must be bound. There are no pending columns.
- *   2. Derived / audit columns must never become writable form controls.
+ * The retained columns are read straight out of the Admin grid component, so
+ * this check can never pass against a stale copy of the column list. An earlier
+ * revision validated the modals against a shared constant that the grid did not
+ * actually render; that reported PASS while the grid was missing 31 columns.
+ *
+ * It also enforces three invariants that are easy to regress:
+ *   1. Every retained column must be either bound in the modal or listed in
+ *      GRID_ONLY_ELSEWHERE. There are no unclassified pending columns.
+ *   2. GRID_ONLY_ELSEWHERE must stay honest: an entry that is not a real grid
+ *      column, or that the modal has since started binding, is a failure. That
+ *      stops a genuine regression from being hidden behind a stale exemption.
+ *   3. Derived / audit columns must never become writable form controls.
  *      `Full_Name` in particular is rebuilt from the first/middle/last name
  *      components server-side, so submitting it would corrupt the row.
  *
@@ -30,8 +39,8 @@ const root = join(here, '..');
 
 const read = (relative) => readFileSync(join(root, relative), 'utf8');
 
-/** The authoritative retained grid columns. */
-const GRID_KEYS_FILE = 'src/utils/campaign-table-keys.ts';
+/** The component that actually renders the campaign grid. */
+const GRID_KEYS_FILE = 'src/app/admin/campaign-mgt/_components/tableColumns.tsx';
 
 /** Columns that must never be editable form fields. */
 const NEVER_WRITABLE = new Set([
@@ -59,19 +68,59 @@ const NEVER_WRITABLE = new Set([
 ]);
 
 /**
- * Fields the legacy modal owns that are not grid columns. They stay in the
- * modal, so the checker must not fail on them.
+ * Fields the modal owns that are no longer rendered as grid columns.
+ *
+ * SPR-21-02-002 commented First/Middle/Last Name out of the grid because
+ * `Full_Name` is the single name column, but the values stay in the row data
+ * and remain editable in EditModal, so the checker must not fail on them.
  */
 const MODAL_ONLY_EXEMPT = new Set([
-  'ReturnCount',
-  'Batch',
-  'Country',
-  'SeekAnswerPriority',
-  'Seek_Aggregator',
-  'Reed_Aggregator',
-  'Jora_Aggregator',
-  'Adzuna_Aggregator',
-  'CareerOne_Aggregator',
+  'First_Name',
+  'Middle_Name',
+  'Last_Name',
+]);
+
+/**
+ * Retained grid columns the Edit modal deliberately does not own, because they
+ * are edited somewhere else rather than being missing.
+ *
+ *   - the job-board toggles and `isActiveTriggeredByAdmin` are switches in
+ *     the grid, set through the client record rather than this form
+ *   - the five controller emails are written by the placement-controller
+ *     endpoint alongside their *Name column
+ *   - `ExternalPassword` has no grid cell of its own
+ *   - `First_Application_Aggregator`, `Throttle_Listing`,
+ *     `Throttle_Duration` and `Last_Application_Source` belong to the
+ *     application-tracking flow, not to the client edit form
+ *   - `Done`, `Done_Source` are set by the CSV ingest
+ *
+ * This is a classified exclusion, not a waiver. The checks below fail if an
+ * entry stops being a real grid column, or if a modal starts binding it, so it
+ * cannot quietly absorb a regression.
+ */
+const GRID_ONLY_ELSEWHERE = new Set([
+  'isActiveTriggeredByAdmin',
+  'Linkedin_Aggregator',
+  'Jobserve_Aggregator',
+  'EscapeCity_Aggregator',
+  'WorkforceAustralia_Aggregator',
+  'Indeed_Aggregator',
+  'Monster_Aggregator',
+  'Adecco_Aggregator',
+  'CVLibrary_Aggregator',
+  'NHSJobs_Aggregator',
+  'ExternalPassword',
+  'VaEmail',
+  'VetEmail',
+  'CompletedEmail',
+  'InterimDPCEmail',
+  'InterimSPCEmail',
+  'First_Application_Aggregator',
+  'Throttle_Listing',
+  'Throttle_Duration',
+  'Last_Application_Source',
+  'Done',
+  'Done_Source',
 ]);
 
 const MODALS = [
@@ -85,19 +134,31 @@ const MODALS = [
   },
 ];
 
-/** Pull the quoted string list out of the shared grid-keys module. */
+/**
+ * Pull the active column list out of the grid component's own array.
+ *
+ * Comments are stripped before parsing because SPR-21-02-002 leaves
+ * First/Middle/Last Name in the file as commented-out entries. They are not
+ * rendered columns, so counting them would demand bindings the grid does not
+ * have.
+ */
 const readGridKeys = () => {
-  const source = read(GRID_KEYS_FILE);
-  const match = source.match(
-    /CAMPAIGN_TABLE_KEYS:[^=]*=\s*\[([\s\S]*?)\];/
-  );
-  if (!match) {
+  const source = stripComments(read(GRID_KEYS_FILE));
+  const anchor = source.indexOf('const campaignTableKeys');
+  if (anchor < 0) {
     throw new Error(
-      `Could not find the CAMPAIGN_TABLE_KEYS array in ${GRID_KEYS_FILE}.`
+      `Could not find the campaignTableKeys array in ${GRID_KEYS_FILE}.`
     );
   }
-  const keys = [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
-  return keys;
+  const open = source.indexOf('[', source.indexOf('=', anchor));
+  const close = source.indexOf(']', open);
+  if (open < 0 || close < 0) {
+    throw new Error(
+      `Malformed campaignTableKeys array in ${GRID_KEYS_FILE}.`
+    );
+  }
+  const body = source.slice(open + 1, close);
+  return [...new Set([...body.matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]))];
 };
 
 const collect = (source) => {
@@ -158,10 +219,18 @@ for (const modal of MODALS) {
   const formState = collectFormState(source);
   const covered = new Set([...editable, ...locked, ...markers]);
 
-  const missing = gridKeys.filter((key) => !covered.has(key));
+  const missing = gridKeys.filter(
+    (key) => !covered.has(key) && !GRID_ONLY_ELSEWHERE.has(key)
+  );
   const illegallyWritable = gridKeys.filter((key) => editable.has(key));
   const strayMarkers = [...markers].filter(
     (key) => !gridKeys.includes(key) && !MODAL_ONLY_EXEMPT.has(key)
+  );
+
+  // A GRID_ONLY_ELSEWHERE entry that the modal has started binding is stale:
+  // it must be removed from the exclusion so the column keeps being checked.
+  const staleExemptions = [...GRID_ONLY_ELSEWHERE].filter((key) =>
+    covered.has(key)
   );
 
   const lockedCount = gridKeys.filter((key) => locked.has(key)).length;
@@ -171,7 +240,7 @@ for (const modal of MODALS) {
   console.log(`${modal.label}`);
   console.log(`  ${modal.file}`);
   console.log(
-    `  editable ${editableCount} | read-only ${lockedCount} | VACell ${markerCount} | exempt modal-only ${[
+    `  editable ${editableCount} | read-only ${lockedCount} | VACell ${markerCount} | edited elsewhere ${GRID_ONLY_ELSEWHERE.size} | exempt modal-only ${[
       ...editable,
     ].filter((k) => !bound.has(k) && MODAL_ONLY_EXEMPT.has(k)).length}`
   );
@@ -180,6 +249,13 @@ for (const modal of MODALS) {
     failed = true;
     console.error(
       `  FAIL missing bindings (${missing.length}): ${missing.join(', ')}`
+    );
+  }
+
+  if (staleExemptions.length) {
+    failed = true;
+    console.error(
+      `  FAIL GRID_ONLY_ELSEWHERE entries this modal now binds, so they must be re-checked (${staleExemptions.length}): ${staleExemptions.join(', ')}`
     );
   }
 
@@ -213,8 +289,16 @@ for (const modal of MODALS) {
     );
   }
 
-  if (!missing.length && !writableNever.length && !strayMarkers.length && !leaked.length) {
-    console.log(`  PASS all ${gridKeys.length} retained columns represented`);
+  if (
+    !missing.length &&
+    !staleExemptions.length &&
+    !writableNever.length &&
+    !strayMarkers.length &&
+    !leaked.length
+  ) {
+    console.log(
+      `  PASS all ${gridKeys.length} retained columns accounted for (${gridKeys.length - GRID_ONLY_ELSEWHERE.size} bound in modal, ${GRID_ONLY_ELSEWHERE.size} edited elsewhere)`
+    );
   }
   console.log('');
 }
@@ -234,6 +318,16 @@ if (unknownExempt.length) {
   failed = true;
   console.error(
     `FAIL MODAL_ONLY_EXEMPT lists retained grid columns: ${unknownExempt.join(', ')}`
+  );
+}
+
+const unknownGridOnly = [...GRID_ONLY_ELSEWHERE].filter(
+  (key) => !bound.has(key)
+);
+if (unknownGridOnly.length) {
+  failed = true;
+  console.error(
+    `FAIL GRID_ONLY_ELSEWHERE lists columns absent from the grid: ${unknownGridOnly.join(', ')}`
   );
 }
 

@@ -96,7 +96,7 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
   {
     name: "roleTitleRecommendations",
     label: "Role Title Recommendations",
-    hint: "CSV · XLSX · PDF — mandatory",
+    hint: "CSV · XLSX · PDF",
     // CSV/XLSX carry structured rows the client reviews one by one; a PDF is
     // a plain document (titles + write-up) the client just views/downloads —
     // no row extraction happens for it, see client-support-document.service.ts.
@@ -112,6 +112,16 @@ export const DOCUMENT_CATEGORIES: UploadCategory[] = [
       return validateRoleTitleCsv(await file.text()).errors;
     },
     downloadTemplate: downloadRoleTitleTemplate,
+  },
+  {
+    name: "interviewIntelligencePack",
+    label: "Interview Intelligence Pack",
+    hint: "PDF · DOCX",
+    extensions: ["pdf", "docx"],
+    accept:
+      ".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    isNew: true,
+    isSupportDocument: true,
   },
   {
     name: "supportImages",
@@ -190,7 +200,7 @@ const UploadSection = ({ category }: { category: UploadCategory }) => {
 
           if (wrongType.length) {
             toast.error(
-              `${category.label} accepts ${category.hint.replace(" — mandatory", "")} only. Skipped: ${wrongType.join(", ")}`,
+              `${category.label} accepts ${category.hint} only. Skipped: ${wrongType.join(", ")}`,
             );
           }
 
