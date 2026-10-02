@@ -17,7 +17,8 @@ import { getCountries } from "../table-services";
 import { roleMap } from "../constants";
 import { ROLE_LABELS, getRoleLabel } from "@/constants/persona";
 import { handleAccountApproval } from "../table-helpers";
-import { PreProgress } from "@/types/enum";
+ 
+import { PROGRESS_OPTIONS } from '@/utils/enum-options';
 
 const FullWidthAutocomplete = styled(Autocomplete)({
   width: "100%",
@@ -493,27 +494,7 @@ export const applyUserTableColumn = (el: any, actions?: any, mutate?: any) => {
           return (
             <UpdateSelect
               placeholder="N/A"
-              options={[
-                { label: PreProgress.SIGNEDUP, value: PreProgress.SIGNEDUP },
-                { label: PreProgress.PREFERENCEINSERTED, value: PreProgress.PREFERENCEINSERTED },
-                { label: PreProgress.UPLOADEDDOC, value: PreProgress.UPLOADEDDOC },
-                { label: "Email Verified", value: "Email Verified" },
-                { label: "Documents Accepted", value: "Documents Accepted" },
-                { label: "Documents Declined", value: "Documents Declined" },
-                { label: "CV/Resume Uplifted", value: "CV/Resume Uplifted" },
-                { label: "Service Selected", value: "Plan Selected" },
-                { label: "Payment Confirmed", value: "Payment Confirmed" },
-                { label: "Login Credentials Verified", value: "Login Credentials Verified" },
-                { label: "Sample Results Dispatched", value: "Sample Results Dispatched" },
-                { label: "Sample Results Accepted", value: "Sample Results Accepted" },
-                { label: "Preparatory Session Accepted", value: "Preparatory Session Accepted" },
-                { label: "Preparatory Session Declined", value: "Preparatory Session Declined" },
-                { label: "Application Commenced", value: "Application Commenced" },
-                { label: "Application Hold", value: "Application Hold" },
-                { label: "Application Expired", value: "Application Expired" },
-                { label: "Offer Notification Received", value: "Offer Notification Received" },
-                { label: "Campaign Ended", value: "Campaign Ended" },
-              ]}
+               options={PROGRESS_OPTIONS}
               value={params?.value}
               onValueChange={(value) => {
                 actions.handleUserProgress(

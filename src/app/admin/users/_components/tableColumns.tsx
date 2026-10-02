@@ -3,8 +3,8 @@ import UsersTableActions from "./Actions";
 import { Switch } from "@mui/material";
 import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
-import { PreProgress } from "@/types/enum";
 import { getRoleLabel } from "@/constants/persona";
+import { PROGRESS_OPTIONS } from '@/utils/enum-options';
 
 /**
  * @title Table Columns
@@ -86,6 +86,7 @@ export const tableColumns: GridColDef[] = [
   { field: "progress", headerName: "Progress", width: 150 },
   { field: "createdAt", headerName: "Created At", width: 180 },
   { field: "updatedBy", headerName: "Updated By", width: 150 },
+  { field: "updatedAt", headerName: "Updated At", width: 180 },
 ];
 
 /**
@@ -150,84 +151,7 @@ export const modifyTableActionsColAndRows = (
           return (
             <UpdateSelect
               placeholder="N/A"
-              options={[
-                {
-                  label: PreProgress.SIGNEDUP,
-                  value: PreProgress.SIGNEDUP,
-                },
-                {
-                  label: PreProgress.PREFERENCEINSERTED,
-                  value: PreProgress.PREFERENCEINSERTED,
-                },
-                {
-                  label: PreProgress.UPLOADEDDOC,
-                  value: PreProgress.UPLOADEDDOC,
-                },
-                {
-                  label: 'Email Verified',
-                  value: 'Email Verified',
-                },
-                {
-                  label: 'Documents Accepted',
-                  value: 'Documents Accepted',
-                },
-                {
-                  label: 'Documents Declined',
-                  value: 'Documents Declined',
-                },
-                {
-                  label: 'CV/Resume Uplifted',
-                  value: 'CV/Resume Uplifted',
-                },
-                {
-                  label: 'Service Selected',
-                  value: 'Plan Selected',
-                },
-                {
-                  label: 'Payment Confirmed',
-                  value: 'Payment Confirmed',
-                },
-                {
-                  label: 'Login Credentials Verified',
-                  value: 'Login Credentials Verified',
-                },
-                {
-                  label: 'Sample Results Dispatched',
-                  value: 'Sample Results Dispatched',
-                },
-                {
-                  label: 'Sample Results Accepted',
-                  value: 'Sample Results Accepted',
-                },
-                {
-                  label: 'Preparatory Session Accepted',
-                  value: 'Preparatory Session Accepted',
-                },
-                {
-                  label: 'Preparatory Session Declined',
-                  value: 'Preparatory Session Declined',
-                },
-                {
-                  label: 'Application Commenced',
-                  value: 'Application Commenced',
-                },
-                {
-                  label: 'Application Hold',
-                  value: 'Application Hold',
-                },
-                {
-                  label: 'Application Expired',
-                  value: 'Application Expired',
-                },
-                {
-                  label: 'Offer Notification Received',
-                  value: 'Offer Notification Received',
-                },
-                {
-                  label: 'Campaign Ended',
-                  value: 'Campaign Ended',
-                },
-              ]}
+              options={PROGRESS_OPTIONS}
               value={params?.value}
               onValueChange={(value: any) => {
                 handleUserProgress(value, params?.row?.progress, params?.row);

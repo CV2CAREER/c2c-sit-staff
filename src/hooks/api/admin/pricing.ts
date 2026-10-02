@@ -5,10 +5,12 @@ import * as endpoints from "@/constants/apiEndpoints/admin.endpoint";
 import { AdminQueriesOptions } from "./types";
 import { PricingLocation, PricingPlan, UpdateMultiplierPayload, UpdatePlanPayload } from "@/types/pricing.types";
 import toast from "react-hot-toast";
+import { PLAN_ORDER } from '@/utils/constants';
 
 const SUPPORTED_PRICING_CURRENCIES = ["AUD", "GBP", "EUR", "NGN", "CAD", "USD"] as const;
 type SupportedPricingCurrency = (typeof SUPPORTED_PRICING_CURRENCIES)[number];
-const PRICING_PLAN_ORDER = ["Emerald", "Bronze", "Silver", "Gold", "Platinum", "Coral"] as const;
+const PRICING_PLAN_ORDER = PLAN_ORDER;
+
 const EXCLUDED_PLAN_TITLES = new Set(["copper"]);
 
 const isSupportedPricingCurrency = (code: string): code is SupportedPricingCurrency =>
