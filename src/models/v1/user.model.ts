@@ -201,6 +201,10 @@ export class User extends Model {
   @Column(DataType.STRING)
   slackId?: string;
 
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  heritage?: string;
+
   @HasOne(() => Referrer, "userId")
   referrer?: Referrer;
 

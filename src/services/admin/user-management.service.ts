@@ -80,9 +80,15 @@ class UserManagementService {
       'email', 'customerClass', 'phoneNumber', 'whatsappNumber',
       'country', 'heritage', 'communication', 'role',
       'returnCount', 'revenue', 'cl', 'cr',
+      'applicationStatus', 'prepSessionStatus', 'isSampleDispatched',
       'socials', 'progress', 'isActive', 'isEmailVerified',
       'planId', 'phone', 'address', 'city', 'state',
-      'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl'
+      'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl',
+      'zohoId', 'currentCityOfResidence',
+      // SPR-21-41-013 AC8: admin may record approval. AC7 is enforced by
+      // omission: isDocumentUploaded is deliberately NOT listed here, so the
+      // upload process stays the only thing that can set it.
+      'isDocumentApproved'
     ];
 
     // Map frontend field names to backend model columns
