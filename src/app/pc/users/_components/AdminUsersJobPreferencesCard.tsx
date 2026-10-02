@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HiOutlineAdjustments } from "react-icons/hi";
 import { Section, SubSection } from "./AdminJobPreferenceSections";
 import jobPreferencesSchema from "./jobPreferencesInfo";
+import { ViewAllRoleTitlesModal } from "./ViewAllRoleTitlesModal";
 import CreatableSelect from "react-select/creatable";
-import { Chip } from "@material-tailwind/react";
 import { AdminPreferencesType } from "@/types/admin";
 import { Button } from "@/components/ui/button";
 import { GroupBase, OptionsOrGroups } from "react-select";
@@ -17,12 +17,43 @@ interface IAdminUsersJobPreferencesCardProps {
   secondary?: any;
 }
 
+const formatPayRange = (preferences: any, editedFormData?: any) => {
+  const currency = preferences?.currency || "$";
+  const min = Number(editedFormData?.minSalary ?? preferences?.minSalary ?? 0);
+  const max = Number(editedFormData?.maxSalary ?? preferences?.maxSalary ?? 0);
+  const rawPayType = preferences?.payType || preferences?.pay_type || "";
+  const payType = rawPayType ? `/${String(rawPayType).replace(/^\//, "")}` : "";
+
+  if (!min && !max) {
+    return "N/A";
+  }
+
+  if (min && max && min === max) {
+    return `${currency}${min.toLocaleString()}${payType}`;
+  }
+
+  if (min && max) {
+    return `${currency}${min.toLocaleString()} – ${currency}${max.toLocaleString()}${payType}`;
+  }
+
+  if (min && !max) {
+    return `From ${currency}${min.toLocaleString()}${payType}`;
+  }
+
+  if (!min && max) {
+    return `Up to ${currency}${max.toLocaleString()}${payType}`;
+  }
+
+  return "N/A";
+};
+
 const AdminUsersJobPreferencesCard = ({
   preferences,
   userId,
-  secondary
+  secondary,
 }: IAdminUsersJobPreferencesCardProps) => {
   const [isEditable, setIsEditable] = useState(false);
+  const [isRoleTitlesModalOpen, setIsRoleTitlesModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleInputChange = (field: any, value: any) => {
@@ -77,84 +108,106 @@ const AdminUsersJobPreferencesCard = ({
     includedJobTitles: preferences?.includedJobTitles || [],
   });
 
-  // console.log(editedFormData);
-  // console.log(editedFormData.veteran)
-
   const [activeProfile, setActiveProfile] = useState<'primary' | 'secondary'>('primary');
-  
   const activePreferences = activeProfile === 'primary' ? preferences : secondary;
 
-  return (
-    <div className="relative w-full overflow-hidden rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-8">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <HiOutlineAdjustments size={20} />
-        </span>
-        <h3 className="font-medium text-xl md:text-2xl">Preferences</h3>
-      </div>
+  // Responsive column count (4 desktop, 2 tablet, 1 mobile)
+  const [columnCount, setColumnCount] = useState(4);
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === "undefined") return;
+      if (window.innerWidth < 640) {
+        setColumnCount(1);
+      } else if (window.innerWidth < 1024) {
+        setColumnCount(2);
+      } else {
+        setColumnCount(4);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-      {secondary && (
-        <div className="relative mb-6 inline-flex gap-1 rounded-full bg-career-gray-300 p-1">
-          {(["primary", "secondary"] as const).map((profile) => (
-            <button
-              key={profile}
-              onClick={() => setActiveProfile(profile)}
-              className={`relative z-10 rounded-full px-4 py-2 font-medium capitalize transition-colors duration-200 ${
-                activeProfile === profile
-                  ? "text-white"
-                  : "text-career-gray-200 hover:text-career-black-200"
-              }`}
+  const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [cardHeights, setCardHeights] = useState<{ [key: string]: number }>({});
+
+  useEffect(() => {
+    const newHeights: { [key: string]: number } = {};
+    let hasChanges = false;
+    Object.entries(cardRefs.current).forEach(([key, el]) => {
+      if (el) {
+        const h = el.offsetHeight || el.getBoundingClientRect().height;
+        newHeights[key] = h;
+        if (cardHeights[key] !== h) {
+          hasChanges = true;
+        }
+      }
+    });
+    if (hasChanges) {
+      setCardHeights(newHeights);
+    }
+  });
+
+  const renderSectionCard = (preferenceSection: any) => {
+    return (
+      <Section key={preferenceSection.title} title={preferenceSection.title}>
+        {preferenceSection.fields.map((field: any) => {
+          const isTitlesField = field.key === "titles" && preferenceSection.title === "Role Titles";
+          const isPayRangeField = field.key === "payRange" || preferenceSection.title === "Pay";
+          const titlesList: string[] = isTitlesField
+            ? (Array.isArray(editedFormData.titles) ? (editedFormData.titles as string[]) : [])
+            : [];
+
+          return (
+            <SubSection
+              title={field.title}
+              key={field.key}
+              count={isTitlesField && titlesList.length > 0 ? titlesList.length : undefined}
             >
-              {activeProfile === profile && (
-                <motion.span
-                  layoutId="preferences-tab-highlight"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                  className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
-                />
-              )}
-              {profile} Profile
-            </button>
-          ))}
-        </div>
-      )}
-
-      <AnimatePresence mode="wait">
-      <motion.div
-        key={activeProfile}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-4 gap-y-8"
-      >
-        {jobPreferencesSchema.map((preferenceSection) => (
-          <Section
-            key={preferenceSection.title}
-            title={preferenceSection.title}
-          >
-            {preferenceSection.fields.map((field) => (
-              <SubSection title={field.title} key={field.key}>
-                {isEditable ? (
+              {isEditable ? (
+                isPayRangeField ? (
+                  <div className="flex flex-col gap-3 w-full">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11.5px] text-[#667085] font-medium">Minimum Salary ($)</label>
+                      <input
+                        type="number"
+                        placeholder="Minimum Salary"
+                        value={editedFormData.minSalary || ""}
+                        onChange={(e) => handleInputChange("minSalary", Number(e.target.value))}
+                        className="!text-sm border border-gray-300 rounded-lg w-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11.5px] text-[#667085] font-medium">Maximum Salary ($)</label>
+                      <input
+                        type="number"
+                        placeholder="Maximum Salary"
+                        value={editedFormData.maxSalary || ""}
+                        onChange={(e) => handleInputChange("maxSalary", Number(e.target.value))}
+                        className="!text-sm border border-gray-300 rounded-lg w-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <>
                     {field.inputType === "text" && (
-                      <>
-                        <input
-                          type="text"
-                          placeholder={field.title}
-                          value={
-                            editedFormData[
-                              field.key as string as keyof AdminPreferencesType
-                            ] as string
-                          }
-                          onChange={(e) =>
-                            handleInputChange(
-                              field.key as keyof AdminPreferencesType,
-                              e.target.value,
-                            )
-                          }
-                          className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
-                        />
-                      </>
+                      <input
+                        type="text"
+                        placeholder={field.title}
+                        value={
+                          editedFormData[
+                            field.key as string as keyof AdminPreferencesType
+                          ] as string
+                        }
+                        onChange={(e) =>
+                          handleInputChange(
+                            field.key as keyof AdminPreferencesType,
+                            e.target.value,
+                          )
+                        }
+                        className="!text-sm border border-gray-300 rounded-lg w-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
                     )}
                     {field.inputType === "textarea" && (
                       <textarea
@@ -170,7 +223,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-sm border border-gray-300 rounded-lg w-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         rows={3}
                       />
                     )}
@@ -188,7 +241,7 @@ const AdminUsersJobPreferencesCard = ({
                             e.target.value,
                           )
                         }
-                        className="!text-base border-[1.5px] border-black rounded-[0.25rem] w-full sm:max-w-[300px] px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#1E86FF] focus:border-transparent"
+                        className="!text-sm border border-gray-300 rounded-lg w-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       />
                     )}
                     {field.inputType === "checkbox" && (
@@ -202,7 +255,7 @@ const AdminUsersJobPreferencesCard = ({
                         onChange={(e) =>
                           handleInputChange(field.key, e.target.checked)
                         }
-                        className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                     )}
                     {(field.inputType === "select" ||
@@ -237,11 +290,10 @@ const AdminUsersJobPreferencesCard = ({
                         styles={{
                           control: (provided) => ({
                             ...provided,
-                            borderColor: "black",
-                            borderWidth: "1.5px",
-                            borderRadius: "0.25rem",
+                            borderColor: "#D1D5DB",
+                            borderRadius: "0.5rem",
+                            fontSize: "0.875rem",
                             width: "100%",
-                            maxWidth: "300px",
                           }),
                         }}
                       />
@@ -277,124 +329,291 @@ const AdminUsersJobPreferencesCard = ({
                         styles={{
                           control: (provided) => ({
                             ...provided,
-                            borderColor: "black",
-                            borderWidth: "1.5px",
-                            borderRadius: "0.25rem",
+                            borderColor: "#D1D5DB",
+                            borderRadius: "0.5rem",
+                            fontSize: "0.875rem",
                             width: "100%",
-                            maxWidth: "300px",
                           }),
                         }}
                       />
                     )}
                   </>
-                ) : Array.isArray(field.displayValue) ? (
-                  field.displayValue?.map?.((val: any) => (
-                    <Chip
-                      key={val}
-                      value={displayChipValue(val)}
-                      variant="ghost"
-                      size="sm"
-                      className="!whitespace-normal !break-words max-w-full !text-xs text-[#797979] !font-normal !capitalize"
-                    />
-                  ))
-                ) : Array.isArray(
-                    editedFormData[field.key as keyof AdminPreferencesType],
-                  ) ? (
+                )
+              ) : isPayRangeField ? (
+                <span className="block max-w-full break-words text-[13.5px] font-medium text-gray-900">
+                  {formatPayRange(activePreferences, editedFormData)}
+                </span>
+              ) : isTitlesField ? (
+                titlesList.length > 0 ? (
+                  <div className="w-full min-w-0">
+                    <div className="max-h-[150px] overflow-y-auto pr-1 flex flex-wrap gap-2 mb-2 [scrollbar-width:thin]">
+                      {titlesList.map((val: any, idx: number) => (
+                        <span
+                          key={`${val}-${idx}`}
+                          className="inline-flex items-center rounded-md bg-[#F2F4F7] px-2.5 py-1 text-xs font-medium text-[#344054] max-w-full break-words leading-relaxed"
+                        >
+                          {displayChipValue(val)}
+                        </span>
+                      ))}
+                    </div>
+                    {titlesList.length >= 4 && (
+                      <>
+                        <div className="pointer-events-none -mt-7 mb-2 h-7 bg-gradient-to-b from-transparent to-white" />
+                        <button
+                          type="button"
+                          onClick={() => setIsRoleTitlesModalOpen(true)}
+                          className="text-[12.5px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1 mt-3 mb-1.5 pt-1 transition-colors"
+                        >
+                          View all {titlesList.length} selections →
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">N/A</span>
+                )
+              ) : Array.isArray(field.displayValue) ? (
+                field.displayValue?.map?.((val: any, idx: number) => (
+                  <span
+                    key={`${val}-${idx}`}
+                    className="inline-flex items-center rounded-md bg-[#F2F4F7] px-2.5 py-1 text-xs font-medium text-[#344054] max-w-full break-words leading-relaxed"
+                  >
+                    {displayChipValue(val)}
+                  </span>
+                ))
+              ) : Array.isArray(
+                  editedFormData[field.key as keyof AdminPreferencesType],
+                ) ? (
+                (
+                  editedFormData[
+                    field.key as keyof AdminPreferencesType
+                  ] as []
+                ).length > 0 ? (
                   (
                     editedFormData[
                       field.key as keyof AdminPreferencesType
                     ] as []
-                  ).length > 0 ? (
-                    (
-                      editedFormData[
-                        field.key as keyof AdminPreferencesType
-                      ] as []
-                    ).map((val: any) => (
-                      <div key={val} className="min-w-0 max-w-full bg-[#E7E7E9] rounded p-1">
-                        <Chip
-                          value={displayChipValue(val)}
-                          variant="ghost"
-                          size="sm"
-                          className="!whitespace-normal !break-words max-w-full rounded !text-xs bg-[#D1D1D5] p-1 px-2 text-[#797979] !font-normal !capitalize"
-                        />
-                      </div>
-                    ))
-                  ) : (
-                    <span className="text-xs text-[#797979]">N/A</span>
-                  )
+                  ).map((val: any, idx: number) => (
+                    <span
+                      key={`${val}-${idx}`}
+                      className="inline-flex items-center rounded-md bg-[#F2F4F7] px-2.5 py-1 text-xs font-medium text-[#344054] max-w-full break-words leading-relaxed"
+                    >
+                      {displayChipValue(val)}
+                    </span>
+                  ))
                 ) : (
-                  <span className="block max-w-full break-words">
-                    {displayChipValue(
-                      editedFormData[field.key as keyof AdminPreferencesType],
-                    )}
-                  </span>
-                )}
-              </SubSection>
-            ))}
-          </Section>
-        ))}
+                  <span className="text-xs text-gray-400 italic">N/A</span>
+                )
+              ) : (
+                <span className="block max-w-full break-words text-[13.5px] font-medium text-gray-900 leading-snug">
+                  {displayChipValue(
+                    editedFormData[field.key as keyof AdminPreferencesType],
+                  )}
+                </span>
+              )}
+            </SubSection>
+          );
+        })}
+      </Section>
+    );
+  };
 
-        {/* Questions section not editable just display since its personal and only editable by client */}
-        {activePreferences?.questions?.length > 0 && (
-          <div className="min-w-0 max-w-full break-words">
-            <h3 className="font-medium text-2xl">Questions</h3>
-            {activePreferences?.questions.map((question: any, index: number) => (
-              <div key={index} className="p-1">
-                <p className="break-words">{question?.question}</p>
-                <p className="break-words">{question?.answer}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </motion.div>
-      </AnimatePresence>
-      {!isEditable ? (
-        <Button
-          onClick={() => {
-            setIsEditable(true);
-          }}
-        >
-          Edit
-        </Button>
-      ) : (
-        <div className="flex justify-start gap-3">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => {
-              setIsEditable(false);
-              // setIsLoading(false);
-            }}
-            className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={updateUserPreferencesByProfileMutation.isPending}
-            onClick={() => {
-              updateUserPreferencesByProfileMutation.mutate({
-                userId,
-                profileType: activeProfile,
-                body: editedFormData,
-              });
-              setIsEditable(false);
-            }}
-          >
-            {updateUserPreferencesByProfileMutation.isPending
-              ? "Saving..."
-              : "Save Changes"}
-          </Button>
+  const renderQuestionsCard = () => {
+    if (!activePreferences?.questions?.length) return null;
+    return (
+      <Section key="questions" title="Questions">
+        <div className="max-h-[260px] overflow-y-auto pr-1 space-y-3 [scrollbar-width:thin]">
+          {activePreferences.questions.map((question: any, index: number) => (
+            <div key={index} className="pt-2.5 first:pt-0 border-t border-gray-100 first:border-0">
+              <p className="break-words font-medium text-[11.5px] text-[#667085]">{question?.question}</p>
+              <p className="break-words text-[13.5px] font-medium text-gray-900 mt-0.5">{question?.answer || "N/A"}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    );
+  };
+
+  const allCards = useMemo(() => {
+    const cards: Array<{ key: string; estimatedHeight: number; element: React.ReactNode }> = [];
+
+    jobPreferencesSchema.forEach((section) => {
+      let estHeight = 160 + (section.fields?.length || 1) * 45;
+      if (section.title === "Role Titles") estHeight = 280;
+      else if (section.title === "Location") estHeight = 260;
+      else if (section.title === "Industries") estHeight = 200;
+      else if (section.title === "Personal Information") estHeight = 240;
+      else if (section.title === "Document Settings") estHeight = 180;
+
+      cards.push({
+        key: section.title,
+        estimatedHeight: estHeight,
+        element: renderSectionCard(section),
+      });
+    });
+
+    if (activePreferences?.questions?.length > 0) {
+      cards.push({
+        key: "Questions",
+        estimatedHeight: 220,
+        element: renderQuestionsCard(),
+      });
+    }
+
+    return cards;
+  }, [
+    jobPreferencesSchema,
+    editedFormData,
+    isEditable,
+    activePreferences,
+  ]);
+
+  // True masonry: pack each card into whichever column currently has the least cumulative height
+  const columns = useMemo(() => {
+    const cols: Array<{ key: string; element: React.ReactNode }[]> = Array.from(
+      { length: columnCount },
+      () => [],
+    );
+    const colHeights = new Array(columnCount).fill(0);
+
+    allCards.forEach((card) => {
+      const h = cardHeights[card.key] || card.estimatedHeight;
+      let minIdx = 0;
+      let minH = colHeights[0];
+      for (let i = 1; i < columnCount; i++) {
+        if (colHeights[i] < minH) {
+          minH = colHeights[i];
+          minIdx = i;
+        }
+      }
+      cols[minIdx].push(card);
+      colHeights[minIdx] += h;
+    });
+
+    return cols;
+  }, [allCards, columnCount, cardHeights]);
+
+  return (
+    <div className="relative w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.06)] md:p-6">
+      {/* Top Header with title and immediate Edit/Save/Cancel controls */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3 pb-3 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <HiOutlineAdjustments size={18} />
+          </span>
+          <h3 className="font-semibold text-lg md:text-xl text-gray-900">Preferences</h3>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {!isEditable ? (
+            <Button
+              onClick={() => {
+                setIsEditable(true);
+              }}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-white font-medium px-4 py-2 rounded-lg"
+            >
+              Edit Preferences
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setIsEditable(false);
+                }}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={updateUserPreferencesByProfileMutation.isPending}
+                onClick={() => {
+                  updateUserPreferencesByProfileMutation.mutate({
+                    userId,
+                    profileType: activeProfile,
+                    body: editedFormData,
+                  });
+                  setIsEditable(false);
+                }}
+                className="bg-primary hover:bg-primary/90 text-white"
+              >
+                {updateUserPreferencesByProfileMutation.isPending
+                  ? "Saving..."
+                  : "Save Changes"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {secondary && (
+        <div className="relative mb-5 inline-flex gap-1 rounded-full bg-career-gray-300 p-1">
+          {(["primary", "secondary"] as const).map((profile) => (
+            <button
+              key={profile}
+              onClick={() => setActiveProfile(profile)}
+              className={`relative z-10 rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-colors duration-200 ${
+                activeProfile === profile
+                  ? "text-white"
+                  : "text-career-gray-200 hover:text-career-black-200"
+              }`}
+            >
+              {activeProfile === profile && (
+                <motion.span
+                  layoutId="preferences-tab-highlight"
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  className="absolute inset-0 -z-10 rounded-full bg-primary shadow-sm"
+                />
+              )}
+              {profile} Profile
+            </button>
+          ))}
         </div>
       )}
+
+      {/* Shortest-column-first masonry layout */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeProfile}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="flex flex-row items-start gap-4 my-2 w-full"
+        >
+          {columns.map((colCards, colIdx) => (
+            <div key={colIdx} className="flex-1 min-w-0 flex flex-col gap-4">
+              {colCards.map((card) => (
+                <div
+                  key={card.key}
+                  ref={(el) => {
+                    cardRefs.current[card.key] = el;
+                  }}
+                  className="w-full min-w-0"
+                >
+                  {card.element}
+                </div>
+              ))}
+            </div>
+          ))}
+        </motion.div>
+      </AnimatePresence>
+
+      <ViewAllRoleTitlesModal
+        isOpen={isRoleTitlesModalOpen}
+        onClose={() => setIsRoleTitlesModalOpen(false)}
+        titles={Array.isArray(editedFormData.titles) ? (editedFormData.titles as string[]) : []}
+      />
     </div>
   );
 };
 
 export default AdminUsersJobPreferencesCard;
 
-// Some legacy preference rows store objects as JSON-encoded strings
-// (e.g. industriesInclude/Exclude) instead of real objects — parse those
-// back out before formatting so the raw JSON never reaches the screen.
 const parseIfJsonObject = (val: any) => {
   if (typeof val === "string") {
     const trimmed = val.trim();
@@ -421,7 +640,7 @@ const displayChipValue = (val: any) => {
   } else if (typeof parsed === "number") {
     return parsed;
   } else if (typeof parsed === "string") {
-    return parsed.length >= 28 ? parsed.substring(0, 27) + "..." : parsed;
+    return parsed;
   }
   return "N/A";
 };
