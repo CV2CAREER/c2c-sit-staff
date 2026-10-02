@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "next dev --webpack -p 3000",
     "check:modal-bindings": "node scripts/check-modal-bindings.mjs",
-    "build": "npm run check:modal-bindings && next build",
+    "check:campaign-bindings": "node scripts/check-campaign-modal-bindings.mjs",
+    "check:campaign-calculator": "node scripts/sync-campaign-calculator.mjs --check",
+    "check:campaign-locked-fields": "node scripts/check-campaign-locked-fields.mjs",
+    "sync:campaign-calculator": "node scripts/sync-campaign-calculator.mjs",
+    "test:campaign-calculator": "node scripts/test-campaign-calculator.mjs",
+    "build": "npm run check:modal-bindings && npm run check:campaign-bindings && npm run check:campaign-calculator && npm run test:campaign-calculator && npm run check:campaign-locked-fields && next build",
     "start": "next start",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",

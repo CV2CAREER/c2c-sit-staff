@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { GridColDef } from "@mui/x-data-grid-pro";
 import { CampaignTableColType } from "@/types/admin";
+import { CAMPAIGN_TABLE_KEYS } from "@/utils/campaign-table-keys";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { CampaignTableActions } from "./Actions";
@@ -75,41 +76,9 @@ import { Loader2 } from "lucide-react";
 //   "updatedAt",
 // ]
 
-const campaignTableKeys: (keyof CampaignTableColType)[] = [
-"id",
-"CustomerId",
-"Full_Name",
-"First_Name",
-"Middle_Name",
-"Last_Name",
-"Plan",
-"TourCount",
-"Order",
-"SeekSubStartDate",
-"Assurance",
-"SeekWeeklyMax",
-"SeekSubDurDays",
-"SeekSubEndDate",
-"GraceDuration",
-"CampaignEnd",
-"Capitalized",
-"SeekSubToExpireDays",
-"SeekSubExpired",
-"Active",
-"Alias_Email",
-"Alias_Password",
-"VaName",
-"VetName",
-"CompletedName",
-"InterimDPCName",
-"InterimSPCName",
-"Last_Application",
-"First_Application",
-"Craft",
-"updateBy",
-"createdAt",
-"updatedAt",
-]
+// SPR-21-41-015: retained data columns are shared with the edit modal and the
+// build-time binding checker, so the grid and the modal can never drift apart.
+const campaignTableKeys = CAMPAIGN_TABLE_KEYS;
 
 // const initialTableColumns: GridColDef[] = [
 //   {
