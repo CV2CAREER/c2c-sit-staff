@@ -10,6 +10,7 @@ import { PaymentStatus, ReferrerStatus, RevenueStatus, SlackChannel, SlackEventT
 import ErrorHandler from "@/utils/errorHandler";
 import { fieldEncryption } from "@/utils/field-encryption";
 import { getFrontendUrl, getFullName, updateReferrerStats } from "@/utils/helpers";
+import { buildReferralLink } from "@/utils/referral-link.util";
 import { EMAIL_QUEUE } from "@/jobs/background/emailWorker";
 import { getQueue } from "@/config/bullMQ";
 import { sendGrpConfirmedEmail, sendGrpDeclinedEmail, sendCrpPaidEmail, sendCrpPayoutOwedEmail, sendInternalReferralEmail, sendPrpThankyouEmail, sendPrpInternalEmail, sendRCFollowUpTag } from "./email.service";
@@ -1162,14 +1163,12 @@ export class ReferralService {
     }
 
     // Generate referral link
-    let referralLink = "";
     const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
-
-    if ((user as any).partner?.referralCode) {
-      referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
-    } else {
-      referralLink = `${frontendUrl}/register?ref=${user.email}-partner`;
-    }
+    const referralLink = buildReferralLink(
+      frontendUrl,
+      user.email,
+      (user as any).partner?.referralCode,
+    );
 
     // Send referral email
     setImmediate(async () => {
@@ -1394,14 +1393,12 @@ Next step: Confirm referral claimed, process any applicable rewards for the refe
     }
 
     // Generate referral link
-    let referralLink = "";
     const frontendUrl = process.env.CLIENT_APP_DOMAIN || "http://localhost:3001";
-
-    if ((user as any).partner?.referralCode) {
-      referralLink = `${frontendUrl}/register?ref=${(user as any).partner.referralCode}`;
-    } else {
-      referralLink = `${frontendUrl}/register?ref=${user.email}-partner`;
-    }
+    const referralLink = buildReferralLink(
+      frontendUrl,
+      user.email,
+      (user as any).partner?.referralCode,
+    );
 
     const failedEmails: string[] = [];
     

@@ -13,6 +13,7 @@ import { SlackService } from "./slack.service";
 // CommonJS, same convention as the admin-plan ↔ client-journey cycle.
 import { getClientJourney } from "./client-journey.service";
 import { CLIENT_JOURNEY_STEPS, STEP_LABELS } from "../utils/clientJourneySteps";
+import { buildReferralLink } from "../utils/referral-link.util";
 import {
   SlackChannel,
   SlackEventType,
@@ -748,9 +749,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
       let referralLink: string | undefined;
       if (stepKey === "referral_eligibility") {
         const partnerCode = (user as any).partner?.referralCode;
-        referralLink = partnerCode
-          ? `${frontendUrl}/register?ref=${partnerCode}`
-          : `${frontendUrl}/register?ref=${userEmail}-partner`;
+        referralLink = buildReferralLink(frontendUrl, userEmail, partnerCode);
       }
 
       // SPR-21-13-008 — the renewal email's "pricing options": active tiers
@@ -788,6 +787,8 @@ export const notifySubscriptionStepCompletedByAdmin = (
       // Emails and Slack must both fire for the same step completion (012's
       // DoD), so a mail failure is logged and Slack still posts instead of
       // being skipped by the outer catch.
+      let emailsSent = false;
+      const hasMailConfig = Boolean(buildMails);
       if (userEmail && buildMails) {
         try {
           const stepMails = buildMails({
@@ -806,6 +807,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));
           }
+          emailsSent = true;
         } catch (mailError) {
           logger.error(
             `Emails for step "${stepKey}" failed (user ${userId}): ${mailError} — continuing to Slack`,
@@ -837,6 +839,12 @@ export const notifySubscriptionStepCompletedByAdmin = (
         ? `\nScheduled for: ${formatDateTime(details.scheduledAt)}`
         : "";
       const noteLine = details?.note ? `\nNote: ${details.note}` : "";
+      // SPR-21-13-008 — Slack must still fire (012's DoD) but must never claim
+      // the client was emailed when the send failed or no address resolved.
+      const mailNotSentLine =
+        hasMailConfig && (!userEmail || !emailsSent)
+          ? "\n⚠ The customer email was NOT sent — follow up manually."
+          : "";
       await SlackService.notify({
         location: getEnvironmentFromHost(slackHost),
         host: slackHost,
@@ -850,7 +858,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
         body: `${headline ? `${headline}\n` : ""}An admin completed the "${stepKey}" journey step.
 User: ${fullName} (${userEmail || userId})
 Completed by (admin id): ${actorId}
-Plan: ${planTitle}${whenLine}${noteLine}`,
+Plan: ${planTitle}${whenLine}${noteLine}${mailNotSentLine}`,
       });
 
       logger.info(

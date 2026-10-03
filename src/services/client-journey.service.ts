@@ -292,9 +292,8 @@ export async function attestClientJourneyStep(
   // attested again, and lets a repeat campaign_ended attest tick a renewal
   // step that predates this cascade (pre-deploy completions).
   if (stepKey === "campaign_ended") {
-    await completeJourneyStepOnce(
+    await triggerRenewalOfferedCascade(
       userId,
-      "renewal_offered",
       adminId,
       ClientJourneyActorType.ADMIN,
       ClientJourneySource.MANUAL,
@@ -302,6 +301,28 @@ export async function attestClientJourneyStep(
   }
 
   return step;
+}
+
+/**
+ * SPR-21-13-008 — helper called from two places (admin attest and the
+ * auto-cascade inside completeJourneyStepOnce) so the renewal_offered
+ * completion lives in one spot.
+ */
+export async function triggerRenewalOfferedCascade(
+  userId: string,
+  adminId: string,
+  actorType: ClientJourneyActorType,
+  source: ClientJourneySource,
+  host?: string,
+) {
+  await completeJourneyStepOnce(
+    userId,
+    "renewal_offered",
+    adminId,
+    actorType,
+    source,
+    host,
+  );
 }
 
 /**
@@ -341,9 +362,8 @@ export async function completeJourneyStepOnce(
     // renewal_offered, which mails the customer the renewal pricing options
     // and posts #town-crier exactly once (its own first-transition guard).
     if (stepKey === "campaign_ended") {
-      await completeJourneyStepOnce(
+      await triggerRenewalOfferedCascade(
         userId,
-        "renewal_offered",
         actorId,
         actorType,
         source,
