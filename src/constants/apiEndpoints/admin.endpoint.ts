@@ -309,7 +309,6 @@ export const ADMIN_CR_TRACKING_DOCUMENT_UPLOAD =
   '/api/v1/admin/documents/upload';
 export const ADMIN_CR_TRACKING_VALIDATE_URL =
   '/api/v1/admin/documents/validate-and-upload-url';
-export const ADMIN_CHATBOT_TRAIN = '/api/v1/admin/chatbot/train';
 export const ADMIN_CHATBOT_LOGS = '/api/v1/admin/chatbot/logs';
 export const ADMIN_SUPPORT_DESK = '/api/v1/admin/support';
 export const ADMIN_SUPPORT_DESK_MESSAGES = (sessionId: string) =>
@@ -331,8 +330,21 @@ export const ADMIN_TEMPLATE_TEST_SEND_DRAFT = '/api/v1/admin/templates/test-send
 export const ADMIN_CLIENT_CONTENT = '/api/v1/admin/client-content';
 export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
+export const ADMIN_FAQ_CATEGORIES = '/api/v1/admin/faq/categories';
+export const ADMIN_FAQ_ARTICLES = '/api/v1/admin/faq/articles';
+export const ADMIN_FAQ_ARTICLE_BY_ID = (id: string) =>
+  `/api/v1/admin/faq/articles/${id}`;
 export const ASSISTANT_CLIENTS_ASSIGNED = '/api/v1/assistant/clients-assigned';
 export const ASSISTANT_VA_CHAT = '/api/v1/assistant/va';
+export const ASSISTANT_VA_CLIENT = (clientId: string) =>
+  `/api/v1/assistant/va/client/${encodeURIComponent(clientId)}`;
+export const ASSISTANT_VA_CLIENT_CVS = (clientId: string) =>
+  `/api/v1/assistant/va/client/${encodeURIComponent(clientId)}/cvs`;
+export const ASSISTANT_VA_JOB_AD = '/api/v1/assistant/va/job-ad';
+/** Admin-only: search every client (PCs use ASSISTANT_CLIENTS_ASSIGNED). */
+export const ADMIN_VA_CLIENT_SEARCH = '/api/v1/assistant/va/clients';
+export const ASSISTANT_VA_CRITERIA = '/api/v1/assistant/va/criteria';
+export const ASSISTANT_VA_CRITERIA_CLASSIFY = '/api/v1/assistant/va/criteria/classify';
 
 // Sales Operation Endpoints
 export const ADMIN_SALES_OPERATION = '/api/v1/sales-operation';

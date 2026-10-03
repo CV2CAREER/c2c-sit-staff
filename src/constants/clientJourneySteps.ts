@@ -83,19 +83,17 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // deliberately left unwired due to a race risk with the payment webhook, so
 // they're treated the same as the fully-manual ones. Every newly added step
 // also starts here — none of them have a real automatic trigger yet.
+// job_credentials_provided dropped out (SPR-21-11-011): the customer's own
+// credential submission now completes it. cv_uploaded dropped out
+// (SPR-21-11-008): a resume upload now completes it. cv_variant_dispatch,
+// cv_approved and cv_variant_uploaded dropped out (SPR-21-11-009): admin save
+// of the variant and the client's approving re-upload now complete them.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
-  "payment_receipt_sent",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
-  "cv_uploaded",
-  "cv_variant_dispatch",
-  "cv_approved",
-  "cv_variant_uploaded",
-  "rtr_dispatched",
   "preference_review_session",
-  "job_credentials_provided",
   "jobsite_verification",
   "jobsite_credentials_approved",
   "profile_alignment_check",
