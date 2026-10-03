@@ -16,6 +16,9 @@ export const useClientJourneyQueries = (options: AdminQueriesOptions) => {
       url: options.userId ? CLIENT_JOURNEY_BY_CLIENT(options.userId) : "",
       queryKey: ["admin-client-journey", options.userId],
       enabled: !!options.fetchClientJourney && !!options.userId,
+      // Near-live visibility: the client completes steps on their side while
+      // this panel is open; without polling the admin had to hard-refresh.
+      refetchInterval: 30_000,
     });
 
   return {
