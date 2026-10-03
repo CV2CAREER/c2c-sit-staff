@@ -9,6 +9,7 @@ import { createTokenCleanUpJob } from './token-cleanup.job';
 import { createSubscriptionCheckJob } from './subscription-check.job';
 import { createSupportSessionCleanupJob } from './support-session-cleanup.job';
 import { createSubscriptionExpiryReminderJob } from './subscription-expiry-reminder.job';
+import { createExpirationNoticeJob } from './expiration-notice.job';
 import { createPlacPipelineOpsReportJob } from './placementPipelineOpsReport.job';
 import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
 import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
@@ -57,6 +58,15 @@ export async function startAllCronJobs() {
     {
       name: 'Subscription Expiry Reminder Job',
       task: createSubscriptionExpiryReminderJob(),
+    },
+    // SPR-21-13-009 — T-14 / T-7 / day-0 expiration notices (audit steps
+    // 30/31/35). Per-client: recomputed end date -> completeJourneyStepOnce ->
+    // client email + delivery-team copy + #town-crier post. Plans of 7 days or
+    // fewer are skipped (SPR-21-59-018 owns that cadence). Every environment so
+    // IAT exercises the same path.
+    {
+      name: 'Expiration Notice Job',
+      task: createExpirationNoticeJob(),
     },
     {
       name: 'Missing Info Expiry Job',
