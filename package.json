@@ -31,6 +31,7 @@
     "@sendgrid/mail": "^8.1.6",
     "@slack/web-api": "^7.14.1",
     "@types/swagger-ui-express": "^4.1.8",
+    "axios": "^1.20.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.80.9",
     "cheerio": "^1.2.0",

@@ -16,10 +16,11 @@ import { dispatchClient } from "../../controllers/v1/dispatch-client.controller"
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
 import { isUserAuthenticated } from "../../middlewares/auth";
 import { authorizeRoles } from "../../middlewares/authorizeRoles";
+import { loginLimiter } from "../../middlewares/rateLimiter";
 
 const userRouterV1 = Router();
 
-userRouterV1.post("/login", loginUser);
+userRouterV1.post("/login", loginLimiter, loginUser);
 userRouterV1.get("/profile", checkBlacklistedTokens, isUserAuthenticated, getCurrentUserProfile);
 userRouterV1.put("/profile", checkBlacklistedTokens, isUserAuthenticated, updateProfile);
 userRouterV1.get("/clients", checkBlacklistedTokens, isUserAuthenticated, getClients);
