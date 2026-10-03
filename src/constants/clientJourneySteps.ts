@@ -94,7 +94,9 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // neither one joins this set. renewal_offered dropped out (SPR-21-13-008):
 // a fresh campaign_ended completion now cascades into it, so the row shows
 // as a client step with the outline attest button rather than needing
-// admin attestation.
+// admin attestation. The expiration notice trio dropped out (SPR-21-13-009):
+// the expiration-notice cron now fires at T-14 / T-7 / day 0, so those rows
+// are treated the same way.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
@@ -110,12 +112,9 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "interview_milestone",
   "interview_prep_pack_dispatched",
   "offer_placement_recorded",
-  "expiration_notice_14day",
-  "expiration_notice_7day",
   "extension_eligibility_check",
   "extension_decision_made",
   "extension_granted",
-  "expiration_notice_0day",
   "exit_survey",
   "referral_eligibility",
 ]);
