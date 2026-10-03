@@ -91,7 +91,10 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // of the variant and the client's approving re-upload now complete them.
 // week4_checkin dropped out (SPR-21-13-001): the campaign day-28 / day-84
 // check-in cron now completes it and its new week12_checkin sibling, so
-// neither one joins this set.
+// neither one joins this set. renewal_offered dropped out (SPR-21-13-008):
+// a fresh campaign_ended completion now cascades into it, so the row shows
+// as a client step with the outline attest button rather than needing
+// admin attestation.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
@@ -115,7 +118,6 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "expiration_notice_0day",
   "exit_survey",
   "referral_eligibility",
-  "renewal_offered",
 ]);
 
 export type DerivedStepState = "done" | "current" | "awaiting";
