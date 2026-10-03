@@ -235,6 +235,40 @@ const subscriptionStepMails = (ctx: StepMailContext): StepMail[] => [
 ];
 
 /**
+ * Service selection is NOT payment: the client picked a plan (journey step 4),
+ * activation still waits on payment_confirmed (step 5). Previously both steps
+ * shared `subscriptionStepMails`, so attesting either one mailed the identical
+ * "Service Activated Successfully" / "Payment Received" pair. The selection
+ * step now sends its own copy that makes no activation or payment claim.
+ */
+const serviceSelectionStepMails = (ctx: StepMailContext): StepMail[] => [
+  {
+    email: ctx.userEmail,
+    subject: `${ctx.planTitle} Service Selection Confirmed`,
+    templateName: "service-selection-confirmed-client.ejs",
+    templateData: {
+      name: ctx.firstName,
+      plan: ctx.planTitle,
+      frontendUrl: ctx.frontendUrl,
+      currentYear: ctx.currentYear,
+    },
+  },
+  {
+    email: TEAM_EMAIL!,
+    subject: `Service Selection Recorded - ${ctx.fullName}`,
+    templateName: "service-selection-confirmed-admin.ejs",
+    templateData: {
+      name: ctx.fullName,
+      email: ctx.userEmail,
+      plan: ctx.planTitle,
+      link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+      frontendUrl: ctx.frontendUrl,
+      currentYear: ctx.currentYear,
+    },
+  },
+];
+
+/**
  * SPR-21-13-001 — Week 4 / Week 12 check-in pair (audit steps 25-26). One
  * builder for both weeks, parameterised by week label: the client mail carries
  * the session-booking link for their progress review call / screenshare, the
@@ -399,7 +433,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
   // to the delivery team; the Town Crier post is the shared path below.
   week4_checkin: checkinStepMails("Week 4"),
   week12_checkin: checkinStepMails("Week 12"),
-  service_selection: subscriptionStepMails,
+  service_selection: serviceSelectionStepMails,
   payment_confirmed: subscriptionStepMails,
   // SPR-21-13-004 — Interview Milestone Reached (audit step 27). Fired on the
   // FIRST completion from EITHER side: a staff attest (ADMIN_ATTEST_NOTIFY_STEPS

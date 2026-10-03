@@ -59,6 +59,8 @@ export const EMAIL_TRIGGERS: EmailTriggerDefinition[] = [
   { key: "availability-declined.ejs", label: "Availability Declined", reassignable: true },
   { key: "service-subscription-user.ejs", label: "Service Subscription (User)", reassignable: true },
   { key: "service-subscription-admin.ejs", label: "Service Subscription (Admin)", reassignable: true },
+  { key: "service-selection-confirmed-client.ejs", label: "Service Selection Confirmed (Client)", reassignable: true },
+  { key: "service-selection-confirmed-admin.ejs", label: "Service Selection Recorded (Admin)", reassignable: true },
   { key: "DispatchPreference.ejs", label: "Campaign Preference Dispatch", reassignable: true },
   { key: "AdminNotificationTemplate.ejs", label: "Campaign Admin Notification", reassignable: true },
   { key: "DispatchCredentials.ejs", label: "Campaign Credentials Dispatch", reassignable: true },
