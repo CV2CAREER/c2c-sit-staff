@@ -126,12 +126,14 @@ export const STEP_LABELS: Record<string, string> = {
 // rtr_dispatched, cv_uploaded, job_credentials_provided, cv_variant_dispatch,
 // cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron),
 // interview_prep_pack_dispatched (SPR-21-13-004 IPP upload hook),
-// week4_checkin and week12_checkin (SPR-21-13-001 check-in cron) and
-// campaign_ended are the only ones wired to a real trigger elsewhere;
-// everything else (including every newly added step below) requires an admin
-// Attest until a real automatic trigger is built for it. Note the attest-only
-// steps can still NOTIFY on first completion (ADMIN_ATTEST_NOTIFY_STEPS) —
-// this set only tracks which ones have a non-attest trigger.
+// week4_checkin and week12_checkin (SPR-21-13-001 check-in cron),
+// campaign_ended and renewal_offered (SPR-21-13-008 — the renewal offer
+// cascades from a fresh campaign_ended completion) are the only ones wired
+// to a real trigger elsewhere; everything else (including every newly added
+// step below) requires an admin Attest until a real automatic trigger is
+// built for it. Note the attest-only steps can still NOTIFY on first
+// completion (ADMIN_ATTEST_NOTIFY_STEPS) — this set only tracks which ones
+// have a non-attest trigger.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
   "welcome_call_scheduled",
@@ -153,5 +155,4 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "expiration_notice_0day",
   "exit_survey",
   "referral_eligibility",
-  "renewal_offered",
 ]);

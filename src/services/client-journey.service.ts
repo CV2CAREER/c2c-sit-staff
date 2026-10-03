@@ -212,6 +212,12 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // customer their referral programme details + personal link and posts the
   // confirmation to #town-crier.
   "referral_eligibility",
+  // SPR-21-13-008 — Renewal / Next Steps Offered (audit step 39): first
+  // completion from EITHER side — the campaign_ended cascade below (fresh
+  // completion via this attest or completeJourneyStepOnce) or a manual
+  // attest of this step — mails the customer the renewal pricing options and
+  // posts to #town-crier.
+  "renewal_offered",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
@@ -280,6 +286,21 @@ export async function attestClientJourneyStep(
     notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId, undefined, details);
   }
 
+  // SPR-21-13-008 — campaign end cascades into the renewal offer step: the
+  // fresh-completion guard inside completeJourneyStepOnce keeps the renewal
+  // email + #town-crier post single-fire even if campaign_ended itself was
+  // attested again, and lets a repeat campaign_ended attest tick a renewal
+  // step that predates this cascade (pre-deploy completions).
+  if (stepKey === "campaign_ended") {
+    await completeJourneyStepOnce(
+      userId,
+      "renewal_offered",
+      adminId,
+      ClientJourneyActorType.ADMIN,
+      ClientJourneySource.MANUAL,
+    );
+  }
+
   return step;
 }
 
@@ -312,6 +333,22 @@ export async function completeJourneyStepOnce(
 
     if (ADMIN_ATTEST_NOTIFY_STEPS.has(stepKey)) {
       notifySubscriptionStepCompletedByAdmin(userId, stepKey, actorId, host, details);
+    }
+
+    // SPR-21-13-008 — the automatic half of the campaign-end cascade: fresh
+    // completion of campaign_ended (journey-panel-free path — the users-table
+    // progress milestone in confirmUserProgressController) also completes
+    // renewal_offered, which mails the customer the renewal pricing options
+    // and posts #town-crier exactly once (its own first-transition guard).
+    if (stepKey === "campaign_ended") {
+      await completeJourneyStepOnce(
+        userId,
+        "renewal_offered",
+        actorId,
+        actorType,
+        source,
+        host,
+      );
     }
     return true;
   } catch (error) {

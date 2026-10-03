@@ -1,6 +1,7 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
 import { Partner } from "../models/v1/partner.model";
+import { Feature } from "../models/v1/feature.model";
 import { sendMail } from "../config/sendGrid";
 import { TEAM_EMAIL } from "../config/env";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
@@ -61,6 +62,12 @@ type StepMailContext = {
    * (partner code when one exists, the email-based fallback otherwise).
    */
   referralLink?: string;
+  /**
+   * SPR-21-13-008 — the active plan tiers the renewal email renders as the
+   * "pricing options" (same `features` rows the pricing page reads),
+   * prefetched by notifySubscriptionStepCompletedByAdmin for that step only.
+   */
+  pricingTiers?: { title: string; price: number; validityPeriod: string }[];
 };
 
 /**
@@ -459,6 +466,26 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-008 — Renewal / Next Steps Offered (audit step 39). Fired on
+  // the FIRST completion from EITHER side: the campaign_ended cascade or a
+  // manual attest of this step. Customer copy only (DoD2): the email shows
+  // the pricing options (active plan tiers from the `features` table) with a
+  // CTA to the pricing page; #town-crier fires via the shared path below.
+  renewal_offered: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "Renewal & Next Steps — Your Pricing Options",
+      templateName: "renewal-offered-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        plan: ctx.planTitle,
+        tiers: ctx.pricingTiers ?? [],
+        pricingUrl: `${ctx.frontendUrl}/dashboard/plan-and-pricing`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -651,6 +678,9 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
   // SPR-21-13-008 — Referral Eligibility Confirmed (audit step 38).
   referral_eligibility:
     "Referral eligibility confirmed — programme details and the client's personal referral link emailed to them.",
+  // SPR-21-13-008 — Renewal / Next Steps Offered (audit step 39).
+  renewal_offered:
+    "Renewal offered — pricing options and next steps emailed to the client after the campaign ended.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
@@ -723,6 +753,31 @@ export const notifySubscriptionStepCompletedByAdmin = (
           : `${frontendUrl}/register?ref=${userEmail}-partner`;
       }
 
+      // SPR-21-13-008 — the renewal email's "pricing options": active tiers
+      // from the `features` table (same rows the pricing page reads).
+      // Prefetched here so the STEP_MAILS builder stays synchronous; a
+      // failed prefetch degrades to an empty tier list rather than dropping
+      // the mail (the template still links the pricing page).
+      let pricingTiers: { title: string; price: number; validityPeriod: string }[] | undefined;
+      if (stepKey === "renewal_offered") {
+        try {
+          const features = await Feature.findAll({
+            where: { isActive: true },
+            attributes: ["title", "price", "validityPeriod"],
+            order: [["price", "ASC"]],
+          });
+          pricingTiers = features.map((f) => ({
+            title: f.title,
+            price: Number(f.price),
+            validityPeriod: f.validityPeriod,
+          }));
+        } catch (tierError) {
+          logger.warn(
+            `Pricing tiers for renewal_offered (user ${userId}) unavailable: ${tierError} — sending without them`,
+          );
+        }
+      }
+
       const buildMails = STEP_MAILS[stepKey];
       if (!buildMails) {
         logger.warn(
@@ -746,6 +801,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
             details,
             journeySummary,
             referralLink,
+            pricingTiers,
           });
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));
