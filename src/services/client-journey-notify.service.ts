@@ -2,6 +2,12 @@ import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
 import { Partner } from "../models/v1/partner.model";
 import { Feature } from "../models/v1/feature.model";
+import { Credentials } from "../models/v1/credentials.model";
+import {
+  calculateCampaignFields,
+  daysUntil,
+  parseDate as parseCampaignDate,
+} from "../utils/campaign-calculator";
 import { sendMail } from "../config/sendGrid";
 import { TEAM_EMAIL } from "../config/env";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
@@ -24,6 +30,13 @@ import {
 
 const logger = getServiceLogger("client-journey-notify");
 
+/** SPR-21-13-009 — the T-14 / T-7 / day-0 expiration trio. */
+const EXPIRATION_NOTICE_STEPS = new Set<string>([
+  "expiration_notice_14day",
+  "expiration_notice_7day",
+  "expiration_notice_0day",
+]);
+
 /**
  * SPR-21-11-005 / SPR-21-11-013: when an admin completes a subscription-scoped
  * journey step (Service Selection or Payment Confirmed) by hand, mirror what the
@@ -41,6 +54,9 @@ const logger = getServiceLogger("client-journey-notify");
  * when the step was already complete, so attesting an already-done step does not
  * email twice.
  */
+/** SPR-21-13-009 — the expiration-trio email context (recomputed end date). */
+export type ExpiryInfo = { expiresOn: string; daysRemaining: number };
+
 type StepMailContext = {
   userId: string;
   userEmail: string;
@@ -69,6 +85,12 @@ type StepMailContext = {
    * prefetched by notifySubscriptionStepCompletedByAdmin for that step only.
    */
   pricingTiers?: { title: string; price: number; validityPeriod: string }[];
+  /**
+   * SPR-21-13-009 — the client's recomputed campaign end date and how many
+   * days remain, for the subscription expiration trio. Prefetched by
+   * notifySubscriptionStepCompletedByAdmin for those steps only.
+   */
+  expiryInfo?: ExpiryInfo;
 };
 
 /**
@@ -247,6 +269,64 @@ const checkinStepMails = (weekLabel: string) => (ctx: StepMailContext): StepMail
     },
   },
 ];
+
+/**
+ * SPR-21-13-009 — Subscription expiration notices (audit steps 30/31/35).
+ * One builder for all three milestones, parameterised by the milestone's
+ * days-remaining (the fallback when the prefetch below could not resolve the
+ * exact end date, so a 14-day notice never degrades to "today"): the client
+ * gets the countdown renewal email, the delivery team their copy. Fired by
+ * the expiration-notice cron at T-14 / T-7 / day 0 and by a manual attest of
+ * the same step; the Town Crier post is the shared path below.
+ */
+const expirationNoticeMails = (milestoneDays: number) => (
+  ctx: StepMailContext,
+): StepMail[] => {
+  const daysRemaining = ctx.expiryInfo?.daysRemaining ?? milestoneDays;
+  const expiresOn = ctx.expiryInfo?.expiresOn ?? "the end of your current plan";
+  const clientDaysLabel =
+    daysRemaining <= 0
+      ? "today"
+      : `in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`;
+  const noticeLabel =
+    daysRemaining <= 0 ? "same-day" : `${daysRemaining}-day`;
+  return [
+    {
+      email: ctx.userEmail,
+      subject:
+        daysRemaining <= 0
+          ? "Your CVtoCAREER Plan Expires Today"
+          : `Your CVtoCAREER Plan Expires in ${daysRemaining} Day${
+              daysRemaining === 1 ? "" : "s"
+            }`,
+      templateName: "expiration-notice-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        daysLabel: clientDaysLabel,
+        expiresOn,
+        renewalUrl: `${ctx.frontendUrl}/dashboard/plan-and-pricing`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+    {
+      email: TEAM_EMAIL!,
+      subject: `Expiration Notice (${noticeLabel}) - ${ctx.fullName}`,
+      templateName: "expiration-notice-admin.ejs",
+      templateData: {
+        clientName: ctx.fullName,
+        clientEmail: ctx.userEmail,
+        plan: ctx.planTitle,
+        expiresOn,
+        daysRemaining,
+        noticeLabel,
+        link: `${ctx.frontendUrl}/admin-dashboard/users/${ctx.userId}`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ];
+};
 
 /**
  * SPR-21-11-012 — what each attested step mails. Customer emails are collected
@@ -637,6 +717,13 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     ];
   },
+  // SPR-21-13-009 — subscription expiration trio (audit steps 30/31/35):
+  // the T-14 / T-7 / day-0 countdown notices. One builder keyed by the
+  // days-remaining the prefetch resolved; the cron fires them at the exact
+  // milestone day and a manual attest sends the same set.
+  expiration_notice_14day: expirationNoticeMails(14),
+  expiration_notice_7day: expirationNoticeMails(7),
+  expiration_notice_0day: expirationNoticeMails(0),
 };
 
 /** First Slack line for 012's gates; other steps keep the generic body only. */
@@ -682,6 +769,13 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
   // SPR-21-13-008 — Renewal / Next Steps Offered (audit step 39).
   renewal_offered:
     "Renewal offered — pricing options and next steps emailed to the client after the campaign ended.",
+  // SPR-21-13-009 — subscription expiration trio (audit steps 30/31/35).
+  expiration_notice_14day:
+    "14-day expiration notice sent — the client has 14 days left; renewal reminder emailed to them.",
+  expiration_notice_7day:
+    "7-day expiration notice sent — the client has 7 days left; renewal reminder emailed to them.",
+  expiration_notice_0day:
+    "Expiration day notice sent — the client's plan expires today; final renewal reminder emailed to them.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
@@ -777,6 +871,46 @@ export const notifySubscriptionStepCompletedByAdmin = (
         }
       }
 
+      // SPR-21-13-009 — the expiration trio's emails lead with the client's
+      // recomputed campaign end date and the days remaining. Prefetched here
+      // (same calculator the campaign page uses) so both the cron-fired and
+      // the manually-attested path render the correct countdown; a failed
+      // lookup degrades to a generic date rather than dropping the mail.
+      let expiryInfo: ExpiryInfo | undefined;
+      if (EXPIRATION_NOTICE_STEPS.has(stepKey)) {
+        try {
+          const credential = await Credentials.findOne({
+            where: { clientId: userId },
+          });
+          if (credential) {
+            const jsonb = ((credential as any).seekExternalCredentials ||
+              {}) as Record<string, any>;
+            const computed = calculateCampaignFields({
+              SeekSubStartDate: (credential as any).SeekSubStartDate,
+              createdAt: (credential as any).createdAt,
+              SeekSubDurDays: jsonb.SeekSubDurDays,
+              GraceDuration: jsonb.GraceDuration,
+            });
+            const endDate = parseCampaignDate(computed.CampaignEnd);
+            if (endDate) {
+              expiryInfo = {
+                expiresOn: endDate.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  timeZone: "UTC",
+                }),
+                daysRemaining: daysUntil(endDate),
+              };
+            }
+          }
+        } catch (expiryError) {
+          logger.warn(
+            `Expiry info for step "${stepKey}" (user ${userId}) unavailable: ${expiryError} — sending without the exact date`,
+          );
+        }
+      }
+
       const buildMails = STEP_MAILS[stepKey];
       if (!buildMails) {
         logger.warn(
@@ -803,6 +937,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
             journeySummary,
             referralLink,
             pricingTiers,
+            expiryInfo,
           });
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));

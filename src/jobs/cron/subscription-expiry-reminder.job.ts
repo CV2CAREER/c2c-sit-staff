@@ -14,6 +14,7 @@ import {
 } from "../../utils/enum";
 import {
   calculateCampaignFields,
+  daysUntil,
   parseDate as parseCampaignDate,
 } from "../../utils/campaign-calculator";
 
@@ -27,16 +28,7 @@ const MILESTONES: Array<{ from: number; to: number; label: string; emoji: string
   { from: 0,  to: 0,  label: "0 days (today)", emoji: "🔴",  severity: SlackSeverity.INFO },
 ];
 
-// Whole days between today and the end date (0 = expires today, negative = past).
-function daysUntil(endDate: Date): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-  return Math.round((end.getTime() - today.getTime()) / 86_400_000);
-}
-
-interface ExpiringClient {
+export interface ExpiringClient {
   clientId: string;
   jsonb: Record<string, any>;
   endDate: Date;
@@ -59,7 +51,12 @@ interface ExpiringClient {
 const SQL_LOOKAHEAD_DAYS = 90;
 const SQL_LOOKBEHIND_DAYS = 30;
 
-async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
+/**
+ * Loads every client with a recomputed campaign end date inside the query
+ * window. Exported so the SPR-21-13-009 expiration-notice job reuses the exact
+ * same end-date source (recomputed CampaignEnd incl. grace) as this digest.
+ */
+export async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
   const endDateExpr = `
     to_date(
       CASE

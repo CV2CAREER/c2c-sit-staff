@@ -218,6 +218,14 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // attest of this step — mails the customer the renewal pricing options and
   // posts to #town-crier.
   "renewal_offered",
+  // SPR-21-13-009 — subscription expiration trio (audit steps 30/31/35):
+  // the expiration-notice cron auto-completes T-14 / T-7 / day 0 and mails
+  // the client the countdown reminder plus the delivery team their copy; a
+  // manual attest of the same step sends the same set (the wasCompleted
+  // guard keeps the two paths from doubling up).
+  "expiration_notice_14day",
+  "expiration_notice_7day",
+  "expiration_notice_0day",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
