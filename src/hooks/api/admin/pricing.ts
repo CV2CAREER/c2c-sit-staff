@@ -8,8 +8,14 @@ import toast from "react-hot-toast";
 
 const SUPPORTED_PRICING_CURRENCIES = ["AUD", "GBP", "EUR", "NGN", "CAD", "USD"] as const;
 type SupportedPricingCurrency = (typeof SUPPORTED_PRICING_CURRENCIES)[number];
-const PRICING_PLAN_ORDER = ["Emerald", "Bronze", "Silver", "Gold", "Platinum", "Coral"] as const;
-const EXCLUDED_PLAN_TITLES = new Set(["copper"]);
+const PRICING_PLAN_ORDER = ["Bronze", "Silver", "Gold", "Platinum", "Emerald"] as const;
+// Coral stays visible nowhere on the admin Revenue Mgt grid per SPR-21-56-006 —
+// the ticket calls out five plan cards (Bronze/Silver/Gold/Platinum/Emerald).
+// Ambassador reward plans live under the Referral Mgt surface, not here.
+// Copper is the hidden bolt-on; the regression-fixture row is planted by
+// SPR-21-12 regression setup and should never leak into a client-facing surface.
+const EXCLUDED_PLAN_TITLES = new Set(["copper", "coral"]);
+const EXCLUDED_TITLE_SUBSTRINGS = ["regression", "fixture"];
 
 const isSupportedPricingCurrency = (code: string): code is SupportedPricingCurrency =>
   SUPPORTED_PRICING_CURRENCIES.includes(code as SupportedPricingCurrency);
@@ -70,7 +76,11 @@ const normalizePricingPlans = (plans: PricingPlan[]) => {
       continue;
     }
 
-    if (EXCLUDED_PLAN_TITLES.has(normalizedTitle.toLowerCase())) {
+    const lowerTitle = normalizedTitle.toLowerCase();
+    if (EXCLUDED_PLAN_TITLES.has(lowerTitle)) {
+      continue;
+    }
+    if (EXCLUDED_TITLE_SUBSTRINGS.some((frag) => lowerTitle.includes(frag))) {
       continue;
     }
 
