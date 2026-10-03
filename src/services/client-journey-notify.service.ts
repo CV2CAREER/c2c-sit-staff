@@ -1,5 +1,6 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
+import { Partner } from "../models/v1/partner.model";
 import { sendMail } from "../config/sendGrid";
 import { TEAM_EMAIL } from "../config/env";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
@@ -54,6 +55,12 @@ type StepMailContext = {
    * Prefetched by notifySubscriptionStepCompletedByAdmin for that step only.
    */
   journeySummary?: { label: string; completedAt: Date }[];
+  /**
+   * SPR-21-13-008 — the client's personal referral link for the referral
+   * eligibility email, prefetched by notifySubscriptionStepCompletedByAdmin
+   * (partner code when one exists, the email-based fallback otherwise).
+   */
+  referralLink?: string;
 };
 
 /**
@@ -434,6 +441,24 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       },
     },
   ],
+  // SPR-21-13-008 — Referral Eligibility Confirmed (audit step 38). Customer
+  // copy only (DoD1): the email carries the programme details and the
+  // client's personal referral link; #town-crier fires via the shared path
+  // below on the same first completion.
+  referral_eligibility: (ctx) => [
+    {
+      email: ctx.userEmail,
+      subject: "You're Eligible for the CVtoCAREER Referral Programme",
+      templateName: "referral-eligibility-client.ejs",
+      templateData: {
+        name: ctx.firstName,
+        referralLink: ctx.referralLink,
+        referralsUrl: `${ctx.frontendUrl}/dashboard/referrals`,
+        frontendUrl: ctx.frontendUrl,
+        currentYear: ctx.currentYear,
+      },
+    },
+  ],
   profile_alignment_check: (ctx) => [
     {
       email: ctx.userEmail,
@@ -623,6 +648,9 @@ const STEP_SLACK_HEADLINES: Record<string, string> = {
   // SPR-21-13-007 — Campaign Ended (audit step 36).
   campaign_ended:
     "Campaign ended — journey summary and exit-survey link emailed to the client.",
+  // SPR-21-13-008 — Referral Eligibility Confirmed (audit step 38).
+  referral_eligibility:
+    "Referral eligibility confirmed — programme details and the client's personal referral link emailed to them.",
 };
 
 export const notifySubscriptionStepCompletedByAdmin = (
@@ -634,7 +662,15 @@ export const notifySubscriptionStepCompletedByAdmin = (
 ): void => {
   setImmediate(async () => {
     try {
-      const user = await User.findByPk(userId);
+      // SPR-21-13-008 — the referral email needs the client's partner
+      // referral code, so that one step prefetches the association; every
+      // other step keeps the plain lookup.
+      const user = await User.findByPk(userId, {
+        include:
+          stepKey === "referral_eligibility"
+            ? [{ model: Partner, attributes: ["referralCode"] }]
+            : [],
+      });
       if (!user) {
         logger.warn(
           `Step "${stepKey}" completed for unknown user ${userId} — skipping notifications`,
@@ -675,6 +711,18 @@ export const notifySubscriptionStepCompletedByAdmin = (
         }
       }
 
+      // SPR-21-13-008 — the referral email's personal link, built exactly
+      // like referral.service: the partner's code when one exists, the
+      // email-based fallback otherwise. Prefetched here so the STEP_MAILS
+      // builder stays synchronous.
+      let referralLink: string | undefined;
+      if (stepKey === "referral_eligibility") {
+        const partnerCode = (user as any).partner?.referralCode;
+        referralLink = partnerCode
+          ? `${frontendUrl}/register?ref=${partnerCode}`
+          : `${frontendUrl}/register?ref=${userEmail}-partner`;
+      }
+
       const buildMails = STEP_MAILS[stepKey];
       if (!buildMails) {
         logger.warn(
@@ -697,6 +745,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
             currentYear,
             details,
             journeySummary,
+            referralLink,
           });
           if (stepMails.length > 0) {
             await Promise.all(stepMails.map((mail) => sendMail(mail)));

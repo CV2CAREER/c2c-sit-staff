@@ -207,6 +207,11 @@ const ADMIN_ATTEST_NOTIFY_STEPS = new Set<string>([
   // summary with the exit-survey CTA, mails the delivery team their copy,
   // and posts to #town-crier.
   "campaign_ended",
+  // SPR-21-13-008 — Referral Eligibility Confirmed (audit step 38): the only
+  // trigger is a human judging eligibility, so the attest itself mails the
+  // customer their referral programme details + personal link and posts the
+  // confirmation to #town-crier.
+  "referral_eligibility",
 ]);
 
 // Whether a step already has a completion row for its (per-tour) scope — used
