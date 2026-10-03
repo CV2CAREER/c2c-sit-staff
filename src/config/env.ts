@@ -198,8 +198,21 @@ export const DISCOVERY_IMAP_SECURE = process.env.DISCOVERY_IMAP_SECURE !== 'fals
 export const DISCOVERY_PARSE_DOMAIN = process.env.DISCOVERY_PARSE_DOMAIN || '';
 
 // VIEW AS USER
-export const CLIENT_APP_DOMAIN =
-  process.env.CLIENT_APP_DOMAIN || 'http://localhost:3001';
+// PUBLIC CLIENT-APP DOMAIN — resolved automatically so hosted deployments
+// never silently fall back to localhost in emailed links:
+//   explicit CLIENT_APP_DOMAIN env var always wins;
+//   else by NODE_ENV: local/development → http://localhost:3001,
+//   prod/production → https://app.cvtocareer.com,
+//   otherwise → https://{NODE_ENV}.customer.cvtocareer.com.
+const resolveClientAppDomain = (): string => {
+  const fromEnv = process.env.CLIENT_APP_DOMAIN;
+  if (fromEnv) return fromEnv;
+  const env = (NODE_ENV || 'local').toLowerCase();
+  if (env === 'local' || env === 'development') return 'http://localhost:3001';
+  if (env === 'prod' || env === 'production') return 'https://app.cvtocareer.com';
+  return `https://${env}.customer.cvtocareer.com`;
+};
+export const CLIENT_APP_DOMAIN = resolveClientAppDomain();
 export const VIEW_AS_USER_JWT_SECRET =
   process.env.VIEW_AS_USER_JWT_SECRET || process.env.SIGN_IN_ACCESS_SECRET_KEY;
 
