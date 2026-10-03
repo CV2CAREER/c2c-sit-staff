@@ -36,15 +36,15 @@ const logger = getServiceLogger("monthly-followup-cron-job");
  *   - at least CADENCE_DAYS have passed since the campaign ended (the
  *     renewal email already fired at campaign end, so the first monthly
  *     follow-up lands one month later),
- *   - the campaign ended on/after CADENCE_START — campaigns that ended
- *     BEFORE this cadence shipped are not part of the cycle (the commented
- *     line below opts them back in if business wants it),
  *   - no `offer_placement_recorded` row for that tour (placement confirmed),
  *   - the client is not in `unsubscribedusers` (opted out),
- *   - no `monthly_followup` attempt (any status) in the last CADENCE_DAYS —
- *     cadence is keyed on the last ATTEMPT, so a transient send failure is
- *     logged as a FAILED row and waits its turn instead of retrying every
- *     run.
+ *   - no successful `monthly_followup` send in the last CADENCE_DAYS — an
+ *     email that FAILED to send is logged as a FAILED row but does not pause
+ *     the cadence, so the next run retries it instead of skipping a month.
+ *
+ * Following the register DoD literally: there is no start-date cutoff and no
+ * enable switch — every post-campaign customer is in scope from day one,
+ * and the only stop conditions are placement confirmed or opt-out.
  *
  * Every eligible candidate gets one sendMail + one #town-crier post + one
  * `journey_message_logs` row (stepKey "monthly_followup", messageType
@@ -58,20 +58,11 @@ const logger = getServiceLogger("monthly-followup-cron-job");
 
 const CADENCE_DAYS = 30;
 
-/**
- * Campaigns that ended BEFORE this date are skipped by the cadence (see the
- * SQL below). TODO(setup): set to the actual go-live date before shipping —
- * a campaign ending between this date and go-live would miss its first
- * monthly window only if the dates are wrong, never the other way round
- * (already-ended campaigns stay excluded).
- */
-const CADENCE_START = new Date("2026-10-31");
-
 type Candidate = { userId: string; tourId: string; endedAt: Date };
 
 // Eligibility lives entirely in SQL so ineligible rows are never selected:
-// ended at least CADENCE_DAYS ago AND on/after CADENCE_START, placement not
-// confirmed, not opted out, and no attempt within the last CADENCE_DAYS.
+// ended at least CADENCE_DAYS ago, placement not confirmed, not opted out,
+// and no successful send in the last CADENCE_DAYS (failed sends retry next run).
 const CANDIDATES_SQL = `
   SELECT DISTINCT c."clientId" AS "userId", c."tourId" AS "tourId", ce."completedAt" AS "endedAt"
   FROM credentials c
@@ -83,10 +74,6 @@ const CANDIDATES_SQL = `
    AND ce."deletedAt" IS NULL
   WHERE c."tourId" IS NOT NULL
     AND ce."completedAt" <= NOW() - (:cadenceDays * INTERVAL '1 day')
-    AND ce."completedAt" >= :cadenceStart
-    -- OPT-IN BACKFILL: delete/comment the line above to start the cadence
-    -- for campaigns that already ended when this shipped (first send goes
-    -- out on the first run after deploy instead of one month after ending).
     AND NOT EXISTS (
       SELECT 1 FROM client_journey_steps p
       WHERE p."userId" = c."clientId"
@@ -102,6 +89,7 @@ const CANDIDATES_SQL = `
       SELECT 1 FROM journey_message_logs m
       WHERE m."userId" = c."clientId"
         AND m."stepKey" = 'monthly_followup'
+        AND m."status" = 'sent'
         AND m."createdAt" > NOW() - (:cadenceDays * INTERVAL '1 day')
     )
 `;
@@ -116,13 +104,18 @@ export async function runMonthlyFollowupScan(): Promise<void> {
     type: QueryTypes.SELECT,
     replacements: {
       cadenceDays: CADENCE_DAYS,
-      cadenceStart: CADENCE_START,
     },
   });
 
+  // Dedupe by userId so one email is sent per client per cycle (even if they
+  // finished two campaigns — only the most recent campaign is checked).
+  const byUser = new Map();
+  for (const c of candidates) if (!byUser.has(c.userId)) byUser.set(c.userId, c);
+  const deduped = Array.from(byUser.values());
+
   // DISTINCT in the SQL keeps this single-pass even if a client has more
   // than one credentials row for the tour.
-  for (const candidate of candidates) {
+  for (const candidate of deduped) {
     const { userId } = candidate;
     try {
       const user = await User.findByPk(userId);
@@ -164,23 +157,8 @@ export async function runMonthlyFollowupScan(): Promise<void> {
         );
       }
 
-      if (status === JourneyMessageLogStatus.SENT) {
-        // DoD3 — #town-crier on each send. Cron has no request host, so the
-        // environment derives from CLIENT_APP_DOMAIN (expiry-reminder
-        // precedent).
-        await SlackService.notify({
-          location: getEnvironmentFromHost(process.env.CLIENT_APP_DOMAIN),
-          host: process.env.CLIENT_APP_DOMAIN,
-          node: SlackNode.BACKGROUND_JOB,
-          provider: SlackProvider.SYSTEM,
-          severity: SlackSeverity.INFO,
-          type: SlackEventType.SYSTEM_JOB,
-          channel: SlackChannel.TOWN_CRIER,
-          trigger: "Monthly placement check-in / renewal follow-up",
-          body: `Monthly follow-up email sent — placement check-in + renewal prompt.\nClient: ${getFullName(user)} (${email})\nPlan: ${planTitle}\nCampaign ended: ${candidate.endedAt.toISOString().slice(0, 10)}`,
-        });
-      }
-
+      // Write the log row before Slack so a Slack hiccup can't cause a
+      // duplicate email next run.
       await JourneyMessageLog.create({
         userId,
         stepKey: "monthly_followup",
@@ -190,6 +168,29 @@ export async function runMonthlyFollowupScan(): Promise<void> {
         errorMessage,
         triggeredByAdminId: "SYSTEM",
       });
+
+      if (status === JourneyMessageLogStatus.SENT) {
+        // DoD3 — #town-crier on each send. Cron has no request host, so the
+        // environment derives from CLIENT_APP_DOMAIN (expiry-reminder
+        // precedent).
+        try {
+          await SlackService.notify({
+            location: getEnvironmentFromHost(process.env.CLIENT_APP_DOMAIN),
+            host: process.env.CLIENT_APP_DOMAIN,
+            node: SlackNode.BACKGROUND_JOB,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            type: SlackEventType.SYSTEM_JOB,
+            channel: SlackChannel.TOWN_CRIER,
+            trigger: "Monthly placement check-in / renewal follow-up",
+            body: `Monthly follow-up email sent — placement check-in + renewal prompt.\nClient: ${getFullName(user)} (${email})\nPlan: ${planTitle}\nCampaign ended: ${candidate.endedAt.toISOString().slice(0, 10)}`,
+          });
+        } catch (slackError: any) {
+          logger.error(
+            `monthly follow-up Slack post failed for user ${userId}: ${slackError?.message || slackError}`,
+          );
+        }
+      }
 
       logger.info(
         `monthly follow-up ${status} for user ${userId} (tour ${candidate.tourId})`,
