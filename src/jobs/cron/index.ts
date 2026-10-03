@@ -20,6 +20,7 @@ import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 import { createApplicationsStartedJob } from './applications-started.job';
 import { createCheckinSchedulerJob } from './checkin-scheduler.job';
 import { createOfferPlacementWatchJob } from './offer-placement-watch.job';
+import { createMonthlyFollowupJob } from './monthly-followup.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -92,6 +93,15 @@ export async function startAllCronJobs() {
     {
       name: 'Offer Placement Leaderboard Watch Job',
       task: createOfferPlacementWatchJob(),
+    },
+    // SPR-21-13-008 — monthly post-campaign follow-up (placement check-in +
+    // renewal prompt, stops on placement or opt-out); eligibility computed
+    // entirely in SQL (30-day cadence, campaign ended on/after the
+    // CADENCE_START cutoff). Every environment so IAT exercises the same
+    // path; the exported scan function also runs on demand.
+    {
+      name: 'Monthly Follow-up Job',
+      task: createMonthlyFollowupJob(),
     },
   ];
 
