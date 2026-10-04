@@ -26,7 +26,7 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
         title: "Role Titles",
         fields: [
             {
-                title: "Preferred Role Title",
+                title: "Course of Study",
                 key: "role",
                 inputType: "text",
                 options: [],
@@ -34,7 +34,7 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
                 displayValue: ""
             },
             {
-                title: "Optional Role Titles",
+                title: "Role Titles",
                 key: "titles",
                 inputType: "multiSelect",
                 options: [],
@@ -210,27 +210,16 @@ const jobPreferencesSchema: Array<JobPreferencesType> = [
         ]
     },
     {
-        title: "Salary Range",
+        title: "Pay",
         fields: [
             {
-                title: "Minimum Salary",
-                key: "minSalary",
-                inputType: "salarySelect",
+                title: "Pay Range",
+                key: "payRange",
+                inputType: "payRange",
                 options: [],
                 value: "",
                 displayValue: "",
                 format: formatCurrency
-
-            },
-            {
-                title: "Maximum Salary",
-                key: "maxSalary",
-                inputType: "salarySelect",
-                options: [],
-                value: "",
-                displayValue: "",
-                format: formatCurrency
-
             }
         ]
     },

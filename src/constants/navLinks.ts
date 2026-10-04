@@ -8,6 +8,7 @@ import {
   UserRoundPlus,
   Star,
   Bot,
+  CircleHelp,
   Folders,
   NotebookPen,
   Binoculars,
@@ -171,9 +172,9 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     groupId: 8,
     access: ["admin", "assistant"],
     children: [
-      { name: "Train Chatbot", href: "/admin/communication/chatbot-trainer", icon: Bot },
       { name: "Chatbot Logs", href: "/admin/communication/chatbot-logs", icon: Bot },
       { name: "Human Support", href: "/admin/communication/human-support", icon: User },
+      { name: "FAQ", href: "/admin/communication/faq", icon: CircleHelp },
       { name: "Emails", href: "/admin/communication-templates", icon: Mail },
       { name: "Content", href: "/admin/communication/client-content", icon: FileText },
       { name: "Preference Questions", href: "/admin/preference-questions", icon: ListChecks },
@@ -236,7 +237,6 @@ export const ASSISTANT_NAV_LINKS: NavLink[] = [
     groupId: 8,
     access: ["admin", "assistant"],
     children: [
-      { name: "Train Chatbot", href: "/pc/communication/chatbot-trainer", icon: Bot },
       { name: "Chatbot Logs", href: "/pc/communication/chatbot-logs", icon: Bot },
       { name: "Human Support", href: "/pc/communication/human-support", icon: User },
       { name: "Emails", href: "/pc/communication-templates", icon: Mail },
