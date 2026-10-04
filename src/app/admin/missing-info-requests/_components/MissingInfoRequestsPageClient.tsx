@@ -12,7 +12,9 @@ import AgeIndicator from "./AgeIndicator";
 import BulkReminderModal from "./BulkReminderModal";
 import ViewResponsesModal from "./ViewResponsesModal";
 import EmptyState from "./EmptyState";
-import QueuePlaceholder from "./QueuePlaceholder";
+import StaffQueue from "./StaffQueue";
+import SystemQueue from "./SystemQueue";
+import { useQueueEntries } from "@/hooks/api/queue-entry.api";
 
 const AGE_FILTERS = [
   { key: "", label: "All pending" },
@@ -56,6 +58,9 @@ export default function MissingInfoRequestsPageClient({
 
   const { stats } = useRequestStats();
   const { sendBulkReminder, isSending } = useBulkReminder();
+  // Same query key StaffQueue uses — one fetch shared by pill and table.
+  const { entries: staffEntries } = useQueueEntries("staff");
+  const { entries: systemEntries } = useQueueEntries("system");
 
   const { data: responsesData, isLoading: isResponsesLoading } = useRequestResponses(
     viewResponsesId || ""
@@ -125,9 +130,8 @@ export default function MissingInfoRequestsPageClient({
 
   const queueCounts: Record<Queue, number> = {
     customer: stats.total,
-    // Filled in by SPR-21-51-002 (Staff) and SPR-21-51-003 (System)
-    staff: 0,
-    system: 0,
+    staff: staffEntries.filter((e) => e.status === "open").length,
+    system: systemEntries.filter((e) => e.status === "open").length,
   };
 
   return (
@@ -329,23 +333,17 @@ export default function MissingInfoRequestsPageClient({
         </div>
       )}
 
-      {/* Staff queue — built by SPR-21-51-002 */}
+      {/* Staff queue — SPR-21-51-002 */}
       {queue === "staff" && (
         <div className="px-7 py-5">
-          <QueuePlaceholder
-            title="No staff tasks yet"
-            description="Internal Database (Housekeeping) tasks you raise will appear here."
-          />
+          <StaffQueue />
         </div>
       )}
 
-      {/* System queue — built by SPR-21-51-003 */}
+      {/* System queue — SPR-21-51-003 */}
       {queue === "system" && (
         <div className="px-7 py-5">
-          <QueuePlaceholder
-            title="No system entries yet"
-            description="Client self-service actions will be recorded and routed here."
-          />
+          <SystemQueue />
         </div>
       )}
 

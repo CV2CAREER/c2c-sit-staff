@@ -13,6 +13,7 @@ import {
   useMissingInfoTemplates,
   useSendRequest,
 } from "@/hooks/api/missing-info-template.api";
+import { useQueueEntryActions } from "@/hooks/api/queue-entry.api";
 import TemplateCard from "./TemplateCard";
 import EmptyState from "./EmptyState";
 import SendMissingInfoRequestModal from "../_modals/SendMissingInfoRequestModal";
@@ -55,6 +56,7 @@ export default function TemplatesClient() {
   }, [usersData]);
 
   const { sendRequest, isSending } = useSendRequest();
+  const { raiseTask } = useQueueEntryActions();
 
   const { templatesDomain, actions } = useMissingInfoTemplates(
     activeCategory ? { category: activeCategory } : undefined,
@@ -148,6 +150,18 @@ export default function TemplatesClient() {
 
   const handleSend = (template: MissingInfoTemplate) => {
     setSendModalTemplate(template);
+  };
+
+  const handleRaiseTask = async (template: MissingInfoTemplate) => {
+    const toastId = toast.loading(`Raising "${template.name}" as a staff task...`);
+    try {
+      await raiseTask(template.id);
+      toast.dismiss(toastId);
+      toast.success(`"${template.name}" raised as a staff task.`);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.response?.data?.message || e?.message || "Failed to raise staff task.");
+    }
   };
 
   const handleSendRequest = async (payload: {
@@ -253,7 +267,7 @@ export default function TemplatesClient() {
           >
             All
           </button>
-          {["identity", "work_rights", "references", "certifications", "banking"].map((cat) => (
+          {["identity", "work_rights", "references", "certifications", "banking", "housekeeping"].map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(activeCategory === cat ? undefined : cat)}
@@ -293,6 +307,7 @@ export default function TemplatesClient() {
                 onDelete={setDeleteConfirm}
                 onPublish={handlePublish}
                 onSend={handleSend}
+                onRaiseTask={handleRaiseTask}
               />
             ))}
             <button

@@ -9,6 +9,8 @@ interface TemplateCardProps {
   onDelete: (template: MissingInfoTemplate) => void;
   onPublish: (template: MissingInfoTemplate) => void;
   onSend: (template: MissingInfoTemplate) => void;
+  /** Housekeeping templates raise an internal staff task instead of a client send. */
+  onRaiseTask?: (template: MissingInfoTemplate) => void;
 }
 
 function relativeTime(dateStr?: string | null): string {
@@ -24,8 +26,9 @@ function relativeTime(dateStr?: string | null): string {
   return `${days}d ago`;
 }
 
-export default function TemplateCard({ template, onEdit, onDelete, onPublish, onSend }: TemplateCardProps) {
+export default function TemplateCard({ template, onEdit, onDelete, onPublish, onSend, onRaiseTask }: TemplateCardProps) {
   const isDraft = template.status === "draft";
+  const isHousekeeping = template.category === "housekeeping";
   const fieldCount = template.fields?.length ?? 0;
   const fieldLabel = template.type === "referee_block"
     ? `${fieldCount} referee fields \u00b7 Dynamic count`
@@ -67,7 +70,14 @@ export default function TemplateCard({ template, onEdit, onDelete, onPublish, on
         >
           Edit
         </button>
-        {isDraft ? (
+        {isHousekeeping ? (
+          <button
+            onClick={() => onRaiseTask?.(template)}
+            className="flex-1 text-center text-[13px] font-semibold py-2 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] transition-colors"
+          >
+            Raise as staff task
+          </button>
+        ) : isDraft ? (
           <button
             disabled
             className="flex-1 text-center text-[13px] font-semibold py-2 rounded-lg border border-[#E5E9EF] text-[#9CA3AF] bg-white cursor-not-allowed"
