@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,7 @@ export default function TemplatesClient() {
   const [deleteConfirm, setDeleteConfirm] = useState<MissingInfoTemplate | null>(null);
   const [sendModalTemplate, setSendModalTemplate] = useState<MissingInfoTemplate | null>(null);
 
-  const { data: usersData, isLoading: usersLoading } = useFetchData<{ users: Client[]; count: number }>({
+  const { data: usersData } = useFetchData<{ users: Client[]; count: number }>({
     method: "GET",
     url: endpoints.USER_ALL,
     queryKey: ["missing-info-users"],
@@ -107,7 +106,7 @@ export default function TemplatesClient() {
       if (created?.id) {
         router.push(`/admin/missing-info-templates/builder/${created.id}`);
       } else {
-        router.push("/admin/missing-info-templates");
+        router.push("/admin/missing-information");
       }
     } catch (e: any) {
       toast.dismiss(toastId);
@@ -179,20 +178,7 @@ export default function TemplatesClient() {
   };
 
   return (
-    <div className="bg-[#F3F4F6] flex flex-col gap-0 p-0 min-h-screen">
-      {/* Header */}
-      <div className="bg-white px-7 py-4 border-b border-[#E5E9EF]">
-        <div className="flex items-center gap-3">
-          <a
-            href="/admin/dashboard"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#F3F4F6] hover:bg-[#E5E9EF] transition-colors text-[#10365A]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </a>
-          <h1 className="text-[20px] font-bold text-[#10365A] m-0">Missing Information</h1>
-        </div>
-      </div>
-
+    <div className="bg-[#F3F4F6] flex flex-col gap-0 p-0">
       {/* Tab bar */}
       <div className="flex items-center gap-6 bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
         <button
@@ -244,23 +230,7 @@ export default function TemplatesClient() {
         >
           Most Used
         </button>
-        <Link
-          href="/admin/missing-info-requests"
-          className={`text-[13px] font-semibold pb-1 transition-colors ${
-            activeTab === "outstanding"
-              ? "text-[#0B96D6] border-b-2 border-[#0B96D6]"
-              : "text-[#6B7280] hover:text-[#1F2937]"
-          }`}
-        >
-          Outstanding Requests
-        </Link>
         <div className="flex-1" />
-        <Link
-          href="/admin/missing-info-requests"
-          className="inline-flex items-center gap-1.5 border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-        >
-          View Outstanding Requests
-        </Link>
         <button
           onClick={handleNewTemplate}
           className="inline-flex items-center gap-1.5 bg-[#0B96D6] text-white rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#0a86c0] transition-colors"
