@@ -12,13 +12,7 @@ import { getSequelize } from "../utils/sequelize";
 const logger = getServiceLogger("aggregator-title-updater");
 
 // External jobsites that are handled separately
-const EXTERNAL_JOBSITES = ["randstad", "michaelpage"];
-
-// Seek job type mappings
-const seekConstants = {
-  Type_Name: ["Full Time", "Part Time", "Contract", "Casual", "Temporary"],
-  Type: ["0", "1", "2", "3", "4"]
-};
+const EXTERNAL_JOBSITES: string[] = [];
 
 /**
  * Updates job search titles and criteria across all aggregator tables
@@ -109,13 +103,6 @@ export const updateTitlesV2 = async (userId: string, aggr?: string, type: string
     for (const aggregator of aggregators) {
       let Type = Type_Name;
       
-      if (aggregator === "seek") {
-        const typeIndex = seekConstants.Type_Name.findIndex(t => 
-          t?.toLowerCase().replace(/[/_\s\-]/g, "") === Type_Name?.toLowerCase().replace(/[/_\s\-]/g, "")
-        );
-        Type = typeIndex > -1 ? seekConstants.Type[typeIndex] : "0";
-      }
-
       // Determine salary key names per aggregator
       const minKey = ["adecco", "adzuna", "indeed", "jora", "linkedin", "monster", "nhs", "reed"].includes(aggregator)
         ? "Salary_Min" : ["careerone"].includes(aggregator) ? "Pay_Min" : "Min";
@@ -165,7 +152,7 @@ export const updateTitlesV2 = async (userId: string, aggr?: string, type: string
           ...payload
         };
 
-        if (["seek", "jobserve", "linkedin", "workforceaustralia", "escapecity"].includes(aggregator)) {
+        if (["jobserve", "linkedin"].includes(aggregator)) {
           record["Keyword"] = title;
         } else {
           record["All_Words"] = title;
@@ -200,7 +187,7 @@ export const updateTitlesV2 = async (userId: string, aggr?: string, type: string
               ...payload
             };
 
-            if (["seek", "jobserve"].includes(aggregator)) {
+            if (["jobserve"].includes(aggregator)) {
               record["Keyword"] = title;
             } else {
               record["All_Words"] = title;

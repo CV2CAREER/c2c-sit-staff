@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>You're Eligible for the Referral Programme</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f5;
+      padding: 40px;
+      color: #333;
+      margin: 0;
+      line-height: 1.6;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          You're Eligible for the Referral Programme
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 28px 32px">
+        <p style="margin: 0 0 16px">Dear <strong><%= name %></strong>,</p>
+
+        <p style="margin: 0 0 16px">
+          Good news &mdash; the team has confirmed that you are eligible for
+          the CVtoCAREER referral programme. Share your personal link with
+          people you know who are job hunting, and you will earn a reward for
+          every confirmed referral.
+        </p>
+
+        <!-- How it works -->
+        <div
+          style="
+            background-color: #f0f7fc;
+            border-left: 4px solid #008ed3;
+            padding: 14px 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+          "
+        >
+          <p style="margin: 0 0 8px; font-weight: bold; color: #004174">
+            How it works
+          </p>
+          <ul style="margin: 0; padding-left: 20px; color: #333">
+            <li style="margin-bottom: 6px">
+              Share your personal referral link with friends and colleagues
+            </li>
+            <li style="margin-bottom: 6px">
+              They sign up through your link, so the referral is tracked to
+              your account
+            </li>
+            <li>You earn a reward once the referral is confirmed</li>
+          </ul>
+        </div>
+
+        <!-- Your link -->
+        <div
+          style="
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 14px 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+          "
+        >
+          <p style="margin: 0 0 6px; font-size: 12px; color: #6b7280">
+            Your personal referral link
+          </p>
+          <p style="margin: 0; font-weight: bold; color: #004174; word-break: break-all">
+            <%= referralLink %>
+          </p>
+        </div>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 28px 0 8px">
+          <a
+            href="<%= referralsUrl %>"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: bold;
+              padding: 12px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 14px;
+            "
+          >
+            View your referrals &rarr;
+          </a>
+        </div>
+
+        <p style="margin: 20px 0 0 0">
+          Your referrals dashboard shows everyone who has signed up through
+          your link and the rewards you have earned so far.
+        </p>
+
+        <p style="margin: 24px 0 0 0">
+          Kind regards,<br />
+          <strong>The CVtoCAREER Team</strong>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          padding: 24px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <p style="margin: 0 0 12px; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
+
+        <div style="margin: 8px 0">
+          <a
+            href="<%= frontendUrl %>/dashboard/account?run=unsubscribe"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Unsubscribe</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= frontendUrl %>/privacy-policy"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Privacy Policy</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= frontendUrl %>"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Website</a
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

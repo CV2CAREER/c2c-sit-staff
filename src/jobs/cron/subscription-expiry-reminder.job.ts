@@ -79,6 +79,8 @@ interface ExpiringClient {
   endDate: Date;
   daysRemaining: number;
   marker: ExpiryMarker | null;
+  /** Raw selected row — SPR-21-13-009 reads jsonb.SeekSubDurDays. */
+  jsonb: Record<string, any>;
 }
 
 // The campaign management page displays a *recomputed* CampaignEnd
@@ -145,6 +147,7 @@ async function loadClients(today: Date): Promise<ExpiringClient[]> {
       endDate,
       daysRemaining: daysBetween(today, endDate),
       marker: row[MARKER_KEY] || null,
+      jsonb: row,
     };
 
     const existing = latestByClient.get(client.clientId);
@@ -154,6 +157,15 @@ async function loadClients(today: Date): Promise<ExpiringClient[]> {
   }
 
   return [...latestByClient.values()];
+}
+
+/**
+ * SPR-21-13-009 — the expiration-notice job reuses this exact end-date source
+ * (recomputed CampaignEnd incl. grace) so the 14/7/0-day notices stay in
+ * lock-step with the digest. Loads clients for "today" on the Lagos calendar.
+ */
+export async function loadClientsWithEndDate(): Promise<ExpiringClient[]> {
+  return loadClients(todayInLagos());
 }
 
 // The milestone this client should be notified for on this run, or null.

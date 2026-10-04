@@ -13,6 +13,7 @@ import {
 
 export const CLIENT_CONTENT_KEYS = [
   "post_payment_terms",
+  "onboarding_pack",
   "cv_upload_terms",
   "private_data_copy",
   "public_data_copy",

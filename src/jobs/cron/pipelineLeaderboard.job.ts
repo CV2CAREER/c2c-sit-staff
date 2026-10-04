@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { Op } from 'sequelize';
 import { ManualApplication } from '../../models/v1/manual-application.model';
+import { ClientJourneyStep } from '../../models/v1/client-journey-step.model';
 import { Credentials } from '../../models/v1/credentials.model';
 import { User } from '../../models/v1/user.model';
 import { getServiceLogger } from '../../utils/createLogger';
@@ -658,6 +659,126 @@ async function buildMissingPCSection(
 
 // ─── Main job logic ───────────────────────────────────────────────────────────
 
+// ─── Placements (SPR-21-13-005, audit step 29) ────────────────────────────────
+//
+// Business Impact from the change register: "The leaderboard stays out of
+// date, so team rankings and recognition are wrong." Offer/placement
+// completions land in client_journey_steps (recorded from EITHER the customer
+// self-report endpoint or a staff attest) and are surfaced here so PC
+// rankings include placements.
+
+interface PlacementRow {
+  userId: string;
+  completedAt: Date;
+}
+
+interface PlacementEntry {
+  pcName: string;
+  total: number;
+  clients: Map<string, { clientName: string; completedAt: Date }>;
+}
+
+// Rolling window, deliberately NOT the job's "yesterday" WAT window: the
+// minute watcher (offer-placement-watch.job.ts) re-fires this job the moment
+// a placement is recorded, and a placement recorded today must already be in
+// the section at that instant — a yesterday-only window would show nothing
+// until the next midnight run.
+const PLACEMENT_WINDOW_DAYS = 7;
+
+async function fetchRecentPlacements(clientIds: string[]): Promise<PlacementRow[]> {
+  const since = new Date(Date.now() - PLACEMENT_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const rows = await ClientJourneyStep.findAll({
+    where: {
+      stepKey: 'offer_placement_recorded',
+      userId: { [Op.in]: clientIds },
+      completedAt: { [Op.gte]: since },
+    },
+    attributes: ['userId', 'completedAt'],
+    order: [['completedAt', 'ASC']],
+    raw: true,
+  });
+  return rows.map((r: any) => ({
+    userId: r.userId,
+    completedAt: new Date(r.completedAt),
+  }));
+}
+
+// Credit every assigned PC of the placed client (DPC / VPC / SPC) — each
+// played a role, and the board is about team recognition.
+function aggregatePlacements(
+  rows: PlacementRow[],
+  clientMap: Map<string, ClientInfo>
+): PlacementEntry[] {
+  const pcMap = new Map<string, PlacementEntry>();
+
+  for (const row of rows) {
+    const info = clientMap.get(row.userId);
+    if (!info) continue; // inactive client — outside this board's scope
+
+    for (const pcName of [info.dpcName, info.vpcName, info.spcName]) {
+      const key = pcName?.trim();
+      if (!key) continue;
+
+      let entry = pcMap.get(key);
+      if (!entry) {
+        entry = { pcName: key, total: 0, clients: new Map() };
+        pcMap.set(key, entry);
+      }
+      if (!entry.clients.has(row.userId)) {
+        entry.clients.set(row.userId, {
+          clientName: info.clientName,
+          completedAt: row.completedAt,
+        });
+        entry.total++;
+      }
+    }
+  }
+
+  return [...pcMap.values()].sort((a, b) => b.total - a.total);
+}
+
+async function buildPlacementSection(
+  entries: PlacementEntry[],
+  emailLookup: Map<string, string>
+): Promise<string> {
+  const lines: string[] = [
+    '─────────────────────────────────────────────────',
+    '*:dart: PLACEMENT TEAM - Last 7 Days, Ranked Most to Fewest*',
+    '─────────────────────────────────────────────────',
+  ];
+
+  if (entries.length === 0) {
+    lines.push('_No placements recorded in the last 7 days._');
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  for (let i = 0; i < entries.length; i++) {
+    const pc = entries[i];
+    const tag = await tagPC(pc.pcName, emailLookup);
+    lines.push(
+      `*${i + 1}.* ${tag} - *${pc.total}* placement${pc.total === 1 ? '' : 's'}`
+    );
+    const sorted = [...pc.clients.values()].sort(
+      (a, b) => b.completedAt.getTime() - a.completedAt.getTime()
+    );
+    for (const c of sorted) {
+      const when = new Date(c.completedAt).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Africa/Lagos',
+      });
+      lines.push(`   *${c.clientName}:* recorded ${when}`);
+    }
+  }
+
+  lines.push('');
+  return lines.join('\n');
+}
+
+// ─── Main job logic ───────────────────────────────────────────────────────────
+
 export async function runPipelineLeaderboardJob() {
   logger.info('🏆 Running Pipeline Performance Leaderboard job...');
 
@@ -676,6 +797,10 @@ export async function runPipelineLeaderboardJob() {
   const clientIds = clients.map((c) => c.clientId);
   const clientMap = new Map(clients.map((c) => [c.clientId, c]));
 
+  // SPR-21-13-005 — placements recorded in the last 7 days (either side's
+  // recordings land in client_journey_steps) feed the PLACEMENT TEAM section.
+  const placementRows = await fetchRecentPlacements(clientIds);
+
   // Three separate queries — each scoped to its own PC field and date column
   const [discoveryRows, vettingRows, submissionRows] = await Promise.all([
     fetchDiscoveryRowsYesterday(clientIds, start, end),
@@ -684,7 +809,7 @@ export async function runPipelineLeaderboardJob() {
   ]);
 
   logger.info(
-    `Fetched yesterday: discovery=${discoveryRows.length} vetting=${vettingRows.length} submission=${submissionRows.length}`
+    `Fetched yesterday: discovery=${discoveryRows.length} vetting=${vettingRows.length} submission=${submissionRows.length} placements(7d)=${placementRows.length}`
   );
 
   const unattendedMap = await fetchUnattendedCounts(clientIds, start, end);
@@ -701,20 +826,25 @@ export async function runPipelineLeaderboardJob() {
     clientMap,
     vettedMap
   );
+  const placementEntries = aggregatePlacements(placementRows, clientMap);
 
   console.table(discoveryEntries);
   console.table(vettingEntries);
   console.table(submissionEntries);
+  console.table(
+    placementEntries.map((e) => ({ pcName: e.pcName, placements: e.total }))
+  );
 
-  const [discoverySection, vettingSection, submissionSection, missingSection] =
+  const [discoverySection, vettingSection, submissionSection, placementSection, missingSection] =
     await Promise.all([
       buildDiscoverySection(discoveryEntries, emailLookup),
       buildVettingSection(vettingEntries, emailLookup),
       buildSubmissionSection(submissionEntries, emailLookup),
+      buildPlacementSection(placementEntries, emailLookup),
       buildMissingPCSection(clients, emailLookup),
     ]);
   logger.info(
-    `Built sections: discovery=${discoverySection.length} vetting=${vettingSection.length} submission=${submissionSection.length} missing=${missingSection.length}`
+    `Built sections: discovery=${discoverySection.length} vetting=${vettingSection.length} submission=${submissionSection.length} placements=${placementSection.length} missing=${missingSection.length}`
   );
 
   const body = [
@@ -723,6 +853,7 @@ export async function runPipelineLeaderboardJob() {
     discoverySection,
     vettingSection,
     submissionSection,
+    placementSection,
     // missingSection,
     `_Automated check · ${new Date().toISOString()}_`,
   ].join('\n');

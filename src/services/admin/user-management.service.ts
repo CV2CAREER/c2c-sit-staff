@@ -272,6 +272,29 @@ class UserManagementService {
       }
     });
 
+    // SPR-21-11-004: customer email confirming the document was accepted.
+    // The journey tick (markDocumentAccepted above) and the #town-crier Slack
+    // already fire for this approval — this adds the missing customer email.
+    setImmediate(async () => {
+      try {
+        const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+        await sendMail({
+          email: user.email,
+          subject: "Your document has been accepted",
+          templateName: "document-accepted-user.ejs",
+          templateData: {
+            name: user.firstName,
+            documentType,
+            frontendUrl,
+            currentYear: new Date().getFullYear(),
+          },
+        });
+        logger.info(`Document accepted email sent to ${user.email}`);
+      } catch (err) {
+        logger.error(`Document accepted email failed for user ${user.id}: ${err}`);
+      }
+    });
+
     const { password, ...userWithoutPassword } = user.toJSON();
     return userWithoutPassword;
   }

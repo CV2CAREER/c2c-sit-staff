@@ -66,6 +66,7 @@ import preferenceQuestionRouterV1 from "./routes/v1/preference-question.route";
 import dropdownOptionRouterV1 from "./routes/v1/dropdown-option.route";
 import socialVerificationRouterV1 from "./routes/v1/social-verification.route";
 import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
+import queueEntryRouterV1 from "./routes/v1/queue-entry.route";
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -246,6 +247,10 @@ app.use("/api/v1/preference-questions", preferenceQuestionRouterV1);
 app.use("/api/v1/admin/dropdown-options", dropdownOptionRouterV1);
 app.use("/api/v1/admin/social-verifications", socialVerificationRouterV1);
 app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
+
+// Unified Outstanding-Requests queue (Staff + System tabs)
+// (SPR-21-51-002 / 51-003)
+app.use("/api/v1/queue-entries", queueEntryRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)
 app.use("/api/v1/assistant", assistantRouterV1);

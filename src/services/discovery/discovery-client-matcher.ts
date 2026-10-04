@@ -7,6 +7,7 @@ import { DiscoveryJob } from '../../models/v1/discovery-job.model';
 import { classifyJob } from '../ai-vetting.service';
 import { aiVettingConfigApplicationService } from '../admin/ai-vetting-config.application.service';
 import { applyAiVettingResult } from './discovery-ai-vetting.service';
+import { pushMatchEntry } from './discovery-sse';
 import { getServiceLogger } from '../../utils/createLogger';
 
 const logger = getServiceLogger('discovery-client-matcher');
@@ -389,17 +390,28 @@ export function matchJobToClients(
   const matches: MatchResult[] = [];
   const titleLower = (job.title || '').toLowerCase();
   const companyLower = (job.company || '').toLowerCase();
-  const descLower = (job.description || '').toLowerCase();
-  const fullText = `${titleLower} ${companyLower} ${descLower}`;
   const employmentTypeLower = ((job as any).employment_type || '').toString().toLowerCase();
   const salaryMin = (job as any).salary_min;
 
+  // Infer the job's country once — used for the country gate.
+  const jobCountry = inferCountryFromLocations([job.location || '']);
+
   for (const [clientId, profile] of clientProfiles) {
+    // ── Country gate ──────────────────────────────────────────────────────
+    // Skip jobs outside the client's target country. anyLocationCountry
+    // means "anywhere in this country" — still a country filter.
+    const targetCountry = profile.anyLocationCountry || profile.country;
+    if (targetCountry && jobCountry && jobCountry !== targetCountry) {
+      continue;
+    }
+
     let score = 0;
     const reasons: string[] = [];
 
-    // Role match — keywords AND titles (job titles + keywords are both
-    // "what role does this client want" signals).
+    // ── Role match (title only) ───────────────────────────────────────────
+    // Match on job title keywords/titles — NOT description. Description
+    // mentions produce false positives (e.g. "manage engineers" matching
+    // an engineer client).
     const roleTerms: string[] = [
       ...(profile.keywords || []),
       ...(profile.titles || []),
@@ -407,26 +419,18 @@ export function matchJobToClients(
     if (roleTerms.length > 0) {
       const matched = roleTerms.some((term: string) => {
         const t = term.toLowerCase();
-        return titleLower.includes(t) || descLower.includes(t);
+        return titleLower.includes(t);
       });
       if (matched) {
-        score += 40;
+        score += 30;
         reasons.push('role match');
       }
     }
 
-    // Location match. "All Australia"-style profiles match any job in that
-    // country outright — checked first since normalizeLocations() strips
-    // that signal from profile.locations entirely (see anyLocationCountry).
-    // Otherwise compare with word-boundary matching, not raw .includes():
-    // plain substring checks let short state codes ("WA", "SA") false-match
-    // inside unrelated words ("Washington", "Mesa") — see discovery-client-
-    // matcher analysis 2026-09-08 for real examples this caused.
-    let locationMatched = false;
-    if (profile.anyLocationCountry) {
-      const jobCountry = inferCountryFromLocations([job.location || '']);
-      if (jobCountry === profile.anyLocationCountry) locationMatched = true;
-    }
+    // ── Location match ────────────────────────────────────────────────────
+    // "All Australia"-style profiles already passed the country gate above.
+    // For specific-location profiles, check city/state with word boundaries.
+    let locationMatched = !!profile.anyLocationCountry;
     if (!locationMatched && (profile.locations || []).length > 0) {
       locationMatched = profile.locations.some((loc: string) =>
         containsTerm(job.location || '', loc) || containsTerm(loc, job.location || ''),
@@ -437,8 +441,9 @@ export function matchJobToClients(
       reasons.push('location match');
     }
 
-    // Industry match
+    // ── Industry match ────────────────────────────────────────────────────
     if ((profile.industries || []).length > 0) {
+      const fullText = `${titleLower} ${companyLower}`;
       const matched = profile.industries.some((ind: string) => {
         return fullText.includes(ind.toLowerCase());
       });
@@ -448,7 +453,7 @@ export function matchJobToClients(
       }
     }
 
-    // Job type match (full-time / part-time / contract / casual …)
+    // ── Job type match ────────────────────────────────────────────────────
     if ((profile.jobTypes || []).length > 0 && employmentTypeLower && employmentTypeLower !== 'n/a') {
       const matched = profile.jobTypes.some((jt: string) => {
         const jtLower = jt.toLowerCase();
@@ -460,25 +465,22 @@ export function matchJobToClients(
       }
     }
 
-    // Salary match — job offers within/above the client's minimum.
+    // ── Salary match ──────────────────────────────────────────────────────
     if (profile.minSalary && salaryMin && salaryMin >= profile.minSalary) {
       score += 15;
       reasons.push('salary match');
     }
 
-    // Base score for having any criteria match
-    if (reasons.length > 0) {
-      score += 10;
-    }
-
-    // Exclusion checks — explicit client "not this" preferences drop the match.
-    const excluded = isJobExcluded(profile, titleLower, descLower, companyLower, employmentTypeLower);
+    // ── Exclusion checks ──────────────────────────────────────────────────
+    const excluded = isJobExcluded(profile, titleLower, (job.description || '').toLowerCase(), companyLower, employmentTypeLower);
     if (excluded) {
       continue;
     }
 
-    // Include if there's a meaningful role/location signal.
-    if (score >= 40) {
+    // ── Threshold: 50 ─────────────────────────────────────────────────────
+    // Requires role + at least one other signal, or location + two others.
+    // A single role match (30) is not enough on its own.
+    if (score >= 50) {
       matches.push({
         credentialsId: profile.credentialsId,
         userId: profile.userId,
@@ -533,6 +535,7 @@ export async function createClientApplications(
   job: DiscoveryJob,
   matches: MatchResult[],
   sourceSlug: string,
+  runId?: string,
 ): Promise<number> {
   let created = 0;
 
@@ -611,6 +614,19 @@ export async function createClientApplications(
           logger.error(`AI vetting failed for discovery job ${manualApp.id}: ${err.message}`);
         }
       });
+
+      // Push structured match event to SSE stream (fire-and-forget)
+      if (runId) {
+        pushMatchEntry(runId, {
+          jobTitle: jobTitle,
+          company: job.company || 'N/A',
+          location: job.location || 'N/A',
+          clientName: match.credentialsId,
+          score: match.score,
+          rationale: match.rationale,
+          source: sourceSlug,
+        });
+      }
 
       created++;
       logger.info(`  Created ManualApplication for client ${match.credentialsId}: ${jobTitle} (score: ${match.score})`);

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Welcome Call Is Scheduled</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f5;
+      padding: 40px;
+      color: #333;
+      margin: 0;
+      line-height: 1.6;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Your Welcome Call Is Scheduled
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 28px 32px">
+        <p style="margin: 0 0 16px">Dear <strong><%= name %></strong>,</p>
+
+        <p style="margin: 0 0 16px">
+          Your welcome call has been booked. This is a quick, friendly
+          introduction — we'll walk you through what happens next and answer
+          any questions you have.
+        </p>
+
+        <!-- Date/time -->
+        <div
+          style="
+            background-color: #f0f7fc;
+            border-left: 4px solid #008ed3;
+            padding: 14px 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+            text-align: center;
+          "
+        >
+          <p style="margin: 0 0 4px; font-size: 12px; letter-spacing: 1px; color: #5b7a91">
+            DATE &amp; TIME
+          </p>
+          <p style="margin: 0; font-size: 18px; font-weight: bold; color: #004174">
+            <%= typeof dateTime !== "undefined" && dateTime ? dateTime : "To be confirmed" %>
+          </p>
+        </div>
+
+        <p style="margin: 0 0 16px">
+          We've attached a calendar invite (<strong>.ics</strong>) to this
+          email — open it to add the call to your calendar in one click.
+        </p>
+
+        <p style="margin: 0 0 16px">
+          Keep an eye on your inbox — we'll be in touch if anything changes.
+          If you need to move the call, just reply to this email or contact
+          your delivery team from your dashboard.
+        </p>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 28px 0 8px">
+          <a
+            href="<%= frontendUrl %>/dashboard"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: bold;
+              padding: 12px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 14px;
+            "
+          >
+            View your journey &rarr;
+          </a>
+        </div>
+
+        <p style="margin: 24px 0 0 0">
+          Kind regards,<br />
+          <strong>The CVtoCAREER Team</strong>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div
+        style="
+          padding: 24px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <p style="margin: 0 0 12px; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
+
+        <div style="margin: 8px 0">
+          <a
+            href="<%= frontendUrl %>/dashboard/account?run=unsubscribe"
+            style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px"
+            >Unsubscribe</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= frontendUrl %>/privacy-policy"
+            style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px"
+            >Privacy Policy</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= frontendUrl %>"
+            style="color: #9ca3af; text-decoration: none; font-size: 11px; margin: 0 8px"
+            >Website</a
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
