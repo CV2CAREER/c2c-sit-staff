@@ -19,6 +19,7 @@ export const MISSING_INFO_CATEGORIES = [
   "references",
   "certifications",
   "banking",
+  "housekeeping",
 ] as const;
 
 export type MissingInfoCategory = (typeof MISSING_INFO_CATEGORIES)[number];
