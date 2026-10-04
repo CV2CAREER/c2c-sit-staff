@@ -80,6 +80,8 @@ export const EMAIL_TRIGGERS: EmailTriggerDefinition[] = [
   { key: "admin-missing-info-v2.ejs", label: "Missing Info Request (Admin, v2)", reassignable: true },
   { key: "missing-info-delivery-report.ejs", label: "Missing Info Delivery Report", reassignable: true },
   { key: "client-support-documents-admin.ejs", label: "Support Document Uploaded (Admin)", reassignable: true },
+  // SPR-21-51-003 — System queue "actioned" confirmation (client).
+  { key: "system-queue-actioned.ejs", label: "System Queue: Change Actioned", reassignable: true },
 ];
 
 export const isReassignableTrigger = (triggerKey: string): boolean =>

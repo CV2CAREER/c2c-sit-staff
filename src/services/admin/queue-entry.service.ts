@@ -3,6 +3,8 @@ import { MissingInfoTemplate } from "../../models/v1/missing-info-template.model
 import { activePcsService } from "./active-pcs.service";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
+import { sendMail } from "../../config/sendGrid";
+import { getFrontendUrl } from "../../utils/helpers";
 
 const logger = getServiceLogger("queue-entry-service");
 
@@ -130,6 +132,26 @@ export class QueueEntryService {
     entry.resolvedByName = displayName(user);
     if (trimmed) entry.resolutionNote = trimmed;
     await entry.save();
+
+    // SPR-21-51-003 DoD: the client always receives an "actioned" confirmation
+    // once their System-queue entry is resolved. Fire-and-forget — a send
+    // failure must never roll back or fail the resolve itself.
+    if (entry.queue === "system" && entry.clientEmail) {
+      sendMail({
+        email: entry.clientEmail,
+        subject: "Your change has been actioned",
+        templateName: "system-queue-actioned.ejs",
+        templateData: {
+          name: entry.clientName || "there",
+          changeType: entry.title,
+          frontendUrl: getFrontendUrl(),
+          currentYear: new Date().getFullYear(),
+        },
+      }).catch((err) =>
+        logger.error(`Actioned email failed for queue entry #${id}: ${err.message}`),
+      );
+    }
+
     logger.info(`Queue entry #${id} (${entry.queue}) resolved by ${entry.resolvedByName}`);
     return entry;
   }
