@@ -58,6 +58,20 @@ export class SupportSession extends Model {
   @Column(DataType.TEXT)
   feedbackComment?: string;
 
+  /**
+   * True when the client was handed over by the chatbot (hard route or
+   * "connect me" after a decline) rather than opening a chat directly.
+   */
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  fromBot!: boolean;
+
+  /** The chatbot conversation up to the handoff, so staff don't ask again. */
+  @AllowNull(true)
+  @Column(DataType.JSONB)
+  transcript?: Array<{ role: "user" | "bot"; text: string }> | null;
+
   @Column(DataType.DATE)
   startedAt?: Date;
 

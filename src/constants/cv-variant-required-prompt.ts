@@ -789,4 +789,12 @@ The output must be valid HTML that a standard browser can render without errors.
 
 ## SUPPLIED DOCUMENT
 
-{{CV_TEXT}}`;
+{{CV_TEXT}}
+
+---
+
+# NOW PRODUCE THE OUTPUT
+
+The client's career information is the "SUPPLIED DOCUMENT" above — it has already been provided in full; do not ask for it again or wait for anything further. Using it together with every rule in sections 1–26 and the OUTPUT CONTRACT in section 27, produce the finished CV right now.
+
+Respond with ONLY the complete HTML document, starting with \`<!DOCTYPE html>\` and nothing before or after it — no acknowledgement, no questions, no commentary.`;

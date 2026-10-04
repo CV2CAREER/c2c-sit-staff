@@ -57,6 +57,7 @@ export class AuditTrail extends Model {
   metadata?: any;
 
   @CreatedAt
+  @Column(DataType.DATE)
   createdAt!: Date;
 }
 

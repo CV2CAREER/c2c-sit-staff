@@ -63,6 +63,8 @@ import { AccessRule } from '../models/v1/access-rule.model';
 import { UserAccessLevel } from '../models/v1/user-access-level.model';
 import { CommunicationTemplate } from '../models/v1/communication-template.model';
 import { ClientContent } from '../models/v1/client-content.model';
+import { FaqCategory } from '../models/v1/faq-category.model';
+import { FaqArticle } from '../models/v1/faq-article.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { VCSPromptUsageLog } from '../models/v1/vcs-prompt-usage-log.model';
@@ -179,6 +181,8 @@ export const modelList = [
   UserAccessLevel,
   CommunicationTemplate,
   ClientContent,
+  FaqCategory,
+  FaqArticle,
   AuditLog,
   PassKeyVault,
   SubscriptionAllocation,
