@@ -252,7 +252,7 @@ export default function FreeFormBuilderClient() {
       await actions.publishTemplate();
       toast.dismiss(toastId);
       toast.success("Template published.");
-      router.push("/admin/missing-info-templates");
+      router.push("/admin/missing-information");
     } catch (e: any) {
       toast.dismiss(toastId);
       toast.error(e?.response?.data?.message || e?.message || "Failed to publish.");
@@ -272,7 +272,7 @@ export default function FreeFormBuilderClient() {
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-gray-500 text-sm">Failed to load template.</p>
         <button
-          onClick={() => router.push("/admin/missing-info-templates")}
+          onClick={() => router.push("/admin/missing-information")}
           className="text-sm text-blue-600 hover:underline"
         >
           Back to templates
@@ -293,7 +293,7 @@ export default function FreeFormBuilderClient() {
           isSaving={actions.isSaving}
           isPublishing={actions.isPublishing}
           isPublished={template.status === "published"}
-          backHref="/admin/missing-info-templates"
+          backHref="/admin/missing-information"
           category={category}
           onCategoryChange={handleCategoryChange}
           type="free_form"
@@ -325,7 +325,7 @@ export default function FreeFormBuilderClient() {
           onSend={async () => {
             setPreviewOpen(false);
             await handleSave();
-            router.push("/admin/missing-info-templates");
+            router.push("/admin/missing-information");
           }}
           template={previewTemplate as any}
         />

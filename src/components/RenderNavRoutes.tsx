@@ -33,7 +33,7 @@ const RenderNavRoutes = ({
   //    guessing a role from a keyword substring match on the URL path,
   //    which meant a genuine non-admin user (e.g. assistant) visiting any
   //    legitimate link that happens to live under /admin/... (like their
-  //    own "Missing Information" link, /admin/missing-info-templates)
+  //    own "Missing Information" link, /admin/missing-information)
   //    got the ENTIRE admin sidebar rendered for them — Switch Persona
   //    included. Real role is the only trustworthy source for anyone
   //    who isn't an actual admin.

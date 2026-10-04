@@ -16,6 +16,9 @@ export const useClientJourneyQueries = (options: AdminQueriesOptions) => {
       url: options.userId ? CLIENT_JOURNEY_BY_CLIENT(options.userId) : "",
       queryKey: ["admin-client-journey", options.userId],
       enabled: !!options.fetchClientJourney && !!options.userId,
+      // Near-live visibility: the client completes steps on their side while
+      // this panel is open; without polling the admin had to hard-refresh.
+      refetchInterval: 30_000,
     });
 
   return {
@@ -34,6 +37,8 @@ export const useClientJourneyMutations = () => {
   // SPR-21-11-006 / 010 — scheduledAt/note/mode are the attest details the
   // modal collects for the welcome-call and preference-review steps; every
   // other step still attests with just clientId + stepKey.
+  // SPR-21-13-006 — `outcome` carries the structured picker value for the
+  // extension eligibility/decision steps (e.g. "Approved", "Eligible").
   const { mutate: attestStep, isPending: isAttesting } = useMutateData<
     ClientJourneyStepRow,
     {
@@ -42,6 +47,7 @@ export const useClientJourneyMutations = () => {
       scheduledAt?: string;
       note?: string;
       mode?: "scheduled" | "completed";
+      outcome?: string;
     }
   >({
     method: "POST",
