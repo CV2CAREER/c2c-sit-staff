@@ -88,6 +88,25 @@ export const tableColumns: GridColDef[] = [
   { field: "progress", headerName: "Progress", width: 150 },
   { field: "createdAt", headerName: "Created At", width: 180 },
   { field: "updatedBy", headerName: "Updated By", width: 150 },
+  // SPR-21-33-001: audit columns, always last
+  {
+    field: "auditRequired",
+    headerName: "Audit Required",
+    width: 150,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditRequiredToggle target="user" rowId={params.row.id} value={params.row.auditRequired} />
+    ),
+  },
+  {
+    field: "auditFindings",
+    headerName: "Audit Findings",
+    width: 280,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditFindingsInput target="user" rowId={params.row.id} value={params.row.auditFindings} />
+    ),
+  },
 ];
 
 /**
@@ -143,6 +162,26 @@ export const modifyTableActionsColAndRows = (
         }
       }
       return [...acc, fullNameEl]
+    }
+
+    // SPR-21-33-002: Staff Perception can be changed straight from the grid in Edit mode
+    if (el.field === "staffPerception") {
+      const perceptionEl: GridColDef = {
+        ...el,
+        editable: false,
+        // Plain text normally; the dropdown only appears while Edit mode is on
+        renderCell: (params) =>
+          isVisible ? (
+            <PerceptionCell
+              userId={params.row.id}
+              field="staffPerception"
+              value={params.value}
+            />
+          ) : (
+            <PerceptionBadge value={params.value} />
+          ),
+      };
+      return [...acc, perceptionEl];
     }
 
     if (el.field.toLowerCase() === "progress"){

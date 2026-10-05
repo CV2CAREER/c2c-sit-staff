@@ -156,6 +156,9 @@ export const ADMIN_CLIENT_SUPPORT_DOCUMENT_ACTIVATE = (id: string) =>
 export const ADMIN_USER_PREFERENCES = '/api/v1/admin/users/preferences';
 export const ADMIN_JOB_PREFERENCES = '/api/v1/admin/job-preferences';
 export const ADMIN_DISCOVERY_TRACKER = '/api/v1/admin/discovery-tracker';
+export const ADMIN_DISCOVERY_TRACKER_ASSURANCE = '/api/v1/admin/discovery-tracker/assurance';
+export const ADMIN_APPLICATION_ASSURANCE = (applicationId: string | number) =>
+  `/api/v1/admin/applications/${applicationId}/assurance`;
 export const ADMIN_DISCOVERY_TRACKER_FILTER_VALUES =
   '/api/v1/admin/discovery-tracker/filter-values';
 export const ADMIN_DISCOVERY_AGENT = '/api/v1/admin/discovery';

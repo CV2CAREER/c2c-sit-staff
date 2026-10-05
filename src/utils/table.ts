@@ -156,6 +156,13 @@ export const StyledDataGridPro = styled(DataGridPro)(() => ({
   backgroundColor: "#ffffff",
   boxShadow:
     "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.06)",
+  "& .MuiDataGrid-main": {
+    flex: "0 1 auto",
+  },
+  "& .MuiDataGrid-virtualScroller": {
+    flex: "0 1 auto !important",
+    maxHeight: "100%",
+  },
   "& .MuiDataGrid-columnHeaders": {
     backgroundColor: "#F0FBFF",
     borderBottom: "2px solid #D3FFFF",

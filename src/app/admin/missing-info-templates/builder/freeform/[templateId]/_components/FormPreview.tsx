@@ -2,7 +2,11 @@
 
 import { useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
-import { REFEREE_DEFAULT_FIELDS } from "@/constants/missing-info-field-types";
+import {
+  REFEREE_DEFAULT_FIELDS,
+  readExternalActionConfig,
+  readInstructionsBody,
+} from "@/constants/missing-info-field-types";
 import { FreeFormField } from "./FieldProperties";
 
 const FIELD_ITEM_TYPE = "field_type";
@@ -18,6 +22,8 @@ const FIELD_TYPE_LABELS: Record<string, string> = {
   number: "NUMBER",
   phone: "PHONE",
   email: "EMAIL",
+  external_action: "EXTERNAL ACTION",
+  instructions: "INSTRUCTIONS",
 };
 
 interface FormPreviewProps {
@@ -85,7 +91,14 @@ function DraggableFieldCard({ field, index, isSelected, onSelect, onMoveField }:
       <div className="mt-1.5 bg-[#F9FAFB] rounded-md px-2.5 py-2 text-[12px] text-[#9CA3AF] ml-6">
         {field.isRefereeBlock
           ? `Expands to ${REFEREE_DEFAULT_FIELDS.length} referee fields on the client form`
-          : field.helpText || (field.fieldType === "file" ? "Choose file · max 10MB" : field.fieldType === "date" ? "Date picker" : "Placeholder")}
+          : field.fieldType === "instructions"
+            ? readInstructionsBody(field.options).trim().slice(0, 140) || "Add the instructions text"
+            : field.fieldType === "external_action"
+            ? (() => {
+                const cfg = readExternalActionConfig(field.options);
+                return `Button: "${cfg.actionLabel}" · Confirmation: "${cfg.completionLabel}"${cfg.showGuide ? " · Guide shown" : ""}`;
+              })()
+            : field.helpText || (field.fieldType === "file" ? "Choose file · max 10MB" : field.fieldType === "date" ? "Date picker" : "Placeholder")}
       </div>
     </div>
   );

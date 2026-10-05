@@ -1,4 +1,28 @@
+"use client";
+
 import { GridColDef } from "@mui/x-data-grid-pro";
+import AssuranceSelect from "@/components/AssuranceSelect/AssuranceSelect";
+import { useJobAppsAndQuestionsData } from "./context";
+
+// SPR-21-58-001: visible dropdown; the server stamps who chose and when.
+function AssuranceCell({
+  row,
+  readOnly,
+}: {
+  row: { id: string | number; AssuranceStatus?: string | null };
+  /** True while "Allow Editing" is off: the value is shown but cannot be changed. */
+  readOnly: boolean;
+}) {
+  const { tracker } = useJobAppsAndQuestionsData();
+  return (
+    <AssuranceSelect
+      value={row.AssuranceStatus}
+      disabled={readOnly || tracker.updateAssurance.isPending}
+      title={readOnly ? "Turn on Allow Editing to change the assurance" : undefined}
+      onChange={(assuranceStatus) => tracker.updateAssurance.mutate({ id: row.id, assuranceStatus })}
+    />
+  );
+}
 
 const jobApplicationsColumns: GridColDef[] = [
   { field: "id", headerName: "ID", flex: 1, minWidth: 200 },
@@ -77,6 +101,32 @@ const jobApplicationsColumns: GridColDef[] = [
   { field: "ApplicationSubmittedBy", headerName: "Application Submitted By", flex: 1, minWidth: 200 },
   { field: "isDeleted", headerName: "Is Deleted", flex: 1, minWidth: 200 },
   { field: "MatchLevel", headerName: "Match Level", flex: 1, minWidth: 200 },
+  {
+    field: "AssuranceStatus",
+    headerName: "Assurance",
+    flex: 1,
+    minWidth: 200,
+    sortable: false,
+    // Replaced in getJobApplicationsColumns so the cell knows whether "Allow Editing" is on.
+    renderCell: (params) => <AssuranceCell row={params.row} readOnly />,
+  },
+  { field: "AssuredBy", headerName: "Assured By", flex: 1, minWidth: 200 },
+  {
+    field: "AssuranceDate",
+    headerName: "Assurance Date",
+    type: "date",
+    flex: 1,
+    minWidth: 200,
+    valueGetter: (value) => (value ? new Date(value as string) : null),
+  },
 ];
+
+// The assurance dropdown only works while "Allow Editing" is on.
+export const getJobApplicationsColumns = (allowEditing: boolean): GridColDef[] =>
+  jobApplicationsColumns.map((column) =>
+    column.field === "AssuranceStatus"
+      ? { ...column, renderCell: (params) => <AssuranceCell row={params.row} readOnly={!allowEditing} /> }
+      : column,
+  );
 
 export default jobApplicationsColumns;

@@ -146,6 +146,26 @@ export const modifyTableActionsColAndRows = (
       return [...acc, fullNameEl]
     }
 
+    // SPR-21-33-002: Staff Perception can be changed straight from the grid in Edit mode
+    if (el.field === "staffPerception") {
+      const perceptionEl: GridColDef = {
+        ...el,
+        editable: false,
+        // Plain text normally; the dropdown only appears while Edit mode is on
+        renderCell: (params) =>
+          isVisible ? (
+            <PerceptionCell
+              userId={params.row.id}
+              field="staffPerception"
+              value={params.value}
+            />
+          ) : (
+            <PerceptionBadge value={params.value} />
+          ),
+      };
+      return [...acc, perceptionEl];
+    }
+
     if (el.field.toLowerCase() === "progress"){
       const progress: GridColDef = {
         ...el,

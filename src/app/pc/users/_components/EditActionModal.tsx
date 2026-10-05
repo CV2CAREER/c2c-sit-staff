@@ -254,17 +254,17 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="customerClass"
+                  name="staffPerception"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Class</FormLabel>
+                      <FormLabel>Staff Perception</FormLabel>
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Customer Class" />
+                            <SelectValue placeholder="Select Staff Perception" />
                           </SelectTrigger>
                            <SelectContent>
                             {CUSTOMER_CLASS_OPTIONS.map((option) => (

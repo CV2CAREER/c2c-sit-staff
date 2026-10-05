@@ -29,7 +29,7 @@ export interface User {
   gender: string;
   middleName: string;
   businessName: string | null;
-  customerClass: string;
+  staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
   profilePicture: string | null;
@@ -212,6 +212,9 @@ export const useGetUserPendingDocuments = (userId: string, options: { enabled?: 
     url: userId ? `/api/v1/user-management/users/${userId}/documents/pending` : "",
     queryKey,
     enabled: enabled && !!userId,
+    // Near-live visibility: a client CV upload must tick this list without
+    // the admin hard-refreshing (pairs with the journey panel's 30s poll).
+    refetchInterval: 30_000,
   });
 };
 

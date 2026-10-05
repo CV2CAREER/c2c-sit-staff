@@ -7,6 +7,7 @@ import { CampaignTableActions } from "./Actions";
 import Link from "next/link";
 import { CampaignClientActions } from "./CampaignClientActions";
 import { Loader2 } from "lucide-react";
+import { AuditRequiredToggle, AuditFindingsInput } from "@/components/AuditFields/AuditCells";
 
 // SPR-21-02-002: First/Middle/Last Name are no longer rendered as columns —
 // Full Name is the single name column. Values stay in row data and remain
@@ -309,6 +310,25 @@ export const tableColumns: GridColDef[] = [
       width: 150,
     };
   }),
+  // SPR-21-33-001: audit columns, always last
+  {
+    field: "auditRequired",
+    headerName: "Audit Required",
+    width: 150,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditRequiredToggle target="campaign" rowId={params.row.id} value={params.row.auditRequired} />
+    ),
+  },
+  {
+    field: "auditFindings",
+    headerName: "Audit Findings",
+    width: 280,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditFindingsInput target="campaign" rowId={params.row.id} value={params.row.auditFindings} />
+    ),
+  },
 ];
 
 /**
