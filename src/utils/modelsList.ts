@@ -63,6 +63,8 @@ import { AccessRule } from '../models/v1/access-rule.model';
 import { UserAccessLevel } from '../models/v1/user-access-level.model';
 import { CommunicationTemplate } from '../models/v1/communication-template.model';
 import { ClientContent } from '../models/v1/client-content.model';
+import { FaqCategory } from '../models/v1/faq-category.model';
+import { FaqArticle } from '../models/v1/faq-article.model';
 import { CvRevamp } from '@/models/v1/cv-revamp.model';
 import { VCSPrompt, VCS } from '../models/v1/keyword-population.model';
 import { VCSPromptUsageLog } from '../models/v1/vcs-prompt-usage-log.model';
@@ -71,12 +73,14 @@ import { MissingInfoRequest } from '../models/v1/missing-info-request.model';
 import { MissingInfoTemplate } from '../models/v1/missing-info-template.model';
 import { MissingInfoTemplateField } from '../models/v1/missing-info-template-field.model';
 import { MissingInfoResponse } from '../models/v1/missing-info-response.model';
+import { QueueEntry } from '../models/v1/queue-entry.model';
 import { ManualApplication } from '../models/v1/manual-application.model';
 import { ClientSupportDocument } from '../models/v1/client-support-document.model';
 import { EmailLog } from "../models/v1/email-log.model";
 import { EmailTemplate } from "../models/v1/email-template.model";
 import { EmailTemplateTrigger } from "../models/v1/email-template-trigger.model";
 import { EmailTestSendLog } from "../models/v1/email-test-send-log.model";
+import { JourneyMessageLog } from "../models/v1/journey-message-log.model";
 import { InterviewPackProcess } from "../models/v1/interview-pack-process.model";
 import { TourCount } from '../models/v1/tour-count.model';
 import { CredentialsTour } from '../models/v1/credentials-tour.model';
@@ -177,6 +181,8 @@ export const modelList = [
   UserAccessLevel,
   CommunicationTemplate,
   ClientContent,
+  FaqCategory,
+  FaqArticle,
   AuditLog,
   PassKeyVault,
   SubscriptionAllocation,
@@ -190,11 +196,13 @@ export const modelList = [
   MissingInfoTemplate,
   MissingInfoTemplateField,
   MissingInfoResponse,
+  QueueEntry,
   ClientSupportDocument,
   EmailLog,
   EmailTemplate,
   EmailTemplateTrigger,
   EmailTestSendLog,
+  JourneyMessageLog,
   InterviewPackProcess,
   TourCount,
   CredentialsTour,

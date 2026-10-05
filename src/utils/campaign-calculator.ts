@@ -45,6 +45,19 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+// Whole days from today (UTC date-only) until the given date.
+// 0 = the date is today, negative = already past.
+export function daysUntil(date: Date): number {
+  const now = new Date();
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  const target = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
 // Diff in days UTC
 function diffDays(a: Date, b: Date): number {
   const ms = a.getTime() - b.getTime();

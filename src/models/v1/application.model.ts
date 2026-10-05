@@ -215,6 +215,20 @@ export class Application extends Model {
   @Column(DataType.STRING(10))
   MatchLevel?: string;
 
+  // Assurance result (SPR-21-58-001): 'ASSURED' | 'FAILED' | null, with who and when.
+  // Set by admins/assistants through PATCH /admin/applications/:id/assurance.
+  @AllowNull(true)
+  @Column(DataType.STRING(20))
+  AssuranceStatus?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  AssuredBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  AssuranceDate?: Date | null;
+
   @CreatedAt
   createdAt!: Date;
 

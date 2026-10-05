@@ -71,6 +71,37 @@ export const softDeleteApplication = catchAsyncError(
 );
 
 /**
+ * PATCH /v1/admin/applications/:applicationId/assurance   { assuranceStatus: "ASSURED" | "FAILED" | null }
+ * Record the assurance result; the server stamps who and when. admin + assistant.
+ */
+export const updateApplicationAssurance = catchAsyncError(
+  async (req: Request, res: Response) => {
+    try {
+      const { applicationId } = req.params;
+
+      if (!applicationId) {
+        return res.apiError(new ErrorHandler("Application ID is required", 400));
+      }
+      if (!req.body || !("assuranceStatus" in req.body)) {
+        return res.apiError(new ErrorHandler("assuranceStatus is required (use null to clear)", 400));
+      }
+
+      const result = await ApplicationService.setApplicationAssurance(
+        req,
+        applicationId,
+        req.body.assuranceStatus
+      );
+
+      res.apiSuccess(result, "Assurance updated successfully");
+    } catch (error: any) {
+      logger.error(`Failed to update application assurance: ${error.message}`);
+      const statusCode = error.message === "Application not found" ? 404 : 400;
+      return res.apiError(new ErrorHandler(error.message, statusCode));
+    }
+  }
+);
+
+/**
  * PATCH /v1/admin/applications/:applicationId/restore
  * Restore a soft-deleted application
  */

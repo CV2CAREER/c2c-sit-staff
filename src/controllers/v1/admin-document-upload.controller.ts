@@ -14,9 +14,12 @@ import {
 } from "../../utils/fileUpload";
 import { AdminDocumentService } from "../../services/admin-document.service";
 import { InterviewPackService } from "../../services/interview-pack.service";
+import { completeJourneyStepOnce } from "../../services/client-journey.service";
 import { SlackService } from "../../services/slack.service";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import {
+  ClientJourneyActorType,
+  ClientJourneySource,
   SlackChannel,
   SlackEventType,
   SlackNode,
@@ -527,6 +530,21 @@ export const saveCvVariantController = catchAsyncError(
       const adminName = `${adminUser?.firstName || ""} ${adminUser?.lastName || ""}`.trim() || "Admin";
       const host = req.get("host") || "localhost";
       const location = getEnvironmentFromHost(host);
+
+      // SPR-21-11-009 — saving the variant IS the dispatch: auto-attest the
+      // cv_variant_dispatch journey step once and notify the customer
+      // ("CV variant ready") + #town-crier. Fire-and-forget: a journey tick
+      // must never fail the save, and it stays silent if the step is already
+      // complete (manual attest or a retry of the save).
+      void completeJourneyStepOnce(
+        userId,
+        "cv_variant_dispatch",
+        adminUser?.id ?? "system",
+        ClientJourneyActorType.ADMIN,
+        ClientJourneySource.AUTOMATIC,
+        host,
+      );
+
       const fileName = upload.document?.name || `CV_Variant.${format}`;
 
       setImmediate(async () => {
@@ -755,6 +773,22 @@ export const saveInterviewPackController = catchAsyncError(
       const host = req.get("host") || "localhost";
       const location = getEnvironmentFromHost(host);
       const fileName = upload.document?.name || `Interview_Pack.${format}`;
+
+      // SPR-21-13-004 — the IPP upload landing in document history IS the
+      // dispatch (audit step 28): auto-attest interview_prep_pack_dispatched
+      // once and notify the customer (email with the pack's direct download
+      // link) + #town-crier. Fire-and-forget, same contract as the
+      // cv_variant_dispatch hook in saveCvVariantController: a journey tick
+      // must never fail the save, and it stays silent if already complete.
+      void completeJourneyStepOnce(
+        userId,
+        "interview_prep_pack_dispatched",
+        adminUser?.id ?? "system",
+        ClientJourneyActorType.ADMIN,
+        ClientJourneySource.AUTOMATIC,
+        host,
+        { downloadUrl: upload.document?.url },
+      );
 
       setImmediate(async () => {
         try {

@@ -1,6 +1,6 @@
 import { ClientJourneyPhase } from "./enum";
 
-// Canonical 39-step client journey registry — mirrors the customer backend's
+// Canonical 40-step client journey registry — mirrors the customer backend's
 // registry exactly (kept in sync by hand, same convention as the duplicated
 // ClientJourneyStep model/enums). perTour: false steps are one-time,
 // account-level and always carry tourId: null; perTour: true steps are
@@ -49,65 +49,108 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
   { order: 23, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "campaign_launched", perTour: true },
   { order: 24, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "applications_started", perTour: true },
   { order: 25, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "week4_checkin", perTour: true },
-  { order: 26, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_milestone", perTour: true },
-  { order: 27, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_prep_pack_dispatched", perTour: true },
-  { order: 28, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "offer_placement_recorded", perTour: true },
+  { order: 26, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "week12_checkin", perTour: true },
+  { order: 27, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_milestone", perTour: true },
+  { order: 28, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "interview_prep_pack_dispatched", perTour: true },
+  { order: 29, phaseKey: ClientJourneyPhase.CAMPAIGN_LIVE, stepKey: "offer_placement_recorded", perTour: true },
 
   // Phase 6 — Campaign Review (tour-scoped)
-  { order: 29, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_14day", perTour: true },
-  { order: 30, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_7day", perTour: true },
-  { order: 31, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_eligibility_check", perTour: true },
-  { order: 32, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_decision_made", perTour: true },
-  { order: 33, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_granted", perTour: true },
-  { order: 34, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_0day", perTour: true },
+  { order: 30, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_14day", perTour: true },
+  { order: 31, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_7day", perTour: true },
+  { order: 32, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_eligibility_check", perTour: true },
+  { order: 33, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_decision_made", perTour: true },
+  { order: 34, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "extension_granted", perTour: true },
+  { order: 35, phaseKey: ClientJourneyPhase.CAMPAIGN_REVIEW, stepKey: "expiration_notice_0day", perTour: true },
 
   // Phase 7 — Campaign Ended (tour-scoped)
-  { order: 35, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "campaign_ended", perTour: true },
-  { order: 36, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "exit_survey", perTour: true },
-  { order: 37, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "referral_eligibility", perTour: true },
-  { order: 38, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "renewal_offered", perTour: true },
+  { order: 36, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "campaign_ended", perTour: true },
+  { order: 37, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "exit_survey", perTour: true },
+  { order: 38, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "referral_eligibility", perTour: true },
+  { order: 39, phaseKey: ClientJourneyPhase.CAMPAIGN_ENDED, stepKey: "renewal_offered", perTour: true },
 ];
 
 export const CLIENT_JOURNEY_STEP_BY_KEY = new Map<string, ClientJourneyStepDefinition>(
   CLIENT_JOURNEY_STEPS.map((step) => [step.stepKey, step]),
 );
 
+// SPR-21-13-007 — customer-facing label per step, mirrored from the staff
+// frontend's registry (constants/clientJourneySteps.ts) so the campaign-ended
+// journey-summary email can list completed steps in plain English. The backend
+// registry itself stays label-free; this map is presentation only.
+export const STEP_LABELS: Record<string, string> = {
+  account_signup: "Account signup",
+  email_verified: "Email verified",
+  document_uploaded: "Document uploaded",
+  document_accepted: "Document accepted",
+  service_selection: "Service selection",
+  payment_confirmed: "Payment confirmed",
+  payment_receipt_sent: "Payment receipt sent",
+  welcome_call_scheduled: "Welcome call scheduled",
+  welcome_call_completed: "Welcome call completed",
+  confirmation_sent: "Confirmation sent",
+  social_follow: "Social follow",
+  cv_uploaded: "CV uploaded",
+  cv_variant_dispatch: "CV variant dispatch",
+  cv_approved: "CV approved",
+  cv_variant_uploaded: "CV variant uploaded",
+  rtr_dispatched: "RTR dispatched",
+  preference_update: "Preference update",
+  preference_review_session: "Preference review session",
+  job_credentials_provided: "Job credentials provided",
+  jobsite_verification: "Jobsite verification",
+  jobsite_credentials_approved: "Jobsite credentials approved",
+  profile_alignment_check: "Profile alignment check",
+  campaign_readiness_confirmed: "Campaign readiness confirmed",
+  campaign_launched: "Campaign launched",
+  applications_started: "Applications started",
+  week4_checkin: "Week 4 check-in",
+  week12_checkin: "Week 12 check-in",
+  interview_milestone: "Interview milestone",
+  interview_prep_pack_dispatched: "Interview prep pack dispatched",
+  offer_placement_recorded: "Offer/placement recorded",
+  expiration_notice_14day: "Expiration notice (14 day)",
+  expiration_notice_7day: "Expiration notice (7 day)",
+  extension_eligibility_check: "Extension eligibility check",
+  extension_decision_made: "Extension decision made",
+  extension_granted: "Extension granted",
+  expiration_notice_0day: "Expiration notice (0 day)",
+  campaign_ended: "Campaign ended",
+  exit_survey: "Exit survey",
+  referral_eligibility: "Referral eligibility",
+  renewal_offered: "Renewal offered",
+};
+
 // Steps with no code path anywhere that completes them automatically —
 // email_verified, document_uploaded, document_accepted, service_selection,
-// payment_confirmed, social_follow, preference_update and campaign_ended
-// are the only ones wired to a real trigger elsewhere; everything else
-// (including every newly added step below) requires an admin Attest until
-// a real automatic trigger is built for it.
+// payment_confirmed, payment_receipt_sent, social_follow, preference_update,
+// rtr_dispatched, cv_uploaded, job_credentials_provided, cv_variant_dispatch,
+// cv_approved, cv_variant_uploaded, applications_started (SPR-21-13-003 cron),
+// interview_prep_pack_dispatched (SPR-21-13-004 IPP upload hook),
+// week4_checkin and week12_checkin (SPR-21-13-001 check-in cron),
+// campaign_ended and renewal_offered (SPR-21-13-008 — the renewal offer
+// cascades from a fresh campaign_ended completion), and the expiration notice
+// trio (SPR-21-13-009 — the expiration-notice cron fires at T-14 / T-7 / day
+// 0) are the only ones wired to a real trigger elsewhere; everything else
+// (including every newly added step below) requires an admin Attest until a
+// real automatic trigger is built for it. Note the attest-only steps can still
+// NOTIFY on first completion (ADMIN_ATTEST_NOTIFY_STEPS) — this set only
+// tracks which ones have a non-attest trigger.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
-  "payment_receipt_sent",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
-  "cv_uploaded",
-  "cv_variant_dispatch",
-  "cv_approved",
-  "cv_variant_uploaded",
-  "rtr_dispatched",
   "preference_review_session",
-  "job_credentials_provided",
   "jobsite_verification",
   "jobsite_credentials_approved",
   "profile_alignment_check",
   "campaign_readiness_confirmed",
   "campaign_launched",
-  "applications_started",
-  "week4_checkin",
   "interview_milestone",
-  "interview_prep_pack_dispatched",
   "offer_placement_recorded",
-  "expiration_notice_14day",
-  "expiration_notice_7day",
   "extension_eligibility_check",
   "extension_decision_made",
   "extension_granted",
-  "expiration_notice_0day",
   "exit_survey",
   "referral_eligibility",
-  "renewal_offered",
 ]);

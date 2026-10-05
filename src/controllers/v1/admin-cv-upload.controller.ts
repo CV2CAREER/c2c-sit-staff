@@ -142,7 +142,7 @@ export const adminUploadCvCoverLetterController = catchAsyncError(
 
         const uploadTimestamp = new Date().toLocaleString();
 
-        const slackHost = req.get("host") || process.env.CLIENT_APP_DOMAIN || "localhost";
+        const slackHost = req.get("host") || CLIENT_APP_DOMAIN;
         const environment = getEnvironmentFromHost(slackHost);
 
         // Fetch the target client up-front so the same record can back both

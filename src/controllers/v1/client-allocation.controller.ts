@@ -3,8 +3,7 @@ import catchAsyncError from "../../utils/catchAsyncError";
 import { getServiceLogger } from "../../utils/createLogger";
 import { getSequelize } from "../../utils/sequelize";
 import { fieldEncryption } from "../../utils/field-encryption";
-import { User } from "../../models/v1/user.model";
-import { Op } from "sequelize";
+import { activePcsService } from "../../services/admin/active-pcs.service";
 
 const logger = getServiceLogger("client-allocation-controller");
 
@@ -23,33 +22,15 @@ interface TPAAllocation {
   stats: TPAStats;
 }
 
-async function getActivePCs() {
-  try {
-    const sequelize = getSequelize();
-    
-    // Only get users with 'assistant' role (Placement Controllers)
-    // You can add more roles here if needed, like 'pc', 'placement_controller'
-    const results = await User.findAll({
-      where: {
-        role: { [Op.in]: ["assistant", "pc", "placement_controller"] },
-        isActive: true,
-      },
-      order: [["firstName", "ASC"], ["lastName", "ASC"]],
-    });
-    logger.info(`Found ${results.length} active Placement Controllers`);
-    
-    return results.map((user: any) => ({
-      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      email: (user as any).email || '',
-      role: user.role,
-      id: user.id
-    })).filter((pc: any) => pc.name && pc.name.trim() !== '');
-    
-  } catch (error) {
-    logger.error("Error getting active PCs:", error);
-    return [];
-  }
-}
+// Shared roster lookup (staff-queue owners, System-queue routing) —
+// moved to active-pcs.service and exposed at GET /api/v1/admin/active-pcs.
+const getActivePCs = () => activePcsService.getActivePCs();
+
+/** GET /api/v1/admin/active-pcs — owner dropdown + routing roster. */
+export const getActivePCsHandler = catchAsyncError(async (_req: Request, res: Response) => {
+  const pcs = await getActivePCs();
+  return res.apiSuccess({ pcs, total: pcs.length }, "Active placement controllers fetched", 200);
+});
 
 async function getClientStats(clientIds: string[]): Promise<Map<string, TPAStats>> {
   try {

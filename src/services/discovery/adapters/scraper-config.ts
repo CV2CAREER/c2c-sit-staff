@@ -66,7 +66,7 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
     slug: 'jora',
     name: 'Jora',
     baseUrl: 'https://au.jora.com',
-    strategy: 'browser',
+    strategy: 'http',
     searchUrl: (kw, loc) =>
       `https://au.jora.com/${q(kw)}-jobs-in-${q(loc.toLowerCase())}?sort=date`,
     selectors: {
@@ -77,48 +77,12 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
       link: 'a[href*="/job/"]',
     },
   },
-  seek: {
-    slug: 'seek',
-    name: 'SEEK',
-    baseUrl: 'https://www.seek.com.au',
-    strategy: 'browser',
-    cloudflareBlocked: true,
-    requiresAuth: true,
-    searchUrl: (kw, loc) =>
-      `https://www.seek.com.au/${q(kw)}-jobs/in-${q(loc)}`,
-    selectors: {
-      jobCard: 'article[data-automation="normalJob"], a[data-automation="jobTitle"]',
-      title: 'a[data-automation="jobTitle"]',
-      company: '[data-automation="jobCompany"]',
-      location: '[data-automation="jobLocation"]',
-      link: 'a[data-automation="jobTitle"]',
-      salary: '[data-automation="jobSalary"]',
-      nextPage: 'a[data-automation="page-next"]',
-    },
-  },
-  glassdoor: {
-    slug: 'glassdoor',
-    name: 'Glassdoor',
-    baseUrl: 'https://www.glassdoor.com',
-    strategy: 'browser',
-    region: 'global',
-    cloudflareBlocked: true,
-    requiresAuth: true,
-    searchUrl: (kw, _loc) =>
-      `https://www.glassdoor.com/Job/${q(kw.toLowerCase())}-jobs-SRCH_KO0,${kw.length}.htm?sortBy=date_desc`,
-    selectors: {
-      jobCard: '[data-test="job-card"], a[data-test="job-link"], div[class*="JobCard"]',
-      title: '[data-test="job-link"], a[href*="/partner/jobListing"]',
-      company: '',
-      location: '',
-      link: '[data-test="job-link"], a[href*="/partner/jobListing"]',
-    },
-  },
   indeed: {
     slug: 'indeed',
     name: 'Indeed',
     baseUrl: 'https://au.indeed.com',
     strategy: 'browser',
+    cloudflareBlocked: true,
     searchUrl: (kw, loc) =>
       `https://au.indeed.com/jobs?q=${q(kw)}&l=${q(loc)}&sort=date`,
     selectors: {
@@ -276,43 +240,6 @@ export const SCRAPER_CONFIGS: Record<string, ScrapeConfig> = {
       location: 'li.location',
       link: 'a.resultJobItem',
       salary: 'li.salary',
-    },
-  },
-  michaelpage: {
-    slug: 'michaelpage',
-    name: 'MichaelPage',
-    baseUrl: 'https://www.michaelpage.com.au',
-    strategy: 'browser',
-    // robots.txt disallows faceted "*/jobs/*/*/*/" search URLs and "/job-apply/",
-    // but this single-segment shape and "/job-detail/" pages aren't covered —
-    // still worth a final compliance read before enabling in production.
-    searchUrl: (kw, loc) =>
-      `https://www.michaelpage.com.au/jobs/${q(kw)}?location=${q(loc)}`,
-    // Verified against live markup (2026-09-08). No company name is shown on
-    // listing cards (Michael Page doesn't disclose the client), so company
-    // selector is intentionally left blank — adapter falls back to "Unknown".
-    selectors: {
-      jobCard: 'div.job-tile.search-job-tile',
-      title: 'div.job-title a',
-      company: '',
-      location: 'div.job-location',
-      link: 'div.job-title a',
-      description: 'div.job_advert__job-summary-text',
-    },
-  },
-  randstad: {
-    slug: 'randstad',
-    name: 'Randstad',
-    baseUrl: 'https://www.randstad.com.au',
-    strategy: 'browser',
-    searchUrl: (kw, loc) =>
-      `https://www.randstad.com.au/jobs/?q=${q(kw)}&l=${q(loc)}`,
-    selectors: {
-      jobCard: '.job-item, .search-result, article',
-      title: 'h2 a, .job-title a, a.job-link',
-      company: '.company, .employer-name',
-      location: '.location, .job-location',
-      link: 'h2 a, a.job-link',
     },
   },
 };

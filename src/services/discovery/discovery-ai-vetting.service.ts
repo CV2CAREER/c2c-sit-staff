@@ -45,12 +45,6 @@ export async function applyAiVettingResult(manualApp: ManualApplication, result:
   await withRetry(() => manualApp.update(updateFields));
 }
 
-export async function classifyAndScore(manualApp: ManualApplication, profile: Profile): Promise<AiVettingResult> {
-  const result = await classifyJob(manualApp, profile);
-  await applyAiVettingResult(manualApp, result);
-  return result;
-}
-
 const MAX_CONCURRENCY = 4;
 
 /**

@@ -373,10 +373,21 @@ export const getJobPreferencesHistory = catchAsyncError(
   async (req: Request, res: Response) => {
     ensureAuthorized(req);
     const { userId } = req.params;
+    const { field, search, page, limit } = req.query as {
+      field?: string;
+      search?: string;
+      page?: string;
+      limit?: string;
+    };
 
     logger.info(`Processing request to get job preferences history for user ID: ${userId}`);
 
-    const result = await userManagementService.getJobPreferencesHistory(userId);
+    const result = await userManagementService.getJobPreferencesHistory(userId, {
+      field: field ? String(field) : undefined,
+      search: search ? String(search) : undefined,
+      page: page ? parseInt(String(page), 10) : undefined,
+      limit: limit ? parseInt(String(limit), 10) : undefined,
+    });
 
     logger.info(`Retrieved ${result.history.length} history entries for user ID: ${userId}`);
 

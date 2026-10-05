@@ -122,7 +122,7 @@ const updateAggregator = async (
   }
 
   // Determine which aggregators to assign:
-  //   - Always assign global aggregators (linkedin, indeed, jora, escapecity)
+  //   - Always assign global aggregators (linkedin, indeed, jora)
   //   - Assign country-specific aggregators if resolvedGroup matches
   const allCandidateNames = new Set<string>();
   for (const [, names] of Object.entries(AGGREGATOR_GROUPS)) {

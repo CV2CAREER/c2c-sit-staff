@@ -59,6 +59,8 @@ export const EMAIL_TRIGGERS: EmailTriggerDefinition[] = [
   { key: "availability-declined.ejs", label: "Availability Declined", reassignable: true },
   { key: "service-subscription-user.ejs", label: "Service Subscription (User)", reassignable: true },
   { key: "service-subscription-admin.ejs", label: "Service Subscription (Admin)", reassignable: true },
+  { key: "service-selection-confirmed-client.ejs", label: "Service Selection Confirmed (Client)", reassignable: true },
+  { key: "service-selection-confirmed-admin.ejs", label: "Service Selection Recorded (Admin)", reassignable: true },
   { key: "DispatchPreference.ejs", label: "Campaign Preference Dispatch", reassignable: true },
   { key: "AdminNotificationTemplate.ejs", label: "Campaign Admin Notification", reassignable: true },
   { key: "DispatchCredentials.ejs", label: "Campaign Credentials Dispatch", reassignable: true },
@@ -78,6 +80,8 @@ export const EMAIL_TRIGGERS: EmailTriggerDefinition[] = [
   { key: "admin-missing-info-v2.ejs", label: "Missing Info Request (Admin, v2)", reassignable: true },
   { key: "missing-info-delivery-report.ejs", label: "Missing Info Delivery Report", reassignable: true },
   { key: "client-support-documents-admin.ejs", label: "Support Document Uploaded (Admin)", reassignable: true },
+  // SPR-21-51-003 — System queue "actioned" confirmation (client).
+  { key: "system-queue-actioned.ejs", label: "System Queue: Change Actioned", reassignable: true },
 ];
 
 export const isReassignableTrigger = (triggerKey: string): boolean =>
