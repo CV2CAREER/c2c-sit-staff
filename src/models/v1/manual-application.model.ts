@@ -172,6 +172,22 @@ export class ManualApplication extends Model {
   @Column(DataType.DATE)
   ApprovedDate?: Date | null;
 
+  // Assurance result for a submission (SPR-21-58-001): 'ASSURED' | 'FAILED' | null.
+  // Set by admins/assistants through PATCH /discovery-tracker/assurance, which also
+  // stamps AssuredBy (full name) and AssuranceDate (server time). Distinct from
+  // ApprovedBy/ApprovedDate, which only record an MQA approval.
+  @AllowNull(true)
+  @Column(DataType.STRING(20))
+  AssuranceStatus?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  AssuredBy?: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  AssuranceDate?: Date | null;
+
   @AllowNull(true)
   @Column(DataType.TEXT)
   ReturnReason?: string | null;

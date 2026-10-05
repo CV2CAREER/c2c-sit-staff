@@ -82,7 +82,10 @@ export class MissingInfoRequestStaffService {
       status: "pending",
       channel: data.channel,
       personalMessage: data.personalMessage || null,
-      jobApplicationId: data.jobApplicationId || null,
+      // The form's "Linked to job application" value is a URL and is kept in full in
+      // jobURL (text). jobApplicationId is varchar(255) and nothing reads it, so a
+      // long link must not be copied there (SPR-21-58-002: "value too long").
+      jobApplicationId: null,
     });
 
     setImmediate(async () => {
