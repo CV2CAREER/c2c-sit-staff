@@ -8,9 +8,10 @@ import { ApiSuccess } from "@/types/apiResponse.types";
 export type MissingInfoTemplate = {
   id: string;
   name: string;
-  category: "identity" | "work_rights" | "references" | "certifications" | "banking";
+  category: "identity" | "work_rights" | "references" | "certifications" | "banking" | "housekeeping";
   type: "referee_block" | "free_form";
   status: "draft" | "published";
+  description?: string | null;
   createdById: string;
   publishCount: number;
   fields?: MissingInfoTemplateField[];
@@ -39,6 +40,8 @@ type CreateTemplatePayload = {
   name: string;
   category: string;
   type: string;
+  description?: string | null;
+  status?: "draft" | "published";
   fields?: Partial<MissingInfoTemplateField>[];
 };
 
