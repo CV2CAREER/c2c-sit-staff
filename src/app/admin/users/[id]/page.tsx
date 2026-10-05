@@ -14,7 +14,9 @@ import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreference
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
 import AdminClientJourney from "../_components/AdminClientJourney";
 import AdminMissingInfoRequests from "../_components/AdminMissingInfoRequests";
+import AdminUserVerification from "../_components/AdminUserVerification";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -43,10 +45,12 @@ const TAB_DEFS = [
     { value: "documents", label: "Documents" },
     { value: "jobsite-credential", label: "Jobsite Credential" },
     { value: "missing-info", label: "Missing Info" },
+    { value: "verification", label: "Verification" },
     { value: "job-preferences", label: "Job Preferences" },
     { value: "preference-history", label: "Preference History" },
     { value: "referral-history", label: "Referral History" },
 ];
+
 
 // Inner component that has access to context
 function UserDetailsContent({ userId }: { userId: string }) {
@@ -150,6 +154,9 @@ function UserDetailsContent({ userId }: { userId: string }) {
                     </TabsContent>
                     <TabsContent value="missing-info">
                         <AdminMissingInfoRequests userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="verification">
+                        <AdminUserVerification userId={currentUserId} />
                     </TabsContent>
                     <TabsContent value="job-preferences">
                         <AdminUsersJobPreferences userId={currentUserId}/>
