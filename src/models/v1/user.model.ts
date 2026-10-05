@@ -285,6 +285,14 @@ export class User extends Model {
   @Column(DataType.BOOLEAN)
   isRestricted?: boolean;
 
+  // Partner-referred Emerald persona marker. Mirrored from customer BE —
+  // shared DB. Staff BE reads this to drive admin UI persona display and
+  // may flip it to false when a paid plan is manually assigned to the user.
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isEmeraldCandidate?: boolean;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)

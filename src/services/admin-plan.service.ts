@@ -22,7 +22,10 @@ import { Credentials } from "../models/v1/credentials.model";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { TEAM_EMAIL } from "../config/env";
-import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag, sendPlanChangedEmail, sendPlanChangedAdminEmail, sendPlanExtendedEmail } from "./email.service";
+import { sendCoralActiveEmail, sendEmeraldActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag, sendPlanChangedEmail, sendPlanChangedAdminEmail, sendPlanExtendedEmail } from "./email.service";
+import { Partner } from "../models/v1/partner.model";
+import { Referrer } from "../models/v1/referrer.model";
+import { Profile } from "../models/v1/profile.model";
 import { AuditLogService } from "./admin/audit-log.service";
 import { fieldEncryption } from "../utils/field-encryption";
 import { createCredentialsTour } from "./credentials-tour.service";
@@ -266,24 +269,52 @@ export const updateUserPlanByFeature = async (
         const fullName = userFullName;
         const frontendUrl = getFrontendUrl();
 
-        // Send emails
+        // Emerald is a free trial, not a paid subscription — the generic
+        // "Payment Successful" / "Payment Received" templates would mis-
+        // represent the transaction (no payment happened). Route through
+        // the Emerald-specific sender for the user; keep the admin notice
+        // generic since admin care about the state change, not the semantic.
+        const isEmeraldFeature = feature.title.toLowerCase() === "emerald";
+        const planStartDate = newPlan.createdAt
+          ? new Date(newPlan.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+          : "Today";
+        const planEndDate = newPlan.expiresAt
+          ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+          : "During the trial window";
+
         await Promise.all([
-          // User payment notification
-          sendMail({
-            email: userEmail,
-            subject: `${feature.title} Service Activated Successfully`,
-            templateName: "service-subscription-user.ejs",
-            templateData: {
-              name: user.firstName,
-              plan: feature.title,
-              frontendUrl,
-              currentYear: new Date().getFullYear(),
-            },
-          }),
-          // Admin payment notification
+          // User activation notification — Emerald uses its own template so
+          // the copy reflects "free trial activated" not "payment received".
+          isEmeraldFeature
+            ? sendEmeraldActiveEmail({
+                email: userEmail,
+                name: user.firstName,
+                planName: feature.title,
+                startDate: planStartDate,
+                endDate: planEndDate,
+                partnerName: "CVtoCAREER",
+                frontendUrl,
+                convertCtaUrl: `${frontendUrl}/dashboard/account`,
+              })
+            : sendMail({
+                email: userEmail,
+                subject: `${feature.title} Service Activated Successfully`,
+                templateName: "service-subscription-user.ejs",
+                templateData: {
+                  name: user.firstName,
+                  plan: feature.title,
+                  startDate: planStartDate,
+                  endDate: planEndDate,
+                  frontendUrl,
+                  currentYear: new Date().getFullYear(),
+                },
+              }),
+          // Admin notification
           sendMail({
             email: TEAM_EMAIL!,
-            subject: `Payment Received from ${fullName}`,
+            subject: isEmeraldFeature
+              ? `Emerald Trial Assigned to ${fullName}`
+              : `Payment Received from ${fullName}`,
             templateName: "service-subscription-admin.ejs",
             templateData: {
               name: fullName,
@@ -302,8 +333,40 @@ export const updateUserPlanByFeature = async (
       }
     });
 
+    // Slack ping for the admin-manual activation path. Mirrors the auto-
+    // activation ping inside activateEmeraldPlan (credential approval route)
+    // so Emerald events are visible regardless of which path kicked them off.
+    // Posted to CRY_WOLF — the channel the auto-path already uses; prod
+    // fans out to the dedicated Emerald channel from there.
+    if (feature.title.toLowerCase() === "emerald") {
+      setImmediate(async () => {
+        try {
+          const frontendUrl = getFrontendUrl();
+          const planEndDate = newPlan.expiresAt
+            ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+            : "Unknown";
+          await SlackService.notify({
+            location,
+            host,
+            node: SlackNode.USER_MANAGEMENT,
+            provider: SlackProvider.SYSTEM,
+            severity: SlackSeverity.INFO,
+            trigger: "Emerald Trial Assigned by Admin",
+            type: SlackEventType.ADMIN_ACTION,
+            channel: SlackChannel.CRY_WOLF,
+            body: `Emerald trial manually assigned to *${userFullName}* (${userEmail}).\nAssigned by: ${options?.adminUser?.firstName || ""} ${options?.adminUser?.lastName || ""} | Plan ID: ${newPlan.id} | Expires: ${planEndDate}\nUser: ${frontendUrl}/admin-dashboard/users/${user.id}`,
+          });
+        } catch (err: any) {
+          logger.error(`[UpdateUserPlanByFeature] Emerald Slack ping failed: ${err.message}`);
+        }
+      });
+    }
+
     // SPR-21-11-005: notify the team (#town-crier) when an admin confirms a
-    // plan/payment on the customer's behalf.
+    // plan/payment on the customer's behalf. Fires for every manually-assigned
+    // plan — Emerald rows additionally get the Emerald-specific ping above
+    // because the auto-activation path on credential approval also emits one
+    // to CRY_WOLF, and the admin-manual route needs the same visibility.
     setImmediate(async () => {
       try {
         await SlackService.notify({
@@ -705,6 +768,206 @@ export const activateCoralPlan = async (
   }
 
   logger.info(`[ActivateCoralPlan] Coral plan ${newPlan.id} activated for ambassador ${userId}`);
+  return newPlan;
+};
+
+/**
+ * Activate an Emerald trial for a partner-referred guest. Called from
+ * jobsite-credential approval once social verification is complete, matching
+ * the Coral/Ambassador flow — the Emerald 10-day clock only starts here, not
+ * at signup, so the guest gets a full trial window starting from the moment
+ * their campaign is ready to run.
+ *
+ * Looks up the enrolling partner from the Referrer row to populate the
+ * activation email's attribution + Slack message. The caller is expected to
+ * have already verified the referrer is an accredited Channel Partner.
+ */
+export const activateEmeraldPlan = async (
+  host: string,
+  userId: string,
+): Promise<Plan> => {
+  const location = getEnvironmentFromHost(host);
+  logger.info(`[ActivateEmeraldPlan] User: ${userId}`);
+
+  const user = await User.findByPk(userId);
+  if (!user) throw new ErrorHandler("User not found", 404);
+
+  const userEmail = await fieldEncryption.getUserEmail(userId);
+  const userFullName = `${user.firstName} ${user.lastName || ""}`.trim();
+
+  const activePlan = await Plan.findOne({ where: { userId, hasExpired: false } });
+  if (activePlan) throw new ErrorHandler("User already has an active plan", 400);
+
+  const emeraldFeature = await Feature.findOne({
+    where: { tier: SubscriptionTier.EMERALD, isActive: true },
+  });
+  if (!emeraldFeature) throw new ErrorHandler("Emerald feature not found or inactive", 500);
+
+  const primaryProfile = await Profile.findOne({
+    where: { userId, name: "primary" },
+  });
+  if (!primaryProfile) throw new ErrorHandler("Primary profile not found for user", 400);
+
+  // Resolve the enrolling partner so the activation email can name them.
+  // Caller already confirmed the referrer is an accredited partner — this
+  // lookup is just to get the human name + email.
+  const referralRow = await Referrer.findOne({ where: { userId } });
+  const referrerEmail = referralRow?.referrer ?? null;
+  const referrerUserId = referrerEmail
+    ? await fieldEncryption.findUserByEmail(referrerEmail)
+    : null;
+  const referrerUser = referrerUserId
+    ? await User.findByPk(referrerUserId)
+    : null;
+  const partnerName = referrerUser
+    ? getFullName({
+        firstName: referrerUser.firstName,
+        lastName: referrerUser.lastName,
+        middleName: referrerUser.middleName,
+      })
+    : referrerEmail || "CVtoCAREER Partner";
+
+  const sequelize = getSequelize();
+  const newPlan = await sequelize.transaction(async (transaction: Transaction) => {
+    const plan = await Plan.create(
+      {
+        userId,
+        title: emeraldFeature.title,
+        featureId: emeraldFeature.id,
+        profileIds: [primaryProfile.id],
+        validityPeriod: emeraldFeature.validityPeriod,
+        paymentStatus: "completed",
+        paymentAmount: 0,
+        paymentCurrency: "AUD",
+      },
+      { transaction },
+    );
+
+    await plan.reload({ transaction });
+
+    await user.update(
+      {
+        planId: plan.id,
+        selectedPlan: plan.title,
+        plan: plan.title,
+        isUserSubscribed: true,
+        hasActiveSubscription: true,
+      },
+      { transaction },
+    );
+
+    await primaryProfile.update(
+      {
+        planId: plan.id,
+        isActive: true,
+      },
+      { transaction },
+    );
+
+    if (referralRow) {
+      await referralRow.update(
+        { referralStatus: RevenueStatus.PAID },
+        { transaction },
+      );
+    }
+
+    return plan;
+  });
+
+  const frontendUrl = getFrontendUrl();
+  const startDate = newPlan.createdAt
+    ? new Date(newPlan.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+    : "Today";
+  const endDate = newPlan.expiresAt
+    ? new Date(newPlan.expiresAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })
+    : "During the trial window";
+
+  setImmediate(async () => {
+    try {
+      if (!userEmail) {
+        logger.warn(`[ActivateEmeraldPlan] Skipping active email for user ${userId}: no resolvable email`);
+        return;
+      }
+      await sendEmeraldActiveEmail({
+        email: userEmail,
+        name: user.firstName,
+        planName: emeraldFeature.title,
+        startDate,
+        endDate,
+        partnerName,
+        frontendUrl,
+        convertCtaUrl: `${frontendUrl}/dashboard/account`,
+      });
+      logger.info(`[ActivateEmeraldPlan] Emerald active email sent to ${userEmail}`);
+    } catch (err: any) {
+      logger.error(`[ActivateEmeraldPlan] Email failed: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      if (!userEmail) {
+        logger.warn(`[ActivateEmeraldPlan] Skipping campaign management for user ${userId}: no resolvable email`);
+        return;
+      }
+      await handleCampaignManagement(
+        host,
+        {
+          firstName: user.firstName,
+          middleName: user.middleName,
+          lastName: user.lastName || "",
+          email: userEmail,
+          uniqueId: user.uniqueId || "",
+          country: user.country,
+          id: user.id,
+        },
+        emeraldFeature.title,
+        userId,
+        frontendUrl,
+        emeraldFeature.validityPeriod,
+      );
+    } catch (err: any) {
+      logger.error(`[ActivateEmeraldPlan] Campaign management failed: ${err.message}`);
+    }
+
+    try {
+      await createCredentialsTour({
+        userId,
+        planId: newPlan.id,
+        planTitle: newPlan.title,
+        expireAt: newPlan.expiresAt ?? null,
+        isNewCycle: true,
+      });
+    } catch (err: any) {
+      logger.error(`[ActivateEmeraldPlan] Tour creation failed for user ${userId}: ${err.message}`);
+    }
+
+    try {
+      await markPaymentConfirmed(userId, "system");
+    } catch (err: any) {
+      logger.error(`[ActivateEmeraldPlan] Journey step "payment_confirmed" failed for user ${userId}: ${err.message}`);
+    }
+  });
+
+  setImmediate(async () => {
+    try {
+      await SlackService.notify({
+        location,
+        host,
+        node: SlackNode.USER_MANAGEMENT,
+        provider: SlackProvider.SYSTEM,
+        severity: SlackSeverity.INFO,
+        trigger: "Emerald Plan Auto-Activated via Credential Approval",
+        type: SlackEventType.SUBSCRIPTION_UPDATE,
+        channel: SlackChannel.CRY_WOLF,
+        body: `Emerald trial activated for *${userFullName}* (${userEmail}) via partner *${partnerName}*.\nPlan ID: ${newPlan.id} | Expires: ${endDate}`,
+      });
+    } catch (err: any) {
+      logger.error(`[ActivateEmeraldPlan] Slack notification failed: ${err.message}`);
+    }
+  });
+
+  logger.info(`[ActivateEmeraldPlan] Emerald plan ${newPlan.id} activated for user ${userId}`);
   return newPlan;
 };
 
