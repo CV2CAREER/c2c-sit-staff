@@ -37,9 +37,11 @@ import {
 import {
   NO_AUTO_TRIGGER_STEP_KEYS,
   deriveJourneyState,
+  getStepsForPersona,
 } from "@/constants/clientJourneySteps";
 import { ClientJourneyPhaseKey } from "@/types/client-journey.types";
 import TriggerApplicationAction from "./ApplicationAction";
+import { useAdminUserDetailContext } from "../context/userDetailContext";
 import AttestDetailsModal, {
   ATTEST_DETAILS_STEPS,
   type AttestDetailsPayload,
@@ -250,9 +252,24 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   const [attestTarget, setAttestTarget] = useState<{ stepKey: string; label: string } | null>(null);
   const [showFullJourney, setShowFullJourney] = useState(false);
 
+  // Persona-aware journey filter. Emerald + Ambassador collapse Phase 1
+  // by hiding the three payment steps (service_selection,
+  // payment_confirmed, payment_receipt_sent) — they never pass through
+  // that gate, so surfacing those rows here inflates the stepper count
+  // and lets an admin attempt an attestation that would silently fail.
+  const { user: adminUser } = useAdminUserDetailContext();
+  const personaFilteredSteps = useMemo(
+    () =>
+      getStepsForPersona({
+        isAmbassador: adminUser?.isAmbassador,
+        plan: adminUser?.plan,
+      }),
+    [adminUser?.isAmbassador, adminUser?.plan],
+  );
+
   const { phases, currentPhaseKey } = useMemo(
-    () => deriveJourneyState(clientJourney?.steps ?? []),
-    [clientJourney],
+    () => deriveJourneyState(clientJourney?.steps ?? [], personaFilteredSteps),
+    [clientJourney, personaFilteredSteps],
   );
 
   const { doneCount, totalCount } = useMemo(() => {
