@@ -67,10 +67,10 @@ export function useQueueEntryActions() {
   };
 
   const raiseTask = useMutation({
-    mutationFn: async (templateId: string) => {
+    mutationFn: async (payload: { templateId: string; ownerId?: string; ownerName?: string }) => {
       const response = await axiosInstance.post<ApiSuccess<{ entry: QueueEntry }>>(
         endpoints.QUEUE_ENTRY_STAFF_TASKS,
-        { templateId },
+        payload,
       );
       return response.data.data.entry;
     },

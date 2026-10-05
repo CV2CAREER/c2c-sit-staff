@@ -56,10 +56,21 @@ export default function TemplateCard({ template, onEdit, onDelete, onPublish, on
       {/* Meta */}
       <div className="px-3.5 pt-3.5 pb-1">
         <h4 className="text-[14px] font-semibold text-[#1F2937] m-0 leading-snug">{template.name}</h4>
-        <div className="text-[12px] text-[#6B7280] mt-1">{fieldLabel}</div>
-        <div className="text-[12px] text-[#9CA3AF] mt-0.5">
-          {usedText}
-        </div>
+        {isHousekeeping ? (
+          <>
+            <div className="text-[12px] text-[#6B7280] mt-1">Database (Housekeeping) · internal task</div>
+            <div className="text-[12px] text-[#9CA3AF] mt-0.5 line-clamp-2">
+              {template.description?.trim() || "No description added yet."}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[12px] text-[#6B7280] mt-1">{fieldLabel}</div>
+            <div className="text-[12px] text-[#9CA3AF] mt-0.5">
+              {usedText}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Actions */}

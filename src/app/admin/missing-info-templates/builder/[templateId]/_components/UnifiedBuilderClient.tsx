@@ -226,6 +226,11 @@ export default function UnifiedBuilderClient() {
   }, [forcedType, loaded]);
 
   useEffect(() => {
+    // Housekeeping templates use the simple task form, not this customer builder.
+    if (template?.category === "housekeeping") {
+      router.replace("/admin/missing-information");
+      return;
+    }
     if (template) {
       setTemplateName(template.name);
       setCategory(template.category || "references");
@@ -251,7 +256,7 @@ export default function UnifiedBuilderClient() {
       setBlockTemplate(buildInitialFields(maxBlockIndex, template.fields));
       if (!loaded) setLoaded(true);
     }
-  }, [template, loaded, forcedType]);
+  }, [template, loaded, forcedType, router]);
 
   const nonBlockFields = useMemo(
     () => fields.filter((f) => !f.isRefereeBlock),

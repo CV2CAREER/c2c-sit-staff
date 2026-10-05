@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useOutstandingRequests,
   useRequestStats,
@@ -40,10 +40,17 @@ const QUEUE_TABS: { key: Queue; label: string; accent: string }[] = [
 
 export default function MissingInfoRequestsPageClient({
   onSwitchScreen,
+  staffQueueFocus = 0,
 }: {
   onSwitchScreen?: (screen: "templates" | "requests") => void;
+  /** Bumped by the parent (e.g. after raising a staff task) to jump to the Staff queue. */
+  staffQueueFocus?: number;
 }) {
   const [queue, setQueue] = useState<Queue>("customer");
+
+  useEffect(() => {
+    if (staffQueueFocus > 0) setQueue("staff");
+  }, [staffQueueFocus]);
   const [search, setSearch] = useState("");
   const [ageFilter, setAgeFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");

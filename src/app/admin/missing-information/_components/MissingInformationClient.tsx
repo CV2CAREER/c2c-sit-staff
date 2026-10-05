@@ -17,6 +17,13 @@ const SCREEN_TABS: { key: Screen; label: string }[] = [
 
 export default function MissingInformationClient() {
   const [screen, setScreen] = useState<Screen>("templates");
+  const [staffQueueFocus, setStaffQueueFocus] = useState(0);
+
+  // After a Housekeeping task is raised, jump to Outstanding Requests -> Staff.
+  const showStaffQueue = () => {
+    setScreen("requests");
+    setStaffQueueFocus((n) => n + 1);
+  };
 
   const { templatesDomain } = useMissingInfoTemplates();
   const { stats } = useRequestStats();
@@ -75,10 +82,13 @@ export default function MissingInformationClient() {
         work and view settings on both tabs survive the switch (51-001 DoD 4).
       */}
       <div className={screen === "templates" ? "block" : "hidden"}>
-        <TemplatesClient />
+        <TemplatesClient onTaskRaised={showStaffQueue} />
       </div>
       <div className={screen === "requests" ? "block" : "hidden"}>
-        <MissingInfoRequestsPageClient onSwitchScreen={setScreen} />
+        <MissingInfoRequestsPageClient
+          onSwitchScreen={setScreen}
+          staffQueueFocus={staffQueueFocus}
+        />
       </div>
     </div>
   );

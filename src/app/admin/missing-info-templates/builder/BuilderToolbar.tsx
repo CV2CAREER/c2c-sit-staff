@@ -9,7 +9,6 @@ const CATEGORIES = [
   { value: "references", label: "References" },
   { value: "certifications", label: "Certifications" },
   { value: "banking", label: "Banking" },
-  { value: "housekeeping", label: "Database (Housekeeping)" },
 ];
 
 const TYPES = [
