@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { GridRowSelectionModel, GridToolbar } from "@mui/x-data-grid-pro";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StyledDataGridPro } from "@/utils/table";
-import jobApplicationsColumns from "./table-columns";
+import { getJobApplicationsColumns } from "./table-columns";
 import questionsColumns from "./questions-columns";
 import { useJobAppsAndQuestionsData } from "./context";
 import { JobPrefDataTableActionDialogs } from "./dialogs";
@@ -90,6 +90,8 @@ export default function JobApplicationsAndQuestionsDataTable() {
   const activeTracker = isQuestions ? questionsTracker : tracker;
 
   const [allowEditing, setAllowEditing] = useState(false);
+  // The assurance dropdown only works while "Allow Editing" is on.
+  const jobApplicationsColumns = useMemo(() => getJobApplicationsColumns(allowEditing), [allowEditing]);
   const [selectedRows, setSelectedRows] = useState<GridRowSelectionModel>({ type: "include", ids: new Set() });
   const [selectedRowForAction, setSelectedRowForAction] = useState<string | number | null>(null);
   const selectedRowIds = Array.from(selectedRows.ids) as Array<string | number>;
