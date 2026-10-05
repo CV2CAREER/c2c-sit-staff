@@ -53,9 +53,9 @@ import availabilityRouterV1 from "./routes/v1/availability.route";
 import sessionsRouterV1 from "./routes/v1/sessions.route";
 import slackManageRouterV1 from "./routes/v1/slack-manage.route";
 import auditTrailRouterV1 from "./routes/v1/audit-trail.route";
-import userManagementRouterV1 from "./routes/v1/user-management.route"
-import uploadRouterV1 from "./routes/v1/upload.route"
-import jobsiteRouterV1 from "./routes/v1/jobsite.route"
+import userManagementRouterV1 from "./routes/v1/user-management.route";
+import uploadRouterV1 from "./routes/v1/upload.route";
+import jobsiteRouterV1 from "./routes/v1/jobsite.route";
 import campaignManagementRouterV1 from "./routes/v1/campaign-management.route";
 import cvRevampRouterV1 from "./routes/v1/cv-revamp.route";
 import clientSupportDocumentRouterV1 from "./routes/v1/client-support-document.route";
@@ -66,6 +66,7 @@ import preferenceQuestionRouterV1 from "./routes/v1/preference-question.route";
 import dropdownOptionRouterV1 from "./routes/v1/dropdown-option.route";
 import socialVerificationRouterV1 from "./routes/v1/social-verification.route";
 import missingInfoRequestStaffRouterV1 from "./routes/v1/missing-info-request-staff.route";
+import jobsiteVerificationRouterV1 from "./routes/v1/jobsite-verification.route";
 
 // Assistant routes
 import assistantRouterV1 from "./routes/v1/assistant.route";
@@ -74,10 +75,10 @@ import assistantRouterV1 from "./routes/v1/assistant.route";
 import placementRouterV1 from "./routes/v1/placement.route";
 
 // Coaches
-import coachRouterV1 from "./routes/v1/coach.route"
-import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route"
-import jobsiteCredentialRouterV1 from "./routes/v1/jobsite-credential.route"
-import clientJourneyRouterV1 from "./routes/v1/client-journey.route"
+import coachRouterV1 from "./routes/v1/coach.route";
+import clientAvailabilityRouterV1 from "./routes/v1/client-availability.route";
+import jobsiteCredentialRouterV1 from "./routes/v1/jobsite-credential.route";
+import clientJourneyRouterV1 from "./routes/v1/client-journey.route";
 
 export const app = express();
 
@@ -208,11 +209,26 @@ app.use("/api/v1/deployWebhook", deployWebhookRouterV1);
 app.use("/api/v1/justcallWebhook", justCallWebhookRouterV1);
 app.use("/api/v1/justcallMessageWebhook", justCallMessageWebhookRouterV1);
 app.use("/api/v1/justcallWhatsappWebhook", justCallWhatsAppWebhookRouterV1);
-app.use("/api/v1/justcallSalesDialerWebhook", justCallSalesDialerWebhookRouterV1);
+app.use(
+  "/api/v1/justcallSalesDialerWebhook",
+  justCallSalesDialerWebhookRouterV1,
+);
 app.use("/api/v1/justcallContactWebhook", justCallContactWebhookRouterV1);
-app.use("/api/v1/justcallAppointmentWebhook", justCallAppointmentWebhookRouterV1);
+app.use(
+  "/api/v1/justcallAppointmentWebhook",
+  justCallAppointmentWebhookRouterV1,
+);
 app.use("/api/v1/sendgridWebhook", sendGridWebhookRouterV1);
-app.use("/api/v1/sendgridWebhook", sendGridInboundParseRouter);
+// Specific admin sub-routers (must precede general /api/v1/admin router)
+app.use("/api/v1/admin/jobsite-verifications", jobsiteVerificationRouterV1);
+app.use("/api/v1/jobsite-verifications", jobsiteVerificationRouterV1);
+app.use("/api/v1/admin/social-verifications", socialVerificationRouterV1);
+app.use("/api/v1/admin/dropdown-options", dropdownOptionRouterV1);
+app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
+app.use(
+  "/api/v1/admin/client-support-documents",
+  clientSupportDocumentRouterV1,
+);
 app.use("/api/v1/admin", adminRouterV1);
 app.use("/api/v1/slack-manage", slackManageRouterV1);
 app.use("/api/v1/audit-trail", auditTrailRouterV1);
@@ -233,18 +249,14 @@ app.use("/api/v1/view-as-rules", viewAsRulesRouterV1);
 app.use("/api/v1/chats", chatRouterV1);
 app.use("/api/v1/support", supportRouterV1);
 app.use("/api/v1/slack-manage", slackManageRouterV1);
-app.use("/api/v1/user-management", userManagementRouterV1)
-app.use("/api/v1/uploads", uploadRouterV1)
+app.use("/api/v1/user-management", userManagementRouterV1);
+app.use("/api/v1/uploads", uploadRouterV1);
 app.use("/api/v1/campaigns", campaignManagementRouterV1);
 app.use("/api/v1/jobsite", jobsiteRouterV1);
-app.use("/api/v1/admin/cv-revamp", cvRevampRouterV1);
-app.use("/api/v1/admin/client-support-documents", clientSupportDocumentRouterV1);
 app.use("/api/v1/view-as-user", viewAsUserRouterV1);
 app.use("/api/v1/communication-template", communicationTemplateRouterV1);
 app.use("/api/v1/missing-info-templates", missingInfoTemplateRouterV1);
 app.use("/api/v1/preference-questions", preferenceQuestionRouterV1);
-app.use("/api/v1/admin/dropdown-options", dropdownOptionRouterV1);
-app.use("/api/v1/admin/social-verifications", socialVerificationRouterV1);
 app.use("/api/v1/missing-info-requests", missingInfoRequestStaffRouterV1);
 
 // Assistant routes (must be after auth middleware to get user info)

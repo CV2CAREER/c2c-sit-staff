@@ -36,6 +36,9 @@ import { CECComplaint } from '../models/v1/cec-complaint.model';
 import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
 import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
 import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
+import { JobsiteVerification } from '../models/v1/jobsite-verification.model';
+import { JobsiteConfig } from '../models/v1/jobsite-config.model';
+import { JobsiteRejectReason, DEFAULT_JOBSITE_REJECT_REASONS } from '../models/v1/jobsite-reject-reason.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -108,6 +111,9 @@ export const connectDB = async (): Promise<void> => {
         await CECReferralPayout.sync({ force: false });
         await CECSalesOutreach.sync({ force: false });
         await CECAmbassadorScout.sync({ force: false });
+        await JobsiteVerification.sync({ force: false });
+        await JobsiteConfig.sync({ force: false });
+        await JobsiteRejectReason.sync({ force: false });
 
         // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
         // purge and the campaignCredentialId / discovery_source_register columns)
