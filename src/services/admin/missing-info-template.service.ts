@@ -46,6 +46,7 @@ export class MissingInfoTemplateService {
     category: string;
     type: string;
     createdById: string;
+    description?: string | null;
     fields?: any[];
   }) {
     const existing = await MissingInfoTemplate.findOne({
@@ -61,6 +62,7 @@ export class MissingInfoTemplateService {
       category: data.category,
       type: data.type,
       createdById: data.createdById,
+      description: data.description?.trim() || null,
     });
 
     if (data.fields && data.fields.length > 0) {
@@ -92,6 +94,8 @@ export class MissingInfoTemplateService {
       name?: string;
       category?: string;
       type?: string;
+      description?: string | null;
+      status?: string;
       fields?: any[];
     },
   ) {
@@ -116,7 +120,18 @@ export class MissingInfoTemplateService {
       ...(data.type && { type: data.type }),
     };
 
-    if (template.status === "published") {
+    if (data.description !== undefined) {
+      updateData.description = data.description?.trim() || null;
+    }
+
+    // Housekeeping templates never go through the field-based publish flow, so
+    // their status is set directly and editing does not knock them back to draft.
+    const isHousekeeping = (data.category || template.category) === "housekeeping";
+    if (isHousekeeping) {
+      if (data.status === "draft" || data.status === "published") {
+        updateData.status = data.status;
+      }
+    } else if (template.status === "published") {
       updateData.status = "draft";
     }
 
@@ -174,7 +189,8 @@ export class MissingInfoTemplateService {
     }
 
     const fields = (template as any).fields;
-    if (!fields || fields.length === 0) {
+    const isHousekeeping = template.category === "housekeeping";
+    if (!isHousekeeping && (!fields || fields.length === 0)) {
       throw new ErrorHandler("Cannot publish an empty template", 400);
     }
 
@@ -211,6 +227,9 @@ export class MissingInfoTemplateService {
       } catch (err) {
         logger.error("Audit trail write failed for template.published:", err);
       }
+
+      // Housekeeping templates are internal; they are never "selectable in Send Request".
+      if (isHousekeeping) return;
 
       try {
         await SlackService.notify({

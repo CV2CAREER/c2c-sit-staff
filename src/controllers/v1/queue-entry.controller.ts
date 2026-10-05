@@ -31,13 +31,16 @@ export const listQueueEntries = catchAsyncError(async (req: Request, res: Respon
   return res.apiSuccess({ entries, total: entries.length }, "Queue entries fetched", 200);
 });
 
-/** POST /api/v1/queue-entries/staff-tasks  { templateId } */
+/** POST /api/v1/queue-entries/staff-tasks  { templateId, ownerId?, ownerName? } */
 export const raiseStaffTask = catchAsyncError(async (req: Request, res: Response) => {
   const templateId = bodyValue(req.body, "templateId");
   if (!templateId) {
     return res.apiError(new ErrorHandler("templateId is required", 400));
   }
-  const entry = await queueEntryService.raiseStaffTask(templateId, req.user);
+  const entry = await queueEntryService.raiseStaffTask(templateId, req.user, {
+    ownerId: bodyValue(req.body, "ownerId") || undefined,
+    ownerName: bodyValue(req.body, "ownerName") || undefined,
+  });
   return res.apiSuccess({ entry }, "Staff task raised", 201);
 });
 

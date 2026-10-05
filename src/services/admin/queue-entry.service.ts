@@ -33,7 +33,11 @@ export class QueueEntryService {
    * raise staff tasks), so a stray caller cannot create one from e.g.
    * "Additional visas".
    */
-  async raiseStaffTask(templateId: string, user: AuthUser): Promise<QueueEntry> {
+  async raiseStaffTask(
+    templateId: string,
+    user: AuthUser,
+    assignee?: { ownerId?: string; ownerName?: string },
+  ): Promise<QueueEntry> {
     const template = await MissingInfoTemplate.findByPk(templateId);
     if (!template) {
       throw new ErrorHandler("Template not found", 404);
@@ -45,15 +49,28 @@ export class QueueEntryService {
       );
     }
 
+    const ownerId = assignee?.ownerId;
+    const ownerName = assignee?.ownerName;
+    if (Boolean(ownerId) !== Boolean(ownerName)) {
+      throw new ErrorHandler("ownerId and ownerName must be provided together", 400);
+    }
+    if (ownerId) {
+      const roster = await activePcsService.getActivePCs();
+      if (!roster.some((pc) => pc.id === ownerId)) {
+        throw new ErrorHandler("Owner is not an active Placement Controller", 400);
+      }
+    }
+
     const entry = await QueueEntry.create({
       queue: "staff",
       title: template.name,
       raisedById: (user as any)?.id || "unknown",
       raisedByName: displayName(user),
       status: "open",
+      ...(ownerId && { assignedToId: ownerId, assignedToName: ownerName }),
     });
     logger.info(
-      `Raised staff task "${entry.title}" (#${entry.id}) by ${entry.raisedByName}`,
+      `Raised staff task "${entry.title}" (#${entry.id}) by ${entry.raisedByName}${ownerName ? `, assigned to ${ownerName}` : ""}`,
     );
     return entry;
   }
