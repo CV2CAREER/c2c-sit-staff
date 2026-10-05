@@ -24,7 +24,7 @@ import {
 import { Op } from "sequelize";
 import {
   ApplicationStatus,
-  CustomerClass,
+  Perception,
   Gender,
   PaymentStatus,
   Progress,
@@ -147,9 +147,18 @@ export class User extends Model {
   businessName?: string;
 
   @AllowNull(false)
-  @Default(CustomerClass.NA)
-  @Column(DataType.ENUM(...Object.values(CustomerClass)))
-  customerClass!: CustomerClass;
+  @Default(Perception.TBD)
+  @Column(DataType.ENUM(...Object.values(Perception)))
+  staffPerception!: Perception;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  auditRequired!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  auditFindings?: string | null;
 
   @Column(DataType.VIRTUAL(DataType.STRING))
   get phoneNumber(): string | undefined {

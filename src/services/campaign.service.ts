@@ -2861,6 +2861,8 @@ export const updateCampaignClient = async (
     'AssignedVetEmail',
     'AssignedCompletedName',
     'AssignedCompletedEmail',
+    'auditRequired', // SPR-21-33-001
+    'auditFindings', // SPR-21-33-001
   ]);
 
   // Form field names that must be renamed to match the actual Credentials column name
@@ -2868,6 +2870,16 @@ export const updateCampaignClient = async (
     Capitalized: 'capitalized', // form sends PascalCase, column is camelCase
     Seek_Aggregator: 'SeekAggregator', // form uses underscore, column does not
   };
+
+  // SPR-21-33-001: audit fields are real columns; reject bad values instead of silently storing them
+  if (fieldsToUpdate['auditRequired'] !== undefined && typeof fieldsToUpdate['auditRequired'] !== 'boolean') {
+    throw new Error('auditRequired must be true or false');
+  }
+  if (fieldsToUpdate['auditFindings'] !== undefined && fieldsToUpdate['auditFindings'] !== null) {
+    if (typeof fieldsToUpdate['auditFindings'] !== 'string' || (fieldsToUpdate['auditFindings'] as string).length > 2000) {
+      throw new Error('auditFindings must be text of at most 2000 characters');
+    }
+  }
 
   const directUpdates: Record<string, any> = {};
   const jsonbUpdates: Record<string, any> = {};
