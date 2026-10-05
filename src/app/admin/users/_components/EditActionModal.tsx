@@ -57,7 +57,7 @@ const formSchema = z.object({
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
   gender: z.enum(["male", "female", "Male", "Female"]).optional(),
-  customerClass: z.string().optional(),
+  staffPerception: z.string().optional(),
   voiceNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
   country: z.string().optional(),
@@ -110,7 +110,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
       lastName: user.lastName,
       email: user.email,
       gender: user.gender,
-      customerClass: user.customerClass,
+      staffPerception: user.staffPerception,
       voiceNumber: user.voiceNumber,
       whatsappNumber: user.whatsappNumber,
       country: user.country,
@@ -249,32 +249,24 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="customerClass"
+                  name="staffPerception"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Class</FormLabel>
+                      <FormLabel>Staff Perception</FormLabel>
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Customer Class" />
+                            <SelectValue placeholder="Select Staff Perception" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="family">Family</SelectItem>
-                            <SelectItem value="enthusiastic">Enthusiastic</SelectItem>
-                            <SelectItem value="satisfied">Satisfied</SelectItem>
-                            <SelectItem value="unsatisfied">Unsatisfied</SelectItem>
-                            <SelectItem value="upset">Upset</SelectItem>
-                            <SelectItem value="unclassified">Unclassified</SelectItem>
-                            <SelectItem value="blacklisted">Blacklisted</SelectItem>
-                            <SelectItem value="probono">Probono</SelectItem>
-                            <SelectItem value="inflight">Inflight</SelectItem>
-                            <SelectItem value="untraceable">Untraceable</SelectItem>
-                            <SelectItem value="friendly">Friendly</SelectItem>
-                            <SelectItem value="N/A">N/A</SelectItem>
-                            <SelectItem value="Warm_Lead">Warm Lead</SelectItem>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Advocate">Advocate</SelectItem>
+                            <SelectItem value="Satisfied">Satisfied</SelectItem>
+                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="TBD">TBD</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>

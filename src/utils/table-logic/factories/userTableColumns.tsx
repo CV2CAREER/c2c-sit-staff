@@ -204,7 +204,7 @@ export const applyUserTableColumn = (el: any, actions?: any, mutate?: any) => {
         ],
       };
 
-    case "customerClass":
+    case "staffPerception":
       return {
         ...el,
         renderCell: (params: { value: any }) => {
