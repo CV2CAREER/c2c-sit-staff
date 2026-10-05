@@ -72,6 +72,11 @@ export class MissingInfoTemplate extends Model {
   @Column(DataType.ENUM(...MISSING_INFO_TEMPLATE_STATUSES))
   status!: MissingInfoTemplateStatus;
 
+  // "What this involves" text for Database (Housekeeping) task templates (SPR-21-51-002).
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  description!: string | null;
+
   @AllowNull(false)
   @Column(DataType.STRING)
   createdById!: string;

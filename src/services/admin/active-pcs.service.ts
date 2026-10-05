@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { User } from "../../models/v1/user.model";
 import { getServiceLogger } from "../../utils/createLogger";
+import { Role } from "../../utils/enum";
 
 const logger = getServiceLogger("active-pcs-service");
 
@@ -23,7 +24,9 @@ export class ActivePcsService {
     try {
       const results = await User.findAll({
         where: {
-          role: { [Op.in]: ["assistant", "pc", "placement_controller"] },
+          // "assistant" is the only PC role in enum_users_role. Listing labels the
+          // enum lacks (e.g. "pc") makes Postgres reject the whole query.
+          role: { [Op.in]: [Role.ASSISTANT] },
           isActive: true,
         },
         order: [["firstName", "ASC"], ["lastName", "ASC"]],

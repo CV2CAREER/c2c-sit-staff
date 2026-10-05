@@ -3,6 +3,8 @@ import { MissingInfoTemplate } from "../../models/v1/missing-info-template.model
 import { activePcsService } from "./active-pcs.service";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
+import { sendMail } from "../../config/sendGrid";
+import { getFrontendUrl } from "../../utils/helpers";
 
 const logger = getServiceLogger("queue-entry-service");
 
@@ -31,7 +33,11 @@ export class QueueEntryService {
    * raise staff tasks), so a stray caller cannot create one from e.g.
    * "Additional visas".
    */
-  async raiseStaffTask(templateId: string, user: AuthUser): Promise<QueueEntry> {
+  async raiseStaffTask(
+    templateId: string,
+    user: AuthUser,
+    assignee?: { ownerId?: string; ownerName?: string },
+  ): Promise<QueueEntry> {
     const template = await MissingInfoTemplate.findByPk(templateId);
     if (!template) {
       throw new ErrorHandler("Template not found", 404);
@@ -43,15 +49,28 @@ export class QueueEntryService {
       );
     }
 
+    const ownerId = assignee?.ownerId;
+    const ownerName = assignee?.ownerName;
+    if (Boolean(ownerId) !== Boolean(ownerName)) {
+      throw new ErrorHandler("ownerId and ownerName must be provided together", 400);
+    }
+    if (ownerId) {
+      const roster = await activePcsService.getActivePCs();
+      if (!roster.some((pc) => pc.id === ownerId)) {
+        throw new ErrorHandler("Owner is not an active Placement Controller", 400);
+      }
+    }
+
     const entry = await QueueEntry.create({
       queue: "staff",
       title: template.name,
       raisedById: (user as any)?.id || "unknown",
       raisedByName: displayName(user),
       status: "open",
+      ...(ownerId && { assignedToId: ownerId, assignedToName: ownerName }),
     });
     logger.info(
-      `Raised staff task "${entry.title}" (#${entry.id}) by ${entry.raisedByName}`,
+      `Raised staff task "${entry.title}" (#${entry.id}) by ${entry.raisedByName}${ownerName ? `, assigned to ${ownerName}` : ""}`,
     );
     return entry;
   }
@@ -130,6 +149,26 @@ export class QueueEntryService {
     entry.resolvedByName = displayName(user);
     if (trimmed) entry.resolutionNote = trimmed;
     await entry.save();
+
+    // SPR-21-51-003 DoD: the client always receives an "actioned" confirmation
+    // once their System-queue entry is resolved. Fire-and-forget — a send
+    // failure must never roll back or fail the resolve itself.
+    if (entry.queue === "system" && entry.clientEmail) {
+      sendMail({
+        email: entry.clientEmail,
+        subject: "Your change has been actioned",
+        templateName: "system-queue-actioned.ejs",
+        templateData: {
+          name: entry.clientName || "there",
+          changeType: entry.title,
+          frontendUrl: getFrontendUrl(),
+          currentYear: new Date().getFullYear(),
+        },
+      }).catch((err) =>
+        logger.error(`Actioned email failed for queue entry #${id}: ${err.message}`),
+      );
+    }
+
     logger.info(`Queue entry #${id} (${entry.queue}) resolved by ${entry.resolvedByName}`);
     return entry;
   }
