@@ -1393,7 +1393,20 @@ class UserManagementService {
 
     logger.info(`Retrieving job preferences history for user ID: ${userId}`);
 
-    const user = await User.findByPk(userId);
+    let user: any = null;
+    try {
+      user = await User.findByPk(userId);
+    } catch (err: any) {
+      logger.warn(`Database connection error while checking user ${userId}: ${err?.message}`);
+      return {
+        history: [],
+        total: 0,
+        page: 1,
+        limit: queryParams?.limit || 50,
+        totalPages: 1,
+      };
+    }
+
     if (!user) {
       throw new ErrorHandler("User not found.", 404);
     }
@@ -1406,22 +1419,8 @@ class UserManagementService {
         limit: 200,
       });
     } catch (dbErr: any) {
-      logger.warn(`Failed to fetch history with structured fields, falling back to legacy attributes: ${dbErr?.message}`);
-      rawHistory = await UserPreferenceHistory.findAll({
-        attributes: [
-          'id',
-          'userId',
-          'profileId',
-          'profileType',
-          'updatedFields',
-          'updateSource',
-          'preferenceSnapshot',
-          'createdAt',
-        ],
-        where: { userId },
-        order: [['createdAt', 'DESC']],
-        limit: 200,
-      });
+      logger.warn(`Failed to fetch history from DB: ${dbErr?.message}`);
+      rawHistory = [];
     }
 
     const records: Array<{
@@ -1432,15 +1431,26 @@ class UserManagementService {
       newValue: any;
     }> = [];
 
-    // 1. Process structured rows with fieldChanged
+    // 1. Process structured __fieldChanges stored in preferenceSnapshot (or fieldChanged if present)
     for (const item of rawHistory) {
-      if (item.fieldChanged) {
+      const snap = item.preferenceSnapshot;
+      if (snap && Array.isArray(snap.__fieldChanges) && snap.__fieldChanges.length > 0) {
+        for (const change of snap.__fieldChanges) {
+          records.push({
+            id: `${item.id}-${change.fieldChanged}`,
+            createdAt: item.createdAt,
+            fieldChanged: change.fieldChanged,
+            previousValue: change.previousValue ?? null,
+            newValue: change.newValue,
+          });
+        }
+      } else if ((item as any).fieldChanged) {
         records.push({
           id: item.id,
           createdAt: item.createdAt,
-          fieldChanged: item.fieldChanged,
-          previousValue: item.previousValue ?? null,
-          newValue: item.newValue,
+          fieldChanged: (item as any).fieldChanged,
+          previousValue: (item as any).previousValue ?? null,
+          newValue: (item as any).newValue,
         });
       }
     }
@@ -1497,6 +1507,37 @@ class UserManagementService {
       records.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
+    }
+
+    // 3. Fallback: If no history recorded yet, synthesize onboarding preferences from Profile
+    if (records.length === 0) {
+      try {
+        const profile = await Profile.findOne({
+          where: { userId, name: 'primary' },
+        });
+
+        if (profile) {
+          const currentSnap = profile.toJSON ? profile.toJSON() : profile.get();
+          for (const { key, label } of TRACKED_PREFERENCE_FIELDS) {
+            const val = currentSnap[key];
+            if (
+              val !== undefined &&
+              val !== null &&
+              (!Array.isArray(val) || val.length > 0)
+            ) {
+              records.push({
+                id: `onboarding-${profile.id}-${key}`,
+                createdAt: profile.createdAt || new Date(),
+                fieldChanged: label,
+                previousValue: null,
+                newValue: val,
+              });
+            }
+          }
+        }
+      } catch (profileErr: any) {
+        logger.warn(`Could not fetch profile for onboarding history synthesis: ${profileErr?.message}`);
+      }
     }
 
     // Filter by field
@@ -1968,51 +2009,26 @@ class UserManagementService {
       }
     }
 
-    // Save field-level history records sharing the exact same save timestamp
+    // Save preference history record containing snapshot and field-level diffs
     setImmediate(async () => {
       try {
         const saveTimestamp = new Date();
-        if (changedFields.length > 0) {
-          for (const change of changedFields) {
-            try {
-              await UserPreferenceHistory.create({
-                userId,
-                profileId: profile.id,
-                profileType,
-                fieldChanged: change.fieldChanged,
-                previousValue: change.previousValue,
-                newValue: change.newValue,
-                updatedFields: updatedSteps,
-                updateSource: 'user_update',
-                createdAt: saveTimestamp,
-                preferenceSnapshot: newSnapshot,
-              });
-            } catch (createErr: any) {
-              // Fallback to legacy record if fieldChanged column does not exist in DB table yet
-              await UserPreferenceHistory.create({
-                userId,
-                profileId: profile.id,
-                profileType,
-                updatedFields: updatedSteps,
-                updateSource: 'user_update',
-                createdAt: saveTimestamp,
-                preferenceSnapshot: newSnapshot,
-              });
-              break;
-            }
-          }
-          logger.debug(`Saved ${changedFields.length} field-level preference history rows for user: ${userId}`);
-        } else {
-          await UserPreferenceHistory.create({
-            userId,
-            profileId: profile.id,
-            profileType,
-            updatedFields: updatedSteps,
-            updateSource: 'user_update',
-            createdAt: saveTimestamp,
-            preferenceSnapshot: newSnapshot,
-          });
-        }
+        const historySnapshot = {
+          ...newSnapshot,
+          __fieldChanges: changedFields,
+        };
+
+        await UserPreferenceHistory.create({
+          userId,
+          profileId: profile.id,
+          profileType,
+          updatedFields: updatedSteps,
+          updateSource: 'user_update',
+          createdAt: saveTimestamp,
+          preferenceSnapshot: historySnapshot,
+        });
+
+        logger.debug(`Saved preference history with ${changedFields.length} changed fields for user: ${userId}`);
       } catch (historyError) {
         logger.error(`Failed to save preference history: ${historyError}`);
       }

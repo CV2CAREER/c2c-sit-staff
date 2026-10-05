@@ -76,23 +76,15 @@ export class UserPreferenceHistory extends Model {
   @Column(DataType.STRING)
   updateSource!: string;
 
-  // Structured field-level change details
-  @AllowNull(true)
-  @Column(DataType.STRING)
-  fieldChanged?: string;
-
-  @AllowNull(true)
+  // Full preference snapshot as JSON (can also include __fieldChanges for field-level diffs)
+  @AllowNull(false)
   @Column(DataType.JSONB)
-  previousValue?: any;
+  preferenceSnapshot!: Record<string, any>;
 
-  @AllowNull(true)
-  @Column(DataType.JSONB)
-  newValue?: any;
-
-  // Preference snapshot as JSON (optional for field-level records)
-  @AllowNull(true)
-  @Column(DataType.JSONB)
-  preferenceSnapshot?: Record<string, any>;
+  // Optional field-level attributes (used in memory / API responses)
+  declare fieldChanged?: string;
+  declare previousValue?: any;
+  declare newValue?: any;
 
   @CreatedAt
   @Column(DataType.DATE)
