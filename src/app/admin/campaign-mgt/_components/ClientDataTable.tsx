@@ -73,6 +73,7 @@ import {
 import { singleCampaignColumns } from './clientCampaignTableColumns';
 import ClientAvatarAndInsights from './ClientAvatarAndInsights';
 import UpdateJobStatusModal from './JobStatusModal';
+import ManualAssuranceCell from './ManualAssuranceCell';
 import { modifyCampaignActionsColAndRows } from './tableColumns';
 // Add these imports at the top
 
@@ -637,14 +638,23 @@ const ClientDataTable: React.FC<{
       Job_Type: item?.Job_Type ?? 'N/A',
       Application_Status: toTitleCase(item?.Status || 'Unattended'),
       Status_Reason: item?.StatusReason?.trim() || 'N/A',
+      // A skipped row keeps the score it was vetted with (LQA is "a quality score on a
+      // skipped entry"), so show it instead of hiding it behind N/A (SPR-21-58-003).
+      // Expired rows, and skipped rows with no score, still show N/A.
       Quality_Score:
         (item?.Status || 'unattended').toLowerCase() === 'Unattended'
           ? 'TBD'
-          : ['skipped', 'expired'].includes(
-                (item?.Status || 'unattended').toLowerCase()
-              )
-            ? 'N/A'
-            : (item?.QualityScore ?? ''),
+          : (item?.Status || '').toLowerCase() === 'skipped' && item?.QualityScore
+            ? item.QualityScore
+            : ['skipped', 'expired'].includes(
+                  (item?.Status || 'unattended').toLowerCase()
+                )
+              ? 'N/A'
+              : (item?.QualityScore ?? ''),
+      // SPR-21-58-001: assurance result + who + when (server-stamped)
+      Assurance_Status: item?.AssuranceStatus ?? null,
+      Assured_By: item?.AssuredBy ?? null,
+      Assurance_Date: item?.AssuranceDate ?? null,
       Discovered_By: item?.DiscoveredBy ?? 'N/A',
       Timestamp_Discovered: item?.DiscoveryDate ?? 'N/A',
       Vetted_By: item?.VettedBy ?? 'N/A',
@@ -754,6 +764,23 @@ const ClientDataTable: React.FC<{
             </span>
           );
         },
+      },
+      // SPR-21-58-001: assurance result (dropdown rendered in the `columns` memo so it can
+      // update this table's rows), plus who set it and when (server-stamped, read-only).
+      { field: 'Assurance_Status', headerName: 'Assurance', width: 190, sortable: false },
+      {
+        field: 'Assured_By',
+        headerName: 'Assured By',
+        width: 160,
+        renderCell: (params: any) => <span>{params.value || '—'}</span>,
+      },
+      {
+        field: 'Assurance_Date',
+        headerName: 'Assurance Date',
+        width: 190,
+        renderCell: (params: any) => (
+          <span>{params.value ? new Date(params.value).toLocaleString() : '—'}</span>
+        ),
       },
       {
         field: 'CoverLetterRequired',
@@ -975,7 +1002,38 @@ const ClientDataTable: React.FC<{
                 {params.value
                   ? params.value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
                   : 'Unattended'}
+                {/* Display-only: the stored status stays SKIPPED, the label shows why. */}
+                {String(params.value || '').toLowerCase() === 'skipped' &&
+                String(params.row?.Quality_Score || '').toUpperCase() === 'LQA'
+                  ? ' (LQA)'
+                  : ''}
               </div>
+            ),
+          };
+        }
+
+        if (col.field === 'Assurance_Status') {
+          return {
+            ...col,
+            renderCell: (params: any) => (
+              <ManualAssuranceCell
+                row={params.row}
+                readOnly={!isEditable}
+                onSaved={(saved) =>
+                  setTableData((prev: any[]) =>
+                    prev.map((r) =>
+                      r.id === params.row.id
+                        ? {
+                            ...r,
+                            Assurance_Status: saved.AssuranceStatus,
+                            Assured_By: saved.AssuredBy,
+                            Assurance_Date: saved.AssuranceDate,
+                          }
+                        : r
+                    )
+                  )
+                }
+              />
             ),
           };
         }
@@ -1031,6 +1089,9 @@ const ClientDataTable: React.FC<{
       Application_Status: 150,
       Status_Reason: 170,
       Quality_Score: 120,
+      Assurance_Status: 170,
+      Assured_By: 130,
+      Assurance_Date: 150,
       Discovered_By: 130,
       Timestamp_Discovered: 160,
       Vetted_By: 120,

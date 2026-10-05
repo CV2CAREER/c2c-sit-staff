@@ -1,12 +1,13 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import {
   ADMIN_DISCOVERY_TRACKER,
+  ADMIN_DISCOVERY_TRACKER_ASSURANCE,
   ADMIN_DISCOVERY_TRACKER_FILTER_VALUES,
 } from "@/constants/apiEndpoints/admin.endpoint";
 
@@ -49,6 +50,9 @@ export type DiscoveryRecord = {
   DeclinedReasons?: string | null;
   ApprovedBy?: string | null;
   ApprovedDate?: string | null;
+  AssuranceStatus?: "ASSURED" | "FAILED" | null;
+  AssuredBy?: string | null;
+  AssuranceDate?: string | null;
   ReturnReason?: string | null;
   ReturnedBy?: string | null;
   ReturnedDate?: string | null;
@@ -87,15 +91,20 @@ export const useDiscoveryTracker = ({
   state,
   field,
   value,
+  page = 0,
+  pageSize = 50,
 }: {
   state: DiscoveryState;
   field?: string;
   value?: string;
+  /** 0-based page index; the table has ~200k rows so it is paged on the server. */
+  page?: number;
+  pageSize?: number;
 }) => {
   const queryClient = useQueryClient();
 
   const discoveryQuery = useQuery<DiscoveryListPayload, ApiError>({
-    queryKey: ["discovery-tracker", state, field, value],
+    queryKey: ["discovery-tracker", state, field, value, page, pageSize],
     queryFn: async () => {
       try {
         const response = await axiosInstance.get<ApiSuccess<DiscoveryListPayload>>(
@@ -106,6 +115,8 @@ export const useDiscoveryTracker = ({
               value,
               state,
               isDeleted: state === "recycle",
+              page,
+              pageSize,
             },
           },
         );
@@ -115,10 +126,10 @@ export const useDiscoveryTracker = ({
         throw toApiError(error);
       }
     },
-    // The grid loads every row for the current filter in one shot (no
-    // server-side pagination) — keep it cached so navigating away and back
-    // doesn't re-fetch the whole table every time. Mutations below still
-    // force a fresh fetch via invalidateQueries regardless of this window.
+    // One page per request. Keep the previous page on screen while the next one
+    // loads so the grid doesn't blank, and cache pages so going back is instant.
+    // Mutations below still force a fresh fetch via invalidateQueries.
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -244,6 +255,39 @@ export const useDiscoveryTracker = ({
     },
   });
 
+  // SPR-21-58-001: record the assurance result. Admins AND assistants may do this, so it
+  // has its own endpoint (the general PATCH above is admin-only). The server stamps who
+  // and when. Pass null to clear.
+  const updateAssurance = useMutation<
+    ApiSuccess<unknown>,
+    ApiError,
+    { id: string | number; assuranceStatus: "ASSURED" | "FAILED" | null }
+  >({
+    mutationKey: ["discovery-tracker-assurance"],
+    mutationFn: async ({ id, assuranceStatus }) => {
+      try {
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(
+          ADMIN_DISCOVERY_TRACKER_ASSURANCE,
+          { assuranceStatus },
+          { params: { id } },
+        );
+        return response.data;
+      } catch (error) {
+        throw toApiError(error);
+      }
+    },
+    onMutate: () => {
+      toast.loading("Saving assurance...", { id: "discovery-tracker-action" });
+    },
+    onSuccess: () => {
+      toast.success("Assurance saved", { id: "discovery-tracker-action" });
+      invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to save assurance", { id: "discovery-tracker-action" });
+    },
+  });
+
   return {
     rows: discoveryQuery.data?.rows ?? [],
     totalCount: discoveryQuery.data?.totalCount ?? 0,
@@ -257,5 +301,6 @@ export const useDiscoveryTracker = ({
     restoreRecord,
     deleteRecord,
     updateRecord,
+    updateAssurance,
   };
 };

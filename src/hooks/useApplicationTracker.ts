@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import axiosInstance from "@/services/api-client";
 import { ApiError, ApiSuccess } from "@/types/apiResponse.types";
-import { ADMIN_APPLICATIONS } from "@/constants/apiEndpoints/admin.endpoint";
+import { ADMIN_APPLICATIONS, ADMIN_APPLICATION_ASSURANCE } from "@/constants/apiEndpoints/admin.endpoint";
 import { toast } from "react-hot-toast";
 
 export type ApplicationState = "active" | "recycle";
@@ -178,6 +178,38 @@ export const useApplicationTracker = ({
     },
   });
 
+  // SPR-21-58-001: record the assurance result. The server stamps who (signed-in staff
+  // member) and when; pass null to clear. Admins and assistants only (server-enforced).
+  const updateAssurance = useMutation<
+    ApiSuccess<unknown>,
+    ApiError,
+    { id: string | number; assuranceStatus: "ASSURED" | "FAILED" | null },
+    string
+  >({
+    mutationKey: ["application-tracker-assurance"],
+    mutationFn: async ({ id, assuranceStatus }) => {
+      try {
+        const response = await axiosInstance.patch<ApiSuccess<unknown>>(
+          ADMIN_APPLICATION_ASSURANCE(id),
+          { assuranceStatus },
+        );
+        return response.data;
+      } catch (error) {
+        throw toApiError(error);
+      }
+    },
+    onMutate: () => {
+      return toast.loading("Saving assurance...");
+    },
+    onSuccess: (_data, _vars, toastId) => {
+      toast.success("Assurance saved.", { id: toastId });
+      invalidate();
+    },
+    onError: (error, _vars, toastId) => {
+      toast.error(error.message || "Failed to save assurance.", { id: toastId });
+    },
+  });
+
   // useFetchData returns ApiSuccess<T>, so .data is the ApiSuccess wrapper
   // and .data.data is the ApplicationListPayload inner object
   const rows = applicationsQuery.data?.data?.data ?? [];
@@ -199,5 +231,6 @@ export const useApplicationTracker = ({
     softDeleteApplication,
     restoreApplication,
     deleteApplication,
+    updateAssurance,
   };
 };
