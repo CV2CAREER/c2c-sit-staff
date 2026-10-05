@@ -11,17 +11,13 @@ interface IAggregator {
 
 const statusField: Record<string, string> = {
   jobbank: "jobbank_aggregator",
-  seek: "seek_aggregator",
   adecco: "adecco_aggregator",
   indeed: "indeed_aggregator",
   linkedin: "linkedin_aggregator",
   adzuna: "adzuna_aggregator",
-  escapecity: "escapecity_aggregator",
   reed: "reed_aggregator",
   careerone: "careerone_aggregator",
   jora: "jora_aggregator",
-  randstad: "randstad_aggregator",
-  michaelpage: "michael_page_aggregator",
 };
 
 /* ----------------------------- POST ----------------------------- */

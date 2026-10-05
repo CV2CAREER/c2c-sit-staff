@@ -5,22 +5,35 @@ import { getServiceLogger } from "@/utils/createLogger";
 import ErrorHandler from "@/utils/errorHandler";
 import catchAsyncError from "@/utils/catchAsyncError";
 
+// Baseline entries were retired on 30-09-2026 along with the Chatbot Trainer
+// screen (see scripts/retire-support-ai-prompt.ts). Kept in sync with the
+// stored Redis value so the fallback never re-surfaces them unlabelled.
 const basePrompt = `You are an AI chatbot. Here are your questions and answers:
 
-QUESTION: What is your name? 
+QUESTION: What is your name?
 ANSWER: I am VhatBot, your helpful AI assistant.
+STATUS: Retired
+RETIRED_ON: 30-09-2026
 
 QUESTION: What can you do?
 ANSWER: I can answer questions, help with tasks, and make your life easier.
+STATUS: Retired
+RETIRED_ON: 30-09-2026
 
 QUESTION: How do I reset my password?
 ANSWER: To reset your password, click on 'Forgot Password' on the login screen and follow the instructions.
+STATUS: Retired
+RETIRED_ON: 30-09-2026
 
 QUESTION: Where are you located?
 ANSWER: I exist in the cloud, always ready to assist you.
+STATUS: Retired
+RETIRED_ON: 30-09-2026
 
 QUESTION: Can you help me with my CV?
 ANSWER: Absolutely! I can help review, improve, and tailor your CV for different jobs.
+STATUS: Retired
+RETIRED_ON: 30-09-2026
 `;
 
 const logger = getServiceLogger("support-ai-prompt");

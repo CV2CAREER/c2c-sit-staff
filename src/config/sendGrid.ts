@@ -19,14 +19,17 @@ import {
   SENDGRID_API_KEY,
   SENDGRID_FROM_EMAIL,
   SENDGRID_FROM_NAME,
-  LOCAL_FRONTEND_URL,
+  CLIENT_APP_DOMAIN,
   CUSTOMER_EMAIL_BCC,
 } from "./env";
 import { getEnvironmentFromHost } from "@/utils/slack-helpers";
 
 const logger = getServiceLogger("sendgrid");
 
-const slackHost = LOCAL_FRONTEND_URL || "localhost";
+// Resolved client-app domain (env var or NODE_ENV convention): local dev
+// resolves to localhost (correctly tags LOCALHOST), hosted environments tag
+// their real domain — never a hardcoded localhost label in production.
+const slackHost = CLIENT_APP_DOMAIN;
 const environment = getEnvironmentFromHost(slackHost);
 
 // The original .ejs files are still on disk under views/emails (never

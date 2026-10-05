@@ -3,6 +3,7 @@ import {
   getManualApplicationsController,
   getManualApplicationFilterValuesController,
   updateManualApplicationController,
+  updateAssuranceController,
   deleteManualApplicationController,
 } from "../../controllers/v1/discovery-tracker.controller";
 import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken";
@@ -23,6 +24,8 @@ discoveryTrackerRouterV1.use(
 discoveryTrackerRouterV1.get("/", getManualApplicationsController);
 discoveryTrackerRouterV1.get("/filter-values", getManualApplicationFilterValuesController);
 discoveryTrackerRouterV1.patch("/", authorizeRoles('admin'), updateManualApplicationController);
+// SPR-21-58-001: assurance result (+ who/when) is the one thing assistants may set (router-level admin + assistant).
+discoveryTrackerRouterV1.patch("/assurance", updateAssuranceController);
 discoveryTrackerRouterV1.delete("/", authorizeRoles('admin'), deleteManualApplicationController);
 
 export default discoveryTrackerRouterV1;

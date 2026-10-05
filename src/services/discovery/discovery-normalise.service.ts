@@ -5,6 +5,8 @@ export interface NormalisedJob {
   titleNormalised: string;
   companyNormalised: string;
   locationNormalised: string;
+  seniority: string;
+  employmentType: string;
   fingerprint: string;
 }
 
@@ -15,17 +17,21 @@ const STRIP_SUFFIXES = [
   ' Plc', ' PLC', ' Group', ' Holdings', ' International',
 ];
 
-const REMOTE_KEYWORDS = ['remote', 'work from home', 'wfh', 'telecommute', 'virtual', 'anywhere'];
-
 const normalizeWhitespace = (s: string): string => s.replace(/\s+/g, ' ').trim();
 
 export const normaliseTitle = (title: string): string => {
   let t = normalizeWhitespace(title);
   t = t.replace(/\s*[-–—]\s*(Full.?Time|Part.?Time|Contract|Permanent|Casual|Temporary|FIFO|DIDO)\b/gi, '');
   t = t.replace(/\s*[\(\[].*?[\)\]]/g, '');
-  t = t.replace(/\b(Senior|Sr|Junior|Jr|Lead|Principal|Staff|Chief|Head)\b/gi, '');
+  // Normalise role keywords but do NOT strip seniority — it matters for dedup
   t = t.replace(/\b(Engineer|Developer|Analyst|Manager|Designer|Architect|Consultant|Specialist|Coordinator|Officer|Technician|Operator|Director|Supervisor|Lead)\b/gi, (match) => match.toLowerCase());
   return t.trim().toLowerCase();
+};
+
+/** Extract seniority prefix from a title (e.g. "Senior", "Lead", "Principal"). */
+export const extractSeniority = (title: string): string => {
+  const match = title.match(/^\s*(Senior|Sr|Junior|Jr|Lead|Principal|Staff|Chief|Head)\b/i);
+  return match ? match[1].toLowerCase() : '';
 };
 
 export const normaliseCompany = (company: string): string => {
@@ -43,8 +49,8 @@ export const normaliseLocation = (location: string): string => {
   return l.trim().toLowerCase();
 };
 
-export const computeFingerprint = (company: string, title: string, location: string): string => {
-  const input = `${normaliseCompany(company)}|${normaliseTitle(title)}|${normaliseLocation(location)}`;
+export const computeFingerprint = (company: string, title: string, location: string, seniority: string, employmentType: string): string => {
+  const input = `${normaliseCompany(company)}|${normaliseTitle(title)}|${normaliseLocation(location)}|${seniority}|${employmentType}`;
   return createHash('sha256').update(input).digest('hex');
 };
 
@@ -52,19 +58,18 @@ export const normaliseJob = (draft: DiscoveryJobDraft): NormalisedJob => {
   const titleNormalised = normaliseTitle(draft.title);
   const companyNormalised = normaliseCompany(draft.company);
   const locationNormalised = normaliseLocation(draft.location);
-  const fingerprint = computeFingerprint(draft.company, draft.title, draft.location);
+  const seniority = extractSeniority(draft.title);
+  const employmentType = draft.employmentType || '';
+  const fingerprint = computeFingerprint(draft.company, draft.title, draft.location, seniority, employmentType);
 
   return {
     titleNormalised,
     companyNormalised,
     locationNormalised,
+    seniority,
+    employmentType,
     fingerprint,
   };
-};
-
-export const hasRemoteFlag = (text: string): boolean => {
-  const lower = text.toLowerCase();
-  return REMOTE_KEYWORDS.some((kw) => lower.includes(kw));
 };
 
 export const validateDraft = (draft: DiscoveryJobDraft): { valid: boolean; reason?: string } => {

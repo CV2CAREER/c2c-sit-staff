@@ -194,7 +194,7 @@ const buildJobDetails = (job: ManualApplication, clientContext: ClientProfileCon
   return lines.join("\n");
 };
 
-export const getVcsPrompt = async (): Promise<{ prompt: string; version: string }> => {
+export const getVcsPrompt = async (): Promise<{ prompt: string; version: string; model: string | null }> => {
   const vcsRow = await VCS.findOne({
     where: { key: AI_VETTING_PROMPT_KEY, active: true },
   });
@@ -211,7 +211,7 @@ export const getVcsPrompt = async (): Promise<{ prompt: string; version: string 
       500,
     );
   }
-  return { prompt: promptRow.prompt, version: promptRow.version };
+  return { prompt: promptRow.prompt, version: promptRow.version, model: vcsRow.model ?? null };
 };
 
 const parseClassificationResponse = (raw: string): Omit<AiVettingResult, "promptVersion"> => {
@@ -261,7 +261,7 @@ export const classifyJob = async (
   job: ManualApplication,
   profile: Profile,
 ): Promise<AiVettingResult> => {
-  const { prompt: promptTemplate, version } = await getVcsPrompt();
+  const { prompt: promptTemplate, version, model } = await getVcsPrompt();
 
   const clientContext = buildClientProfile(profile);
   const jobDetails = buildJobDetails(job, clientContext);
@@ -277,7 +277,7 @@ export const classifyJob = async (
     // purely on the prompt's own "return ONLY JSON" instruction, with
     // parseClassificationResponse's regex extraction as a second-line
     // fallback for whatever that still doesn't catch.
-    const raw = await queryDigitalOceanAI(prompt, 2, true);
+    const raw = await queryDigitalOceanAI(prompt, 2, true, undefined, model);
     const result = parseClassificationResponse(raw);
     logger.info(
       `Classification result for job ${job.id}: ${result.status === "classified" ? result.score : "FAILED"} (prompt v${version})`

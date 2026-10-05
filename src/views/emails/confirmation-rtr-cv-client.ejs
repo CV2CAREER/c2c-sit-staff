@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Role Titles and CV</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f5;
+      padding: 40px;
+      color: #333;
+      margin: 0;
+      line-height: 1.6;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Your Role Titles and CV — What Happens Next
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 28px 32px">
+        <p style="margin: 0 0 16px">Dear <strong><%= name %></strong>,</p>
+
+        <p style="margin: 0 0 16px">
+          Two of the most important pieces of your campaign are your
+          <strong>Role Title Recommendations (RTR)</strong> and your
+          <strong>CV</strong>. Here is how they work and where to find them.
+        </p>
+
+        <!-- Details -->
+        <div
+          style="
+            background-color: #f0f7fc;
+            border-left: 4px solid #008ed3;
+            padding: 14px 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+          "
+        >
+          <p style="margin: 0 0 8px; font-weight: bold; color: #004174">
+            What you need to know
+          </p>
+          <ul style="margin: 0; padding-left: 20px; color: #333">
+            <li style="margin-bottom: 6px">Your RTR lists the role titles we'll target — review and confirm them</li>
+            <li style="margin-bottom: 6px">Your CV is tailored by our team into a CV variant for your campaign</li>
+            <li style="margin-bottom: 6px">Both live in Document History on your dashboard</li>
+            <li>Everything you confirm feeds directly into your job preferences</li>
+          </ul>
+        </div>
+
+        <p style="margin: 0 0 16px">
+          Keep an eye on your dashboard — when your RTR and CV variant are
+          ready for review, the journey page will show them as waiting on you.
+        </p>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin: 28px 0 8px">
+          <a
+            href="<%= frontendUrl %>/dashboard"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: bold;
+              padding: 12px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 14px;
+            "
+          >
+            View your journey &rarr;
+          </a>
+        </div>
+
+        <p style="margin: 0 0 16px; font-size: 14px; color: #474747">
+          If you have any questions or need assistance, please don't hesitate to
+          reach out to our support team at
+          <a
+            href="mailto:deliveryteam@cvtocareer.com"
+            style="color: #008ed3; text-decoration: none"
+            >deliveryteam@cvtocareer.com</a
+          >.
+        </p>
+
+        <p style="margin: 24px 0 0 0">
+          Kind regards,<br />
+          <strong>The CVtoCAREER Team</strong>
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <% var siteUrl = (typeof frontendUrl !== "undefined" && frontendUrl) ? frontendUrl : "https://app.cvtocareer.com"; %>
+      <div
+        style="
+          padding: 24px 32px;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+        "
+      >
+        <div style="margin-bottom: 20px">
+          <a
+            href="https://facebook.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_fb.png"
+              alt="Facebook"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+          <a
+            href="https://x.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_x.png"
+              alt="X"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+          <a
+            href="https://youtube.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_yt.png"
+              alt="YouTube"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+          <a
+            href="mailto:support@cvtocareer.com"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_gmail.png"
+              alt="Email"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+          <a
+            href="https://instagram.com/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_ig.png"
+              alt="Instagram"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+          <a
+            href="https://linkedin.com/company/cvtocareer"
+            style="display: inline-block; margin: 0 6px; text-decoration: none"
+          >
+            <img
+              src="https://storage.googleapis.com/cvtocareer-394713.appspot.com/footer/c2c_footer_linkedin.png"
+              alt="LinkedIn"
+              style="width: 28px; height: 28px; display: inline-block"
+            />
+          </a>
+        </div>
+
+        <p style="margin: 0 0 12px; font-size: 12px; color: #9ca3af">
+          &copy; <%= currentYear %> CVtoCAREER. All rights reserved.
+        </p>
+
+        <div style="margin: 8px 0">
+          <a
+            href="<%= siteUrl %>/dashboard/account?run=unsubscribe"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Unsubscribe</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= siteUrl %>/privacy-policy"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Privacy Policy</a
+          >
+          <span style="color: #d1d5db">|</span>
+          <a
+            href="<%= siteUrl %>"
+            style="
+              color: #9ca3af;
+              text-decoration: none;
+              font-size: 11px;
+              margin: 0 8px;
+            "
+            >Website</a
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

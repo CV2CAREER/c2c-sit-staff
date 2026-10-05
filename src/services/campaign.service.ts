@@ -44,17 +44,34 @@ const formatClientName = (user?: {
 } | null): string =>
   [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ');
 
+// Looks up the real account email (User.email) for each clientId, so Slack
+// notifications show the client's own email rather than the jobsite alias.
+// Instances (not raw) so User's @AfterFind decrypts the PII email field.
+const getUserEmailMap = async (
+  clientIds: Array<string | null | undefined>
+): Promise<Map<string, string>> => {
+  const ids = [...new Set(clientIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const users = await User.findAll({
+    where: { id: ids },
+    attributes: ['id', 'email'],
+    paranoid: false,
+  });
+  return new Map(users.map((u) => [u.id, u.email]));
+};
+
 // Derives a display name/email for a Credentials row for use in Slack notifications,
 // mirroring the same derivation landOrLaunchCampaign uses for flight status messages.
 const getCredentialContactInfo = (
-  cred: { seekEmail?: string; seekExternalCredentials?: any } | null | undefined,
-  fallbackId: string
+  cred: { clientId?: string; seekExternalCredentials?: any } | null | undefined,
+  fallbackId: string,
+  emailByUserId: Map<string, string>
 ): { name: string; email: string } => {
   const jsonb = cred?.seekExternalCredentials || {};
   const name =
     `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
     `Client #${fallbackId}`;
-  const email = jsonb.Alias_Email || cred?.seekEmail || 'unknown';
+  const email = (cred?.clientId && emailByUserId.get(cred.clientId)) || 'unknown';
   return { name, email };
 };
 
@@ -2565,7 +2582,8 @@ export const landOrLaunchCampaign = async (
   const clientName =
     `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
     `Client #${clientId}`;
-  const clientEmail = jsonb.Alias_Email || credData.seekEmail || 'unknown';
+  const clientEmail =
+    (await getUserEmailMap([credData.clientId])).get(credData.clientId) || 'unknown';
   const planName = jsonb.Plan || 'Unknown';
 
   let message: string;
@@ -3040,7 +3058,12 @@ export const softDeleteCampaignClient = async (id: string, requestorName?: strin
   }
 
   const cred = await Credentials.findOne({ where: { id } });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.update(
     { isDeleted: true },
@@ -3083,7 +3106,12 @@ export const restoreCampaignClient = async (id: string, requestorName?: string, 
   }
 
   const cred = await Credentials.findOne({ where: { id }, paranoid: false });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.update(
     { isDeleted: false },
@@ -3126,7 +3154,12 @@ export const permanentDeleteCampaignClient = async (id: string, requestorName?: 
   }
 
   const cred = await Credentials.findOne({ where: { id }, paranoid: false });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.destroy({
     where: { id },
@@ -3170,7 +3203,10 @@ export const softDeleteCampaignClientsBulk = async (ids: string[], requestorName
   }
 
   const creds = await Credentials.findAll({ where: { id: ids } });
-  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+  const emailByUserId = await getUserEmailMap(creds.map((c) => c.clientId));
+  const clients = creds.map((c) =>
+    getCredentialContactInfo(c.toJSON() as any, c.id, emailByUserId)
+  );
 
   const [affectedCount] = await Credentials.update(
     { isDeleted: true },
@@ -3219,7 +3255,10 @@ export const deleteCampaignClientsBulk = async (ids: string[], requestorName?: s
   }
 
   const creds = await Credentials.findAll({ where: { id: ids }, paranoid: false });
-  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+  const emailByUserId = await getUserEmailMap(creds.map((c) => c.clientId));
+  const clients = creds.map((c) =>
+    getCredentialContactInfo(c.toJSON() as any, c.id, emailByUserId)
+  );
 
   const response = await Credentials.destroy({
     where: { id: ids },

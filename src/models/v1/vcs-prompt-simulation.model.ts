@@ -51,6 +51,14 @@ export class VCSPromptSimulationRun extends Model {
   @Column(DataType.TEXT)
   output?: string;
 
+  // The effective model this run actually called (resolved from the key's
+  // configured model, falling back to the shared default) — recorded at
+  // run time so History shows exactly what was used even if the key's
+  // config is changed later.
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  model?: string;
+
   @AllowNull(false)
   @Default("success")
   @Column(DataType.ENUM("success", "failed"))

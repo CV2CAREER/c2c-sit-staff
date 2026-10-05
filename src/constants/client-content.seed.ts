@@ -41,6 +41,29 @@ export const CLIENT_CONTENT_SEED: ClientContentSeed[] = [
 <p>Questions? Reach us at <a href="mailto:support@cvtocareer.com">support@cvtocareer.com</a>.</p>`,
   },
   {
+    key: "onboarding_pack",
+    name: "Onboarding Pack",
+    description:
+      "The branded PDF attached to the automated payment receipt email after a client's payment completes.",
+    placement: "Attached to the payment receipt email sent after payment.",
+    group: "Payments",
+    status: "published",
+    body: `<h2>Welcome to CVtoCAREER</h2>
+<p>Thank you for your payment. Your plan is now active and your onboarding has started.</p>
+<h3>What happens next</h3>
+<ul>
+  <li>Welcome &mdash; we confirm your details and prepare your account.</li>
+  <li>Profile &amp; social verification &mdash; we verify your public profile links.</li>
+  <li>Credentials &mdash; you receive your dashboard access details.</li>
+  <li>Toolkit &mdash; your CV and application toolkit is switched on.</li>
+  <li>Final checks &mdash; a quick review before your campaign goes live.</li>
+</ul>
+<h3>Your receipt</h3>
+<p>Your payment receipt is attached to the email that came with this pack. Please keep it for your records.</p>
+<h3>Need help?</h3>
+<p>Contact us at support@cvtocareer.com or through the contact page on our website.</p>`,
+  },
+  {
     key: "cv_upload_terms",
     name: "CV Upload Terms & Conditions",
     description:

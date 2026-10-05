@@ -26,7 +26,7 @@ import { sendCoralActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag, sen
 import { AuditLogService } from "./admin/audit-log.service";
 import { fieldEncryption } from "../utils/field-encryption";
 import { createCredentialsTour } from "./credentials-tour.service";
-import { markPaymentConfirmed } from "./client-journey.service";
+import { markPaymentConfirmed, markServiceSelection } from "./client-journey.service";
 import { parseDate as parseCampaignDate, formatDate as formatCampaignDate, addDays as addCampaignDays, calculateCampaignFields } from "../utils/campaign-calculator";
 
 const logger = getServiceLogger("admin-plan-service");
@@ -245,6 +245,15 @@ export const updateUserPlanByFeature = async (
       } catch (err: any) {
         logger.error(`[UpdateUserPlanByFeature] Journey step "payment_confirmed" failed for user ${userId}: ${err.message}`);
       }
+
+      // SPR-21-11-005: assigning the paid plan is the admin equivalent of the
+      // customer's Service Selection — advance that step too so the journey
+      // moves past it (previously it stayed Attest-only).
+      try {
+        await markServiceSelection(userId, options?.adminUser?.id ?? "system");
+      } catch (err: any) {
+        logger.error(`[UpdateUserPlanByFeature] Journey step "service_selection" failed for user ${userId}: ${err.message}`);
+      }
     });
 
     // Send all notifications (non-blocking)
@@ -293,7 +302,31 @@ export const updateUserPlanByFeature = async (
       }
     });
 
-    // Send Slack notification to paid-sub channel for payment confirmation
+    // SPR-21-11-005: notify the team (#town-crier) when an admin confirms a
+    // plan/payment on the customer's behalf.
+    setImmediate(async () => {
+      try {
+        await SlackService.notify({
+          location,
+          host,
+          node: SlackNode.PAYMENT,
+          provider: SlackProvider.SYSTEM,
+          severity: SlackSeverity.INFO,
+          trigger: `Plan assigned by admin: ${userEmail || userId}`,
+          type: SlackEventType.ADMIN_ACTION,
+          channel: SlackChannel.TOWN_CRIER,
+          teamMentions: "CSM",
+          body: `Payment confirmed / plan assigned by an admin.
+User: ${userFullName} (${userEmail || userId})
+Plan: ${feature.title}
+Next steps: CSM team follow up the customer and assign PC.`,
+        });
+      } catch (error: any) {
+        logger.error(`Failed to send admin plan-assignment Slack notification: ${error.message}`);
+      }
+    });
+
+    // Legacy block (left disabled): paid-sub channel variant.
 //     setImmediate(async () => {
 //       try {
 //         await SlackService.notify({

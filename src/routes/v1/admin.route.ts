@@ -116,6 +116,7 @@ import supportRouterV1 from "./support.route";
 import accessLevelRouterV1 from "./access-level.route";
 import communicationTemplateRouterV1 from "./communication-template.route";
 import clientContentRouterV1 from "./client-content.route";
+import faqRouterV1 from "./faq.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
 import discoveryTrackerRouterV1 from "./discovery-tracker.route";
 import adminDiscoveryRouterV1 from "./admin-discovery.route";
@@ -204,6 +205,7 @@ adminRouterV1.use(
   "/client-content",
   clientContentRouterV1,
 );
+adminRouterV1.use("/faq", faqRouterV1);
 adminRouterV1.use("/documents", adminDocumentRouterV1);
 adminRouterV1.all(
   "/support-ai-prompt",

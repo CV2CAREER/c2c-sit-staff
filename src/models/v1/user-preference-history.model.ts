@@ -82,5 +82,6 @@ export class UserPreferenceHistory extends Model {
   preferenceSnapshot!: Record<string, any>;
 
   @CreatedAt
+  @Column(DataType.DATE)
   createdAt!: Date;
 }

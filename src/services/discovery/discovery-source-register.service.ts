@@ -7,7 +7,7 @@ import { ManualApplication } from '../../models/v1/manual-application.model';
 import { Credentials } from '../../models/v1/credentials.model';
 import { Op, fn, col } from 'sequelize';
 import { getServiceLogger } from '../../utils/createLogger';
-import { pushLogEntry, pushRunComplete } from './discovery-sse';
+import { pushLogEntry, pushRunComplete, cleanupRun } from './discovery-sse';
 import { AI_COST_PER_1M_TOKENS } from '../../config/env';
 
 const logger = getServiceLogger('discovery-source-register');
@@ -34,7 +34,10 @@ export const getSource = async (id: string): Promise<DiscoverySourceRegister | n
 };
 
 export const getSourceBySlug = async (slug: string): Promise<DiscoverySourceRegister | null> => {
-  return DiscoverySourceRegister.findOne({ where: { slug } });
+  return DiscoverySourceRegister.findOne({
+    where: { slug },
+    attributes: { exclude: ['api_key', 'app_id'] },
+  });
 };
 
 export const pauseSource = async (id: string): Promise<DiscoverySourceRegister | null> => {
@@ -193,6 +196,12 @@ export const completeRun = async (
     tokens_used: data.tokens_used,
     ai_request_count: data.ai_request_count,
   });
+
+  // Drain and discard the log queue for this run (prevents memory leak)
+  logQueues.delete(runId);
+
+  // Clean up SSE heartbeat timers and client connections
+  cleanupRun(runId);
 };
 
 export const getSourceBreakdown = async (): Promise<Array<{ name: string; slug: string; count: number }>> => {
@@ -266,7 +275,40 @@ export const markScheduleRun = async (): Promise<void> => {
   await schedule.save();
 };
 
+// ─── Stale-Run Reaper ────────────────────────────────────────────────────────
+
+/**
+ * Mark any `running` runs that predate `staleMinutes` as `failed`. Called on
+ * server startup (orphaned by restart) and before each cron tick. Returns the
+ * number of runs reaped.
+ */
+export const reapStaleRuns = async (staleMinutes = 90): Promise<number> => {
+  const cutoff = new Date(Date.now() - staleMinutes * 60 * 1000);
+  const orphaned = await DiscoveryRun.findAll({
+    where: { status: 'running', started_at: { [Op.lt]: cutoff } },
+  });
+  if (orphaned.length === 0) return 0;
+
+  for (const run of orphaned) {
+    run.status = 'failed';
+    run.error_message = `Orphaned by server restart or timeout (reaped after ${staleMinutes}min)`;
+    run.duration_ms = Date.now() - new Date(run.started_at).getTime();
+    await run.save();
+    logQueues.delete(run.run_id);
+    pushRunComplete(run.run_id, 'failed', { duration_ms: run.duration_ms });
+    cleanupRun(run.run_id);
+    logger.warn(`Reaped orphaned run ${run.run_id} (started ${run.started_at})`);
+  }
+  return orphaned.length;
+};
+
 // ─── Log Entries ───────────────────────────────────────────────────────────────
+
+// Per-run write queue to avoid race conditions when multiple parallel sources
+// call appendLogEntry concurrently. Without this, each caller reads the same
+// log_entries array, pushes to its own copy, and the last save() wins — losing
+// all other entries.
+const logQueues = new Map<string, Promise<void>>();
 
 export const appendLogEntry = async (
   runId: string,
@@ -275,17 +317,21 @@ export const appendLogEntry = async (
   // Push to SSE clients immediately (real-time streaming) — never skips.
   pushLogEntry(runId, entry);
 
-  // Persist to the run record, but don't let a transient DB/DNS failure kill the
-  // whole run: logging already reached SSE clients, and a lost line is acceptable
-  // vs. aborting an in-flight scrape.
-  try {
-    const run = await DiscoveryRun.findOne({ where: { run_id: runId } });
-    if (!run) return;
-    const current = (run.log_entries as any[]) || [];
-    current.push(entry);
-    run.log_entries = current as any;
-    await run.save();
-  } catch (err: any) {
-    logger.warn(`[${runId}] failed to persist log entry (${err.message}) — continuing`);
-  }
+  // Chain onto the per-run queue so DB writes are serialised.
+  const prev = logQueues.get(runId) || Promise.resolve();
+  const next = prev.then(async () => {
+    try {
+      const run = await DiscoveryRun.findOne({ where: { run_id: runId } });
+      if (!run) return;
+      const current = (run.log_entries as any[]) || [];
+      current.push(entry);
+      run.log_entries = current as any;
+      await run.save();
+    } catch (err: any) {
+      logger.warn(`[${runId}] failed to persist log entry (${err.message}) — continuing`);
+    }
+  }).catch(() => {}); // swallow so queue never breaks
+  logQueues.set(runId, next);
+
+  // Don't await — fire-and-forget for the caller so parallel sources aren't blocked.
 };
