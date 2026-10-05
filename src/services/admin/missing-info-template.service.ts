@@ -2,6 +2,7 @@ import ErrorHandler from "@/utils/errorHandler";
 import { MissingInfoTemplate } from "@/models/v1/missing-info-template.model";
 import { MissingInfoTemplateField } from "@/models/v1/missing-info-template-field.model";
 import { getServiceLogger } from "@/utils/createLogger";
+import { validateExternalActionFields, validateInstructionsFields } from "@/utils/external-action";
 import { auditTrailApplicationService } from "./audit-trail.application.service";
 import { SlackService } from "@/services/slack.service";
 import {
@@ -15,6 +16,16 @@ import {
 const logger = getServiceLogger("missing-info-template-service");
 
 export class MissingInfoTemplateService {
+  /** SPR-21-52: reject a bad External Action block (400) before anything is written. */
+  private static assertValidExternalAction(fields?: any[]) {
+    try {
+      validateExternalActionFields(fields);
+      validateInstructionsFields(fields);
+    } catch (e: any) {
+      throw new ErrorHandler(e.message, 400);
+    }
+  }
+
   static async listTemplates(category?: string, status?: string) {
     const where: any = {};
     if (category) where.category = category;
@@ -57,6 +68,8 @@ export class MissingInfoTemplateService {
       throw new ErrorHandler("A template with this name already exists", 409);
     }
 
+    MissingInfoTemplateService.assertValidExternalAction(data.fields);
+
     const template = await MissingInfoTemplate.create({
       name: data.name,
       category: data.category,
@@ -71,7 +84,7 @@ export class MissingInfoTemplateService {
         fieldName: field.fieldName,
         fieldLabel: field.fieldLabel,
         fieldType: field.fieldType,
-        isRequired: field.isRequired ?? false,
+        isRequired: field.fieldType === "instructions" ? false : field.isRequired ?? false,
         isVisible: field.isVisible ?? true,
         options: field.options ?? null,
         helpText: field.helpText ?? null,
@@ -114,6 +127,8 @@ export class MissingInfoTemplateService {
       }
     }
 
+    MissingInfoTemplateService.assertValidExternalAction(data.fields);
+
     const updateData: Record<string, any> = {
       ...(data.name && { name: data.name }),
       ...(data.category && { category: data.category }),
@@ -138,16 +153,12 @@ export class MissingInfoTemplateService {
     await template.update(updateData);
 
     if (data.fields) {
-      await MissingInfoTemplateField.destroy({
-        where: { templateId: id },
-      });
-
       const fieldData = data.fields.map((field, idx) => ({
         templateId: id,
         fieldName: field.fieldName,
         fieldLabel: field.fieldLabel,
         fieldType: field.fieldType,
-        isRequired: field.isRequired ?? false,
+        isRequired: field.fieldType === "instructions" ? false : field.isRequired ?? false,
         isVisible: field.isVisible ?? true,
         options: field.options ?? null,
         helpText: field.helpText ?? null,
@@ -156,7 +167,12 @@ export class MissingInfoTemplateService {
         refereeBlockIndex: field.refereeBlockIndex ?? null,
       }));
 
-      await MissingInfoTemplateField.bulkCreate(fieldData);
+      // Replace the fields atomically: if the new rows are rejected (e.g. a database
+      // that does not yet know a field type) the old fields are kept, not lost.
+      await MissingInfoTemplateField.sequelize!.transaction(async (transaction) => {
+        await MissingInfoTemplateField.destroy({ where: { templateId: id }, transaction });
+        await MissingInfoTemplateField.bulkCreate(fieldData, { transaction });
+      });
     }
 
     return MissingInfoTemplate.findByPk(id, {

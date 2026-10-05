@@ -151,22 +151,32 @@ export class QueueEntryService {
     await entry.save();
 
     // SPR-21-51-003 DoD: the client always receives an "actioned" confirmation
-    // once their System-queue entry is resolved. Fire-and-forget — a send
-    // failure must never roll back or fail the resolve itself.
+    // once their System-queue entry is resolved. Fire-and-forget via setImmediate
+    // (the project's pattern) — a send failure must never roll back or fail the
+    // resolve itself, and the response does not wait for the email.
     if (entry.queue === "system" && entry.clientEmail) {
-      sendMail({
-        email: entry.clientEmail,
-        subject: "Your change has been actioned",
-        templateName: "system-queue-actioned.ejs",
-        templateData: {
-          name: entry.clientName || "there",
-          changeType: entry.title,
-          frontendUrl: getFrontendUrl(),
-          currentYear: new Date().getFullYear(),
-        },
-      }).catch((err) =>
-        logger.error(`Actioned email failed for queue entry #${id}: ${err.message}`),
-      );
+      // Copy the values now so the deferred send does not depend on the entity later.
+      const clientEmail = entry.clientEmail;
+      const clientName = entry.clientName || "there";
+      const changeType = entry.title;
+
+      setImmediate(async () => {
+        try {
+          await sendMail({
+            email: clientEmail,
+            subject: "Your change has been actioned",
+            templateName: "system-queue-actioned.ejs",
+            templateData: {
+              name: clientName,
+              changeType,
+              frontendUrl: getFrontendUrl(),
+              currentYear: new Date().getFullYear(),
+            },
+          });
+        } catch (err: any) {
+          logger.error(`Actioned email failed for queue entry #${id}: ${err?.message || err}`);
+        }
+      });
     }
 
     logger.info(`Queue entry #${id} (${entry.queue}) resolved by ${entry.resolvedByName}`);

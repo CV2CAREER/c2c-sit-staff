@@ -4,6 +4,7 @@ import { Application } from "../models/v1/application.model";
 import { User } from "../models/v1/user.model";
 import { SlackService } from "./slack.service";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
+import { buildAssuranceUpdate, parseAssuranceStatus } from "../utils/assurance";
 import {
   SlackChannel,
   SlackEventType,
@@ -91,6 +92,34 @@ export class ApplicationService {
       logger.error(`Failed to fetch applications: ${error.message}`);
       throw error;
     }
+  }
+
+  /**
+   * Record the assurance result for an application (SPR-21-58-001). The server stamps
+   * who (the signed-in staff member's full name) and when; `assuranceStatus` is
+   * "ASSURED", "FAILED", or null to clear the row.
+   */
+  static async setApplicationAssurance(req: any, applicationId: string, assuranceStatus: unknown) {
+    const application = await Application.findByPk(applicationId);
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const status = parseAssuranceStatus(assuranceStatus);
+    const actorName = req.user
+      ? `${(req.user as any).firstName || ""} ${(req.user as any).lastName || ""}`.trim() ||
+        (req.user as any).email
+      : "system";
+
+    await application.update(buildAssuranceUpdate(status, actorName));
+    logger.info(`Application ${applicationId} assurance ${status ?? "cleared"} by ${actorName}`);
+
+    return {
+      id: application.id,
+      AssuranceStatus: application.AssuranceStatus ?? null,
+      AssuredBy: application.AssuredBy ?? null,
+      AssuranceDate: application.AssuranceDate ?? null,
+    };
   }
 
   /**

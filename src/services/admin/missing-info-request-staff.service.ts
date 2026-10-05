@@ -12,6 +12,7 @@ import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "@/config/env";
 import { JustCallTriggerService } from "@/services/justcall.service";
 import { SlackService } from "@/services/slack.service";
 import { fieldEncryption } from "@/utils/field-encryption";
+import { composeExternalActionEmailBody, getExternalActionConfig } from "@/utils/external-action";
 import { auditTrailApplicationService } from "./audit-trail.application.service";
 import {
   SlackChannel,
@@ -55,6 +56,10 @@ export class MissingInfoRequestStaffService {
       throw new ErrorHandler("Template has no fields", 400);
     }
 
+    // SPR-21-52: an External Action block supplies the email subject and body. Everything
+    // else about the email (the existing client-missing-info-v2 template) is unchanged.
+    const externalAction = getExternalActionConfig(fields);
+
     const client = await User.findByPk(data.clientId);
     if (!client) {
       throw new ErrorHandler("Client not found", 404);
@@ -82,7 +87,10 @@ export class MissingInfoRequestStaffService {
       status: "pending",
       channel: data.channel,
       personalMessage: data.personalMessage || null,
-      jobApplicationId: data.jobApplicationId || null,
+      // The form's "Linked to job application" value is a URL and is kept in full in
+      // jobURL (text). jobApplicationId is varchar(255) and nothing reads it, so a
+      // long link must not be copied there (SPR-21-58-002: "value too long").
+      jobApplicationId: null,
     });
 
     setImmediate(async () => {
@@ -116,7 +124,9 @@ export class MissingInfoRequestStaffService {
             await Promise.allSettled([
               sendMail({
                 email: clientEmail,
-                subject: `Action Required: Information needed for your application`,
+                subject:
+                  externalAction?.emailSubject ||
+                  `Action Required: Information needed for your application`,
                 templateName: "client-missing-info-v2.ejs",
                 templateData: {
                   name: client.firstName || "there",
@@ -125,7 +135,7 @@ export class MissingInfoRequestStaffService {
                   refereeCount: template.type === "referee_block"
                     ? Math.max(...fields.map((f: any) => f.refereeBlockIndex || 0))
                     : null,
-                  personalMessage: data.personalMessage || null,
+                  personalMessage: data.personalMessage || (externalAction ? composeExternalActionEmailBody(externalAction) : null) || null,
                   updateMissingInfoUrl,
                   currentYear: new Date().getFullYear(),
                 },
@@ -407,6 +417,29 @@ export class MissingInfoRequestStaffService {
       ? `${user.firstName} ${user.lastName || ""}`.trim()
       : "Unknown";
 
+    // SPR-21-52: templates with an External Action block remind with that block's subject/body.
+    // Selected by template id and filtered in memory, so it is safe on a database that does not
+    // know the 'external_action' enum value yet.
+    const externalActionByTemplate = new Map<string, ReturnType<typeof getExternalActionConfig>>();
+    try {
+      const templateIds = [...new Set(requests.map((r: any) => r.templateId).filter(Boolean))] as string[];
+      if (templateIds.length > 0) {
+        const templateFields = await MissingInfoTemplateField.findAll({
+          where: { templateId: templateIds },
+          attributes: ["templateId", "fieldType", "options"],
+          raw: true,
+        });
+        for (const templateId of templateIds) {
+          const cfg = getExternalActionConfig(
+            (templateFields as any[]).filter((f) => f.templateId === templateId),
+          );
+          if (cfg) externalActionByTemplate.set(templateId, cfg);
+        }
+      }
+    } catch (cfgErr: any) {
+      logger.warn(`Bulk reminder: could not load External Action settings: ${cfgErr?.message || cfgErr}`);
+    }
+
     let totalProcessed = 0;
 
     setImmediate(async () => {
@@ -444,16 +477,19 @@ export class MissingInfoRequestStaffService {
             }
 
             if (req.channel === "email" && bulkEmail) {
+              const externalAction = externalActionByTemplate.get(req.templateId);
               await sendMail({
                 email: bulkEmail,
-                subject: `Reminder: Information needed for your application`,
+                subject: externalAction?.emailSubject
+                  ? `Reminder: ${externalAction.emailSubject}`
+                  : `Reminder: Information needed for your application`,
                 templateName: "client-missing-info-v2.ejs",
                 templateData: {
                   name: req.targetUser?.firstName || "there",
                   templateName: req.template?.name || "Missing Information",
                   fieldLabels: "",
                   refereeCount: null,
-                  personalMessage: null,
+                  personalMessage: (externalAction ? composeExternalActionEmailBody(externalAction) : null) || null,
                   updateMissingInfoUrl: req.missingInfoUrl,
                   currentYear: new Date().getFullYear(),
                 },
@@ -820,12 +856,15 @@ export class MissingInfoRequestStaffService {
     }
 
     let fieldLabels = "";
+    let externalAction: ReturnType<typeof getExternalActionConfig> = null;
     if (request.templateId) {
       const fields = await MissingInfoTemplateField.findAll({
         where: { templateId: request.templateId, isVisible: true },
         order: [["sortOrder", "ASC"]],
       });
       fieldLabels = fields.map((f: any) => f.fieldLabel).join(", ");
+      // SPR-21-52: reminders for an External Action template reuse that block's subject/body.
+      externalAction = getExternalActionConfig(fields as any[]);
     }
 
     const newCount = (request.reminderCount || 0) + 1;
@@ -865,14 +904,16 @@ export class MissingInfoRequestStaffService {
         if (request.channel === "email" && clientEmail) {
           await sendMail({
             email: clientEmail,
-            subject: `Reminder: Information needed for your application`,
+            subject: externalAction?.emailSubject
+              ? `Reminder: ${externalAction.emailSubject}`
+              : `Reminder: Information needed for your application`,
             templateName: "client-missing-info-v2.ejs",
             templateData: {
               name: (request as any).targetUser?.firstName || "there",
               templateName: templateName || "Missing Information",
               fieldLabels,
               refereeCount: null,
-              personalMessage: (request as any).personalMessage || null,
+              personalMessage: (request as any).personalMessage || (externalAction ? composeExternalActionEmailBody(externalAction) : null) || null,
               updateMissingInfoUrl: request.missingInfoUrl,
               currentYear: new Date().getFullYear(),
             },
