@@ -1,17 +1,9 @@
-export enum CustomerClass {
-  FAMILY = "family",
-  ENTHUSIASTIC = "enthusiastic",
-  SATISFIED = "satisfied",
-  UNSATISFIED = "unsatisfied",
-  UPSET = "upset",
-  UNCLASSIFIED = "unclassified",
-  BLACKLISTED = "blacklisted",
-  PROBONO = "probono",
-  INFLIGHT = "inflight",
-  UNTRACEABLE = "untraceable",
-  FRIENDLY = "friendly",
-  NA = "N/A",
-  WARM_LEAD = "Warm_Lead",
+export enum Perception {
+  CRITICAL = "Critical",
+  ADVOCATE = "Advocate",
+  SATISFIED = "Satisfied",
+  BLACKLISTED = "Blacklisted",
+  TBD = "TBD",
 }
 
 export enum ApplicationStatus {

@@ -11,7 +11,7 @@ import { Feature } from "../../models/v1/feature.model";
 import { Profile } from "../../models/v1/profile.model";
 import { UserPreferenceHistory } from "../../models/v1/user-preference-history.model";
 import { Referrer } from "../../models/v1/referrer.model";
-import { Role, UploadStatus, CustomerClass } from "../../utils/enum";
+import { Role, UploadStatus, Perception } from "../../utils/enum";
 import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
@@ -77,7 +77,7 @@ class UserManagementService {
     // Allow updating all user fields
     const allowedFields = [
       'firstName', 'middleName', 'lastName', 'gender',
-      'email', 'customerClass', 'phoneNumber', 'whatsappNumber',
+      'email', 'staffPerception', 'auditRequired', 'auditFindings', 'phoneNumber', 'whatsappNumber',
       'country', 'heritage', 'communication', 'role',
       'returnCount', 'revenue', 'cl', 'cr',
       'socials', 'progress', 'isActive', 'isEmailVerified',
@@ -98,12 +98,22 @@ class UserManagementService {
       }
     }
 
-    // Validate customerClass if provided
-    if (updateData.customerClass !== undefined) {
-      const validClasses = Object.values(CustomerClass);
-      if (!validClasses.includes(updateData.customerClass)) {
+    // SPR-21-33-001: audit fields
+    if (updateData.auditRequired !== undefined && typeof updateData.auditRequired !== 'boolean') {
+      throw new ErrorHandler('auditRequired must be true or false', 400);
+    }
+    if (updateData.auditFindings !== undefined && updateData.auditFindings !== null) {
+      if (typeof updateData.auditFindings !== 'string' || updateData.auditFindings.length > 2000) {
+        throw new ErrorHandler('auditFindings must be text of at most 2000 characters', 400);
+      }
+    }
+
+    // Validate staffPerception if provided
+    if (updateData.staffPerception !== undefined) {
+      const validPerceptions = Object.values(Perception);
+      if (!validPerceptions.includes(updateData.staffPerception)) {
         throw new ErrorHandler(
-          `Invalid customerClass "${updateData.customerClass}". Allowed values: ${validClasses.join(', ')}`,
+          `Invalid staffPerception "${updateData.staffPerception}". Allowed values: ${validPerceptions.join(', ')}`,
           400
         );
       }
@@ -1284,7 +1294,7 @@ class UserManagementService {
 📧 **Email**: ${user.email}
 🆔 **User ID**: ${user.id}
 🌍 **Country**: ${user.country}
-📊 **Customer Class**: ${user.customerClass}
+📊 **Staff Perception**: ${user.staffPerception}
 👑 **Role**: ${user.role}
 ✅ **Active**: ${user.isActive ? 'Yes' : 'No'}
 📧 **Verified**: ${user.isEmailVerified ? 'Yes' : 'No'}
@@ -1413,7 +1423,7 @@ class UserManagementService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'staffPerception']
         }
       ],
       order: [['createdAt', 'DESC']]

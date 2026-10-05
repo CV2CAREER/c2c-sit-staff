@@ -2,7 +2,7 @@ import {
   Ability,
   AcceptedRole,
   ApplicationStatus,
-  CustomerClass,
+  Perception,
   Gender,
   PaymentStatus,
   Progress,
@@ -35,7 +35,9 @@ export interface IUser {
 
   businessName?: string;
 
-  customerClass: CustomerClass;
+  staffPerception: Perception;
+  auditRequired?: boolean;
+  auditFindings?: string | null;
 
   phoneNumber?: string;
   whatsappNumber?: string;

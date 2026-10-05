@@ -107,6 +107,15 @@ export class Credentials extends Model {
   @Column(DataType.JSONB)
   seekExternalCredentials?: SeekExternalCredentials;
 
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  auditRequired!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  auditFindings?: string | null;
+
   @ForeignKey(() => User)
   @AllowNull(true)
   @Column(DataType.STRING)
