@@ -424,7 +424,6 @@ export interface AdminQueriesOptions {
   logsLimit?: number;
   logsSearch?: string;
   logsType?: string;
-  fetchChatbotTrainer?: boolean;
   fetchChatbotLogs?: boolean;
   chatbotLogsDate?: string;
   

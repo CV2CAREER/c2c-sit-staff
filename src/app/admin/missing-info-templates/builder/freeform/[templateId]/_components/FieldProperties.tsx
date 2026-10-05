@@ -1,7 +1,15 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { REFEREE_DEFAULT_FIELDS } from "@/constants/missing-info-field-types";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  ExternalActionConfig,
+  INSTRUCTIONS_MAX_LENGTH,
+  REFEREE_DEFAULT_FIELDS,
+  isGuideAvailable,
+  readExternalActionConfig,
+  readInstructionsBody,
+} from "@/constants/missing-info-field-types";
 
 export interface FreeFormField {
   fieldName: string;
@@ -12,7 +20,9 @@ export interface FreeFormField {
   helpText: string | null;
   isRefereeBlock: boolean;
   refereeBlockIndex: number | null;
-  options: { label: string; value: string }[] | null;
+  // select/checkbox keep a list of options; an external_action block keeps its settings object;
+  // an instructions block keeps its text as { body }.
+  options: { label: string; value: string }[] | ExternalActionConfig | { body: string } | null;
   isRepeatable: boolean;
   validation: Record<string, any> | null;
 }
@@ -36,7 +46,14 @@ const FIELD_TYPE_LABELS: Record<string, string> = {
   phone: "Phone",
   email: "Email",
   referee_block: "Referee block",
+  external_action: "External action",
 };
+
+const LABEL_CLASS = "text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5";
+const INPUT_CLASS = "w-full text-[13px] mb-3 border border-[#E5E9EF] rounded-md";
+
+const linkError = (value: string): string =>
+  value && !/^https?:\/\//i.test(value.trim()) ? "Must start with http:// or https://" : "";
 
 function Toggle({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
   return (
@@ -99,6 +116,191 @@ export default function FieldProperties({ field, onChange, onDelete, templateId,
     );
   }
 
+  // SPR-21-52: External action block. Sends the customer to an external process and records only
+  // that they completed it. Settings are saved in `options`; `isRequired` mirrors the
+  // "require completion confirmation" toggle so the server blocks submission until it is done.
+  if (field.fieldType === "external_action") {
+    const cfg = readExternalActionConfig(field.options);
+    const update = (patch: Partial<ExternalActionConfig>) => {
+      const next = { ...cfg, ...patch };
+      onChange({ ...field, options: next, isRequired: next.requireCompletion });
+    };
+    const appealError = linkError(cfg.appealUrl);
+    const guideError = linkError(cfg.guideUrl);
+
+    return (
+      <div className="bg-white border border-[#E5E9EF] rounded-[10px] p-4">
+        <div className="text-[12px] font-semibold text-[#0B96D6] mb-3">Editing: External action</div>
+
+        <div className={LABEL_CLASS}>Heading shown to the customer</div>
+        <Input
+          type="text"
+          value={field.fieldLabel}
+          onChange={(e) => onChange({ ...field, fieldLabel: e.target.value })}
+          className={INPUT_CLASS}
+        />
+
+        <div className={LABEL_CLASS}>Action label</div>
+        <Input
+          type="text"
+          value={cfg.actionLabel}
+          onChange={(e) => update({ actionLabel: e.target.value })}
+          placeholder="Open Indeed appeal"
+          className={INPUT_CLASS}
+        />
+
+        <div className={LABEL_CLASS}>Completion label</div>
+        <Input
+          type="text"
+          value={cfg.completionLabel}
+          onChange={(e) => update({ completionLabel: e.target.value })}
+          placeholder="I've completed the appeal"
+          className={INPUT_CLASS}
+        />
+
+        <div className={LABEL_CLASS}>External appeal link</div>
+        <Input
+          type="url"
+          value={cfg.appealUrl}
+          onChange={(e) => update({ appealUrl: e.target.value })}
+          placeholder="https://..."
+          className={appealError ? INPUT_CLASS.replace("mb-3", "mb-1") : INPUT_CLASS}
+        />
+        {appealError && <p className="text-[11px] text-red-500 mb-3">{appealError}</p>}
+
+        <div className={LABEL_CLASS}>Guide link (optional)</div>
+        <Input
+          type="url"
+          value={cfg.guideUrl}
+          onChange={(e) => update({ guideUrl: e.target.value })}
+          placeholder="https://... (Scribe or similar)"
+          className={guideError ? INPUT_CLASS.replace("mb-3", "mb-1") : INPUT_CLASS}
+        />
+        {guideError && <p className="text-[11px] text-red-500 mb-3">{guideError}</p>}
+
+        <div className={LABEL_CLASS}>Email subject</div>
+        <Input
+          type="text"
+          value={cfg.emailSubject}
+          onChange={(e) => update({ emailSubject: e.target.value })}
+          className={INPUT_CLASS}
+        />
+
+        <div className={LABEL_CLASS}>Email body</div>
+        <Textarea
+          value={cfg.emailBody}
+          onChange={(e) => update({ emailBody: e.target.value })}
+          rows={6}
+          className="w-full text-[13px] mb-1 border border-[#E5E9EF] rounded-md"
+        />
+        <p className="text-[11px] text-[#9CA3AF] mb-3">
+          {isGuideAvailable(cfg)
+            ? "A guide is available, so the email also points the customer to it (unless your text already mentions a guide)."
+            : "No guide is available (switched off or no guide link), so the email will not mention one."}
+          {!isGuideAvailable(cfg) && /guide/i.test(cfg.emailBody.replace(/If you need help understanding the process, use the step-by-step guide\./, "")) && (
+            <span className="block text-[#B45309]">
+              Your text mentions a guide, but none is available. Remove that wording or add a guide link.
+            </span>
+          )}
+        </p>
+
+        <div className={LABEL_CLASS}>Customer guidance</div>
+        <Textarea
+          value={cfg.guidanceText}
+          onChange={(e) => update({ guidanceText: e.target.value })}
+          rows={4}
+          className="w-full text-[13px] mb-3 border border-[#E5E9EF] rounded-md"
+        />
+
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-[12px] text-[#6B7280] font-medium">Show step-by-step guide</div>
+            <div className="text-[11px] text-[#9CA3AF]">Guide link is available to the customer</div>
+          </div>
+          <Toggle checked={cfg.showGuide} onToggle={() => update({ showGuide: !cfg.showGuide })} />
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[12px] text-[#6B7280] font-medium">Require completion confirmation</div>
+            <div className="text-[11px] text-[#9CA3AF]">Customer confirms the external step is done</div>
+          </div>
+          <Toggle
+            checked={cfg.requireCompletion}
+            onToggle={() => update({ requireCompletion: !cfg.requireCompletion })}
+          />
+        </div>
+
+        <div className="mb-3 rounded-lg border border-[#EFD59D] bg-[#FFF7E5] px-2.5 py-2 text-[11px] text-[#6D561D]">
+          <b>Not collected:</b> appeal documents, ticket/case number, appeal date, appeal status details or
+          other external-case evidence.
+        </div>
+
+        <button
+          onClick={onDelete}
+          className="w-full border border-[#FCA5A5] text-[#DC2626] bg-white rounded-lg px-3 py-2 text-[12px] font-semibold hover:bg-red-50 transition-colors"
+        >
+          Delete field
+        </button>
+      </div>
+    );
+  }
+
+  // Instructions block: free text the customer reads. No input, never required, links are clickable.
+  if (field.fieldType === "instructions") {
+    const body = readInstructionsBody(field.options);
+    return (
+      <div className="bg-white border border-[#E5E9EF] rounded-[10px] p-4">
+        <div className="text-[12px] font-semibold text-[#0B96D6] mb-3">Editing: Instructions</div>
+
+        <div className={LABEL_CLASS}>Heading (optional)</div>
+        <Input
+          type="text"
+          value={field.fieldLabel}
+          onChange={(e) => onChange({ ...field, fieldLabel: e.target.value })}
+          placeholder="e.g. Before you start"
+          className={INPUT_CLASS}
+        />
+
+        <div className={LABEL_CLASS}>Instructions for the customer</div>
+        <Textarea
+          value={body}
+          onChange={(e) =>
+            onChange({ ...field, isRequired: false, options: { body: e.target.value.slice(0, INSTRUCTIONS_MAX_LENGTH) } })
+          }
+          rows={8}
+          placeholder="Write what the customer should know or do."
+          className="w-full text-[13px] mb-1 border border-[#E5E9EF] rounded-md"
+        />
+        <div className="mb-3 flex justify-between text-[11px] text-[#9CA3AF]">
+          <span>
+            Links work: paste https://… or write [link text](https://…).
+          </span>
+          <span>
+            {body.length}/{INSTRUCTIONS_MAX_LENGTH}
+          </span>
+        </div>
+        {!body.trim() && (
+          <p className="mb-3 text-[11px] text-red-500">The instructions text is required.</p>
+        )}
+
+        <div className="mb-3 rounded-lg border border-[#E5E9EF] bg-[#F9FAFB] px-2.5 py-2 text-[11px] text-[#6B7280]">
+          Display only: the customer reads this and no answer is collected. If a template contains only
+          Instructions, the customer confirms with &ldquo;I&apos;ve read this&rdquo;.
+        </div>
+
+        <button
+          onClick={onDelete}
+          className="w-full border border-[#FCA5A5] text-[#DC2626] bg-white rounded-lg px-3 py-2 text-[12px] font-semibold hover:bg-red-50 transition-colors"
+        >
+          Delete field
+        </button>
+      </div>
+    );
+  }
+
+  const selectOptions = Array.isArray(field.options) ? field.options : [];
+
   return (
     <div className="bg-white border border-[#E5E9EF] rounded-[10px] p-4">
       <div className="text-[12px] font-semibold text-[#0B96D6] mb-3">
@@ -139,13 +341,13 @@ export default function FieldProperties({ field, onChange, onDelete, templateId,
             {field.fieldType === "select" ? "Dropdown options" : "Multi-select options"}
           </div>
           <div className="space-y-1.5">
-            {(field.options || []).map((opt, optIdx) => (
+            {selectOptions.map((opt, optIdx) => (
               <div key={optIdx} className="flex items-center gap-1.5">
                 <Input
                   type="text"
                   value={opt.label}
                   onChange={(e) => {
-                    const updated = [...(field.options || [])];
+                    const updated = [...selectOptions];
                     updated[optIdx] = { ...updated[optIdx], label: e.target.value, value: e.target.value.toLowerCase().replace(/\s+/g, "_") };
                     onChange({ ...field, options: updated });
                   }}
@@ -155,7 +357,7 @@ export default function FieldProperties({ field, onChange, onDelete, templateId,
                 <button
                   type="button"
                   onClick={() => {
-                    const updated = (field.options || []).filter((_, i) => i !== optIdx);
+                    const updated = selectOptions.filter((_, i) => i !== optIdx);
                     onChange({ ...field, options: updated.length > 0 ? updated : null });
                   }}
                   className="text-[#9CA3AF] hover:text-[#DC2626] text-lg leading-none px-1"
@@ -170,7 +372,7 @@ export default function FieldProperties({ field, onChange, onDelete, templateId,
             type="button"
             onClick={() => {
               const newOption = { label: "", value: "" };
-              onChange({ ...field, options: [...(field.options || []), newOption] });
+              onChange({ ...field, options: [...selectOptions, newOption] });
             }}
             className="mt-1.5 text-[12px] text-[#0B96D6] font-semibold hover:underline"
           >

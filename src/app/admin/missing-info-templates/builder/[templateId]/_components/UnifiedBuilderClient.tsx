@@ -6,7 +6,10 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import toast from "react-hot-toast";
 import { useMissingInfoTemplate } from "@/hooks/api/missing-info-template.api";
-import { REFEREE_DEFAULT_FIELDS } from "@/constants/missing-info-field-types";
+import {
+  DEFAULT_EXTERNAL_ACTION_CONFIG,
+  REFEREE_DEFAULT_FIELDS,
+} from "@/constants/missing-info-field-types";
 import BuilderToolbar from "../../BuilderToolbar";
 import FieldTypePanel from "../../freeform/[templateId]/_components/FieldTypePanel";
 import FormPreview from "../../freeform/[templateId]/_components/FormPreview";
@@ -25,6 +28,8 @@ const FIELD_TYPE_LABELS: Record<string, string> = {
   number: "Number",
   phone: "Phone",
   email: "Email",
+  external_action: "External action",
+  instructions: "Instructions",
 };
 
 function toFieldName(label: string): string {
@@ -51,6 +56,39 @@ function buildFormField(existing: any): FreeFormField {
 }
 
 function createNewField(fieldType: string): FreeFormField {
+  // SPR-21-52: an External Action block starts from the mockup defaults; its settings live in
+  // `options` as an object and `isRequired` follows the "require completion" toggle.
+  if (fieldType === "external_action") {
+    return {
+      fieldName: "external_action",
+      fieldLabel: "Complete the appeal directly with Indeed",
+      fieldType,
+      isRequired: DEFAULT_EXTERNAL_ACTION_CONFIG.requireCompletion,
+      isVisible: true,
+      helpText: null,
+      isRefereeBlock: false,
+      refereeBlockIndex: null,
+      options: { ...DEFAULT_EXTERNAL_ACTION_CONFIG },
+      isRepeatable: false,
+      validation: null,
+    };
+  }
+  // Display-only text for the customer; never required, no answer.
+  if (fieldType === "instructions") {
+    return {
+      fieldName: "instructions",
+      fieldLabel: "Instructions",
+      fieldType,
+      isRequired: false,
+      isVisible: true,
+      helpText: null,
+      isRefereeBlock: false,
+      refereeBlockIndex: null,
+      options: { body: "" },
+      isRepeatable: false,
+      validation: null,
+    };
+  }
   const label = fieldType === "referee_block"
     ? "Referee Information"
     : FIELD_TYPE_LABELS[fieldType] || fieldType;
@@ -226,6 +264,11 @@ export default function UnifiedBuilderClient() {
   }, [forcedType, loaded]);
 
   useEffect(() => {
+    // Housekeeping templates use the simple task form, not this customer builder.
+    if (template?.category === "housekeeping") {
+      router.replace("/admin/missing-information");
+      return;
+    }
     if (template) {
       setTemplateName(template.name);
       setCategory(template.category || "references");
@@ -251,7 +294,7 @@ export default function UnifiedBuilderClient() {
       setBlockTemplate(buildInitialFields(maxBlockIndex, template.fields));
       if (!loaded) setLoaded(true);
     }
-  }, [template, loaded, forcedType]);
+  }, [template, loaded, forcedType, router]);
 
   const nonBlockFields = useMemo(
     () => fields.filter((f) => !f.isRefereeBlock),
@@ -278,10 +321,14 @@ export default function UnifiedBuilderClient() {
   };
 
   const handleAddField = useCallback((fieldType: string) => {
+    if (fieldType === "external_action" && fields.some((f) => f.fieldType === "external_action")) {
+      toast.error("A template can have only one External action block.");
+      return;
+    }
     const newField = createNewField(fieldType);
     setFields((prev) => [...prev, newField]);
     setSelectedIndex(fields.length);
-  }, [fields.length]);
+  }, [fields]);
 
   const handleSelectField = useCallback((index: number) => {
     setSelectedIndex(index);
@@ -356,7 +403,7 @@ export default function UnifiedBuilderClient() {
       await actions.publishTemplate();
       toast.dismiss(toastId);
       toast.success("Template published.");
-      router.push("/admin/missing-info-templates");
+      router.push("/admin/missing-information");
     } catch (e: any) {
       toast.dismiss(toastId);
       toast.error(e?.response?.data?.message || e?.message || "Failed to publish.");
@@ -376,7 +423,7 @@ export default function UnifiedBuilderClient() {
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-gray-500 text-sm">Failed to load template.</p>
         <button
-          onClick={() => router.push("/admin/missing-info-templates")}
+          onClick={() => router.push("/admin/missing-information")}
           className="text-sm text-blue-600 hover:underline"
         >
           Back to templates
@@ -399,7 +446,7 @@ export default function UnifiedBuilderClient() {
               isSaving={actions.isSaving}
               isPublishing={actions.isPublishing}
               isPublished={template.status === "published"}
-              backHref="/admin/missing-info-templates"
+              backHref="/admin/missing-information"
               category={category}
               onCategoryChange={handleCategoryChange}
               type={builderType}
@@ -407,7 +454,10 @@ export default function UnifiedBuilderClient() {
             />
             <div className="flex-1 p-6">
               <div className="grid grid-cols-[210px_1fr_250px] gap-[18px]">
-                <FieldTypePanel onAddField={handleAddField} />
+                <FieldTypePanel
+                  onAddField={handleAddField}
+                  hasExternalAction={fields.some((f) => f.fieldType === "external_action")}
+                />
                 <FormPreview
                   fields={fields}
                   selectedIndex={selectedIndex}
@@ -435,7 +485,7 @@ export default function UnifiedBuilderClient() {
             isSaving={actions.isSaving}
             isPublishing={actions.isPublishing}
             isPublished={template.status === "published"}
-            backHref="/admin/missing-info-templates"
+            backHref="/admin/missing-information"
             category={category}
             onCategoryChange={handleCategoryChange}
             type={builderType}
@@ -455,7 +505,7 @@ export default function UnifiedBuilderClient() {
           onSend={async () => {
             setPreviewOpen(false);
             await handleSave();
-            router.push("/admin/missing-info-templates");
+            router.push("/admin/missing-information");
           }}
           template={previewTemplate as any}
         />

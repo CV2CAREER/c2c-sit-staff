@@ -42,6 +42,10 @@ import {
 import { ClientJourneyPhaseKey } from "@/types/client-journey.types";
 import TriggerApplicationAction from "./ApplicationAction";
 import { useAdminUserDetailContext } from "../context/userDetailContext";
+import AttestDetailsModal, {
+  ATTEST_DETAILS_STEPS,
+  type AttestDetailsPayload,
+} from "./AttestDetailsModal";
 
 // document_accepted has no "Attest" action — it's driven by the existing
 // document-approval pipeline (UserManagementService.approveUserDocument),
@@ -243,6 +247,9 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   const [stepsOpen, setStepsOpen] = useState(true);
   const [pendingStepKey, setPendingStepKey] = useState<string | null>(null);
   const [reopenTarget, setReopenTarget] = useState<{ stepKey: string; label: string } | null>(null);
+  // SPR-21-11-006 / 010 — steps whose attest must collect a date/time (and
+  // outcome note) before firing; everything else attests in one click.
+  const [attestTarget, setAttestTarget] = useState<{ stepKey: string; label: string } | null>(null);
   const [showFullJourney, setShowFullJourney] = useState(false);
 
   // Persona-aware journey filter. Emerald + Ambassador collapse Phase 1
@@ -288,10 +295,29 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
   const activePhase = phases.find((phase) => phase.key === expandedPhase) ?? null;
 
   const handleAttest = (stepKey: string) => {
+    if (ATTEST_DETAILS_STEPS[stepKey]) {
+      const step = (phases.flatMap((p) => p.steps) ?? []).find((s) => s.stepKey === stepKey);
+      setAttestTarget({ stepKey, label: step?.label ?? stepKey });
+      return;
+    }
     setPendingStepKey(stepKey);
     attestStep(
       { clientId: userId, stepKey },
       { onSettled: () => setPendingStepKey(null) },
+    );
+  };
+
+  const handleConfirmAttestDetails = (details: AttestDetailsPayload) => {
+    if (!attestTarget) return;
+    setPendingStepKey(attestTarget.stepKey);
+    attestStep(
+      { clientId: userId, stepKey: attestTarget.stepKey, ...details },
+      {
+        onSettled: () => {
+          setPendingStepKey(null);
+          setAttestTarget(null);
+        },
+      },
     );
   };
 
@@ -551,6 +577,14 @@ const AdminClientJourney = ({ userId }: { userId: string }) => {
           </>
         )}
       </div>
+
+      <AttestDetailsModal
+        stepKey={attestTarget?.stepKey ?? ""}
+        open={!!attestTarget}
+        isSubmitting={isAttesting}
+        onCancel={() => setAttestTarget(null)}
+        onConfirm={handleConfirmAttestDetails}
+      />
 
       <Dialog open={!!reopenTarget} onOpenChange={(open) => !open && setReopenTarget(null)}>
         {reopenTarget && (

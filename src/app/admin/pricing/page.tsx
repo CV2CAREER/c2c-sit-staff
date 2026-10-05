@@ -117,7 +117,7 @@ function PricingAdminPage() {
         )}
 
         {!isLoading && !error && pricingPlans.length > 0 && (
-          <div className="gap-6 py-[2rem] sm:gap-8 flex items-stretch overflow-x-auto">
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 min-[900px]:grid-cols-3 min-[1200px]:grid-cols-5 gap-6 py-8">
             {pricingPlans.map((plan) => (
               <PlansAndPricing
                 key={plan._id}

@@ -41,13 +41,13 @@ export default function AdminMissingInfoRequests({
           </p>
           <div className="mt-5 flex justify-center gap-3">
             <a
-              href="/admin/missing-info-templates"
+              href="/admin/missing-information"
               className="rounded-lg bg-[#0B96D6] px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-[#0876A8]"
             >
               Request new info
             </a>
             <a
-              href="/admin/missing-info-templates"
+              href="/admin/missing-information"
               className="rounded-lg border border-[#E5E9EF] bg-white px-4 py-2 text-[12.5px] font-semibold text-[#10365A] hover:border-[#0B96D6] hover:text-[#0B96D6]"
             >
               Request from Client
