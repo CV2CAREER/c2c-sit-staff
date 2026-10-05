@@ -124,14 +124,21 @@ const SimulateTab = ({
             <HintMark text="What the AI returned for the values you entered on the left." />
           </p>
           {lastRun && (
-            <span
-              className={`flex items-center gap-1 text-xs font-medium ${
-                lastRun.status === "success" ? "text-emerald-600" : "text-red-600"
-              }`}
-            >
-              {lastRun.status === "success" ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-              {lastRun.status === "success" ? `${lastRun.durationMs}ms` : "Failed"}
-            </span>
+            <div className="flex items-center gap-2">
+              {lastRun.model && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {lastRun.model}
+                </span>
+              )}
+              <span
+                className={`flex items-center gap-1 text-xs font-medium ${
+                  lastRun.status === "success" ? "text-emerald-600" : "text-red-600"
+                }`}
+              >
+                {lastRun.status === "success" ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
+                {lastRun.status === "success" ? `${lastRun.durationMs}ms` : "Failed"}
+              </span>
+            </div>
           )}
         </div>
 

@@ -8,13 +8,17 @@ import Link from "next/link";
 import { CampaignClientActions } from "./CampaignClientActions";
 import { Loader2 } from "lucide-react";
 
+// SPR-21-02-002: First/Middle/Last Name are no longer rendered as columns —
+// Full Name is the single name column. Values stay in row data and remain
+// editable in EditModal.
 const campaignTableKeys: (keyof CampaignTableColType)[] = [
   "id",
   "CustomerId",
   "Full_Name",
-  "First_Name",
-  "Middle_Name",
-  "Last_Name",
+  // SPR-21-02-002: commented out, not deleted
+  // "First_Name",
+  // "Middle_Name",
+  // "Last_Name",
   "Plan",
   "ReturnCount",
   "TourCount",

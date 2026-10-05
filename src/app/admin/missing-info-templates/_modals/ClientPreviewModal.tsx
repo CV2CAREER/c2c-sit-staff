@@ -27,6 +27,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { MissingInfoTemplate, MissingInfoTemplateField } from "@/hooks/api/missing-info-template.api";
+import {
+  composeExternalActionEmailBody,
+  isGuideAvailable,
+  readExternalActionConfig,
+  readInstructionsBody,
+} from "@/constants/missing-info-field-types";
+import LinkifiedText from "@/components/LinkifiedText/LinkifiedText";
 
 interface ClientPreviewModalProps {
   open: boolean;
@@ -35,10 +42,84 @@ interface ClientPreviewModalProps {
   onSend?: () => void;
 }
 
+/**
+ * SPR-21-52: what the customer sees for an External Action block, built from the LIVE (unsaved)
+ * builder config: guidance, the action button, the optional guide (hidden when the toggle is
+ * off) and the completion button. Read-only: the buttons do nothing here.
+ */
+function ExternalActionPreview({ field }: { field: MissingInfoTemplateField }) {
+  const cfg = readExternalActionConfig(field.options);
+  return (
+    <div className="space-y-2.5">
+      <div className="rounded-lg border border-[#E5E7EB] bg-white p-3.5">
+        <div className="text-[13px] font-semibold text-[#1F2937]">{field.fieldLabel}</div>
+        {cfg.guidanceText && (
+          <p className="mt-1 mb-0 whitespace-pre-line text-[12px] leading-relaxed text-[#6B7280]">
+            {cfg.guidanceText}
+          </p>
+        )}
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded-lg bg-[#0B96D6] px-3 py-2 text-[12px] font-medium text-white">
+            {cfg.actionLabel || "Open external link"}
+          </span>
+          {isGuideAvailable(cfg) && (
+            <span className="inline-flex items-center rounded-lg border border-[#0B96D6] px-3 py-2 text-[12px] font-medium text-[#0B96D6]">
+              View step-by-step guide
+            </span>
+          )}
+        </div>
+        {!cfg.appealUrl && (
+          <p className="mt-2 mb-0 text-[11px] text-[#B45309]">No external link set yet.</p>
+        )}
+        {cfg.showGuide && !cfg.guideUrl && (
+          <p className="mt-1 mb-0 text-[11px] text-[#B45309]">
+            The guide is switched on but no guide link is set, so the customer won&apos;t see it.
+          </p>
+        )}
+      </div>
+      <div className="rounded-lg border border-[#E5E7EB] bg-white p-3.5">
+        <div className="text-[12px] font-semibold text-[#1F2937]">Finished the external step?</div>
+        <p className="mt-1 mb-0 text-[12px] text-[#6B7280]">
+          Come back here once you have completed it, then confirm below so we can continue your case.
+        </p>
+        <span
+          className={`mt-2.5 inline-flex items-center rounded-lg px-3 py-2 text-[12px] font-medium ${
+            cfg.appealUrl ? "bg-gray-300 text-gray-500" : "bg-emerald-600 text-white"
+          }`}
+        >
+          {cfg.completionLabel || "I've completed this step"}
+        </span>
+        {cfg.appealUrl && (
+          <p className="mt-2 mb-0 text-[11px] text-[#6B7280]">
+            Greyed out until the customer has opened &ldquo;{cfg.actionLabel || "the external link"}&rdquo;.
+          </p>
+        )}
+        {!cfg.requireCompletion && (
+          <p className="mt-2 mb-0 text-[11px] text-[#6B7280]">Completion confirmation is optional for this request.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PreviewField({ field }: { field: MissingInfoTemplateField }) {
   const placeholder = field.helpText || "\u2014";
 
   switch (field.fieldType) {
+    case "external_action":
+      return <ExternalActionPreview field={field} />;
+    case "instructions": {
+      // Display-only text, with links rendered exactly as the customer will see them.
+      const body = readInstructionsBody(field.options);
+      return (
+        <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3.5">
+          {field.fieldLabel && <div className="text-[13px] font-semibold text-[#1F2937]">{field.fieldLabel}</div>}
+          <p className="mt-1 mb-0 whitespace-pre-line text-[12px] leading-relaxed text-[#6B7280]">
+            {body ? <LinkifiedText text={body} /> : "(No instructions text yet)"}
+          </p>
+        </div>
+      );
+    }
     case "textarea":
       return (
         <Textarea
@@ -155,6 +236,10 @@ export default function ClientPreviewModal({
 
   const visibleFields = fields.filter((f) => f.isVisible);
 
+  // SPR-21-52: live External Action settings (if the template has the block)
+  const externalActionField = fields.find((f) => f.fieldType === "external_action");
+  const externalAction = externalActionField ? readExternalActionConfig(externalActionField.options) : null;
+
   const refereeGroups = React.useMemo(() => {
     if (template.type !== "referee_block") return [];
     const groups: { index: number; fields: MissingInfoTemplateField[] }[] = [];
@@ -169,7 +254,7 @@ export default function ClientPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[540px] max-h-[88vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[620px] max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-[17px] text-[#10365A]">
             Client preview &ldquo;{template.name}&rdquo;
@@ -204,8 +289,8 @@ export default function ClientPreviewModal({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="grid grid-cols-2 gap-3">
-                      {group.fields.map((field) => (
-                        <div key={field.id} className={field.fieldType === "textarea" ? "col-span-2" : ""}>
+                      {group.fields.map((field, i) => (
+                        <div key={field.id ?? `${field.fieldName}-${i}`} className={field.fieldType === "textarea" ? "col-span-2" : ""}>
                           <Label className="text-[11px] font-semibold text-[#1F2937] mb-1.5 block">
                             {field.fieldLabel}
                             {field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
@@ -220,12 +305,24 @@ export default function ClientPreviewModal({
             </Accordion>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {visibleFields.map((field) => (
-                <div key={field.id} className={field.fieldType === "textarea" ? "col-span-2" : ""}>
-                  <Label className="text-[11px] font-semibold text-[#1F2937] mb-1.5 block">
-                    {field.fieldLabel}
-                    {field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
-                  </Label>
+              {visibleFields.map((field, i) => (
+                // Preview fields built from unsaved builder state have no id yet.
+                <div
+                  key={field.id ?? `${field.fieldName}-${i}`}
+                  className={
+                    field.fieldType === "textarea" ||
+                    field.fieldType === "external_action" ||
+                    field.fieldType === "instructions"
+                      ? "col-span-2"
+                      : ""
+                  }
+                >
+                  {field.fieldType !== "external_action" && field.fieldType !== "instructions" && (
+                    <Label className="text-[11px] font-semibold text-[#1F2937] mb-1.5 block">
+                      {field.fieldLabel}
+                      {field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
+                    </Label>
+                  )}
                   <PreviewField field={field} />
                 </div>
               ))}
@@ -233,7 +330,29 @@ export default function ClientPreviewModal({
           )}
         </div>
 
+        {externalAction && (
+          <div className="mt-1 rounded-xl border border-[#E5E7EB] bg-white p-4">
+            <div className="text-[11px] text-[#6B7280] mb-1">Email the customer receives</div>
+            <div className="text-[13px] font-semibold text-[#10365A]">
+              {externalAction.emailSubject || "Action Required: Information needed for your application"}
+            </div>
+            <p className="mt-1.5 mb-0 whitespace-pre-line text-[12px] leading-relaxed text-[#374151]">
+              {composeExternalActionEmailBody(externalAction) || "(No message body set)"}
+            </p>
+            <p className="mt-2 mb-0 text-[11px] text-[#9CA3AF]">
+              The email&apos;s usual button then opens the request, where the customer sees the block above.
+            </p>
+          </div>
+        )}
+
         <DialogFooter className="gap-2.5 mt-1">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="border border-[#E5E9EF] text-[#10365A] font-semibold text-[13px]"
+          >
+            Cancel
+          </Button>
           <Button onClick={onClose} className="bg-[#0B96D6] text-white font-semibold text-[13px]">
             Back to edit
           </Button>

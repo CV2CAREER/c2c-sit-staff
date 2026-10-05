@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import HintMark from "./HintMark";
+import { AVAILABLE_MODELS } from "./PromptMetadataPanel";
 import { useCreateVcsPrompt } from "../hooks/use-vcs-prompts";
 
 const slugify = (value: string) =>
@@ -36,6 +38,7 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
   const [key, setKey] = useState("");
   const [prompt, setPrompt] = useState("");
   const [active, setActive] = useState(true);
+  const [model, setModel] = useState("");
 
   const { mutateAsync: createPrompt, isPending } = useCreateVcsPrompt();
 
@@ -43,6 +46,7 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
     setKey("");
     setPrompt("");
     setActive(true);
+    setModel("");
   };
 
   const handleSubmit = async () => {
@@ -59,7 +63,12 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
     }
 
     try {
-      const result = await createPrompt({ key: normalizedKey, prompt, active });
+      const result = await createPrompt({
+        key: normalizedKey,
+        prompt,
+        active,
+        ...(model ? { model } : {}),
+      });
       toast.success(`Prompt "${normalizedKey}" created.`);
       setOpen(false);
       reset();
@@ -126,6 +135,25 @@ const CreatePromptDialog = ({ onCreated }: CreatePromptDialogProps) => {
               placeholder="Type the full prompt text..."
               className="min-h-[220px] font-mono text-sm"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Model
+              <HintMark text="Which AI model this prompt runs on. Leave unset to use the shared default." />
+            </label>
+            <Select value={model || undefined} onValueChange={setModel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Shared default" />
+              </SelectTrigger>
+              <SelectContent>
+                {AVAILABLE_MODELS.map((m) => (
+                  <SelectItem key={m} value={m} className="text-xs">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">

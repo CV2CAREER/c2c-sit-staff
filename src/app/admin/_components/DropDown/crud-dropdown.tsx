@@ -28,7 +28,8 @@ function CRUDDropDown({ columnHeaders }: { columnHeaders: any[] }) {
 
   return (
     <>
-      <section className="flex items-center gap-4 my-5">
+      {/* SPR-21-02-001: flat grey pill trigger to match the campaign toolbar mock */}
+      <section className="flex items-center">
         <Select
         value={selectedAction}
           onValueChange={(value) => {
@@ -54,7 +55,7 @@ function CRUDDropDown({ columnHeaders }: { columnHeaders: any[] }) {
             }
           }}
         >
-          <SelectTrigger className="w-[180px] bg-white shadow-md">
+          <SelectTrigger className="w-auto shrink-0 whitespace-nowrap rounded-md border-0 bg-[#f1f4f8] px-3 py-1.5 text-xs font-semibold text-[#5B6B7C] shadow-none hover:bg-[#e8edf3] [&>span]:truncate">
             <SelectValue
               placeholder=
               "Dropdown Actions"

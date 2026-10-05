@@ -25,13 +25,15 @@ const UserAccountOptions = ({ userId }: { userId: string }) => {
 
     return (
         <div
-            className="relative rounded-lg w-full lg:w-auto"
+            className="relative rounded-lg w-full"
         >
-            <div className="flex flex-col mobile:flex-row items-center gap-2 cursor-pointer">
+            {/* Action buttons — uniform toolbar: equal-height items that
+                stretch evenly across the card (sim .btnrow) */}
+            <div className="flex flex-col mobile:flex-row items-stretch gap-3">
                 <UpgradePlanOptions setSelectedPlan={setSelectedPlan} setSelectedFeatureId={setSelectedFeatureId} setShowModal={setShowModal} plans={plans} />
                 <Button
                     variant="outline"
-                    className="w-[90%] mobile:w-auto gap-2 border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                    className="h-10 min-w-[9rem] flex-1 justify-center gap-2 whitespace-nowrap border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 >
                     <Download size={16} /> Export
                 </Button>
@@ -109,8 +111,8 @@ const UpgradePlanOptions = (
     return (
         <Menu placement="bottom-start">
             <MenuHandler>
-                <Button className="w-[90%] mobile:w-auto gap-2 justify-between lg:justify-normal">
-                    <p>Upgrade Account</p>
+                <Button className="h-10 min-w-[9rem] flex-1 justify-center gap-2 whitespace-nowrap">
+                    <span>Upgrade Account</span>
                     <Icon name="caretDown" />
                 </Button>
             </MenuHandler>

@@ -11,6 +11,8 @@ type SupportUser = {
   lastName?: string;
 };
 
+export type SupportTranscriptTurn = { role: "user" | "bot"; text: string };
+
 export type SupportSession = {
   id: string;
   customerId?: string;
@@ -19,8 +21,17 @@ export type SupportSession = {
   status: "open" | "active" | "closed" | "resolved";
   createdAt?: string;
   updatedAt?: string;
-  customer?: SupportUser;
+  customer?: SupportUser | null;
   assignedStaff?: SupportUser;
+  /** Handed over by the chatbot rather than opened directly. */
+  fromBot?: boolean;
+  /** The chatbot conversation up to the handoff. */
+  transcript?: SupportTranscriptTurn[] | null;
+  lastMessage?: {
+    message: string;
+    senderType: "customer" | "staff" | "system";
+    createdAt: string;
+  } | null;
 };
 
 export type SupportMessage = {
@@ -42,7 +53,6 @@ type SessionsResponse = {
 type SendMessagePayload = {
   sessionId: string;
   message: string;
-  senderType?: "customer" | "staff" | "system";
 };
 
 type AssignStaffPayload = {
@@ -111,17 +121,11 @@ export function useSupportDesk({
   );
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({
-      sessionId: targetSessionId,
-      message,
-      senderType = "staff",
-    }: SendMessagePayload) => {
+    mutationFn: async ({ sessionId: targetSessionId, message }: SendMessagePayload) => {
+      // The staff API always records the sender as staff.
       const response = await axiosInstance.post<ApiSuccess<SupportMessage>>(
         endpoints.ADMIN_SUPPORT_DESK_MESSAGES(targetSessionId),
-        {
-          message,
-          senderType,
-        },
+        { message },
       );
       return response.data.data;
     },

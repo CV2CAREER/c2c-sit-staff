@@ -9,6 +9,8 @@ interface TemplateCardProps {
   onDelete: (template: MissingInfoTemplate) => void;
   onPublish: (template: MissingInfoTemplate) => void;
   onSend: (template: MissingInfoTemplate) => void;
+  /** Housekeeping templates raise an internal staff task instead of a client send. */
+  onRaiseTask?: (template: MissingInfoTemplate) => void;
 }
 
 function relativeTime(dateStr?: string | null): string {
@@ -24,8 +26,9 @@ function relativeTime(dateStr?: string | null): string {
   return `${days}d ago`;
 }
 
-export default function TemplateCard({ template, onEdit, onDelete, onPublish, onSend }: TemplateCardProps) {
+export default function TemplateCard({ template, onEdit, onDelete, onPublish, onSend, onRaiseTask }: TemplateCardProps) {
   const isDraft = template.status === "draft";
+  const isHousekeeping = template.category === "housekeeping";
   const fieldCount = template.fields?.length ?? 0;
   const fieldLabel = template.type === "referee_block"
     ? `${fieldCount} referee fields \u00b7 Dynamic count`
@@ -53,10 +56,21 @@ export default function TemplateCard({ template, onEdit, onDelete, onPublish, on
       {/* Meta */}
       <div className="px-3.5 pt-3.5 pb-1">
         <h4 className="text-[14px] font-semibold text-[#1F2937] m-0 leading-snug">{template.name}</h4>
-        <div className="text-[12px] text-[#6B7280] mt-1">{fieldLabel}</div>
-        <div className="text-[12px] text-[#9CA3AF] mt-0.5">
-          {usedText}
-        </div>
+        {isHousekeeping ? (
+          <>
+            <div className="text-[12px] text-[#6B7280] mt-1">Database (Housekeeping) · internal task</div>
+            <div className="text-[12px] text-[#9CA3AF] mt-0.5 line-clamp-2">
+              {template.description?.trim() || "No description added yet."}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[12px] text-[#6B7280] mt-1">{fieldLabel}</div>
+            <div className="text-[12px] text-[#9CA3AF] mt-0.5">
+              {usedText}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Actions */}
@@ -67,7 +81,14 @@ export default function TemplateCard({ template, onEdit, onDelete, onPublish, on
         >
           Edit
         </button>
-        {isDraft ? (
+        {isHousekeeping ? (
+          <button
+            onClick={() => onRaiseTask?.(template)}
+            className="flex-1 text-center text-[13px] font-semibold py-2 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] transition-colors"
+          >
+            Raise as staff task
+          </button>
+        ) : isDraft ? (
           <button
             disabled
             className="flex-1 text-center text-[13px] font-semibold py-2 rounded-lg border border-[#E5E9EF] text-[#9CA3AF] bg-white cursor-not-allowed"

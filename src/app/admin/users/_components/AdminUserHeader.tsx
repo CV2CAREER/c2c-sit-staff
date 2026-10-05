@@ -1,5 +1,4 @@
 import { useAdminQueries } from "@/hooks/api/admin.api"
-import UserAccountOptions from "./UserAccountOptions"
 import { useEffect, useState } from "react"
 import { useAdminUserDetailContext } from "../context/userDetailContext"
 import { IoCaretDownSharp, IoCaretUp } from 'react-icons/io5';
@@ -17,11 +16,10 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
   // const router = useRouter();
   const pathName = usePathname();
 
-   const { userDetailDomain: userData, usersListDomain: allUserData, featureTitlesDomain, userProfileSafeDomain } = useAdminQueries({
+   const { userDetailDomain: userData, usersListDomain: allUserData, userProfileSafeDomain } = useAdminQueries({
      userId,
      fetchUserDetail: true,
      fetchUsersList: true,
-     fetchFeatureTitles: true,
      fetchUserProfileSafe: true,
    });
 
@@ -35,10 +33,6 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
    const avatarColorClass = getAvatarColorClass(
      `${displayFirstName ?? ""}${displayLastName ?? ""}` || userId,
    );
-
-  const features = featureTitlesDomain?.data?.features || [];
-  const userPlanId = userData?.data?.user?.planId;
-  const userPlan = features.find((f: any) => f.id === userPlanId);
 
   const { setUser } = useAdminUserDetailContext()
 
@@ -173,12 +167,9 @@ const AdminUserHeader = ({ userId, setIsUserId }: { userId: string, setIsUserId:
         </div>
       </div>
 
-      <div className="w-full border-t border-gray-100 pt-4 lg:w-auto lg:border-t-0 lg:pt-0">
-        <UserAccountOptions
-        userId={userId}
-        // setShowModal={setShowModal} userData={userData} setPlan={setPlan}
-        />
-      </div>
+      {/* SPR-21-02-006-adjacent (sim identity -> btnrow order): the account
+          actions (Upgrade Account, Export, etc.) moved out of this identity
+          card into their own row on the page, below the card. */}
     </div>
   )
 }

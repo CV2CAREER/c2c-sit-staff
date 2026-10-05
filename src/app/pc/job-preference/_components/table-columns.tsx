@@ -5,8 +5,29 @@ import { DefaultActions } from "@/components/ActionsMenu/ActionsMenu";
 import { GridColDef } from "@mui/x-data-grid-pro";
 import { Recycle, Trash2 } from "lucide-react";
 import { JobPrefDataTableActionDialogs } from "./dialogs";
+import AssuranceSelect from "@/components/AssuranceSelect/AssuranceSelect";
+import { useJobPreferenceData } from "./context";
 
 type DataState = "active" | "recycle";
+
+function AssuranceCell({
+  row,
+  readOnly,
+}: {
+  row: { id: string | number; AssuranceStatus?: string | null };
+  /** True while "Allow Editing" is off: the value is shown but cannot be changed. */
+  readOnly: boolean;
+}) {
+  const { tracker } = useJobPreferenceData();
+  return (
+    <AssuranceSelect
+      value={row.AssuranceStatus}
+      disabled={readOnly || tracker.updateAssurance.isPending}
+      title={readOnly ? "Turn on Allow Editing to change the assurance" : undefined}
+      onChange={(assuranceStatus) => tracker.updateAssurance.mutate({ id: row.id, assuranceStatus })}
+    />
+  );
+}
 
 // Every manual_applications column shown as-is — this grid is a direct view
 // of that table (see discovery-tracker.service.ts's EDITABLE_FIELDS for
@@ -71,12 +92,37 @@ const columns: GridColDef[] = [
   { field: "DeclinedReasons", headerName: "Declined Reasons", flex: 1 },
   { field: "ApprovedBy", headerName: "Approved By", flex: 1 },
   { field: "ApprovedDate", headerName: "Approved Date", flex: 1 },
+  // SPR-21-58-001: assurance result + who + when. The result is a visible dropdown (no edit
+  // mode needed); who/when are stamped by the server and read-only.
+  {
+    field: "AssuranceStatus",
+    headerName: "Assurance",
+    flex: 1,
+    minWidth: 190,
+    sortable: false,
+    // Replaced in getColumnsForTable so the cell knows whether "Allow Editing" is on.
+    renderCell: (params) => <AssuranceCell row={params.row} readOnly />,
+  },
+  { field: "AssuredBy", headerName: "Assured By", flex: 1 },
+  {
+    field: "AssuranceDate",
+    headerName: "Assurance Date",
+    type: "date",
+    flex: 1,
+    valueGetter: (value) => (value ? new Date(value as string) : null),
+  },
   { field: "ReturnReason", headerName: "Return Reason", flex: 1 },
   { field: "ReturnedBy", headerName: "Returned By", flex: 1 },
   { field: "ReturnedDate", headerName: "Returned Date", flex: 1 },
 ];
 
-const getColumnsForTable = (): GridColDef[] => columns;
+// The assurance dropdown only works while "Allow Editing" is on, like the other editable columns.
+const getColumnsForTable = (allowEditing = false): GridColDef[] =>
+  columns.map((column) =>
+    column.field === "AssuranceStatus"
+      ? { ...column, renderCell: (params) => <AssuranceCell row={params.row} readOnly={!allowEditing} /> }
+      : column,
+  );
 
 export default getColumnsForTable;
 
