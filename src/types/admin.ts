@@ -14,7 +14,7 @@ export type UsersQueriedDataType = {
   email: string;
   role: "admin" | "client" | "guest" | "partner" | "coach" | "sales" | "tpc" | "pc" | "assistant";
   gender: "male" | "female" | "Male" | "Female" | undefined;
-  customerClass: string;
+  staffPerception: string;
   voiceNumber: string;
   whatsappNumber: string;
   country: string;

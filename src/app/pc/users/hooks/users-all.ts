@@ -29,7 +29,7 @@ export interface User {
   gender: string;
   middleName: string;
   businessName: string | null;
-  customerClass: string;
+  staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
   profilePicture: string | null;
