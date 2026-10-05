@@ -41,8 +41,6 @@ export class AuditLogService {
           dataEntry: data.dataEntry,
           description: data.description
         });
-
-        logger.debug(`📝 Audit Logged: ${data.method} ${data.url}`);
       } catch (error: any) {
         logger.warn(`⚠️ Audit log write failed: ${error.message}`);
       }
