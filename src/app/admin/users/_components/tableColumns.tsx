@@ -5,6 +5,8 @@ import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
 import { getRoleLabel } from "@/constants/persona";
 import { PROGRESS_OPTIONS } from '@/utils/enum-options';
+import { AuditRequiredToggle, AuditFindingsInput } from "@/components/AuditFields/AuditCells";
+import PerceptionCell, { PerceptionBadge } from "@/components/PerceptionSelect/PerceptionCell";
 
 /**
  * @title Table Columns
@@ -89,6 +91,25 @@ export const tableColumns: GridColDef[] = [
   { field: "createdAt", headerName: "Created At", width: 180 },
   { field: "updatedBy", headerName: "Updated By", width: 150 },
   { field: "updatedAt", headerName: "Updated At", width: 180 },
+  // SPR-21-33-001: audit columns, always last
+  {
+    field: "auditRequired",
+    headerName: "Audit Required",
+    width: 150,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditRequiredToggle target="user" rowId={params.row.id} value={params.row.auditRequired} />
+    ),
+  },
+  {
+    field: "auditFindings",
+    headerName: "Audit Findings",
+    width: 280,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditFindingsInput target="user" rowId={params.row.id} value={params.row.auditFindings} />
+    ),
+  },
 ];
 
 /**

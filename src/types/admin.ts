@@ -17,6 +17,7 @@ export type UsersQueriedDataType = {
   currentCityOfResidence: string;
   referralsCount: number;
   customerClass: string;
+  staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
   country: string;

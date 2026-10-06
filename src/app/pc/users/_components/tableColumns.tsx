@@ -5,6 +5,8 @@ import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
 import { getRoleLabel } from "@/constants/persona";
 import { PROGRESS_OPTIONS } from '@/utils/enum-options';
+import { AuditRequiredToggle, AuditFindingsInput } from "@/components/AuditFields/AuditCells";
+import PerceptionCell, { PerceptionBadge } from "@/components/PerceptionSelect/PerceptionCell";
 
 /**
  * @title Table Columns

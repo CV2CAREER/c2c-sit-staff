@@ -24,6 +24,9 @@ const PENDING = new Set([
   "hearAboutUs",
   // Not named by SPR-21-41-012 or SPR-21-41-013. No ticket owns these yet.
   "plan", "signUpAs", "isActive", "isUserSubscribed",
+  // SPR-21-33-001: toggled and typed directly in the grid cell; the modal
+  // never renders them, so there is nothing to bind to.
+  "auditRequired", "auditFindings",
 ]);
 
 const read = (rel) => readFileSync(path.join(root, rel), "utf8");

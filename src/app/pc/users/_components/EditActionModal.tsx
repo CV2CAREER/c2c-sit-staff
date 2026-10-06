@@ -36,7 +36,6 @@ import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
 import { useUpdateUser } from "../hooks/users-all";
 import { PencilLine } from "lucide-react";
-import { CUSTOMER_CLASS_OPTIONS } from '@/utils/enum-options';
 import { FieldLegend } from "@/components/ui/form-field";
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -59,6 +58,7 @@ const formSchema = z.object({
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
   gender: z.enum(["Female", "Male", "Prefer Not to Say"]).optional(),
+  staffPerception: z.string().optional(),
   customerClass: z.string().optional(),
   phoneNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
@@ -112,6 +112,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
       lastName: user.lastName,
       email: user.email,
       gender: user.gender,
+      staffPerception: user.staffPerception,
       customerClass: user.customerClass,
       phoneNumber: user.phoneNumber,
       whatsappNumber: user.whatsappNumber,
@@ -267,11 +268,11 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                             <SelectValue placeholder="Select Staff Perception" />
                           </SelectTrigger>
                            <SelectContent>
-                            {CUSTOMER_CLASS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Advocate">Advocate</SelectItem>
+                            <SelectItem value="Satisfied">Satisfied</SelectItem>
+                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="TBD">TBD</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
