@@ -503,7 +503,7 @@ return isNaN(parsed.getTime())
                         <SearchSelect
                           name="Plan"
                           placeholder="Select a plan"
-                          className="col-span-full text-[#455A64] w-full"
+                          className="col-span-full w-full"
                           options={planOptions}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
@@ -555,7 +555,7 @@ return isNaN(parsed.getTime())
                           <SearchSelect
                             name="Country"
                             placeholder="Country of Residence"
-                            className="col-span-full text-[#455A64] w-full"
+                            className="col-span-full w-full"
                             options={countries}
                             onChange={(e: SingleValue<OptionType>) => {
                               if (e) {
@@ -855,7 +855,7 @@ return isNaN(parsed.getTime())
                           <SearchSelect
                             name="Capitalized"
                             placeholder="Capitalized"
-                            className="col-span-full text-[#455A64] w-full"
+                            className="col-span-full w-full"
                             options={capitalizedOptions}
                             onChange={(e: SingleValue<OptionType>) => {
                               if (e) {
@@ -1058,23 +1058,23 @@ return isNaN(parsed.getTime())
                   scripts/check-campaign-modal-bindings.mjs. */}
                 <SectionLabel>Placement Controllers</SectionLabel>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="">Discovery Placement Controller</label>
+                  <FormLabel>Discovery Placement Controller</FormLabel>
                   <VACell field="VaName" data={client} variant="DPC" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="">Vetting Placement Controller</label>
+                  <FormLabel>Vetting Placement Controller</FormLabel>
                   <VACell field="VetName" data={client} variant="VPC" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="">Submission Placement Controller</label>
+                  <FormLabel>Submission Placement Controller</FormLabel>
                   <VACell field="CompletedName" data={client} variant="SPC" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="">Interim Discovery Placement Controller</label>
+                  <FormLabel>Interim Discovery Placement Controller</FormLabel>
                   <VACell field="InterimDPCName" data={client} variant="InterimDPC" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label htmlFor="">Interim Submission Placement Controller</label>
+                  <FormLabel>Interim Submission Placement Controller</FormLabel>
                   <VACell field="InterimSPCName" data={client} variant="InterimSPC" />
                 </div>
               </div>
