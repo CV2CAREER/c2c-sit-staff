@@ -12,6 +12,7 @@ import {
   getClientRequests,
   sendSingleReminder,
   cancelRequest,
+  resolveRequest,
   declineRequest,
   reusePriorSubmission,
   logCopyAudit,
@@ -32,6 +33,7 @@ missingInfoRequestStaffRouter.get("/stats", getRequestStats);
 missingInfoRequestStaffRouter.get("/client/:targetUserId", getClientRequests);
 missingInfoRequestStaffRouter.get("/:id/responses", getRequestResponses);
 missingInfoRequestStaffRouter.post("/:id/reminder", sendSingleReminder);
+missingInfoRequestStaffRouter.post("/:id/resolve", resolveRequest);
 missingInfoRequestStaffRouter.post("/:id/cancel", authorizeRoles("admin"), cancelRequest);
 missingInfoRequestStaffRouter.post("/:id/decline", authorizeRoles("admin"), declineRequest);
 missingInfoRequestStaffRouter.post("/:id/reuse", authorizeRoles("admin"), reusePriorSubmission);

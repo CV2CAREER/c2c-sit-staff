@@ -86,6 +86,11 @@ export class QueueEntry extends Model {
   @Column(DataType.TEXT)
   resolutionNote!: string | null;
 
+  /** Optional proof file/image uploaded when the entry was resolved (SPR-21-51-003 follow-up). */
+  @AllowNull(true)
+  @Column(DataType.JSONB)
+  resolutionAttachment!: { url: string; name: string; size: number; mimeType: string } | null;
+
   // --- system-queue fields (SPR-21-51-003) ---
   @AllowNull(true)
   @Column(DataType.STRING)
