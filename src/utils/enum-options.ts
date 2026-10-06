@@ -50,6 +50,15 @@ export const PLAN_OPTIONS: EnumOption[] = [
   { value: "Coral", label: "Coral" },
 ];
 
+// ── Sign up as ─────────────────────────────────────────────────────────────
+// Values mirror the SignUpAs enum in staff-backend src/utils/enum.ts.
+export const SIGN_UP_AS_OPTIONS: EnumOption[] = [
+  { value: "Job_Seeker", label: "Job Seeker" },
+  { value: "Employee", label: "Employee" },
+  { value: "Channel_Partner", label: "Channel Partner" },
+  { value: "Ambassador", label: "Ambassador" },
+];
+
 // ── Progress ───────────────────────────────────────────────────────────────
 // 28 stages, in journey order. Mirrors the Progress enum in staff-backend
 // src/utils/enum.ts.
@@ -146,6 +155,14 @@ export const HERITAGE_OPTIONS: EnumOption[] = [
   { value: "Nigerian", label: "Nigerian" },
   { value: "Indian", label: "Indian" },
   { value: "Other", label: "Other" },
+];
+
+// --- Communication --------------------------------------------------------
+// Preferred contact method. Matches the simulation SPR-21-01.
+export const COMMUNICATION_OPTIONS: EnumOption[] = [
+  { value: "Email", label: "Email" },
+  { value: "WhatsApp", label: "WhatsApp" },
+  { value: "Phone", label: "Phone" },
 ];
 
 // --- SPR-21-41-013 Journey: modal-scoped option lists -----------------------

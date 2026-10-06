@@ -4,9 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler, UseFormReturn } from "react-hook-form";
 import {
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -43,14 +43,17 @@ import {
   LockedSwitch,
 } from "@/components/ui/form-field";
 import {
+  COMMUNICATION_OPTIONS,
   CUSTOMER_CLASS_OPTIONS,
   GENDER_OPTIONS,
   HERITAGE_OPTIONS,
+  PLAN_OPTIONS,
   PROGRESS_OPTIONS,
   APPLICATION_STATUS_OPTIONS,
   PREP_SESSION_STATUS_OPTIONS,
   MODAL_REVENUE_OPTIONS,
   MODAL_SAMPLE_DISPATCHED_OPTIONS,
+  SIGN_UP_AS_OPTIONS,
 } from '@/utils/enum-options';
 
 
@@ -83,7 +86,11 @@ const formSchema = z.object({
   gender: z.enum(["Female", "Male", "Prefer Not to Say"]).optional(),
   zohoId: z.string().optional(),
   currentCityOfResidence: z.string().optional(),
+  signUpAs: z.string().optional(),
+  plan: z.string().optional(),
   customerClass: z.string().optional(),
+  isActive: z.boolean().optional(),
+  isUserSubscribed: z.boolean().optional(),
   applicationStatus: z.string().optional(),
   prepSessionStatus: z.string().optional(),
   isSampleDispatched: z.string().optional(),
@@ -171,7 +178,11 @@ email: user.email,
            gender: user.gender,
            zohoId: user.zohoId ?? "",
            currentCityOfResidence: user.currentCityOfResidence ?? "",
+      signUpAs: user.signUpAs ?? "",
+      plan: user.plan ?? "",
       customerClass: user.customerClass,
+      isActive: Boolean(user.isActive),
+      isUserSubscribed: Boolean(user.isUserSubscribed),
       phoneNumber: user.phoneNumber,
       whatsappNumber: user.whatsappNumber,
       country: user.country,
@@ -219,6 +230,11 @@ email: user.email,
           <PencilLine size={18} />
           Edit User
         </DialogTitle>
+        <DialogDescription>
+          {[user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ")}
+          {user.uniqueId ? ` · ${user.uniqueId}` : ""}
+          {" · "}Greyed fields are system-set and cannot be changed here
+        </DialogDescription>
       </DialogHeader>
 
         <div className="min-h-0 overflow-hidden">
@@ -314,9 +330,6 @@ email: user.email,
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="lastName"
@@ -413,7 +426,7 @@ email: user.email,
                         <SearchSelect
                           name="country"
                           placeholder="Country of Residence"
-                          className="w-full text-[#455A64]"
+                          className="w-full"
                           options={countries}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
@@ -453,13 +466,11 @@ email: user.email,
                   )}
                 />
               </div>
-              {/* <SectionLabel>Classification &amp; Contact</SectionLabel> */}
-            <SectionLabel>Contact</SectionLabel>
+              <SectionLabel>Contact</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  // name="voiceNumber"
-                   name="phoneNumber"
+                  name="phoneNumber"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Voice Number</FormLabel>
@@ -470,15 +481,12 @@ email: user.email,
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="whatsappNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Whatsapp Number</FormLabel>
+                      <FormLabel>WhatsApp Number</FormLabel>
                       <FormControl>
                         <Input placeholder="+1 093884774" {...field} />
                       </FormControl>
@@ -486,9 +494,6 @@ email: user.email,
                     </FormItem>
                   )}
                 />
-                </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="communication"
@@ -498,7 +503,7 @@ email: user.email,
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value || ""}
                         >
                           <SelectTrigger>
                             <SelectValue
@@ -507,9 +512,11 @@ email: user.email,
                             />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Yes">Yes</SelectItem>
-                            <SelectItem value="No">No</SelectItem>
-                            <SelectItem value="N/A">N/A</SelectItem>
+                            {COMMUNICATION_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -517,9 +524,6 @@ email: user.email,
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="socials"
@@ -527,7 +531,7 @@ email: user.email,
                     <FormItem>
                       <FormLabel>Socials</FormLabel>
                       <FormControl>
-                        <Input placeholder="Socials" {...field} />
+                        <Input placeholder="LinkedIn or other profile URL" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -537,6 +541,33 @@ email: user.email,
 
               <SectionLabel>Account</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="signUpAs"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sign Up As</FormLabel>
+                      <FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Sign Up As" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SIGN_UP_AS_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="role"
@@ -588,12 +619,109 @@ email: user.email,
                           </SelectTrigger>
                           <SelectContent>
                             {CUSTOMER_CLASS_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="plan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Plan</FormLabel>
+                      <FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="No plan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PLAN_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Active</FormLabel>
+                      <FormControl>
+                        <FieldSwitch
+                          label={field.value ? "Active" : "Inactive"}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isUserSubscribed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subscribed</FormLabel>
+                      <FormControl>
+                        <FieldSwitch
+                          label={field.value ? "Yes" : "No"}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="hasCoverLetter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>C/L</FormLabel>
+                      <FormControl>
+                        <FieldSwitch
+                          label={field.value ? "Yes" : "No"}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="hasResume"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>C/R</FormLabel>
+                      <FormControl>
+                        <FieldSwitch
+                          label={field.value ? "Yes" : "No"}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -796,40 +924,6 @@ email: user.email,
                         {/* AC8: deliberately editable. */}
                         <FieldSwitch
                           label={field.value ? "Approved" : "Not Approved"}
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="hasCoverLetter"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>C/L</FormLabel>
-                      <FormControl>
-                        <FieldSwitch
-                          label="Active"
-                          checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="hasResume"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>C/R</FormLabel>
-                      <FormControl>
-                        <FieldSwitch
-                          label="Active"
                           checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
