@@ -90,6 +90,7 @@ const FieldSwitch = React.forwardRef<HTMLDivElement, FieldSwitchProps>(
       ref={ref}
       className={cn(
         fieldControlClass,
+        "justify-between",
         disabled && "bg-muted text-muted-foreground"
       )}
     >

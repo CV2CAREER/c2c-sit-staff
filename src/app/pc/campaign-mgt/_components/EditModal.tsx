@@ -35,13 +35,18 @@ import { validateHeaderName } from 'http';
 import { VACell } from './AssignVA';
 import { PencilLine } from 'lucide-react';
 import { CAPITALIZED_OPTIONS, PLAN_OPTIONS } from '@/utils/enum-options';
-import { FieldLegend, LockedField } from "@/components/ui/form-field";
+import { FieldLegend, FieldSwitch, LockedField, MaskedPassword } from "@/components/ui/form-field";
 import { calculateCampaignFields } from '@/utils/campaign-calculator';
 
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
+const SectionLabel = ({ children, tag }: { children: React.ReactNode; tag?: string }) => (
+  <h2 className="flex items-center gap-2 pb-1.5 mb-2.5 border-b text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
     {children}
-  </h4>
+    {tag ? (
+      <span className="rounded bg-muted px-[7px] py-0.5 text-[10.5px] font-medium normal-case tracking-normal text-muted-foreground">
+        {tag}
+      </span>
+    ) : null}
+  </h2>
 );
 
 // "Adecco_Aggregator" / "firstName" -> "Adecco Aggregator" / "First Name"
@@ -88,22 +93,10 @@ const formSchema = z.object({
   Capitalized: z.string().optional().nullable(),
   Country: z.string().optional().nullable(),
   Active: z.boolean().optional().nullable(),
-  SeekAnswerPriority: z.boolean().optional().nullable(),
-  Seek_Aggregator: z.boolean().optional().nullable(),
-  Linkedin_Aggregator: z.boolean().optional().nullable(),
-  Jobserve_Aggregator: z.boolean().optional().nullable(),
-  EscapeCity_Aggregator: z.boolean().optional().nullable(),
-  WorkforceAustralia_Aggregator: z.boolean().optional().nullable(),
-  Indeed_Aggregator: z.boolean().optional().nullable(),
-  Monster_Aggregator: z.boolean().optional().nullable(),
-  Jora_Aggregator: z.boolean().optional().nullable(),
-  Adzuna_Aggregator: z.boolean().optional().nullable(),
-  CareerOne_Aggregator: z.boolean().optional().nullable(),
-  Reed_Aggregator: z.boolean().optional().nullable(),
-  // API sends this as either 0/1 or true/false depending on the record, so accept both.
-  Adecco_Aggregator: z.union([z.number(), z.boolean()]).optional().nullable(),
-  CVLibrary_Aggregator: z.boolean().optional().nullable(),
-  NHSJobs_Aggregator: z.boolean().optional().nullable(),
+  // Answer Priority and the job aggregators are deliberately absent: they are
+  // not part of this modal's design and are managed through the separate
+  // Manage Job Aggregators modal. Keeping them in form state would submit
+  // stale defaults over changes made there.
   Throttle_Listing: z.boolean().optional().nullable(),
   Throttle_Duration: z.number().optional().nullable(),
   Batch: z.string().nullable(),
@@ -180,7 +173,10 @@ const getField = (key: string) => {
     const displayDate = (value: unknown): string => {
 if (value === undefined || value === null || value === '') return '—';
 const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
-if (iso) return `${iso[2]}-${iso[3]}-${iso[1]}`;
+if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
+// Already DD-MM-YYYY (the campaign calculator's output). `new Date()` would
+// read it month-first and swap the day and month.
+if (/^d{2}-d{2}-d{4}$/.test(String(value))) return String(value);
 const parsed = new Date(value as string);
 return isNaN(parsed.getTime())
 ? String(value)
@@ -245,22 +241,6 @@ return isNaN(parsed.getTime())
       Capitalized: getField('Capitalized'),
       Country: getField('Country'),
       Active: client.Active ?? false,
-      SeekAnswerPriority: client.SeekAnswerPriority ?? false,
-      Seek_Aggregator: getField('Seek_Aggregator') ?? false,
-      Linkedin_Aggregator: getField('Linkedin_Aggregator') ?? false,
-      Jobserve_Aggregator: getField('Jobserve_Aggregator') ?? false,
-      EscapeCity_Aggregator: getField('EscapeCity_Aggregator') ?? false,
-      WorkforceAustralia_Aggregator:
-        getField('WorkforceAustralia_Aggregator') ?? false,
-      Indeed_Aggregator: getField('Indeed_Aggregator') ?? false,
-      Monster_Aggregator: getField('Monster_Aggregator') ?? false,
-      Jora_Aggregator: getField('Jora_Aggregator') ?? false,
-      Adzuna_Aggregator: getField('Adzuna_Aggregator') ?? false,
-      CareerOne_Aggregator: getField('CareerOne_Aggregator') ?? false,
-      Reed_Aggregator: getField('Reed_Aggregator') ?? false,
-      Adecco_Aggregator: getField('Adecco_Aggregator') ?? 0,
-      CVLibrary_Aggregator: getField('CVLibrary_Aggregator') ?? false,
-      NHSJobs_Aggregator: getField('NHSJobs_Aggregator') ?? false,
       Throttle_Listing: getField('Throttle_Listing') ?? false,
       Throttle_Duration: getField('Throttle_Duration') ?? null,
       Batch: getField('Batch') ?? null,
@@ -369,82 +349,95 @@ return isNaN(parsed.getTime())
     }
   };
 
-  return (
-    // SPR-21-41-015: three-row grid so the title and the Update/Cancel footer
-    // stay pinned while only the section body scrolls. `Form` is
-    // FormProvider (it renders no DOM element), and the single real <form>
-    // uses display:contents so the three rows stay direct grid children.
-    <DialogContent className="max-h-[calc(100vh-64px)] max-w-[720px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-primary">
-              <PencilLine size={18} />
-              Edit Client&apos;s Info
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Update this client&apos;s campaign information.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                const [firstField, firstError] = Object.entries(errors)[0] ?? [];
-                toast.error(
-                  firstField
-                    ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
-                    : 'Please fix the highlighted fields before updating.'
-                );
-              })}
-              className="contents text-black"
-            >
-              <div className="min-h-0 space-y-8 overflow-y-auto overflow-x-hidden py-4 pr-1">
-{/* SPR-21-41-015: six fixed sections, in order. Every field
-                  here is derived or audited server-side, so it is displayed
-                  read-only and never reaches the update payload. */}
-                <SectionLabel>Identity</SectionLabel>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <LockedField
-                    field="CustomerId"
-                    label="Customer ID"
-                    value={displayValue(getField('CustomerId'))}
-                  />
-                  <LockedField
-                    field="id"
-                    label="Client ID"
-                    value={displayValue(client.id)}
-                  />
-                  <LockedField
-                    field="Full_Name"
-                    label="Full Name"
-                    value={displayValue(getField('Full_Name'))}
-                  />
-                  <LockedField
-                    field="createdAt"
-                    label="Created At"
-                    value={displayDate(getField('createdAt'))}
-                  />
-                  <LockedField
-                    field="updatedAt"
-                    label="Updated At"
-                    value={displayDate(getField('updatedAt'))}
-                  />
-                  <LockedField
-                    field="updateBy"
-                    label="Updated By"
-                    value={displayValue(getField('updateBy') ?? getField('updatedBy'))}
-                  />
-                </div>
 
-                <SectionLabel>Client</SectionLabel>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <FormField
-                    control={form.control}
+  const fullName =
+    getField('Full_Name') ||
+    [getField('First_Name'), getField('Middle_Name'), getField('Last_Name')]
+      .filter(Boolean)
+      .join(' ');
+
+  // SPR-21-41-015: three-row grid so the title and the Update/Cancel footer
+  // stay pinned while only the section body scrolls. `Form` is FormProvider
+  // (it renders no DOM element), and the single real <form> uses
+  // display:contents so the three rows remain direct grid children.
+  //
+  // SPR-21-01: sections, their order and their column counts follow the
+  // "Edit Client Info Modal on Campaign Mgt" design HTML.
+  return (
+    <DialogContent className="max-h-[calc(100vh-64px)] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-primary">
+          <PencilLine size={18} />
+          Edit Client&apos;s Info
+        </DialogTitle>
+        <DialogDescription>
+          {fullName ? `${fullName} · ` : ''}Client {client.id} · Greyed fields
+          are system-set and cannot be changed here
+        </DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            const [firstField, firstError] = Object.entries(errors)[0] ?? [];
+            toast.error(
+              firstField
+                ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
+                : 'Please fix the highlighted fields before updating.'
+            );
+          })}
+          className="contents text-black"
+        >
+          <div className="min-h-0 space-y-5 overflow-y-auto overflow-x-hidden py-2 pr-1">
+            {/* Every Identity field is derived or audited server-side, so it
+                is displayed read-only and never reaches the update payload. */}
+            <section>
+              <SectionLabel tag="system">Identity</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3">
+                <LockedField
+                  field="CustomerId"
+                  label="Customer ID"
+                  value={displayValue(getField('CustomerId'))}
+                />
+                <LockedField
+                  field="id"
+                  label="Client ID"
+                  value={displayValue(client.id)}
+                />
+                <LockedField
+                  field="Full_Name"
+                  label="Full Name"
+                  value={displayValue(getField('Full_Name'))}
+                />
+                <LockedField
+                  field="createdAt"
+                  label="Created At"
+                  value={displayDate(getField('createdAt'))}
+                />
+                <LockedField
+                  field="updatedAt"
+                  label="Updated At"
+                  value={displayDate(getField('updatedAt'))}
+                />
+                <LockedField
+                  field="updateBy"
+                  label="Updated By"
+                  value={displayValue(getField('updateBy') ?? getField('updatedBy'))}
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Client</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
                   name="First_Name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Itoro"
+                          placeholder="First Name"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -461,7 +454,7 @@ return isNaN(parsed.getTime())
                       <FormLabel>Middle Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Itoro"
+                          placeholder="Middle Name"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -470,9 +463,6 @@ return isNaN(parsed.getTime())
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="Last_Name"
@@ -481,9 +471,41 @@ return isNaN(parsed.getTime())
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Doe"
+                          placeholder="Last Name"
                           {...field}
                           value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="Country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          name="Country"
+                          placeholder="Country of Residence"
+                          className="w-full"
+                          options={countries}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Country', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Country') &&
+                              countries.find(
+                                (c) => c.value === form.getValues('Country')
+                              )) ||
+                            null
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -502,8 +524,8 @@ return isNaN(parsed.getTime())
                             blocked. */}
                         <SearchSelect
                           name="Plan"
-                          placeholder="Select a plan"
-                          className="col-span-full w-full"
+                          placeholder="No plan"
+                          className="w-full"
                           options={planOptions}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
@@ -525,120 +547,59 @@ return isNaN(parsed.getTime())
                     </FormItem>
                   )}
                 />
-              </div>
-
-<div className="flex flex-col sm:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="Craft"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Course of Study</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Course of Study"
-                            {...field}
-                            value={field.value ?? ''}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="Country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <SearchSelect
-                            name="Country"
-                            placeholder="Country of Residence"
-                            className="col-span-full w-full"
-                            options={countries}
-                            onChange={(e: SingleValue<OptionType>) => {
-                              if (e) {
-                                form.setValue('Country', e.value);
-                              }
-                              return false;
-                            }}
-                            onBlur={field.onBlur}
-                            value={
-                              (form.getValues('Country') &&
-                                countries.find(
-                                  (c) => c.value === form.getValues('Country')
-                                )) ||
-                              null
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="Batch"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Batch</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Batch"
-                            {...field}
-                            value={field.value ?? ''}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="TourCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tour</FormLabel>
-                        <FormControl>
-                          {/* SPR-21-41-016 AC4: non-numeric keystrokes are
-                              dropped on the way in, so the field can only ever
-                              hold digits. */}
-                          <Input
-                            inputMode="numeric"
-                            placeholder="Tour"
-                            {...field}
-                            value={field.value ?? ''}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value.replace(/[^\d]/g, '')
-                              )
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <FormField
-                    control={form.control}
-                    name="ReturnCount"
+                <FormField
+                  control={form.control}
+                  name="Craft"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Return Count</FormLabel>
+                      <FormLabel>Course of Study</FormLabel>
                       <FormControl>
                         <Input
+                          placeholder="Course of Study"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
+                  name="Batch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Batch</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Batch"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="TourCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tour</FormLabel>
+                      <FormControl>
+                        {/* SPR-21-41-016 AC4: non-numeric keystrokes are
+                            dropped on the way in, so the field can only ever
+                            hold digits. */}
+                        <Input
                           inputMode="numeric"
-                          placeholder="Return Count"
+                          placeholder="Tour"
                           {...field}
                           value={field.value ?? ''}
                           onChange={(e) =>
-                            field.onChange(
-                              e.target.value.replace(/[^\d]/g, '')
-                            )
+                            field.onChange(e.target.value.replace(/[^\d]/g, ''))
                           }
                         />
                       </FormControl>
@@ -663,64 +624,49 @@ return isNaN(parsed.getTime())
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="ReturnCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Return Count</FormLabel>
+                      <FormControl>
+                        {/* SPR-21-41-016 AC5: non-numeric keystrokes are
+                            dropped on the way in, so the field can only ever
+                            hold digits. */}
+                        <Input
+                          inputMode="numeric"
+                          placeholder="Return Count"
+                          {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/[^\d]/g, ''))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
+            </section>
 
+            <section>
               <SectionLabel>Credentials</SectionLabel>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <FormField
-                    control={form.control}
-                    name="Alias_Email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Proxy Email</FormLabel>
-                        <FormControl>
-                          {/* SPR-19-02-009: this displays the real proxy mailbox
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
+                  name="Alias_Email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proxy Email</FormLabel>
+                      <FormControl>
+                        {/* SPR-19-02-009: this displays the real proxy mailbox
                             (jobsite_credentials.email), not the old Alias_Email.
                             Read-only — managed through the Jobsite Credentials
                             accept/approve flow, not editable from Campaign
                             Management. */}
-                          <LockedField
-                            value={field.value ?? ''}
-                            hint="Managed by the Jobsite Credentials flow"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="Alias_Password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Proxy Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Proxy Password"
-                            {...field}
-                            value={field.value ?? ''}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <SectionLabel>Subscription</SectionLabel>
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <FormField
-                  control={form.control}
-                  name="Assurance"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-[50%]">
-                      <FormLabel>Assurance</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                          value={field.value ?? ''}
-                        />
+                        <LockedField value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -728,9 +674,32 @@ return isNaN(parsed.getTime())
                 />
                 <FormField
                   control={form.control}
+                  name="Alias_Password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proxy Password</FormLabel>
+                      <FormControl>
+                        <MaskedPassword
+                          name="Alias_Password"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Subscription</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
                   name="SeekSubStartDate"
                   render={({ field }) => (
-                    <FormItem className="w-full sm:w-[50%]">
+                    <FormItem>
                       <FormLabel>Subscription Start Date</FormLabel>
                       <FormControl>
                         <DatePicker
@@ -750,16 +719,13 @@ return isNaN(parsed.getTime())
                                 : null
                             );
                           }}
-                          className="w-full"
+                          className="h-9 w-full"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="SeekSubDurDays"
@@ -770,7 +736,7 @@ return isNaN(parsed.getTime())
                         <Input
                           type="number"
                           placeholder="Sub Duration Days"
-                          value={field.value as number}
+                          value={field.value ?? ''}
                           readOnly={durationIsPlanDriven}
                           aria-readonly={durationIsPlanDriven}
                           className={
@@ -802,7 +768,7 @@ return isNaN(parsed.getTime())
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="Grace Duration"
+                          placeholder="Days"
                           {...field}
                           value={field.value ?? ''}
                           onChange={(e) =>
@@ -814,122 +780,133 @@ return isNaN(parsed.getTime())
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="Assurance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assurance</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="SeekWeeklyMax"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weekly Max</FormLabel>
+                      <FormControl>
+                        {/* SPR-21-41-018 AC3: this was absent from the modal
+                            entirely, so there was no way to set or change it. */}
+                        <Input
+                          type="number"
+                          placeholder="Applications per week"
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? null : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="Capitalized"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Capitalized</FormLabel>
+                      <FormControl>
+                        {/* SPR-21-41-018 AC4: bound to the central state list
+                            in enum-options.ts, so only approved states can be
+                            chosen. Off-list legacy values are appended so they
+                            stay visible instead of silently disappearing. */}
+                        <SearchSelect
+                          name="Capitalized"
+                          placeholder="Capitalized"
+                          className="w-full"
+                          options={capitalizedOptions}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Capitalized', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Capitalized') &&
+                              capitalizedOptions.find(
+                                (c) => c.value === form.getValues('Capitalized')
+                              )) ||
+                            null
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="SeekWeeklyMax"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weekly Max</FormLabel>
-                        <FormControl>
-                          {/* SPR-21-41-018 AC3: this was absent from the modal
-                              entirely, so there was no way to set or change it. */}
-                          <Input
-                            type="number"
-                            placeholder="Weekly Max"
-                            value={field.value ?? ''}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value === '' ? null : Number(e.target.value)
-                              )
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="Capitalized"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Capitalized</FormLabel>
-                        <FormControl>
-                          {/* SPR-21-41-018 AC4: bound to the central state list
-                              in enum-options.ts, so only approved states can be
-                              chosen. Off-list legacy values are appended so they
-                              stay visible instead of silently disappearing. */}
-                          <SearchSelect
-                            name="Capitalized"
-                            placeholder="Capitalized"
-                            className="col-span-full w-full"
-                            options={capitalizedOptions}
-                            onChange={(e: SingleValue<OptionType>) => {
-                              if (e) {
-                                form.setValue('Capitalized', e.value);
-                              }
-                              return false;
-                            }}
-                            onBlur={field.onBlur}
-                            value={
-                              (form.getValues('Capitalized') &&
-                                capitalizedOptions.find(
-                                  (c) => c.value === form.getValues('Capitalized')
-                                )) ||
-                              null
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              {/* SPR-21-41-018 AC5: the derived subscription values, locked.
+                  They are recomputed server-side from the start date, the
+                  duration and the grace period, so editing them here would be
+                  undone on the next save. SPR-21-41-019 previews them live. */}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-x-5 gap-y-3">
+                <LockedField
+                  field="SeekSubEndDate"
+                  label="Sub End Date"
+                  value={displayDate(derivedSubscription.SeekSubEndDate)}
+                />
+                <LockedField
+                  field="CampaignEnd"
+                  label="Campaign End"
+                  value={displayDate(derivedSubscription.CampaignEnd)}
+                />
+                <LockedField
+                  field="SeekSubToExpireDays"
+                  label="Sub To Expire Days"
+                  value={displayValue(derivedSubscription.SeekSubToExpireDays)}
+                />
+                <LockedField
+                  field="SeekSubExpired"
+                  label="Sub Expired"
+                  value={displayValue(derivedSubscription.SeekSubExpired)}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                End dates and expiry are calculated from start date, duration
+                and grace
+              </p>
+            </section>
 
-                {/* SPR-21-41-018 AC5: the derived subscription values, locked.
-                    Sub End Date, Campaign End, Sub To Expire Days and Sub Expired
-                    are all computed server-side from the start date, the
-                    duration and the grace period — campaign.service.ts
-                    recomputes them whenever SeekSubStartDate or the plan changes.
-                    Editing them here would be undone on the next save, so a PC
-                    extending a grace period can read the resulting dates but
-                    cannot type over them. Values are populated by
-                    SPR-21-41-019. */}
-                <div className="rounded-md border border-dashed bg-muted/30 p-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <LockedField
-                      field="SeekSubEndDate"
-                      label="Sub End Date"
-                      value={displayDate(derivedSubscription.SeekSubEndDate)}
-                    />
-                    <LockedField
-                      field="CampaignEnd"
-                      label="Campaign End"
-                      value={displayDate(derivedSubscription.CampaignEnd)}
-                    />
-                    <LockedField
-                      field="SeekSubToExpireDays"
-                      label="Sub To Expire Days"
-                      value={displayValue(derivedSubscription.SeekSubToExpireDays)}
-                    />
-                    <LockedField
-                      field="SeekSubExpired"
-                      label="Sub Expired"
-                      value={displayValue(derivedSubscription.SeekSubExpired)}
-                    />
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    calculated from start date, duration and grace
-                  </p>
-                </div>
-
-<SectionLabel>Activity</SectionLabel>
-              {/* SPR-21-41-020 AC1/AC2: the status toggle sits on the same row as
-                  the two application dates so whoever flips it can see whether the
-                  campaign is still producing applications. The label reflects the
-                  current state instead of always reading "Active". */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* SPR-21-41-020 AC1/AC2: the status toggle sits on the same row as
+                the two application dates, and its label reflects the current
+                state. The dates are written by the applicant pipeline, so they
+                stay audit data. */}
+            <section>
+              <SectionLabel>Activity</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 items-end gap-x-5 gap-y-3">
                 <FormField
                   control={form.control}
                   name="Active"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{isActive ? 'Active' : 'Inactive'}</FormLabel>
+                      <FormLabel>Status</FormLabel>
                       <FormControl>
-                        <Switch
+                        <FieldSwitch
+                          label={isActive ? 'Active' : 'Inactive'}
                           checked={isActive}
                           onCheckedChange={field.onChange}
                         />
@@ -938,7 +915,6 @@ return isNaN(parsed.getTime())
                     </FormItem>
                   )}
                 />
-                {/* Written by the applicant pipeline, so they stay audit data. */}
                 <LockedField
                   field="First_Application"
                   label="First Application"
@@ -950,151 +926,48 @@ return isNaN(parsed.getTime())
                   value={displayDate(getField('Last_Application'))}
                 />
               </div>
-              <div className="flex flex-wrap gap-3">
-                <FormField
-                  control={form.control}
-                  name="SeekAnswerPriority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Answer Priority</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Seek_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Seek Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Reed_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Reed Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Jora_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Jora Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Adzuna_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Adzuna Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="CareerOne_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>CareerOne Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            </section>
 
-{/* SPR-21-41-015: Placement Controller assignments are shown
-                  through VACell rather than as form fields, so they never enter
-                  the react-hook-form payload. The Placement Controller cannot
-                  reassign PCs, so these cells are display-only here; the
-                  `field` prop names the retained grid column each cell
-                  represents and is read by
-                  scripts/check-campaign-modal-bindings.mjs. */}
-                <SectionLabel>Placement Controllers</SectionLabel>
-                <div className="flex flex-col gap-1">
+            {/* Placement Controller assignments are edited through VACell
+                rather than as form fields, so they never enter the
+                react-hook-form payload; each assignment is saved as soon as
+                it is picked. */}
+            <section>
+              <SectionLabel>Placement Controllers</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 items-end gap-x-5 gap-y-3">
+                <div className="flex flex-col gap-2">
                   <FormLabel>Discovery Placement Controller</FormLabel>
                   <VACell field="VaName" data={client} variant="DPC" />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                   <FormLabel>Vetting Placement Controller</FormLabel>
                   <VACell field="VetName" data={client} variant="VPC" />
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-2">
                   <FormLabel>Submission Placement Controller</FormLabel>
                   <VACell field="CompletedName" data={client} variant="SPC" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <FormLabel>Interim Discovery Placement Controller</FormLabel>
-                  <VACell field="InterimDPCName" data={client} variant="InterimDPC" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <FormLabel>Interim Submission Placement Controller</FormLabel>
-                  <VACell field="InterimSPCName" data={client} variant="InterimSPC" />
-                </div>
               </div>
-              <DialogFooter className="sm:justify-between">
-                <FieldLegend />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => {
-                      setDialog(null);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">Update</Button>
-                </div>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      );
-    };
+            </section>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <FieldLegend />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => {
+                  setDialog(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Update</Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+};
