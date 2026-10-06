@@ -206,73 +206,29 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-                    <FormField
-                      control={form.control}
-                      name="gender"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Gender</FormLabel>
-                          <FormControl>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value || ""}
-                            >
-                              <SelectTrigger>
-                                <SelectValue
-                                  className="mr-3"
-                                  placeholder="Select Gender"
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-<SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Female">Female</SelectItem>
-                          <SelectItem value="Prefer Not to Say">
-                            Prefer Not to Say
-                          </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="itorodoe@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <SectionLabel>Classification &amp; Contact</SectionLabel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="staffPerception"
+                  name="gender"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Staff Perception</FormLabel>
+                      <FormLabel>Gender</FormLabel>
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Staff Perception" />
+                            <SelectValue
+                              className="mr-3"
+                              placeholder="Select Gender"
+                            />
                           </SelectTrigger>
-                           <SelectContent>
-                            <SelectItem value="Critical">Critical</SelectItem>
-                            <SelectItem value="Advocate">Advocate</SelectItem>
-                            <SelectItem value="Satisfied">Satisfied</SelectItem>
-                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
-                            <SelectItem value="TBD">TBD</SelectItem>
+                          <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                            <SelectItem value="Prefer Not to Say">
+                              Prefer Not to Say
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -280,69 +236,22 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Voice Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+1 093884774" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="whatsappNumber"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Whatsapp Number</FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 093884774" {...field} />
+                        <Input placeholder="itorodoe@example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="country"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <SearchSelect
-                          name="country"
-                          placeholder="Country of Residence"
-                          className="w-full text-[#455A64]"
-                          options={countries}
-                          onChange={(e: SingleValue<OptionType>) => {
-                            if (e) {
-                              form.setValue("country", e ? e.value : "");
-                            }
-                            return false;
-                          }}
-                          onBlur={field.onBlur}
-                          value={
-                            (form.getValues("country") &&
-                              countries.find(
-                                (c) => c.value === form.getValues("country")
-                              )) ||
-                            null
-                          }
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="heritage"
@@ -375,6 +284,73 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          name="country"
+                          placeholder="Country of Residence"
+                          className="w-full text-[#455A64]"
+                          options={countries}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue("country", e ? e.value : "");
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues("country") &&
+                              countries.find(
+                                (c) => c.value === form.getValues("country")
+                              )) ||
+                            null
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <SectionLabel>Contact</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="phoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Voice Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 093884774" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="whatsappNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Whatsapp Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 093884774" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="communication"
@@ -403,9 +379,6 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="socials"
@@ -460,17 +433,26 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
                 <FormField
                   control={form.control}
-                  name="returnCount"
+                  name="staffPerception"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Return Count</FormLabel>
+                      <FormLabel>Staff Perception</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          placeholder=""
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Staff Perception" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Advocate">Advocate</SelectItem>
+                            <SelectItem value="Satisfied">Satisfied</SelectItem>
+                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="TBD">TBD</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -478,21 +460,6 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="revenue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Revenue</FormLabel>
-                    <FormControl>
-                      <Input placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <SectionLabel>Flags &amp; Notes</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -528,6 +495,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <SectionLabel>Journey</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -537,6 +505,40 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                       <FormLabel>Progress</FormLabel>
                       <FormControl>
                         <Input placeholder="Progress" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="revenue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Revenue</FormLabel>
+                      <FormControl>
+                        <Input placeholder="" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="returnCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Return Count</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder=""
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
