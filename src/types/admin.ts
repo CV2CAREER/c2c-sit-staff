@@ -13,6 +13,7 @@ export type UsersQueriedDataType = {
   isActive: boolean;
   email: string;
   role: "admin" | "client" | "guest" | "partner" | "coach" | "sales" | "tpc" | "pc" | "assistant";
+  signUpAs?: string | null;
   gender: "Female" | "Male" | "Prefer Not to Say" | undefined;
   currentCityOfResidence: string;
   referralsCount: number;
