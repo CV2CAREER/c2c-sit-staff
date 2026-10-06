@@ -113,6 +113,28 @@ export type Pred = {
   questions: ({ question: string; answer: string; private: boolean } | null)[];
 };
 
+const initialTableColumns: GridColDef[] = [
+  {
+    field: "actions",
+    headerName: "Actions",
+    width: 80,
+    disableExport: true,
+  },
+  {
+    field: "flight",
+    headerName: "Flight",
+    width: 150,
+    disableExport: true,
+  },
+  {
+    field: "generate-aq",
+    headerName: "Generate AQ",
+    width: 150,
+    disableExport: true,
+  },
+
+]
+
 /**
  * @title CampaignDataTable
  * @description This component fetches user data from an API and renders it in a grid using DataGridPro.
