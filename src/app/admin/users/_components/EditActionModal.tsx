@@ -458,33 +458,6 @@ email: user.email,
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="customerClass"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer Class</FormLabel>
-                      <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Customer Class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CUSTOMER_CLASS_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   // name="voiceNumber"
                    name="phoneNumber"
                   render={({ field }) => (
@@ -546,6 +519,22 @@ email: user.email,
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="socials"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Socials</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Socials" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <SectionLabel>Account</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -576,6 +565,33 @@ email: user.email,
                             <SelectItem value="technology">Technology</SelectItem>
                             <SelectItem value="cse">CSE</SelectItem>
                             <SelectItem value="cec">CEC</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customerClass"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer Class</FormLabel>
+                      <FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Customer Class" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CUSTOMER_CLASS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -817,19 +833,6 @@ email: user.email,
                           checked={Boolean(field.value)}
                           onCheckedChange={field.onChange}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="socials"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Socials</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Socials" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

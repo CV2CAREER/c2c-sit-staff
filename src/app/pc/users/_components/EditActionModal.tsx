@@ -405,6 +405,22 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="socials"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Socials</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Socials" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <SectionLabel>Account</SectionLabel>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -513,19 +529,6 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="socials"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Socials</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Socials" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="progress"
