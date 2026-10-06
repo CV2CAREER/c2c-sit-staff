@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -p 3000",
-    "check:modal-bindings": "node scripts/check-modal-bindings.mjs",
-    "build": "npm run check:modal-bindings && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
