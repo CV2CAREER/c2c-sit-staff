@@ -81,8 +81,8 @@ class UserManagementService {
       'country', 'heritage', 'communication', 'role',
       'returnCount', 'revenue', 'cl', 'cr',
       'applicationStatus', 'prepSessionStatus', 'isSampleDispatched',
-      'socials', 'progress', 'isActive', 'isEmailVerified',
-      'planId', 'phone', 'address', 'city', 'state',
+      'socials', 'progress', 'isActive', 'isUserSubscribed', 'isEmailVerified',
+      'planId', 'plan', 'signUpAs', 'phone', 'address', 'city', 'state',
       'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl',
       'zohoId', 'currentCityOfResidence',
       // SPR-21-41-013 AC8: admin may record approval. AC7 is enforced by
