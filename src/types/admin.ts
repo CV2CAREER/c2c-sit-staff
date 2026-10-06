@@ -13,11 +13,9 @@ export type UsersQueriedDataType = {
   isActive: boolean;
   email: string;
   role: "admin" | "client" | "guest" | "partner" | "coach" | "sales" | "tpc" | "pc" | "assistant";
-  gender: "Female" | "Male" | "Prefer Not to Say" | undefined;
-  currentCityOfResidence: string;
-  referralsCount: number;
-  customerClass: string;
-  phoneNumber: string;
+  gender: "male" | "female" | "Male" | "Female" | undefined;
+  staffPerception: string;
+  voiceNumber: string;
   whatsappNumber: string;
   country: string;
   heritage: string;
@@ -47,7 +45,6 @@ export type UsersQueriedDataType = {
   progress: string;
   createdAt: Date;
   updatedBy: string;
-  updatedAt: string;
 };
 
 /**

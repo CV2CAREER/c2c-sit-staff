@@ -1,4 +1,3 @@
-import { PLAN_OPTIONS } from '@/utils/enum-options';
 // Shared faceted-filter model for the Users pages' sidebar (admin +
 // assistant both import this — same convention as useGetAllUsers living in
 // admin/users/hooks and being reused by assistant). Five independent facets
@@ -42,14 +41,17 @@ export const LOYALTY_OPTIONS = [
   { key: "returnee", label: "Returnee" },
 ];
 
-// Derived from the single Plan definition in utils/enum-options.ts so this
-// facet module can never drift from the pricing tables.
-export const SUBSCRIPTION_OPTIONS = PLAN_OPTIONS.map((option) => ({
-  key: option.value.toLowerCase(),
-  label: option.label,
-}));
-
-
+// Same plan names as PLAN_ORDER (utils/constants.ts) — kept as its own copy
+// here so this facet module doesn't take on a dependency for one shared
+// array; update both if a plan is ever added/renamed.
+export const SUBSCRIPTION_OPTIONS = [
+  { key: "emerald", label: "Emerald" },
+  { key: "bronze", label: "Bronze" },
+  { key: "silver", label: "Silver" },
+  { key: "gold", label: "Gold" },
+  { key: "platinum", label: "Platinum" },
+  { key: "coral", label: "Coral" },
+];
 
 const CUSTOMER_PERSONAS = new Set(["client", "guest", "partner", "ambassador"]);
 const STAFF_PERSONAS = new Set(["admin", "coach", "assistant"]);

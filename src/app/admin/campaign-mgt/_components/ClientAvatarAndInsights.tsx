@@ -71,7 +71,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
           <h1 className="text-xl font-bold text-gray-900">{clientFullName}</h1>
           <p className="mt-0.5 text-[11px] text-[#5B6B7C]">
             Client ID: {clientId}
-            {clientCraft && <> · Course of Study: {clientCraft}</>}
+            {clientCraft && <> · Craft: {clientCraft}</>}
           </p>
         </div>
       </div>

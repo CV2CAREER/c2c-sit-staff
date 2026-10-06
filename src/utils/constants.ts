@@ -1,7 +1,5 @@
-import { PLAN_OPTIONS } from './enum-options';
-
-
-export const PLAN_ORDER = PLAN_OPTIONS.map((option) => option.value);
+// /run/media/bino/bino/c2c/CV2C-Staff/utils/constants.ts (NEW FILE)
+export const PLAN_ORDER = ['Emerald', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Coral'];
 
 // Placeholder for styling data - replace with your actual data structure/source
 export const PRICING_STYLES = [

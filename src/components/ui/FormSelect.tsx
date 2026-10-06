@@ -66,7 +66,7 @@ const FormSelect = React.forwardRef<
         multiple={isMulti}
         className={props.className}
       >
-                <SelectTrigger ref={ref} id={inputId}>
+        <SelectTrigger ref={ref} id={inputId} className="w-full">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
