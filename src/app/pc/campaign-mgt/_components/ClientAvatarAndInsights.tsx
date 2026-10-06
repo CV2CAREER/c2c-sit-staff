@@ -178,7 +178,7 @@ const ClientAvatarAndInsights: React.FC<{ clientId: string | null | number }> = 
               <div>
                 <h1 className="text-2xl font-bold mt-4">{clientFullName}</h1>
                 <p className="text-sm text-gray-500">Client ID: {clientId}</p>
-                 <p>Course of Study: {clientCraft}</p>
+                <p>Craft: {clientCraft}</p>
               </div>
             </>
           )}

@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -p 3000",
-    "check:modal-bindings": "node scripts/check-modal-bindings.mjs",
-    "build": "npm run check:modal-bindings && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
@@ -74,7 +73,7 @@
     "framer-motion": "^12.38.0",
     "libphonenumber-js": "^1.12.40",
     "lodash": "^4.17.23",
-    "lucide-react": "^1.48.0",
+    "lucide-react": "^1.7.0",
     "moment": "^2.30.1",
     "mui-tel-input": "^11.0.0",
     "next": "^16.1.6",

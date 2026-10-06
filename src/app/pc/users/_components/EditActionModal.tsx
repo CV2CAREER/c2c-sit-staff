@@ -36,8 +36,6 @@ import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
 import { useUpdateUser } from "../hooks/users-all";
 import { PencilLine } from "lucide-react";
-import { CUSTOMER_CLASS_OPTIONS } from '@/utils/enum-options';
-import { FieldLegend } from "@/components/ui/form-field";
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
@@ -58,9 +56,9 @@ const formSchema = z.object({
   middleName: z.string().min(2).max(50).or(z.literal('')).optional(),
   lastName: z.string().min(2).max(50),
   email: z.string().email(),
-  gender: z.enum(["Female", "Male", "Prefer Not to Say"]).optional(),
-  customerClass: z.string().optional(),
-  phoneNumber: z.string().optional(),
+  gender: z.enum(["male", "female", "Male", "Female"]).optional(),
+  staffPerception: z.string().optional(),
+  voiceNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
   country: z.string().optional(),
   heritage: z.string().optional(),
@@ -112,8 +110,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
       lastName: user.lastName,
       email: user.email,
       gender: user.gender,
-      customerClass: user.customerClass,
-      phoneNumber: user.phoneNumber,
+      staffPerception: user.staffPerception,
+      voiceNumber: user.voiceNumber,
       whatsappNumber: user.whatsappNumber,
       country: user.country,
       heritage: user.heritage,
@@ -223,11 +221,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                                 />
                               </SelectTrigger>
                               <SelectContent>
-<SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Female">Female</SelectItem>
-                          <SelectItem value="Prefer Not to Say">
-                            Prefer Not to Say
-                          </SelectItem>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -266,12 +261,12 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                           <SelectTrigger>
                             <SelectValue placeholder="Select Staff Perception" />
                           </SelectTrigger>
-                           <SelectContent>
-                            {CUSTOMER_CLASS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
+                          <SelectContent>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Advocate">Advocate</SelectItem>
+                            <SelectItem value="Satisfied">Satisfied</SelectItem>
+                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="TBD">TBD</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -281,7 +276,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                 />
                 <FormField
                   control={form.control}
-                  name="phoneNumber"
+                  name="voiceNumber"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Voice Number</FormLabel>
@@ -542,9 +537,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
         </form>
       </Form>
 
-     <DialogFooter className="sm:justify-between">
-        <FieldLegend />
-        <div className="flex gap-2">
+      <DialogFooter>
         <Button
           variant="outline"
           className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
@@ -568,7 +561,6 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
         >
           Update
         </Button>
-              </div>
       </DialogFooter>
     </DialogContent>
   );
