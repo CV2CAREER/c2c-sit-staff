@@ -3,6 +3,7 @@ import { checkBlacklistedTokens } from "../../middlewares/checkBlacklistedToken"
 import { isUserAuthenticated } from "../../middlewares/auth";
 import {
   updateUser,
+  updateDocumentFlags,
   approveUserDocument,
   rejectUserDocument,
   deleteUser,
@@ -38,6 +39,11 @@ userManagementRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authoriz
 // Update user details
 userManagementRouterV1.patch(
   "/users/:userId", authorizeRoles("admin"), updateUser
+);
+
+// Set C/R + C/L overrides — admin and PC (assistant), only these two flags
+userManagementRouterV1.patch(
+  "/users/:userId/document-flags", updateDocumentFlags
 );
 
 // Approve user document

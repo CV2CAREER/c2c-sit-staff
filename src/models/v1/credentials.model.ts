@@ -215,7 +215,7 @@ export class Credentials extends Model {
   }
 
   @AllowNull(true)
-  @Default('FLIGHT')
+  @Default('HOLD')
   @Column(DataType.STRING(32))
   capitalized?: string;
 

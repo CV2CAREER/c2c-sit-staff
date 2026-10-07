@@ -79,7 +79,9 @@ class UserManagementService {
       'firstName', 'middleName', 'lastName', 'gender',
       'email', 'customerClass', 'phoneNumber', 'whatsappNumber',
       'country', 'heritage', 'communication', 'role',
-      'returnCount', 'revenue', 'cl', 'cr',
+      'returnCount', 'revenue',
+      // C/L + C/R staff overrides (NULL = derive from uploads).
+      'hasCoverLetter', 'hasResume',
       'applicationStatus', 'prepSessionStatus', 'isSampleDispatched',
       'socials', 'progress', 'isActive', 'isUserSubscribed', 'isEmailVerified',
       'planId', 'plan', 'signUpAs', 'phone', 'address', 'city', 'state',
@@ -191,6 +193,67 @@ class UserManagementService {
     // Return updated user without sensitive fields
     const { password, accessToken, adminPassword, resetToken, ...userWithoutPassword } = user.toJSON();
     return userWithoutPassword;
+  }
+
+  /**
+   * Set the C/R (hasResume) and C/L (hasCoverLetter) overrides. Separate from
+   * updateUser so PC (assistant) can change only these two flags without
+   * getting write access to every user field.
+   * true/false = explicit override; null = clear it and derive from uploads.
+   */
+  async updateDocumentFlags(
+    userId: string,
+    flags: { hasResume?: boolean | null; hasCoverLetter?: boolean | null },
+    actorUserId: string,
+    actorEmail?: string,
+    fullName?: string,
+  ) {
+    if (!userId) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    const updates: Record<string, boolean | null> = {};
+    for (const field of ["hasResume", "hasCoverLetter"] as const) {
+      const value = flags[field];
+      if (value === undefined) continue;
+      if (value !== null && typeof value !== "boolean") {
+        throw new ErrorHandler(`${field} must be true, false or null.`, 400);
+      }
+      updates[field] = value;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      throw new ErrorHandler("Nothing to update: send hasResume and/or hasCoverLetter.", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    const beforeState = user.toJSON();
+    await user.update({ ...updates, updatedBy: fullName || actorEmail || actorUserId });
+    await setCachedUser(userId, user);
+
+    setImmediate(async () => {
+      try {
+        await AuditTrail.create({
+          action: "ADMIN_USER_UPDATE",
+          actorUserId,
+          actorEmail: actorEmail || null,
+          targetType: "User",
+          targetKey: user.id,
+          before: { hasResume: beforeState.hasResume, hasCoverLetter: beforeState.hasCoverLetter },
+          after: { hasResume: user.hasResume, hasCoverLetter: user.hasCoverLetter },
+          metadata: { mode: "document-flags" },
+        });
+      } catch (err) {
+        logger.error(`❌ Audit trail failed for document flags update: ${err}`);
+      }
+    });
+
+    logger.info(`User ${userId} C/R + C/L updated by ${actorEmail || actorUserId}`);
+    return { id: user.id, hasResume: user.hasResume, hasCoverLetter: user.hasCoverLetter };
   }
 
   /**

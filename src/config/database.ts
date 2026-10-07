@@ -167,6 +167,28 @@ export const connectDB = async (): Promise<void> => {
           );
         }
 
+        // C/R + C/L overrides: users.hasResume / users.hasCoverLetter, nullable
+        // (NULL = derive from uploads). Same addColumn safety net as above;
+        // SQL in src/database/migrations/2026-10-07-add-hasResume-hasCoverLetter-to-users.sql.
+        // Remove after first deploy.
+        try {
+          const userColsForDocFlags = await queryInterface.describeTable("users");
+          for (const column of ["hasResume", "hasCoverLetter"]) {
+            if (!(column in userColsForDocFlags)) {
+              await queryInterface.addColumn("users", column, {
+                type: DataTypes.BOOLEAN,
+                allowNull: true,
+                defaultValue: null,
+              });
+              logger.info(`${ENVIRONMENTNAME}: added users.${column} column`);
+            }
+          }
+        } catch (err: any) {
+          logger.error(
+            `${ENVIRONMENTNAME}: failed to add users.hasResume/hasCoverLetter columns: ${err.message}`,
+          );
+        }
+
         // 📸 Snapshot AFTER your targeted syncs
         const tablesAfterSync: string[] = await queryInterface.showAllTables();
 

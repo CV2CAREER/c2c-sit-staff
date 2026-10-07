@@ -304,6 +304,19 @@ export class User extends Model {
   @Column(DataType.BOOLEAN)
   isDocumentUploaded!: boolean;
 
+  // C/R and C/L staff overrides. NULL means "not overridden": the users list
+  // then derives the value from the client's resume / cover letter uploads.
+  // true/false is an explicit Admin/PC decision and wins over the uploads.
+  @AllowNull(true)
+  @Default(null)
+  @Column(DataType.BOOLEAN)
+  hasResume?: boolean | null;
+
+  @AllowNull(true)
+  @Default(null)
+  @Column(DataType.BOOLEAN)
+  hasCoverLetter?: boolean | null;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)
