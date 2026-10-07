@@ -2,6 +2,8 @@ import { Response } from "express";
 import catchAsyncError from "@/utils/catchAsyncError";
 import { FaqService } from "@/services/admin/faq.service";
 import { getServiceLogger } from "@/utils/createLogger";
+import ErrorHandler from "@/utils/errorHandler";
+import { listFaqGaps, updateFaqGapStatus } from "@/utils/faq-gap";
 
 const logger = getServiceLogger("faq-controller");
 
@@ -56,4 +58,24 @@ export const deleteFaqArticle = catchAsyncError(async (req: any, res: Response) 
   logger.info(`Deleting FAQ article ${idOf(req)} — triggered by: ${req.user?.email ?? "unknown"}`);
   const result = await FaqService.deleteArticle(idOf(req));
   return res.apiSuccess(result, "FAQ article deleted", 200);
+});
+
+/** Gap Log — questions the client chatbot or the admin/PC VA could not answer. */
+export const getFaqGaps = catchAsyncError(async (req: any, res: Response) => {
+  const status = ["open", "converted", "dismissed", "all"].includes(req.query.status)
+    ? String(req.query.status)
+    : "open";
+  const gaps = await listFaqGaps(status);
+  return res.apiSuccess(gaps, "FAQ gaps fetched successfully", 200);
+});
+
+export const updateFaqGap = catchAsyncError(async (req: any, res: Response) => {
+  const { status, faqArticleId } = req.body ?? {};
+  if (!["open", "converted", "dismissed"].includes(status)) {
+    return res.apiError(new ErrorHandler("status must be open, converted or dismissed", 400));
+  }
+  const updated = await updateFaqGapStatus(idOf(req), status, faqArticleId);
+  if (!updated) return res.apiError(new ErrorHandler("FAQ gap not found", 404));
+  logger.info(`FAQ gap ${idOf(req)} → ${status} — by: ${req.user?.email ?? "unknown"}`);
+  return res.apiSuccess({ id: idOf(req), status }, "FAQ gap updated successfully", 200);
 });

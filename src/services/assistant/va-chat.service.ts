@@ -1,5 +1,6 @@
 import { Chat } from "@/models/v1/chat.model";
 import { User } from "@/models/v1/user.model";
+import { extractNoAnswer, FaqGapSource, NO_ANSWER_INSTRUCTION, recordFaqGap } from "@/utils/faq-gap";
 import { buildClientContext } from "@/services/assistant/va-client-context";
 import { isSafePublicUrl } from "@/services/assistant/url-guard";
 import { callGradientAgent } from "@/utils/digital-factory";
@@ -90,12 +91,15 @@ export class VaChatService {
     userId,
     jobUrl,
     type,
+    askedBy,
   }: {
     message: string;
     sessionId: string;
     userId?: string;
     jobUrl?: string;
     type?: string;
+    /** Who is asking — "admin" or "pc" — recorded against unanswered questions. */
+    askedBy?: FaqGapSource;
   }): Promise<{ message: string; sessionId: string }> {
     if (type === "sample" && !userId) {
       throw new ErrorHandler("A client is required for a customer conversation", 400);
@@ -201,17 +205,24 @@ ${contextMessage}
 ${latest.content}`;
     }
 
+    // Lets us detect "no answer" and log it to the FAQ Gap Log.
+    const latestTurn = apiMessages[apiMessages.length - 1];
+    if (latestTurn) latestTurn.content = `${NO_ANSWER_INSTRUCTION}\n\n---\n\n${latestTurn.content}`;
+
     const gradientRes = await callGradientAgent(apiMessages, sessionId);
 
     logger.info("VA Chat: Gradient response received");
 
-    const content: string =
+    const rawContent: string =
       gradientRes?.choices?.[0]?.message?.content ??
       gradientRes?.choices?.[0]?.text ??
       gradientRes?.output ??
       gradientRes?.message ??
       gradientRes?.content ??
       "";
+
+    const { clean: content, noAnswer } = extractNoAnswer(rawContent);
+    if (noAnswer) recordFaqGap(message, askedBy ?? "admin");
 
     if (!content) {
       logger.warn("VA Chat: AI response content is empty");
