@@ -75,7 +75,7 @@ const campaignTableKeys: (keyof CampaignTableColType)[] = [
   // "Done",
   // "Done_Source",
   // "Batch",
-  // "Craft",
+  "Craft",
   "updateBy",
   "createdAt",
   "updatedAt",

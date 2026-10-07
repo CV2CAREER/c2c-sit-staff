@@ -16,7 +16,7 @@ export interface EnumOption {
 // selectable because existing client rows hold it and backend jobs// (clientWithNoApplicationReport.job.ts) query for it.
 export const CAPITALIZED_OPTIONS: EnumOption[] = [
   { value: "HOLD", label: "HOLD" },
-  { value: "FLIGHT", label: "FLIGHT" },
+  { value: "INFLIGHT", label: "INFLIGHT" },
   { value: "EMPLOYED", label: "EMPLOYED" },
 ];
 

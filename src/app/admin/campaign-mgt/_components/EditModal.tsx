@@ -225,6 +225,7 @@ return isNaN(parsed.getTime())
   const capitalizedOptions: OptionType[] = useMemo(() => {
     const current = getField('Capitalized');
     if (!current) return CAPITALIZED_OPTIONS;
+    if (!current || String(current).toUpperCase() === 'FLIGHT') return CAPITALIZED_OPTIONS;
     const exists = CAPITALIZED_OPTIONS.some(
       (option) => option.value.toLowerCase() === String(current).toLowerCase()
     );

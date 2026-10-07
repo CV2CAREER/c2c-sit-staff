@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
-import { useUpdateUser } from "../hooks/users-all";
+import { useUpdateDocumentFlags, useUpdateUser } from "../hooks/users-all";
+import { useQueryClient } from "@tanstack/react-query";
 import { PencilLine } from "lucide-react";
 import {
   FieldLegend,
@@ -97,7 +98,9 @@ const formSchema = z.object({
   phoneNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
   country: z.string().optional(),
-  heritage: z.string().optional(),
+  // Optional: users with no heritage hold null, which z.string() rejected,
+  // so Update failed with a Heritage error.
+  heritage: z.string().nullable().optional(),
   communication: z.string().optional(),
   role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc", "technology", "cse", "customer", "test", "probono", "business", "cec"]),
   revenue: z.string().optional(),
@@ -195,8 +198,8 @@ email: user.email,
        user.prepSessionStatus != null ? String(user.prepSessionStatus) : undefined,
       isSampleDispatched: user.isSampleDispatched,
       returnCount: user.returnCount ?? null,
-      hasCoverLetter: user.hasCoverLetter || true,
-      hasResume: user.hasResume || true,
+      hasCoverLetter: user.hasCoverLetter ?? false,
+      hasResume: user.hasResume ?? false,
       socials: user.socials,
       progress: user.progress,
       isDocumentApproved: Boolean(user.isDocumentApproved),
@@ -205,15 +208,29 @@ email: user.email,
 
   // Submit handler
   const { mutateAsync: updateUser } = useUpdateUser();
+  const { mutateAsync: updateDocumentFlags } = useUpdateDocumentFlags();
+  const queryClient = useQueryClient();
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const loadingToast = toast.loading("Updating user...");
-    
+
+    // C/R + C/L go to their own endpoint, and only when staff actually flipped
+    // them — otherwise saving any other field would freeze the value derived
+    // from the client's uploads into a permanent override.
+    const { hasResume, hasCoverLetter, ...rest } = values;
+    const flags: { hasResume?: boolean; hasCoverLetter?: boolean } = {};
+    if (hasResume !== (user.hasResume ?? false)) flags.hasResume = hasResume;
+    if (hasCoverLetter !== (user.hasCoverLetter ?? false)) flags.hasCoverLetter = hasCoverLetter;
+
     try {
       await updateUser({
         id: user.id,
-        ...values,
+        ...rest,
       });
+      if (Object.keys(flags).length > 0) {
+        await updateDocumentFlags({ id: user.id, ...flags });
+      }
+      queryClient.invalidateQueries({ queryKey: ["users-all"] });
       toast.success("User updated successfully", { id: loadingToast });
     } catch {
       toast.error("Failed to update user", { id: loadingToast });
@@ -393,24 +410,26 @@ email: user.email,
                     <FormItem>
                       <FormLabel>Heritage</FormLabel>
                       <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              className="mr-3"
-                              placeholder="Select heritage"
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {HERITAGE_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {/* Optional. Pick from the list or type any value;
+                            × clears it. */}
+                        <SearchSelect
+                          name="heritage"
+                          placeholder="Select or type heritage"
+                          className="w-full"
+                          options={HERITAGE_OPTIONS}
+                          creatable
+                          isClearable
+                          onChange={(e: SingleValue<OptionType>) =>
+                            field.onChange(e ? e.value : "")
+                          }
+                          onBlur={field.onBlur}
+                          value={
+                            field.value
+                              ? HERITAGE_OPTIONS.find((o) => o.value === field.value) ??
+                                { value: field.value, label: field.value }
+                              : null
+                          }
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

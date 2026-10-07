@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/select";
 import { UsersTableColType } from "@/types/admin";
 import toast from "react-hot-toast";
-import { useUpdateUser } from "../hooks/users-all";
+import { useUpdateDocumentFlags, useUpdateUser } from "../hooks/users-all";
+import { useQueryClient } from "@tanstack/react-query";
 import { PencilLine } from "lucide-react";
 import { FieldLegend } from "@/components/ui/form-field";
 
@@ -63,7 +64,9 @@ const formSchema = z.object({
   phoneNumber: z.string().optional(),
   whatsappNumber: z.string().optional(),
   country: z.string().optional(),
-  heritage: z.string().optional(),
+  // Optional: users with no heritage hold null, which z.string() rejected,
+  // so Update failed with a Heritage error.
+  heritage: z.string().nullable().optional(),
   communication: z.string().optional(),
   role: z.enum(["admin", "client", "guest", "partner", "coach", "sales", "assistant", "tpc", "pc", "technology", "cse", "customer", "test", "probono", "business", "cec"]),
   revenue: z.string().optional(),
@@ -122,8 +125,8 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
       role: user.role,
       revenue: user.revenue,
       returnCount: user.returnCount,
-      hasCoverLetter: user.hasCoverLetter || true,
-      hasResume: user.hasResume || true,
+      hasCoverLetter: user.hasCoverLetter ?? false,
+      hasResume: user.hasResume ?? false,
       socials: user.socials,
       progress: user.progress,
     },
@@ -131,15 +134,38 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
 
   // Submit handler
   const { mutateAsync: updateUser } = useUpdateUser();
+  const { mutateAsync: updateDocumentFlags } = useUpdateDocumentFlags();
+  const queryClient = useQueryClient();
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const loadingToast = toast.loading("Updating user...");
-    
+
+    // C/R + C/L go to their own endpoint (open to PC), and only when staff
+    // actually flipped them — otherwise saving any other field would freeze
+    // the value derived from the client's uploads into a permanent override.
+    const { hasResume, hasCoverLetter, ...rest } = values;
+    const flags: { hasResume?: boolean; hasCoverLetter?: boolean } = {};
+    if (hasResume !== (user.hasResume ?? false)) flags.hasResume = hasResume;
+    if (hasCoverLetter !== (user.hasCoverLetter ?? false)) flags.hasCoverLetter = hasCoverLetter;
+
+    // The general user update is admin-only on the backend, so only call it
+    // when something other than C/R + C/L changed.
+    const { dirtyFields } = form.formState;
+    const otherFieldsChanged = Object.keys(dirtyFields).some(
+      (key) => key !== "hasResume" && key !== "hasCoverLetter"
+    );
+
     try {
-      await updateUser({
-        id: user.id,
-        ...values,
-      });
+      if (otherFieldsChanged) {
+        await updateUser({
+          id: user.id,
+          ...rest,
+        });
+      }
+      if (Object.keys(flags).length > 0) {
+        await updateDocumentFlags({ id: user.id, ...flags });
+      }
+      queryClient.invalidateQueries({ queryKey: ["users-all"] });
       toast.success("User updated successfully", { id: loadingToast });
     } catch {
       toast.error("Failed to update user", { id: loadingToast });
@@ -259,24 +285,24 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Heritage</FormLabel>
                       <FormControl>
+                        {/* Optional. Pick from the list or type any value;
+                            × clears it. */}
                         <SearchSelect
                           name="heritage"
-                          placeholder="Heritage"
-                          className="w-full text-[#455A64]"
+                          placeholder="Select or type heritage"
+                          className="w-full"
                           options={countries}
-                          onChange={(e: SingleValue<OptionType>) => {
-                            if (e) {
-                              form.setValue("heritage", e ? e.value : "");
-                            }
-                            return false;
-                          }}
+                          creatable
+                          isClearable
+                          onChange={(e: SingleValue<OptionType>) =>
+                            field.onChange(e ? e.value : "")
+                          }
                           onBlur={field.onBlur}
                           value={
-                            (form.getValues("heritage") &&
-                              countries.find(
-                                (c) => c.value === form.getValues("heritage")
-                              )) ||
-                            null
+                            field.value
+                              ? countries.find((c) => c.value === field.value) ??
+                                { value: field.value, label: field.value }
+                              : null
                           }
                         />
                       </FormControl>
@@ -297,7 +323,7 @@ const EditTableModal: React.FC<EditTableModalProps> = ({
                         <SearchSelect
                           name="country"
                           placeholder="Country of Residence"
-                          className="w-full text-[#455A64]"
+                          className="w-full"
                           options={countries}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
