@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React from "react";
 import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 import { OptionType } from "@/types";
 // import Select, { SingleValue } from 'react-select';  // @TODO: solve lint issues
 
@@ -13,6 +14,10 @@ interface SearchSelectProps {
   onChange: any; // @TODO: solve lint issues
   onBlur?: any; // @TODO: solve lint issues
   value: any;
+  // Lets the user type a value that is not in `options` ("Use "…"").
+  creatable?: boolean;
+  // Shows an × so the value can be cleared (onChange receives null).
+  isClearable?: boolean;
 }
 
 // Matches the shadcn <Select> (components/ui/select.tsx), e.g. the Persona
@@ -89,10 +94,13 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
   onChange,
   onBlur,
   value,
+  creatable = false,
+  isClearable = false,
 }) => {
+  const SelectComponent: any = creatable ? CreatableSelect : Select;
   return (
     <div className={className}>
-      <Select
+      <SelectComponent
         name={name}
         options={options}
         placeholder={placeholder}
@@ -100,6 +108,8 @@ const SearchSelect: React.FC<SearchSelectProps> = ({
         onChange={onChange}
         onBlur={onBlur}
         value={value}
+        isClearable={isClearable}
+        {...(creatable ? { formatCreateLabel: (input: string) => `Use "${input}"` } : {})}
       />
     </div>
   );

@@ -356,15 +356,15 @@ const queryClient = useQueryClient();
   }, [rowsData]);
 
   useEffect(() => {
-    if (rows && rows.length > 0) {
-      setTableData((prev: any) => {
-        // Simple check to avoid setting state if data hasn't changed its length or identity
-        if (prev === rows || (prev.length === rows.length && JSON.stringify(prev) === JSON.stringify(rows))) {
-          return prev;
-        }
-        return rows;
-      });
-    }
+    // Sync on every refetch, including an empty result (e.g. the last row was
+    // deleted or a filter matches nothing), so the grid never keeps stale rows.
+    setTableData((prev: any) => {
+      // Simple check to avoid setting state if data hasn't changed its length or identity
+      if (prev === rows || (prev.length === rows.length && JSON.stringify(prev) === JSON.stringify(rows))) {
+        return prev;
+      }
+      return rows;
+    });
   }, [rows]);
 
 
@@ -378,8 +378,8 @@ const queryClient = useQueryClient();
         onSuccess: () => {
           toast.dismiss();
           toast.success("Changes saved successfully");
-          setTableData([]);
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          // Keep the current rows on screen; the refetch below replaces them.
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: (err: any) => {
           toast.dismiss();
