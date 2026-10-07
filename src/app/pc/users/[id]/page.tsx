@@ -17,6 +17,7 @@ import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory"
 import AdminClientJourney from "../../../admin/users/_components/AdminClientJourney";
 import AdminMissingInfoRequests from "../../../admin/users/_components/AdminMissingInfoRequests";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PcClientAccessGuard from "@/components/PcClientAccessGuard";
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -182,10 +183,12 @@ export default function Page(props: { params: ClientPageParams }) {
     const userId = params.id;
 
     return (
+        <PcClientAccessGuard clientId={userId} backHref="/pc/users" backLabel="Back to my clients">
         <AdminUserDetailProvider>
             <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-500">Loading client profile…</div>}>
                 <UserDetailsContent userId={userId} />
             </Suspense>
         </AdminUserDetailProvider>
+        </PcClientAccessGuard>
     );
 }

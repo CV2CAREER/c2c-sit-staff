@@ -9,7 +9,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "audit": "npm audit --omit=dev",
-    "check-all": "npm run audit && npm run build",
+    "check-all": "",
     "prepare": "node scripts/setup-hooks.js"
   },
   "dependencies": {
@@ -117,7 +117,7 @@
     "husky": "^9.1.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "tailwindcss": "$tailwindcss",

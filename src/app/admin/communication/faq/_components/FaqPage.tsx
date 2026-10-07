@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/store/user.store";
 import { useFaq } from "@/hooks/useFaq";
-import type { FaqArticle, FaqAuthorStatus, SaveFaqArticlePayload } from "@/types/faq.types";
+import type { FaqArticle, FaqAuthorStatus, FaqGap, SaveFaqArticlePayload } from "@/types/faq.types";
 import { ConfirmModal } from "@/app/admin/communication/client-content/_modals/ConfirmModal";
 import { FaqFormModal } from "../_modals/FaqFormModal";
 import { AddCategoryModal } from "../_modals/AddCategoryModal";
@@ -42,8 +42,11 @@ export default function FaqPage() {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [deleting, setDeleting] = useState<FaqArticle | null>(null);
   const [approving, setApproving] = useState<FaqArticle | null>(null);
+  // Set while writing an answer for a Gap Log question.
+  const [fromGap, setFromGap] = useState<FaqGap | null>(null);
 
-  const { articlesDomain, categoriesDomain, actions } = useFaq();
+  const { articlesDomain, categoriesDomain, gapsDomain, actions } = useFaq();
+  const gaps = gapsDomain.data;
   const { published, reviewQueue } = articlesDomain;
   const categories = categoriesDomain.data;
 
@@ -52,6 +55,7 @@ export default function FaqPage() {
   const refetchAll = () => {
     void articlesDomain.refetch();
     void categoriesDomain.refetch();
+    void gapsDomain.refetch();
   };
 
   const runAction = async (work: () => Promise<unknown>, loading: string, success: string) => {
@@ -70,8 +74,22 @@ export default function FaqPage() {
 
   const openNew = () => {
     setEditing(null);
+    setFromGap(null);
     setFormOpen(true);
   };
+
+  const openFromGap = (gap: FaqGap) => {
+    setEditing(null);
+    setFromGap(gap);
+    setFormOpen(true);
+  };
+
+  const dismissGap = (gap: FaqGap) =>
+    void runAction(
+      () => actions.updateGap({ id: gap.id, status: "dismissed" }),
+      "Dismissing...",
+      "Gap dismissed. It reopens if someone asks it again.",
+    );
 
   const openEdit = (article: FaqArticle) => {
     setEditing(article);
@@ -82,14 +100,20 @@ export default function FaqPage() {
     values: Omit<SaveFaqArticlePayload, "status">,
     status: FaqAuthorStatus,
   ) => {
+    const gap = fromGap;
     const ok = await runAction(
-      () => actions.saveArticle({ ...values, status, id: editing?.id }),
+      async () => {
+        const article = await actions.saveArticle({ ...values, status, id: editing?.id });
+        // The question now has a draft answer — take it off the open Gap Log.
+        if (gap) await actions.updateGap({ id: gap.id, status: "converted", faqArticleId: article?.id });
+      },
       "Saving FAQ...",
       status === "in_review" ? "FAQ sent for review." : "FAQ saved as draft.",
     );
     if (!ok) return;
     setFormOpen(false);
     setEditing(null);
+    setFromGap(null);
     setTab("review");
   };
 
@@ -162,7 +186,7 @@ export default function FaqPage() {
               <CountPill count={reviewQueue.length} highlight={reviewQueue.length > 0} />
             </TabsTrigger>
             <TabsTrigger value="gaps" className={TAB_TRIGGER_CLASS}>
-              Gap Log <CountPill count={0} />
+              Gap Log <CountPill count={gaps.length} highlight={gaps.length > 0} />
             </TabsTrigger>
           </TabsList>
 
@@ -197,7 +221,13 @@ export default function FaqPage() {
             />
           </TabsContent>
           <TabsContent value="gaps" className="pt-4">
-            <GapLogTab />
+            <GapLogTab
+              gaps={gaps}
+              isLoading={gapsDomain.isLoading}
+              isBusy={actions.isUpdatingGap || actions.isSavingArticle}
+              onWriteAnswer={openFromGap}
+              onDismiss={dismissGap}
+            />
           </TabsContent>
         </Tabs>
       )}
@@ -207,8 +237,10 @@ export default function FaqPage() {
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
+          setFromGap(null);
         }}
         article={editing}
+        initialQuestion={fromGap?.question}
         categories={categories}
         onSave={handleSave}
         isSaving={actions.isSavingArticle}

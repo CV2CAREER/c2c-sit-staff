@@ -54,6 +54,8 @@ interface FaqFormModalProps {
   categories: FaqCategory[];
   onSave: (values: FormValues, status: FaqAuthorStatus) => Promise<void>;
   isSaving: boolean;
+  /** Prefills the question for a new article (Gap Log → "Write the answer"). */
+  initialQuestion?: string;
 }
 
 export function FaqFormModal({
@@ -63,6 +65,7 @@ export function FaqFormModal({
   categories,
   onSave,
   isSaving,
+  initialQuestion,
 }: FaqFormModalProps) {
   const [values, setValues] = useState<FormValues>(freshValues(categories));
   const [initial, setInitial] = useState<FormValues>(freshValues(categories));
@@ -70,13 +73,15 @@ export function FaqFormModal({
 
   useEffect(() => {
     if (!open) return;
-    const start = article ? toFormValues(article) : freshValues(categories);
+    const start = article
+      ? toFormValues(article)
+      : { ...freshValues(categories), question: initialQuestion ?? "" };
     setValues(start);
     setInitial(start);
     setDiscardConfirmOpen(false);
     // categories only seed the default for a new article; don't reset mid-edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, article]);
+  }, [open, article, initialQuestion]);
 
   const isEditing = !!article;
   const isPublished = article?.status === "published";

@@ -4,11 +4,13 @@ import { faqService } from "@/services/faq.service";
 import type {
   FaqArticle,
   FaqCategory,
+  FaqGap,
   SaveFaqArticlePayload,
 } from "@/types/faq.types";
 
 export const FAQ_CATEGORIES_QUERY_KEY = ["admin", "faq", "categories"];
 export const FAQ_ARTICLES_QUERY_KEY = ["admin", "faq", "articles"];
+export const FAQ_GAPS_QUERY_KEY = ["admin", "faq", "gaps"];
 
 export function useFaq() {
   const queryClient = useQueryClient();
@@ -60,6 +62,22 @@ export function useFaq() {
     onSuccess: invalidate,
   });
 
+  // New gaps arrive whenever a bot declines, so keep the log fresh.
+  const gapsQuery = useQuery<FaqGap[], Error>({
+    queryKey: FAQ_GAPS_QUERY_KEY,
+    queryFn: () => faqService.listGaps(),
+    refetchInterval: 60000,
+  });
+
+  const updateGap = useMutation<
+    { id: string; status: FaqGap["status"] },
+    Error,
+    { id: string; status: FaqGap["status"]; faqArticleId?: string }
+  >({
+    mutationFn: ({ id, status, faqArticleId }) => faqService.updateGap(id, status, faqArticleId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FAQ_GAPS_QUERY_KEY }),
+  });
+
   const createCategory = useMutation<FaqCategory, Error, string>({
     mutationFn: faqService.createCategory,
     onSuccess: invalidate,
@@ -90,6 +108,12 @@ export function useFaq() {
       error: articlesQuery.error,
       refetch: articlesQuery.refetch,
     },
+    gapsDomain: {
+      data: gapsQuery.data ?? [],
+      isLoading: gapsQuery.isLoading,
+      error: gapsQuery.error,
+      refetch: gapsQuery.refetch,
+    },
     categoriesDomain: {
       data: categories,
       isLoading: categoriesQuery.isLoading,
@@ -109,6 +133,8 @@ export function useFaq() {
         approve.isPending ||
         returnToDraft.isPending ||
         removeArticle.isPending,
+      updateGap: updateGap.mutateAsync,
+      isUpdatingGap: updateGap.isPending,
       createCategory: createCategory.mutateAsync,
       isCreatingCategory: createCategory.isPending,
     },
