@@ -44,6 +44,24 @@ export const updateUser = catchAsyncError(
   },
 );
 
+export const updateDocumentFlags = catchAsyncError(
+  async (req: Request, res: Response) => {
+    const authorizedUser = ensureAuthorized(req);
+    const { userId } = req.params;
+    const fullName = `${authorizedUser.firstName} ${authorizedUser.lastName}`;
+
+    const result = await userManagementService.updateDocumentFlags(
+      userId,
+      { hasResume: req.body?.hasResume, hasCoverLetter: req.body?.hasCoverLetter },
+      authorizedUser.id,
+      authorizedUser.email,
+      fullName
+    );
+
+    res.apiSuccess(result, "C/R and C/L updated successfully");
+  },
+);
+
 export const approveUserDocument = catchAsyncError(
   async (req: Request, res: Response) => {
     const authorizedUser = ensureAuthorized(req);

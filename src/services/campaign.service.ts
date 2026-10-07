@@ -2959,7 +2959,7 @@ export const updateCampaignClient = async (
     ?.trim()
     .toUpperCase();
   const isFlightTrigger =
-    incomingCapitalized === 'HOLD' ||
+    // incomingCapitalized === 'HOLD' ||
     incomingCapitalized === 'FLIGHT' ||
     incomingCapitalized === 'INFLIGHT';
   if (isFlightTrigger) {
