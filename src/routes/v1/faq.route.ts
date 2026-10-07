@@ -9,6 +9,8 @@ import {
   deleteFaqArticle,
   getFaqArticles,
   getFaqCategories,
+  getFaqGaps,
+  updateFaqGap,
   returnFaqArticleToDraft,
   submitFaqArticleForReview,
   updateFaqArticle,
@@ -36,5 +38,9 @@ faqRouterV1.delete("/articles/:id", deleteFaqArticle);
 // Review gate — publishing is an admin decision (C2C-253).
 faqRouterV1.post("/articles/:id/approve", authorizeRoles("admin"), approveFaqArticle);
 faqRouterV1.post("/articles/:id/return", authorizeRoles("admin"), returnFaqArticleToDraft);
+
+// Gap Log — unanswered bot/VA questions (S.ADM.12.02.IR02A).
+faqRouterV1.get("/gaps", getFaqGaps);
+faqRouterV1.patch("/gaps/:id", updateFaqGap);
 
 export default faqRouterV1;

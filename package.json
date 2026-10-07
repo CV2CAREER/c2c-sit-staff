@@ -19,6 +19,8 @@
     "fix:seek-sub-start-date": "tsx scripts/fix-seek-sub-start-date-format.ts",
     "backfill:campaign:sub-end-date": "tsx scripts/backfill-campaign-sub-end-date.ts",
     "cleanup:justcall-duplicates": "tsx scripts/cleanup-justcall-duplicate-events.ts",
+    "reencrypt:pii:aes256": "tsx src/scripts/reencrypt-cast5-to-aes256.ts",
+    "reencrypt:pii:aes256:verify": "tsx src/scripts/reencrypt-cast5-to-aes256.ts --verify",
     "check-all": "",
     "prepare": "node scripts/setup-hooks.js"
   },

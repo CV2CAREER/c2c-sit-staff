@@ -17,6 +17,9 @@ assistantRouterV1.use(checkBlacklistedTokens, isUserAuthenticated);
 // GET /clients-assigned
 assistantRouterV1.get("/clients-assigned", AssistantController.getClientsAssigned);
 
+// Can this staff member open this client's page? (PCs: assigned clients only)
+assistantRouterV1.get("/client-access/:clientId", authorizeRoles("admin", "assistant"), AssistantController.checkClientAccess);
+
 // VA Chat routes — the widget is mounted in both the admin and PC layouts,
 // so admins and assistants both use it.
 assistantRouterV1.get("/va", authorizeRoles("admin", "assistant"), VaChatController.getMessages);
