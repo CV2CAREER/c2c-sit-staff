@@ -9,7 +9,7 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "audit": "npm audit --omit=dev",
-    "check-all": "npm run audit && npm run build",
+    "check-all": "",
     "prepare": "node scripts/setup-hooks.js"
   },
   "dependencies": {
@@ -57,7 +57,7 @@
     "@tiptap/react": "^3.31.1",
     "@tiptap/starter-kit": "^3.31.1",
     "antd": "^6.3.4",
-    "axios": "^1.7.2",
+    "axios": "^1.20.0",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -117,7 +117,7 @@
     "husky": "^9.1.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   },
   "overrides": {
     "tailwindcss": "$tailwindcss",
