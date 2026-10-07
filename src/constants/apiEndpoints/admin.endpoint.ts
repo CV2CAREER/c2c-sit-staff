@@ -161,7 +161,8 @@ export const ADMIN_APPLICATION_ASSURANCE = (applicationId: string | number) =>
   `/api/v1/admin/applications/${applicationId}/assurance`;
 export const ADMIN_DISCOVERY_TRACKER_FILTER_VALUES =
   '/api/v1/admin/discovery-tracker/filter-values';
-export const ADMIN_DISCOVERY_AGENT = '/api/v1/admin/discovery';
+// DISABLED (AI Discovery Agent): endpoint constant
+// export const ADMIN_DISCOVERY_AGENT = '/api/v1/admin/discovery';
 export const ADMIN_ACCESS_LEVELS = '/api/v1/admin/access-levels';
 export const ADMIN_PERSONA_RULES = '/api/v1/admin/persona-rules';
 export const ADMIN_UPDATE_USER_PREFERENCES =

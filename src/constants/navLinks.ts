@@ -139,7 +139,8 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     access: ["admin", "assistant"],
     children: [
       { name: "Job Discovery", href: "/admin/job-preference", icon: Binoculars },
-      { name: "AI Discovery Agent", href: "/admin/ai-discovery-agent", icon: Bot },
+      // DISABLED (AI Discovery Agent): nav link
+      // { name: "AI Discovery Agent", href: "/admin/ai-discovery-agent", icon: Bot },
       { name: "Applications", href: "/admin/job-applications", icon: FileUser },
     ],
   },
