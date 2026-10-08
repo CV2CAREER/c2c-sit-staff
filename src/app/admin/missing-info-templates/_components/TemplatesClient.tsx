@@ -59,7 +59,7 @@ export default function TemplatesClient({
   const clients = useMemo(() => {
     const users = usersData?.data?.users ?? [];
     return users
-      .filter((user) => user.role === "client" && user.isEmailVerified !== false)
+      .filter((user) => (user.role === "client" || user.role === "guest") && user.isEmailVerified !== false)
       .sort((a, b) => {
         const nameA = `${a.firstName ?? ""} ${a.middleName ?? ""} ${a.lastName ?? ""}`.trim().toLowerCase();
         const nameB = `${b.firstName ?? ""} ${b.middleName ?? ""} ${b.lastName ?? ""}`.trim().toLowerCase();
