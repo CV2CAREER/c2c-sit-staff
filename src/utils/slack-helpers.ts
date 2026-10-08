@@ -1,4 +1,5 @@
 import {
+  CLIENT_APP_DOMAIN,
   IAT_FRONTEND_URL,
   LOCAL_FRONTEND_URL,
   NODE_ENV,
@@ -35,7 +36,7 @@ export const getDefaultHost = (): string => {
     local: LOCAL_FRONTEND_URL,
   };
   const env = (NODE_ENV || '').toLowerCase();
-  return envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
+  return CLIENT_APP_DOMAIN || envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
 };
 
 export const getEnvironmentFromHost = (host?: string): SlackLocation => {
