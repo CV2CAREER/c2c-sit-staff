@@ -191,7 +191,7 @@ export default function Page(props: { params: ClientPageParams }) {
     const userId = params.id;
 
     return (
-        <PcClientAccessGuard clientId={userId} backHref="/pc/users" backLabel="Back to my clients">
+        <PcClientAccessGuard clientId={userId} backHref="/pc/users" backLabel="Back to user management">
         <AdminUserDetailProvider>
             <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-500">Loading client profile…</div>}>
                 <UserDetailsContent userId={userId} />

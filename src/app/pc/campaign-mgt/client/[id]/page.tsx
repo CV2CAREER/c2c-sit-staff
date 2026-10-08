@@ -12,7 +12,7 @@ export default async function ClientPage(props: { params: Promise<{ id: string }
     <main className="flex flex-col gap-6 mt-6 w-full">
       {/* SPR-21-02-004: identity now renders inside ClientDataTable's single
           consolidated profile card. */}
-      <PcClientAccessGuard clientId={clientId} backHref="/pc/campaign-mgt" backLabel="Back to my campaigns">
+      <PcClientAccessGuard clientId={clientId} backHref="/pc/campaign-mgt" backLabel="Back to campaign management">
         <ClientDataTable clientId={clientId} route="admin" />
       </PcClientAccessGuard>
     </main>
