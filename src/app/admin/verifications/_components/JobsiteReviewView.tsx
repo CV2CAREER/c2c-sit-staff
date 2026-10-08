@@ -62,6 +62,7 @@ export default function JobsiteReviewView() {
   const [exemptModalData, setExemptModalData] = useState<{
     isOpen: boolean;
     isBulk: boolean;
+    id?: string;
     clientId?: string;
     clientName?: string;
     jobsiteId?: string;
@@ -180,28 +181,27 @@ export default function JobsiteReviewView() {
       const finalReason = note ? `${reason} (Note: ${note})` : reason;
 
       if (exemptModalData.isBulk) {
-        const clientIdsToExempt = Array.from(
-          new Set(
-            filteredItems
-              .filter((item) => selectedIds.includes(item.id))
-              .map((item) => item.clientId)
-              .filter(Boolean)
-          )
-        );
-
-        for (const cId of clientIdsToExempt) {
-          await actions.exempt({ clientId: cId, exemptReason: finalReason });
+        const selectedItems = filteredItems.filter((item) => selectedIds.includes(item.id));
+        for (const it of selectedItems) {
+          await actions.exempt({
+            id: it.id,
+            clientId: it.clientId,
+            jobsiteId: it.jobsiteId,
+            country: it.country,
+            exemptReason: finalReason,
+          });
         }
-        toast.success("Selected clients exempted");
+        toast.success("Selected verifications exempted");
         setSelectedIds([]);
-      } else if (exemptModalData.clientId) {
+      } else if (exemptModalData.id || exemptModalData.clientId) {
         await actions.exempt({
+          id: exemptModalData.id,
           clientId: exemptModalData.clientId,
           jobsiteId: exemptModalData.jobsiteId,
           country: exemptModalData.country,
           exemptReason: finalReason,
         });
-        toast.success("Client exempted");
+        toast.success(`Exempted ${exemptModalData.jobsiteId || "verification"}`);
       }
       setExemptModalData({ isOpen: false, isBulk: false });
     } catch (err: any) {
@@ -212,6 +212,7 @@ export default function JobsiteReviewView() {
   const handleRemoveExemption = async (item: JobsiteVerification) => {
     try {
       await actions.unexempt({
+        id: item.id,
         clientId: item.clientId,
         jobsiteId: item.jobsiteId,
         country: item.country,
@@ -499,6 +500,7 @@ export default function JobsiteReviewView() {
                                   setExemptModalData({
                                     isOpen: true,
                                     isBulk: false,
+                                    id: item.id,
                                     clientId: item.clientId,
                                     clientName,
                                     jobsiteId: item.jobsiteId,
