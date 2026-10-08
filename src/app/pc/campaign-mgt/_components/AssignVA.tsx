@@ -9,6 +9,12 @@ import { useQueryClient } from '@tanstack/react-query';
 interface VACellProps {
     data: null | any;
     variant?: 'DPC' | 'VPC' | 'SPC' | 'InterimDPC' | 'InterimSPC';
+    // SPR-21-41-015: marker naming the campaign grid column this cell shows
+    // (VaName, VetName, CompletedName, InterimDPCName, InterimSPCName). Read by
+    // scripts/check-campaign-modal-bindings.mjs to prove the column is
+    // represented. Not used for rendering — the Placement Controller cannot
+    // reassign PCs, so this cell is display-only here.
+    field?: string;
 }
 
 export const VACell = ({ data = null, variant = 'DPC' }: VACellProps) => {

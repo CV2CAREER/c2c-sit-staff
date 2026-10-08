@@ -336,9 +336,13 @@ export const ADMIN_CLIENT_CONTENT_BY_ID = (id: string) =>
   `/api/v1/admin/client-content/${id}`;
 export const ADMIN_FAQ_CATEGORIES = '/api/v1/admin/faq/categories';
 export const ADMIN_FAQ_ARTICLES = '/api/v1/admin/faq/articles';
+export const ADMIN_FAQ_GAPS = '/api/v1/admin/faq/gaps';
+export const ADMIN_FAQ_GAP_BY_ID = (id: string) => `/api/v1/admin/faq/gaps/${id}`;
 export const ADMIN_FAQ_ARTICLE_BY_ID = (id: string) =>
   `/api/v1/admin/faq/articles/${id}`;
 export const ASSISTANT_CLIENTS_ASSIGNED = '/api/v1/assistant/clients-assigned';
+export const ASSISTANT_CLIENT_ACCESS = (clientId: string) =>
+  `/api/v1/assistant/client-access/${encodeURIComponent(clientId)}`;
 export const ASSISTANT_VA_CHAT = '/api/v1/assistant/va';
 export const ASSISTANT_VA_CLIENT = (clientId: string) =>
   `/api/v1/assistant/va/client/${encodeURIComponent(clientId)}`;

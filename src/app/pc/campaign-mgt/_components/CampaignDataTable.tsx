@@ -103,6 +103,28 @@ export type Pred = {
   questions: ({ question: string; answer: string; private: boolean } | null)[];
 };
 
+const initialTableColumns: GridColDef[] = [
+  {
+    field: "actions",
+    headerName: "Actions",
+    width: 80,
+    disableExport: true,
+  },
+  {
+    field: "flight",
+    headerName: "Flight",
+    width: 150,
+    disableExport: true,
+  },
+  {
+    field: "generate-aq",
+    headerName: "Generate AQ",
+    width: 150,
+    disableExport: true,
+  },
+
+]
+
 /**
  * @title CampaignDataTable
  * @description This component fetches user data from an API and renders it in a grid using DataGridPro.
@@ -233,6 +255,7 @@ const queryClient = useQueryClient();
     return rowsData.map((client: any) => {
       // Shorthand for the credentials JSONB so we don't repeat optional chaining
       const cred = client.seekExternalCredentials ?? {};
+      
 
       return {
         // Spread raw API response first so action buttons and any extra fields are available
@@ -333,15 +356,15 @@ const queryClient = useQueryClient();
   }, [rowsData]);
 
   useEffect(() => {
-    if (rows && rows.length > 0) {
-      setTableData((prev: any) => {
-        // Simple check to avoid setting state if data hasn't changed its length or identity
-        if (prev === rows || (prev.length === rows.length && JSON.stringify(prev) === JSON.stringify(rows))) {
-          return prev;
-        }
-        return rows;
-      });
-    }
+    // Sync on every refetch, including an empty result (e.g. the last row was
+    // deleted or a filter matches nothing), so the grid never keeps stale rows.
+    setTableData((prev: any) => {
+      // Simple check to avoid setting state if data hasn't changed its length or identity
+      if (prev === rows || (prev.length === rows.length && JSON.stringify(prev) === JSON.stringify(rows))) {
+        return prev;
+      }
+      return rows;
+    });
   }, [rows]);
 
 
@@ -355,8 +378,8 @@ const queryClient = useQueryClient();
         onSuccess: () => {
           toast.dismiss();
           toast.success("Changes saved successfully");
-          setTableData([]);
-          queryClient.invalidateQueries({ queryKey: ["admin-campaigns"] });
+          // Keep the current rows on screen; the refetch below replaces them.
+          queryClient.invalidateQueries({ queryKey: ["admin-fetch-campaign-clients"] });
         },
         onError: (err: any) => {
           toast.dismiss();

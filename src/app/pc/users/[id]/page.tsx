@@ -16,7 +16,10 @@ import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreference
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
 import AdminClientJourney from "../../../admin/users/_components/AdminClientJourney";
 import AdminMissingInfoRequests from "../../../admin/users/_components/AdminMissingInfoRequests";
+import AdminUserVerification from "../../../admin/users/_components/AdminUserVerification";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PcClientAccessGuard from "@/components/PcClientAccessGuard";
+
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -45,10 +48,12 @@ const TAB_DEFS = [
     { value: "documents", label: "Documents" },
     { value: "jobsite-credential", label: "Jobsite Credential" },
     { value: "missing-info", label: "Missing Info" },
+    { value: "verification", label: "Verification" },
     { value: "job-preferences", label: "Job Preferences" },
     { value: "preference-history", label: "Preference History" },
     { value: "referral-history", label: "Referral History" },
 ];
+
 
 // Inner component that has access to context
 function UserDetailsContent({ userId }: { userId: string }) {
@@ -153,6 +158,7 @@ function UserDetailsContent({ userId }: { userId: string }) {
                         <ClientDocument userId={currentUserId} />
                     </TabsContent>
                     <TabsContent value="jobsite-credential">
+
                         {/* AdminUsersJobSites replaced — its "Generated
                             Email" column was rendering NaN@cvtocareer.com
                             on every row; AdminUserJobsiteCredential is the
@@ -161,6 +167,9 @@ function UserDetailsContent({ userId }: { userId: string }) {
                     </TabsContent>
                     <TabsContent value="missing-info">
                         <AdminMissingInfoRequests userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="verification">
+                        <AdminUserVerification userId={currentUserId} />
                     </TabsContent>
                     <TabsContent value="job-preferences">
                         <AdminUsersJobPreferences userId={currentUserId}/>
@@ -182,10 +191,12 @@ export default function Page(props: { params: ClientPageParams }) {
     const userId = params.id;
 
     return (
+        <PcClientAccessGuard clientId={userId} backHref="/pc/users" backLabel="Back to my clients">
         <AdminUserDetailProvider>
             <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-sm text-gray-500">Loading client profile…</div>}>
                 <UserDetailsContent userId={userId} />
             </Suspense>
         </AdminUserDetailProvider>
+        </PcClientAccessGuard>
     );
 }

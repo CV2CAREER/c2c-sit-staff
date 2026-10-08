@@ -119,6 +119,40 @@ export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "referral_eligibility",
 ]);
 
+// Payment stage step keys that don't apply to non-paying personas
+// (Ambassador guests on Coral, partner-referred Emerald trial guests).
+// Neither persona ever passes through a service-selection or payment
+// gate — Coral and Emerald are auto-activated post credential + social
+// verification. Rendering these steps on their journey inflates the
+// stepper count and lets an admin attempt a manual attest that silently
+// fails downstream because the underlying payment state never exists.
+const NON_PAYING_HIDDEN_STEP_KEYS = new Set<string>([
+  "service_selection",
+  "payment_confirmed",
+  "payment_receipt_sent",
+]);
+
+// Persona-aware step filter. Emerald and Ambassador collapse Phase 1
+// from 7 steps to 4 by dropping the payment stages; every other persona
+// (paying guest, converted client) sees the full 39-step registry.
+export function getStepsForPersona(
+  persona:
+    | { isAmbassador?: boolean | null; plan?: string | null; isEmeraldCandidate?: boolean | null }
+    | null
+    | undefined,
+): ClientJourneyStepDefinition[] {
+  if (!persona) return CLIENT_JOURNEY_STEPS;
+  const isAmbassador = persona.isAmbassador === true;
+  // Pre-approval Emerald candidates have plan === null until credential
+  // approval creates the Plan row — but we still need to hide payment steps
+  // for them, so persona-aware filtering reads either marker.
+  const isEmerald =
+    persona.isEmeraldCandidate === true ||
+    (typeof persona.plan === "string" && persona.plan.toLowerCase() === "emerald");
+  if (!isAmbassador && !isEmerald) return CLIENT_JOURNEY_STEPS;
+  return CLIENT_JOURNEY_STEPS.filter((step) => !NON_PAYING_HIDDEN_STEP_KEYS.has(step.stepKey));
+}
+
 export type DerivedStepState = "done" | "current" | "awaiting";
 export type DerivedPhaseState = "done" | "current" | "pending";
 
@@ -138,14 +172,21 @@ export interface DerivedPhase {
 // everything before it is "done", everything after is "awaiting" — the
 // same derivation the customer side uses, kept here so the stepper and the
 // sub-step list can never disagree.
-export function deriveJourneyState(steps: ClientJourneyStepRow[]): {
+export function deriveJourneyState(
+  steps: ClientJourneyStepRow[],
+  // Optional persona-filtered step list. Defaults to the full 39-step
+  // registry so all pre-existing call sites keep their previous behaviour;
+  // callers that need to hide payment steps for Emerald / Ambassador
+  // pass the result of getStepsForPersona(persona) here.
+  stepDefinitions: ClientJourneyStepDefinition[] = CLIENT_JOURNEY_STEPS,
+): {
   phases: DerivedPhase[];
   currentPhaseKey: ClientJourneyPhaseKey;
 } {
   const completionByKey = new Map(steps.map((row) => [row.stepKey, row]));
 
   let currentFound = false;
-  const derivedSteps: DerivedStep[] = CLIENT_JOURNEY_STEPS.map((def) => {
+  const derivedSteps: DerivedStep[] = stepDefinitions.map((def) => {
     const completion = completionByKey.get(def.stepKey) ?? null;
 
     if (completion) {

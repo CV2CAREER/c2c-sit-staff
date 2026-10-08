@@ -1,8 +1,8 @@
 /* eslint-disable */
-import React, { SetStateAction } from 'react';
+import React, { SetStateAction, useMemo } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import {
   DialogContent,
   DialogHeader,
@@ -34,11 +34,19 @@ import toast from 'react-hot-toast';
 import { validateHeaderName } from 'http';
 import { VACell } from './AssignVA';
 import { PencilLine } from 'lucide-react';
+import { CAPITALIZED_OPTIONS, PLAN_OPTIONS } from '@/utils/enum-options';
+import { FieldLegend, FieldSwitch, LockedField, MaskedPassword } from "@/components/ui/form-field";
+import { calculateCampaignFields } from '@/utils/campaign-calculator';
 
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400 border-b border-gray-100 pb-2">
+const SectionLabel = ({ children, tag }: { children: React.ReactNode; tag?: string }) => (
+  <h2 className="flex items-center gap-2 pb-1.5 mb-2.5 border-b text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
     {children}
-  </h4>
+    {tag ? (
+      <span className="rounded bg-muted px-[7px] py-0.5 text-[10.5px] font-medium normal-case tracking-normal text-muted-foreground">
+        {tag}
+      </span>
+    ) : null}
+  </h2>
 );
 
 // "Adecco_Aggregator" / "firstName" -> "Adecco Aggregator" / "First Name"
@@ -49,13 +57,34 @@ const humanizeFieldName = (field: string) =>
     .replace(/^./, (c) => c.toUpperCase())
     .trim();
 
+// SPR-21-41-016 AC4/AC5: Tour and Return Count accept numbers only.
+// These live in the seekExternalCredentials JSONB where historical rows hold
+// numeric *strings* ("3"), so digit strings stay acceptable here rather than
+// being typed strictly as numbers — otherwise every legacy row would fail
+// validation on save. Anything that is not digits, an empty value or a
+// non-negative whole number is still rejected, and the inputs additionally
+// strip non-numeric keystrokes as they are typed.
+const optionalCount = z
+  .union([
+    z.literal(''),
+    z.string().regex(/^\d+$/, 'Must be numbers only'),
+    z.number().int('Must be a whole number').min(0, 'Cannot be less than 0'),
+  ])
+  .nullable()
+  .optional();
+
 const formSchema = z.object({
-  Full_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
-  First_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
+// SPR-21-41-016: Full_Name is deliberately absent from this schema and from
+    // defaultValues. The backend rebuilds it from the name components, so
+    // keeping it in form state would submit a derived value back and corrupt
+    // the row. The Identity section reads it straight off the client object
+    // through getField(). scripts/check-campaign-modal-bindings.mjs fails the
+    // build if Full_Name ever reappears as a form control.
+    First_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
   Middle_Name: z.string().optional().nullable(),
   Last_Name: z.string().min(2).max(50).or(z.literal('')).optional().nullable(),
   Plan: z.string().optional().nullable(),
-  ReturnCount: z.string().optional().nullable(),
+  ReturnCount: optionalCount,
   Order: z.string().optional().nullable(),
   SeekSubStartDate: z.string().optional().nullable(),
   SeekWeeklyMax: z.number().optional().nullable(),
@@ -64,30 +93,27 @@ const formSchema = z.object({
   Capitalized: z.string().optional().nullable(),
   Country: z.string().optional().nullable(),
   Active: z.boolean().optional().nullable(),
-  SeekAnswerPriority: z.boolean().optional().nullable(),
-  Seek_Aggregator: z.boolean().optional().nullable(),
-  Linkedin_Aggregator: z.boolean().optional().nullable(),
-  Jobserve_Aggregator: z.boolean().optional().nullable(),
-  EscapeCity_Aggregator: z.boolean().optional().nullable(),
-  WorkforceAustralia_Aggregator: z.boolean().optional().nullable(),
-  Indeed_Aggregator: z.boolean().optional().nullable(),
-  Monster_Aggregator: z.boolean().optional().nullable(),
-  Jora_Aggregator: z.boolean().optional().nullable(),
-  Adzuna_Aggregator: z.boolean().optional().nullable(),
-  CareerOne_Aggregator: z.boolean().optional().nullable(),
-  Reed_Aggregator: z.boolean().optional().nullable(),
-  // API sends this as either 0/1 or true/false depending on the record, so accept both.
-  Adecco_Aggregator: z.union([z.number(), z.boolean()]).optional().nullable(),
-  CVLibrary_Aggregator: z.boolean().optional().nullable(),
-  NHSJobs_Aggregator: z.boolean().optional().nullable(),
+  // Answer Priority and the job aggregators are deliberately absent: they are
+  // not part of this modal's design and are managed through the separate
+  // Manage Job Aggregators modal. Keeping them in form state would submit
+  // stale defaults over changes made there.
   Throttle_Listing: z.boolean().optional().nullable(),
   Throttle_Duration: z.number().optional().nullable(),
   Batch: z.string().nullable(),
   Craft: z.string().nullable(),
   Status: z.string().nullable(),
+  // SPR-21-41-016: TourCount is a retained grid column with no prior modal
+  // binding. It lives in the seekExternalCredentials JSONB, which the loose
+  // update payload accepts, so no backend change is needed.
+  TourCount: optionalCount,
   Alias_Email: z.string().email().or(z.literal('')).optional().nullable(),
   Alias_Password: z.string().optional().nullable(),
-  VaName: z.string().optional().nullable(),
+  // SPR-21-41-016: all five Placement Controller names (VaName, VetName,
+  // CompletedName, InterimDPCName, InterimSPCName) are deliberately absent from
+  // this schema and from defaultValues. They are edited through VACell and
+  // persisted by savePcChanges, never as part of the form payload. Leaving
+  // VaName in form state meant a re-assignment made in the dropdown could be
+  // overwritten by the stale default value in the same Update.
   Assurance: z.string().optional().nullable(),
 });
 
@@ -107,20 +133,7 @@ interface EditTableModalProps {
   >;
 }
 
-const capitalizedData = [
-  {
-    value: 'HOLD',
-    label: 'HOLD',
-  },
-  {
-    value: 'FLIGHT',
-    label: 'FLIGHT',
-  },
-  {
-    value: 'EMPLOYED',
-    label: 'EMPLOYED',
-  },
-];
+ 
 
 export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
   client,
@@ -135,17 +148,85 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
 
   // Helper: read a field from the client object, falling back to seekExternalCredentials
   // JSONB for fields that are stored there (First_Name, Plan, Country, etc.)
-  const getField = (key: string) => {
-    const top = (client as any)[key];
-    if (top !== undefined && top !== null) return top;
-    return (client as any)?.seekExternalCredentials?.[key] ?? null;
-  };
+const getField = (key: string) => {
+      const top = (client as any)[key];
+      if (top !== undefined && top !== null) return top;
+      return (client as any)?.seekExternalCredentials?.[key] ?? null;
+    };
 
-  // Form Definition
+    // SPR-21-41-015: Identity, derived and audit columns are shown read-only.
+    // Render an em dash for anything missing so a blank reads as "no value"
+    // rather than an editable field that failed to populate.
+    const displayValue = (value: unknown): string => {
+      if (value === undefined || value === null || value === '') return '—';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      return String(value);
+    };
+
+// SPR-21-41-015: date-only display for the derived and audit date columns.
+    // The ISO date portion is read straight out of the string instead of going
+    // through `new Date()`, because these values are stored at UTC midnight and
+    // `toLocaleString()` would shift them back a day in negative-offset
+    // timezones. Formatted as DD-MM-YYYY to match the date inputs in this same
+    // modal, so the editable start date and the read-only end date can be
+    // compared directly.
+    const displayDate = (value: unknown): string => {
+if (value === undefined || value === null || value === '') return '—';
+const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+if (iso) return `${iso[3]}-${iso[2]}-${iso[1]}`;
+// Already DD-MM-YYYY (the campaign calculator's output). `new Date()` would
+// read it month-first and swap the day and month.
+if (/^d{2}-d{2}-d{4}$/.test(String(value))) return String(value);
+const parsed = new Date(value as string);
+return isNaN(parsed.getTime())
+? String(value)
+: parsed.toLocaleDateString('en-GB');
+};
+
+  // SPR-21-41-016 AC3: Plan is chosen from the central list, so free text can no
+    // longer be entered. react-select is not creatable, so the only way to set
+    // a value is picking an option.
+    //
+    // Rows written before this ticket can still hold a Plan title that is not
+    // in the central list. The backend resolves Plan against the plans table by
+    // title to read validityPeriod, so dropping an unknown value here would both
+    // hide real data and silently clear it on the next save. Any such value is
+    // therefore appended to the option list so it stays visible and unchanged
+    // until somebody deliberately moves the client onto a standard plan.
+    const planOptions: OptionType[] = useMemo(() => {
+      const current = getField('Plan');
+      if (!current) return PLAN_OPTIONS;
+      const exists = PLAN_OPTIONS.some(
+        (option) => option.value.toLowerCase() === String(current).toLowerCase()
+      );
+      return exists
+        ? PLAN_OPTIONS
+        : [...PLAN_OPTIONS, { value: String(current), label: String(current) }];
+    }, [client]);
+
+    // SPR-21-41-018 AC4: Capitalized offers only the central state list, but the
+    // campaign flight toggle writes 'INFLIGHT', which is not in
+    // CAPITALIZED_OPTIONS. Without this, a client mid-flight showed a blank
+    // Capitalized dropdown. Appending the stored value keeps it visible and
+    // unchanged until somebody deliberately picks an approved state.
+    const capitalizedOptions: OptionType[] = useMemo(() => {
+      const current = getField('Capitalized');
+      if (!current) return CAPITALIZED_OPTIONS;
+      const exists = CAPITALIZED_OPTIONS.some(
+        (option) => option.value.toLowerCase() === String(current).toLowerCase()
+      );
+      return exists
+        ? CAPITALIZED_OPTIONS
+        : [
+            ...CAPITALIZED_OPTIONS,
+            { value: String(current), label: String(current) },
+          ];
+    }, [client]);
+
+    // Form Definition
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      Full_Name: getField('Full_Name'),
       First_Name: getField('First_Name'),
       Middle_Name: getField('Middle_Name'),
       Last_Name: getField('Last_Name'),
@@ -160,34 +241,54 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
       Capitalized: getField('Capitalized'),
       Country: getField('Country'),
       Active: client.Active ?? false,
-      SeekAnswerPriority: client.SeekAnswerPriority ?? false,
-      Seek_Aggregator: getField('Seek_Aggregator') ?? false,
-      Linkedin_Aggregator: getField('Linkedin_Aggregator') ?? false,
-      Jobserve_Aggregator: getField('Jobserve_Aggregator') ?? false,
-      EscapeCity_Aggregator: getField('EscapeCity_Aggregator') ?? false,
-      WorkforceAustralia_Aggregator:
-        getField('WorkforceAustralia_Aggregator') ?? false,
-      Indeed_Aggregator: getField('Indeed_Aggregator') ?? false,
-      Monster_Aggregator: getField('Monster_Aggregator') ?? false,
-      Jora_Aggregator: getField('Jora_Aggregator') ?? false,
-      Adzuna_Aggregator: getField('Adzuna_Aggregator') ?? false,
-      CareerOne_Aggregator: getField('CareerOne_Aggregator') ?? false,
-      Reed_Aggregator: getField('Reed_Aggregator') ?? false,
-      Adecco_Aggregator: getField('Adecco_Aggregator') ?? 0,
-      CVLibrary_Aggregator: getField('CVLibrary_Aggregator') ?? false,
-      NHSJobs_Aggregator: getField('NHSJobs_Aggregator') ?? false,
       Throttle_Listing: getField('Throttle_Listing') ?? false,
       Throttle_Duration: getField('Throttle_Duration') ?? null,
       Batch: getField('Batch') ?? null,
       Craft: getField('Craft') ?? null,
       Status: getField('Status') ?? null,
+      TourCount: getField('TourCount') ?? '',
       Alias_Email: getField('Alias_Email') ?? null,
       Alias_Password: getField('Alias_Password') ?? null,
-      VaName: getField('VaName') ?? null,
     },
   });
 
-  // Submit handler
+  // SPR-21-41-019 AC1: the derived subscription fields recalculate live from
+  // Start Date / Sub Duration Days / Grace Duration, using the same shared
+  // `calculateCampaignFields` the backend runs on save. This is what lets a PC
+  // extending a grace period see the resulting cut-off date before saving.
+  // See the Admin modal for the full rationale on the generated mirror.
+  const liveSubscription = useWatch({
+    control: form.control,
+    name: ['SeekSubStartDate', 'SeekSubDurDays', 'GraceDuration'],
+  });
+
+  // SPR-21-41-019: the governing plan's validityPeriod is the authority for Sub
+    // Duration Days, and the server overwrites whatever is submitted. Read-only
+    // when the plan is the source so nobody can type a value that gets discarded.
+    const durationIsPlanDriven = getField('SeekSubDurDaysFromPlan') === true;
+
+    const derivedSubscription = useMemo(() => {
+    const [startDate, durationDays, graceDays] = liveSubscription ?? [];
+    const computed = calculateCampaignFields({
+      SeekSubStartDate: startDate ?? undefined,
+      createdAt: getField('createdAt') ?? undefined,
+      SeekSubDurDays: durationDays ?? undefined,
+      GraceDuration: graceDays ?? undefined,
+    });
+    return {
+      SeekSubEndDate: computed.SeekSubEndDate ?? '',
+      CampaignEnd: computed.CampaignEnd ?? '',
+      SeekSubToExpireDays: computed.SeekSubToExpireDays ?? 0,
+      SeekSubExpired: computed.SeekSubExpired ?? '',
+    };
+  }, [liveSubscription, client]);
+
+  // SPR-21-41-020 AC1: drives the status toggle's label so it reads Active or
+    // Inactive to match the current state.
+    const activeValue = useWatch({ control: form.control, name: 'Active' });
+    const isActive = Boolean(activeValue);
+
+    // Submit handler
   const onSubmit = (values: CampaignFormValues) => {
     // Build a diff: only fields whose value changed relative to the original client data
     const updatedData = Object.entries(values).reduce(
@@ -248,21 +349,86 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
     }
   };
 
+
+  const fullName =
+    getField('Full_Name') ||
+    [getField('First_Name'), getField('Middle_Name'), getField('Last_Name')]
+      .filter(Boolean)
+      .join(' ');
+
+  // SPR-21-41-015: three-row grid so the title and the Update/Cancel footer
+  // stay pinned while only the section body scrolls. `Form` is FormProvider
+  // (it renders no DOM element), and the single real <form> uses
+  // display:contents so the three rows remain direct grid children.
+  //
+  // SPR-21-01: sections, their order and their column counts follow the
+  // "Edit Client Info Modal on Campaign Mgt" design HTML.
   return (
-    <DialogContent className="h-[70vh] overflow-auto">
+    <DialogContent className="max-h-[calc(100vh-64px)] max-w-[760px] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-primary">
           <PencilLine size={18} />
           Edit Client&apos;s Info
         </DialogTitle>
         <DialogDescription>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-8 text-black"
-            >
-              <SectionLabel>Personal Information</SectionLabel>
-              <div className="flex flex-col sm:flex-row gap-3">
+          {fullName ? `${fullName} · ` : ''}Client {client.id} · Greyed fields
+          are system-set and cannot be changed here
+        </DialogDescription>
+      </DialogHeader>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            const [firstField, firstError] = Object.entries(errors)[0] ?? [];
+            toast.error(
+              firstField
+                ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
+                : 'Please fix the highlighted fields before updating.'
+            );
+          })}
+          className="contents text-black"
+        >
+          <div className="min-h-0 space-y-5 overflow-y-auto overflow-x-hidden py-2 pr-1">
+            {/* Every Identity field is derived or audited server-side, so it
+                is displayed read-only and never reaches the update payload. */}
+            <section>
+              <SectionLabel tag="system">Identity</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3">
+                <LockedField
+                  field="CustomerId"
+                  label="Customer ID"
+                  value={displayValue(getField('CustomerId'))}
+                />
+                <LockedField
+                  field="id"
+                  label="Client ID"
+                  value={displayValue(client.id)}
+                />
+                <LockedField
+                  field="Full_Name"
+                  label="Full Name"
+                  value={displayValue(getField('Full_Name'))}
+                />
+                <LockedField
+                  field="createdAt"
+                  label="Created At"
+                  value={displayDate(getField('createdAt'))}
+                />
+                <LockedField
+                  field="updatedAt"
+                  label="Updated At"
+                  value={displayDate(getField('updatedAt'))}
+                />
+                <LockedField
+                  field="updateBy"
+                  label="Updated By"
+                  value={displayValue(getField('updateBy') ?? getField('updatedBy'))}
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Client</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
                 <FormField
                   control={form.control}
                   name="First_Name"
@@ -271,7 +437,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Itoro"
+                          placeholder="First Name"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -288,7 +454,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormLabel>Middle Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Itoro"
+                          placeholder="Middle Name"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -297,9 +463,6 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="Last_Name"
@@ -308,9 +471,41 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Doe"
+                          placeholder="Last Name"
                           {...field}
                           value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="Country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          name="Country"
+                          placeholder="Country of Residence"
+                          className="w-full"
+                          options={countries}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Country', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Country') &&
+                              countries.find(
+                                (c) => c.value === form.getValues('Country')
+                              )) ||
+                            null
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -324,8 +519,43 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     <FormItem>
                       <FormLabel>Plan</FormLabel>
                       <FormControl>
+                        {/* SPR-21-41-016 AC3: dropdown bound to the central
+                            Plan list. Not creatable, so free-text entry is
+                            blocked. */}
+                        <SearchSelect
+                          name="Plan"
+                          placeholder="No plan"
+                          className="w-full"
+                          options={planOptions}
+                          onChange={(e: SingleValue<OptionType>) => {
+                            if (e) {
+                              form.setValue('Plan', e.value);
+                            }
+                            return false;
+                          }}
+                          onBlur={field.onBlur}
+                          value={
+                            (form.getValues('Plan') &&
+                              planOptions.find(
+                                (p) => p.value === form.getValues('Plan')
+                              )) ||
+                            null
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="Craft"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Course of Study</FormLabel>
+                      <FormControl>
                         <Input
-                          placeholder="Plan"
+                          placeholder="Course of Study"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -335,40 +565,16 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                   )}
                 />
               </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-x-5 gap-y-3">
                 <FormField
                   control={form.control}
-                  name="Alias_Email"
+                  name="Batch"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Application Email</FormLabel>
-                      <FormControl>
-                        {/* SPR-19-02-009: this now displays the real proxy
-                            mailbox (jobsite_credentials.email), not the old
-                            Alias_Email. Read-only here — it's managed
-                            through the Jobsite Credentials accept/approve
-                            flow, not editable from Campaign Management. */}
-                        <Input
-                          placeholder="Application Email"
-                          {...field}
-                          value={field.value ?? ''}
-                          disabled
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Alias_Password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel> Alias Password</FormLabel>
+                      <FormLabel>Batch</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Alias Password"
+                          placeholder="Batch"
                           {...field}
                           value={field.value ?? ''}
                         />
@@ -377,20 +583,24 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
-                  name="ReturnCount"
+                  name="TourCount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Return Count</FormLabel>
+                      <FormLabel>Tour</FormLabel>
                       <FormControl>
+                        {/* SPR-21-41-016 AC4: non-numeric keystrokes are
+                            dropped on the way in, so the field can only ever
+                            hold digits. */}
                         <Input
-                          placeholder="Return Count"
+                          inputMode="numeric"
+                          placeholder="Tour"
                           {...field}
                           value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/[^\d]/g, ''))
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -414,22 +624,49 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <SectionLabel>Plan &amp; Subscription</SectionLabel>
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <FormField
                   control={form.control}
-                  name="Assurance"
+                  name="ReturnCount"
                   render={({ field }) => (
-                    <FormItem className="w-full sm:w-[50%]">
-                      <FormLabel>Assurance</FormLabel>
+                    <FormItem>
+                      <FormLabel>Return Count</FormLabel>
                       <FormControl>
+                        {/* SPR-21-41-016 AC5: non-numeric keystrokes are
+                            dropped on the way in, so the field can only ever
+                            hold digits. */}
                         <Input
-                          type="date"
+                          inputMode="numeric"
+                          placeholder="Return Count"
                           {...field}
                           value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/[^\d]/g, ''))
+                          }
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Credentials</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
+                  name="Alias_Email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proxy Email</FormLabel>
+                      <FormControl>
+                        {/* SPR-19-02-009: this displays the real proxy mailbox
+                            (jobsite_credentials.email), not the old Alias_Email.
+                            Read-only — managed through the Jobsite Credentials
+                            accept/approve flow, not editable from Campaign
+                            Management. */}
+                        <LockedField value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -437,9 +674,32 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                 />
                 <FormField
                   control={form.control}
+                  name="Alias_Password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proxy Password</FormLabel>
+                      <FormControl>
+                        <MaskedPassword
+                          name="Alias_Password"
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </section>
+
+            <section>
+              <SectionLabel>Subscription</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3">
+                <FormField
+                  control={form.control}
                   name="SeekSubStartDate"
                   render={({ field }) => (
-                    <FormItem className="w-full sm:w-[50%]">
+                    <FormItem>
                       <FormLabel>Subscription Start Date</FormLabel>
                       <FormControl>
                         <DatePicker
@@ -459,16 +719,13 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                                 : null
                             );
                           }}
-                          className="w-full"
+                          className="h-9 w-full"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <FormField
                   control={form.control}
                   name="SeekSubDurDays"
@@ -479,12 +736,25 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                         <Input
                           type="number"
                           placeholder="Sub Duration Days"
-                          value={field.value as number}
+                          value={field.value ?? ''}
+                          readOnly={durationIsPlanDriven}
+                          aria-readonly={durationIsPlanDriven}
+                          className={
+                            durationIsPlanDriven
+                              ? 'bg-muted/60 text-muted-foreground'
+                              : undefined
+                          }
                           onChange={(e) =>
                             field.onChange(Number(e.target.value))
                           }
                         />
                       </FormControl>
+                      {durationIsPlanDriven && (
+                        <p className="text-xs text-muted-foreground">
+                          From the client&apos;s plan. Editable only when they
+                          have no plan period to derive it from.
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -498,7 +768,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="Grace Duration"
+                          placeholder="Days"
                           {...field}
                           value={field.value ?? ''}
                           onChange={(e) =>
@@ -510,21 +780,63 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <FormField
+                  control={form.control}
+                  name="Assurance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assurance</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="SeekWeeklyMax"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weekly Max</FormLabel>
+                      <FormControl>
+                        {/* SPR-21-41-018 AC3: this was absent from the modal
+                            entirely, so there was no way to set or change it. */}
+                        <Input
+                          type="number"
+                          placeholder="Applications per week"
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? null : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="Capitalized"
                   render={({ field }) => (
-                    <FormItem className="">
+                    <FormItem>
                       <FormLabel>Capitalized</FormLabel>
                       <FormControl>
+                        {/* SPR-21-41-018 AC4: bound to the central state list
+                            in enum-options.ts, so only approved states can be
+                            chosen. Off-list legacy values are appended so they
+                            stay visible instead of silently disappearing. */}
                         <SearchSelect
                           name="Capitalized"
                           placeholder="Capitalized"
-                          className="col-span-full text-[#455A64] w-full"
-                          options={capitalizedData}
+                          className="w-full"
+                          options={capitalizedOptions}
                           onChange={(e: SingleValue<OptionType>) => {
                             if (e) {
                               form.setValue('Capitalized', e.value);
@@ -534,7 +846,7 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                           onBlur={field.onBlur}
                           value={
                             (form.getValues('Capitalized') &&
-                              capitalizedData.find(
+                              capitalizedOptions.find(
                                 (c) => c.value === form.getValues('Capitalized')
                               )) ||
                             null
@@ -545,51 +857,57 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="Country"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-[50%]">
-                      <FormLabel>Country</FormLabel>
-                      <FormControl>
-                        <SearchSelect
-                          name="Country"
-                          placeholder="Country of Residence"
-                          className="col-span-full text-[#455A64] w-full"
-                          options={countries}
-                          onChange={(e: SingleValue<OptionType>) => {
-                            if (e) {
-                              form.setValue('Country', e.value);
-                            }
-                            return false;
-                          }}
-                          onBlur={field.onBlur}
-                          value={
-                            (form.getValues('Country') &&
-                              countries.find(
-                                (c) => c.value === form.getValues('Country')
-                              )) ||
-                            null
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
-              <SectionLabel>Status &amp; Aggregators</SectionLabel>
-              <div className="flex flex-wrap gap-3">
+              {/* SPR-21-41-018 AC5: the derived subscription values, locked.
+                  They are recomputed server-side from the start date, the
+                  duration and the grace period, so editing them here would be
+                  undone on the next save. SPR-21-41-019 previews them live. */}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-x-5 gap-y-3">
+                <LockedField
+                  field="SeekSubEndDate"
+                  label="Sub End Date"
+                  value={displayDate(derivedSubscription.SeekSubEndDate)}
+                />
+                <LockedField
+                  field="CampaignEnd"
+                  label="Campaign End"
+                  value={displayDate(derivedSubscription.CampaignEnd)}
+                />
+                <LockedField
+                  field="SeekSubToExpireDays"
+                  label="Sub To Expire Days"
+                  value={displayValue(derivedSubscription.SeekSubToExpireDays)}
+                />
+                <LockedField
+                  field="SeekSubExpired"
+                  label="Sub Expired"
+                  value={displayValue(derivedSubscription.SeekSubExpired)}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                End dates and expiry are calculated from start date, duration
+                and grace
+              </p>
+            </section>
+
+            {/* SPR-21-41-020 AC1/AC2: the status toggle sits on the same row as
+                the two application dates, and its label reflects the current
+                state. The dates are written by the applicant pipeline, so they
+                stay audit data. */}
+            <section>
+              <SectionLabel>Activity</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 items-end gap-x-5 gap-y-3">
                 <FormField
                   control={form.control}
                   name="Active"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Active</FormLabel>
+                      <FormLabel>Status</FormLabel>
                       <FormControl>
-                        <Switch
-                          checked={field.value as any}
+                        <FieldSwitch
+                          label={isActive ? 'Active' : 'Inactive'}
+                          checked={isActive}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
@@ -597,193 +915,59 @@ export const EditCampaignClientModal: React.FC<EditTableModalProps> = ({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="SeekAnswerPriority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Answer Priority</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <LockedField
+                  field="First_Application"
+                  label="First Application"
+                  value={displayDate(getField('First_Application'))}
                 />
-                <FormField
-                  control={form.control}
-                  name="Seek_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Seek Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Reed_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Reed Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Jora_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Jora Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Adzuna_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>Adzuna Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="CareerOne_Aggregator"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormLabel>CareerOne Aggregator</FormLabel>
-                      <FormControl>
-                        <Switch
-                          checked={field.value as any}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <LockedField
+                  field="Last_Application"
+                  label="Last Application"
+                  value={displayDate(getField('Last_Application'))}
                 />
               </div>
+            </section>
 
-              <SectionLabel>Other Details</SectionLabel>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <FormField
-                  control={form.control}
-                  name="Batch"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Batch</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Batch"
-                          {...field}
-                          value={field.value ?? ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="Craft"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Craft</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Craft"
-                          {...field}
-                          value={field.value ?? ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
+            {/* Placement Controller assignments are edited through VACell
+                rather than as form fields, so they never enter the
+                react-hook-form payload; each assignment is saved as soon as
+                it is picked. */}
+            <section>
               <SectionLabel>Placement Controllers</SectionLabel>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="">Discovery Placement Controller</label>
-                <VACell data={client} variant="DPC" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 items-end gap-x-5 gap-y-3">
+                <div className="flex flex-col gap-2">
+                  <FormLabel>Discovery Placement Controller</FormLabel>
+                  <VACell field="VaName" data={client} variant="DPC" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <FormLabel>Vetting Placement Controller</FormLabel>
+                  <VACell field="VetName" data={client} variant="VPC" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <FormLabel>Submission Placement Controller</FormLabel>
+                  <VACell field="CompletedName" data={client} variant="SPC" />
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="">Vetting Placement Controller</label>
-                <VACell data={client} variant="VPC" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="">Submission Placement Controller</label>
-                <VACell data={client} variant="SPC" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="">Interim Discovery Placement Controller</label>
-                <VACell data={client} variant="InterimDPC" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="">Interim Submission Placement Controller</label>
-                <VACell data={client} variant="InterimSPC" />
-              </div>
-            </form>
-          </Form>
-        </DialogDescription>
-      </DialogHeader>
-
-      <DialogFooter>
-        <Button
-          variant="outline"
-          className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-          onClick={() => {
-            setDialog(null);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={() =>
-            form.handleSubmit(onSubmit, (errors) => {
-              const [firstField, firstError] = Object.entries(errors)[0] ?? [];
-              toast.error(
-                firstField
-                  ? `${humanizeFieldName(firstField)}: ${(firstError as any)?.message || 'Invalid value'}`
-                  : 'Please fix the highlighted fields before updating.'
-              );
-            })()
-          }
-        >
-          Update
-        </Button>
-      </DialogFooter>
+            </section>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <FieldLegend />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-primary/20 text-primary transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                onClick={() => {
+                  setDialog(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Update</Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </Form>
     </DialogContent>
   );
 };

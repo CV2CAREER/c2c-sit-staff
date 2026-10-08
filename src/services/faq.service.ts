@@ -5,6 +5,7 @@ import type { ApiError, ApiSuccess } from "@/types/apiResponse.types";
 import type {
   FaqArticle,
   FaqCategory,
+  FaqGap,
   SaveFaqArticlePayload,
 } from "@/types/faq.types";
 
@@ -80,7 +81,21 @@ const remove = (id: string) =>
     "Failed to delete the FAQ.",
   );
 
+const listGaps = () =>
+  request<FaqGap[]>(
+    () => axiosInstance.get(endpoints.ADMIN_FAQ_GAPS),
+    "We could not load the Gap Log.",
+  );
+
+const updateGap = (id: string, status: FaqGap["status"], faqArticleId?: string) =>
+  request<{ id: string; status: FaqGap["status"] }>(
+    () => axiosInstance.patch(endpoints.ADMIN_FAQ_GAP_BY_ID(id), { status, faqArticleId }),
+    "Failed to update the gap.",
+  );
+
 export const faqService = {
+  listGaps,
+  updateGap,
   listCategories,
   createCategory,
   listArticles,

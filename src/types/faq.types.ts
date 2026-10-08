@@ -46,3 +46,20 @@ export interface SaveFaqArticlePayload {
   botAnswerable: boolean;
   displayOrder: number;
 }
+
+/** A question a bot could not answer (Gap Log, S.ADM.12.02.IR02A). */
+export interface FaqGap {
+  id: string;
+  question: string;
+  askCount: number;
+  /** Asked by clients in the customer chatbot. */
+  clientCount: number;
+  /** Asked by admins in the staff VA. */
+  adminCount: number;
+  /** Asked by Placement Controllers in the staff VA. */
+  pcCount: number;
+  status: "open" | "converted" | "dismissed";
+  faqArticleId: string | null;
+  lastAskedAt: string;
+  createdAt: string;
+}

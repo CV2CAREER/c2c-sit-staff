@@ -3,7 +3,8 @@ import UsersTableActions from "./Actions";
 import { Switch } from "@mui/material";
 import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
-import { PreProgress } from "@/types/enum";
+import { getRoleLabel } from "@/constants/persona";
+import { PROGRESS_OPTIONS } from '@/utils/enum-options';
 import { AuditRequiredToggle, AuditFindingsInput } from "@/components/AuditFields/AuditCells";
 import PerceptionCell, { PerceptionBadge } from "@/components/PerceptionSelect/PerceptionCell";
 
@@ -35,8 +36,14 @@ export const tableColumns: GridColDef[] = [
   // { field: "lastName", headerName: "Last Name", width: 150 },
   { field: "isActive", headerName: "Active", width: 100 },
   { field: "email", headerName: "Email", width: 200 },
-  { field: "role", headerName: "Persona", width: 150 },
-  { field: "staffPerception", headerName: "Staff Perception", width: 200 },
+  {
+    field: "role",
+    headerName: "Persona",
+    width: 150,
+    valueGetter: (_value, row) => getRoleLabel(row?.role),
+    valueFormatter: (value) => (value ? String(value) : "Not Set"),
+  },
+  { field: "customerClass", headerName: "Customer Class", width: 200 },
   { field: "plan", headerName: "Plan", width: 150 },
   { field: "signUpAs", headerName: "Sign Up As", width: 160 },
   { field: "referralsCount", headerName: "Referrals", width: 120 },
@@ -186,84 +193,7 @@ export const modifyTableActionsColAndRows = (
           return (
             <UpdateSelect
               placeholder="N/A"
-              options={[
-                {
-                  label: PreProgress.SIGNEDUP,
-                  value: PreProgress.SIGNEDUP,
-                },
-                {
-                  label: PreProgress.PREFERENCEINSERTED,
-                  value: PreProgress.PREFERENCEINSERTED,
-                },
-                {
-                  label: PreProgress.UPLOADEDDOC,
-                  value: PreProgress.UPLOADEDDOC,
-                },
-                {
-                  label: 'Email Verified',
-                  value: 'Email Verified',
-                },
-                {
-                  label: 'Documents Accepted',
-                  value: 'Documents Accepted',
-                },
-                {
-                  label: 'Documents Declined',
-                  value: 'Documents Declined',
-                },
-                {
-                  label: 'CV/Resume Uplifted',
-                  value: 'CV/Resume Uplifted',
-                },
-                {
-                  label: 'Service Selected',
-                  value: 'Plan Selected',
-                },
-                {
-                  label: 'Payment Confirmed',
-                  value: 'Payment Confirmed',
-                },
-                {
-                  label: 'Login Credentials Verified',
-                  value: 'Login Credentials Verified',
-                },
-                {
-                  label: 'Sample Results Dispatched',
-                  value: 'Sample Results Dispatched',
-                },
-                {
-                  label: 'Sample Results Accepted',
-                  value: 'Sample Results Accepted',
-                },
-                {
-                  label: 'Preparatory Session Accepted',
-                  value: 'Preparatory Session Accepted',
-                },
-                {
-                  label: 'Preparatory Session Declined',
-                  value: 'Preparatory Session Declined',
-                },
-                {
-                  label: 'Application Commenced',
-                  value: 'Application Commenced',
-                },
-                {
-                  label: 'Application Hold',
-                  value: 'Application Hold',
-                },
-                {
-                  label: 'Application Expired',
-                  value: 'Application Expired',
-                },
-                {
-                  label: 'Offer Notification Received',
-                  value: 'Offer Notification Received',
-                },
-                {
-                  label: 'Campaign Ended',
-                  value: 'Campaign Ended',
-                },
-              ]}
+              options={PROGRESS_OPTIONS}
               value={params?.value}
               onValueChange={(value: any) => {
                 handleUserProgress(value, params?.row?.progress, params?.row);
@@ -294,6 +224,8 @@ export const modifyTableActionsColAndRows = (
     };
     const personaCol: GridColDef = {
       ...el,
+      valueGetter: (_value, row) => getRoleLabel(row?.role),
+      valueFormatter: (value: unknown) => (value ? String(value) : "Not Set"),
       renderCell: (params: any) => {
         const val = params?.row?.role;
         const entry = val ? roleConfig[val] : null;

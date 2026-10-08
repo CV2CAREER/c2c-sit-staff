@@ -176,6 +176,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
       queryClient.invalidateQueries({ queryKey: ["admin-fetch-plans"] });
       queryClient.invalidateQueries({ queryKey: ["admin-feature-titles"] });
       queryClient.invalidateQueries({ queryKey: ["admin-user-detail"] });
+      queryClient.invalidateQueries({ queryKey: ["users-all"] });
     },
     onError: () => {
       toast.error("Failed to upgrade user plan");
@@ -186,7 +187,8 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
     url: (params) => ADMIN_USER_PROGRESS_MILESTONE(params.userId),
     mutationKey: ["admin-user-progress-milestone"],
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+      // The table reads from useGetAllUsers ("users-all").
+      queryClient.invalidateQueries({ queryKey: ["users-all"] });
     },
     onError: () => {
       toast.error("Failed to update user progress");
@@ -521,7 +523,7 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
                 }}
                 columnBufferPx={5}
                 checkboxSelection={editMode}
-                 loading={allUsers.isLoading}
+                 loading={allUsers.isLoading || allUsers.isFetching}
                 pagination
                 pageSizeOptions={[10, 20, 50, 100]}
                 pinnedColumns={{ left: ['__check__', 'Customer Id', 'uniqueId', "actions"] }}
@@ -571,11 +573,13 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
     if (selectedUser && rows.length > 0) {
       const filteredRows = rows.filter((row: any) => row.id === selectedUser.value);
 
-      // Only update if different to prevent re-renders
+      // Only update if different to prevent re-renders. Compare the row
+      // objects, not just ids: after an edit the refetch returns the same ids
+      // with new values, and an id-only check kept showing the stale row.
       setTableData(prev => {
         const isSame =
           prev.length === filteredRows.length &&
-          prev.every((row, i) => row.id === filteredRows[i].id);
+          prev.every((row, i) => row === filteredRows[i]);
 
         return isSame ? prev : filteredRows;
       });
