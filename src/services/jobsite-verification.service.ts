@@ -342,7 +342,10 @@ export class JobsiteVerificationService {
 
     if (jobsiteId) {
       let verification = await JobsiteVerification.findOne({
-        where: { clientId, jobsiteId, country: targetCountry },
+        where: {
+          clientId,
+          jobsiteId: { [Op.iLike]: jobsiteId },
+        },
       });
 
       if (!verification) {
@@ -368,13 +371,16 @@ export class JobsiteVerificationService {
 
     // Exempt all jobsites for this client
     const configs = await JobsiteConfig.findAll({
-      where: { country: targetCountry },
+      where: getCountryMatchCondition(targetCountry),
     });
 
     const results = [];
     for (const conf of configs) {
       let verification = await JobsiteVerification.findOne({
-        where: { clientId, jobsiteId: conf.jobsiteId, country: targetCountry },
+        where: {
+          clientId,
+          jobsiteId: { [Op.iLike]: conf.jobsiteId },
+        },
       });
 
       if (!verification) {
@@ -424,7 +430,10 @@ export class JobsiteVerificationService {
 
     if (jobsiteId) {
       const verification = await JobsiteVerification.findOne({
-        where: { clientId, jobsiteId, country: targetCountry },
+        where: {
+          clientId,
+          jobsiteId: { [Op.iLike]: jobsiteId },
+        },
       });
 
       if (verification && verification.status === "exempt") {
@@ -440,7 +449,7 @@ export class JobsiteVerificationService {
 
     // Unexempt all jobsites for this client
     const verifications = await JobsiteVerification.findAll({
-      where: { clientId, country: targetCountry, status: "exempt" },
+      where: { clientId, status: "exempt" },
     });
 
     const results = [];
@@ -460,11 +469,27 @@ export class JobsiteVerificationService {
    * Retrieve active reject reasons for dropdown
    */
   async getRejectReasons() {
-    const reasons = await JobsiteRejectReason.findAll({
-      where: { isActive: true },
-      order: [["displayOrder", "ASC"], ["reason", "ASC"]],
-    });
-    return reasons;
+    try {
+      const reasons = await JobsiteRejectReason.findAll({
+        where: { isActive: true },
+        order: [["displayOrder", "ASC"], ["reason", "ASC"]],
+      });
+      if (reasons.length > 0) {
+        return reasons;
+      }
+    } catch (err) {
+      logger.warn("Could not query JobsiteRejectReason table, returning defaults:", err);
+    }
+
+    // Default presets if table is empty
+    return [
+      { id: "1", reason: "Document unreadable, blurry, or low quality", isActive: true, displayOrder: 1 },
+      { id: "2", reason: "Name on proof does not match client account", isActive: true, displayOrder: 2 },
+      { id: "3", reason: "Proof does not show completed jobsite verification", isActive: true, displayOrder: 3 },
+      { id: "4", reason: "Screenshot is missing required account or profile details", isActive: true, displayOrder: 4 },
+      { id: "5", reason: "Document is expired or invalid", isActive: true, displayOrder: 5 },
+      { id: "6", reason: "Incorrect jobsite submitted for this requirement", isActive: true, displayOrder: 6 },
+    ] as any;
   }
 
   /**
