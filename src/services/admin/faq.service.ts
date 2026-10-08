@@ -4,6 +4,16 @@ import { FaqCategory } from "@/models/v1/faq-category.model";
 import { FaqArticle, FaqArticleStatus } from "@/models/v1/faq-article.model";
 import { FAQ_ARTICLE_SEED, FAQ_CATEGORY_SEED } from "@/constants/faq.seed";
 import { getServiceLogger } from "@/utils/createLogger";
+import { SlackService } from "@/services/slack.service";
+import { getDefaultHost, getEnvironmentFromHost } from "@/utils/slack-helpers";
+import { getFrontendUrl } from "@/utils/helpers";
+import {
+  SlackChannel,
+  SlackEventType,
+  SlackNode,
+  SlackProvider,
+  SlackSeverity,
+} from "@/utils/enum";
 
 const logger = getServiceLogger("faq-service");
 
@@ -94,6 +104,41 @@ const findArticleOrThrow = async (id: string) => {
   });
   if (!article) throw new ErrorHandler("FAQ article not found", 404);
   return article;
+};
+
+/**
+ * Tell Slack that FAQ articles have landed in the Review Queue (anything not
+ * published). Fire-and-forget — a Slack outage must never block FAQ authoring.
+ */
+const notifyReviewQueue = (
+  articles: { code: string; question: string; status: string }[],
+  context: { headline: string; actor: string; byBot?: boolean },
+) => {
+  if (!articles.length) return;
+  const host = getDefaultHost();
+  const list = articles
+    .map((a) => `• *${a.code}* (${a.status === "in_review" ? "In review" : "Draft"}) — ${a.question}`)
+    .join("\n");
+  const body =
+    `📚 FAQ REVIEW QUEUE — ${context.headline}\n` +
+    `• *By:* ${context.actor}\n` +
+    `${list}\n` +
+    `<${getFrontendUrl()}/admin/communication/faq|Open the Review Queue>`;
+
+  setImmediate(() => {
+    void SlackService.notify({
+      location: getEnvironmentFromHost(host),
+      host,
+      node: SlackNode.MESSAGING,
+      provider: SlackProvider.SYSTEM,
+      severity: SlackSeverity.INFO,
+      type: context.byBot ? SlackEventType.SYSTEM_NOTIFICATION : SlackEventType.ADMIN_ACTION,
+      trigger: context.actor,
+      channel: SlackChannel.TOWN_CRIER,
+      teamMentions: "CSM",
+      body,
+    });
+  });
 };
 
 // FAQ-001, FAQ-002 … counted across soft-deleted rows so a code is never reused.
@@ -224,6 +269,7 @@ export class FaqService {
     });
 
     logger.info(`Created FAQ ${article.code} (${status}) by ${article.updatedBy}`);
+    notifyReviewQueue([article], { headline: "New FAQ added", actor: article.updatedBy });
     return serializeArticle(await findArticleOrThrow(article.id));
   }
 
@@ -257,6 +303,12 @@ export class FaqService {
     logger.info(
       `Updated FAQ ${article.code} → ${status}${wasPublished ? " (was published, now offline)" : ""} by ${article.updatedBy}`,
     );
+    if (wasPublished) {
+      notifyReviewQueue([article], {
+        headline: "Published FAQ edited — offline until re-approved",
+        actor: article.updatedBy,
+      });
+    }
     return serializeArticle(await findArticleOrThrow(article.id));
   }
 
@@ -331,6 +383,7 @@ export class FaqService {
       string,
       { status: "matched" | "pending" | "new"; code: string; answer: string | null }
     >();
+    const newDrafts: FaqArticle[] = [];
 
     for (const question of questions) {
       const key = normalizeQuestion(question);
@@ -357,10 +410,16 @@ export class FaqService {
         updatedBy: `Selection Criteria Assistant (for ${requestedBy})`,
       });
       byQuestion.set(key, draft);
+      newDrafts.push(draft);
       results.set(key, { status: "new", code: draft.code, answer: null });
       logger.info(`Added selection-criteria question to FAQ bank as draft ${draft.code}`);
     }
 
+    notifyReviewQueue(newDrafts, {
+      headline: `${newDrafts.length} new selection-criteria question(s) need an answer`,
+      actor: `VA-Bot Selection Criteria Assistant (for ${requestedBy})`,
+      byBot: true,
+    });
     return results;
   }
 
