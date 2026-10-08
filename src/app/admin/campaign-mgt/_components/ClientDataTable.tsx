@@ -765,23 +765,6 @@ const ClientDataTable: React.FC<{
           );
         },
       },
-      // SPR-21-58-001: assurance result (dropdown rendered in the `columns` memo so it can
-      // update this table's rows), plus who set it and when (server-stamped, read-only).
-      { field: 'Assurance_Status', headerName: 'Assurance', width: 190, sortable: false },
-      {
-        field: 'Assured_By',
-        headerName: 'Assured By',
-        width: 160,
-        renderCell: (params: any) => <span>{params.value || '—'}</span>,
-      },
-      {
-        field: 'Assurance_Date',
-        headerName: 'Assurance Date',
-        width: 190,
-        renderCell: (params: any) => (
-          <span>{params.value ? new Date(params.value).toLocaleString() : '—'}</span>
-        ),
-      },
       {
         field: 'CoverLetterRequired',
         headerName: 'Cover Letter',
@@ -849,6 +832,23 @@ const ClientDataTable: React.FC<{
         field: 'Timestamp_Submitted',
         headerName: 'Timestamp Submitted',
         width: 210,
+      },
+      // SPR-21-58-001: assurance result (dropdown rendered in the `columns` memo so it can
+      // update this table's rows), plus who set it and when (server-stamped, read-only).
+      { field: 'Assurance_Status', headerName: 'Assurance', width: 190, sortable: false },
+      {
+        field: 'Assured_By',
+        headerName: 'Assured By',
+        width: 160,
+        renderCell: (params: any) => <span>{params.value || '—'}</span>,
+      },
+      {
+        field: 'Assurance_Date',
+        headerName: 'Assurance Date',
+        width: 190,
+        renderCell: (params: any) => (
+          <span>{params.value ? new Date(params.value).toLocaleString() : '—'}</span>
+        ),
       },
       { field: 'Date_Advertised', headerName: 'Date Advertised', width: 200 },
       { field: 'Advertiser', headerName: 'Advertiser', width: 200 },
