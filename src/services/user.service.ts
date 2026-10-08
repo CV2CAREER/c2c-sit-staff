@@ -684,7 +684,8 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName", "email"],
+    // "id" is required — the AfterFind hook only decrypts email for rows with an id
+    attributes: ["id", "firstName", "lastName", "email"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],

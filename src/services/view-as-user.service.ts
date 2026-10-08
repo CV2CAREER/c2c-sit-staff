@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 import { User } from "../models/v1/user.model";
 import ErrorHandler from "../utils/errorHandler";
 import { fieldEncryption } from "../utils/field-encryption";
@@ -64,6 +65,8 @@ export const viewAsUserService = async (
   if (targetUser.role === Role.CLIENT || targetUser.role === Role.GUEST) {
     const token = jwt.sign(
       {
+        purpose: "view-as-user",
+        jti: randomUUID(),
         userId: targetUser.id,
         email: targetUser.email,
         role: targetUser.role,
@@ -74,11 +77,13 @@ export const viewAsUserService = async (
       { expiresIn: "5m" }
     );
 
-    const redirectUrl = `${CLIENT_APP_DOMAIN}/api/auth/view-as-user-login?token=${token}`;
+    // Customer app page that redeems the token with the customer backend
+    // for a read-only session.
+    const redirectUrl = `${CLIENT_APP_DOMAIN}/view-as-user?token=${encodeURIComponent(token)}`;
     logger.info(
       `Generated view-as-user redirect for ${requestingUserEmail} → ${targetEmail}`
     );
-    return { success: true, redirectUrl };
+    return { success: true, redirectUrl, email: targetUser.email };
   }
 
   // Internal staff re-auth flow — admin only
