@@ -4,7 +4,7 @@ import { activePcsService } from "./active-pcs.service";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { sendMail } from "../../config/sendGrid";
-import { getFrontendUrl } from "../../utils/helpers";
+import { CLIENT_APP_DOMAIN } from "../../config/env";
 import { generateUniqueFilename, uploadBufferToStorage } from "../../utils/fileUpload";
 
 const logger = getServiceLogger("queue-entry-service");
@@ -180,7 +180,7 @@ export class QueueEntryService {
             templateData: {
               name: clientName,
               changeType,
-              frontendUrl: getFrontendUrl(),
+              frontendUrl: CLIENT_APP_DOMAIN,
               currentYear: new Date().getFullYear(),
             },
           });

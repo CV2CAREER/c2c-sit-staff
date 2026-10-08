@@ -9,7 +9,7 @@ import {
   parseDate as parseCampaignDate,
 } from "../utils/campaign-calculator";
 import { sendMail } from "../config/sendGrid";
-import { TEAM_EMAIL } from "../config/env";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "../config/env";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
 import { fieldEncryption } from "../utils/field-encryption";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
@@ -215,7 +215,7 @@ const subscriptionStepMails = (ctx: StepMailContext): StepMail[] => [
     templateData: {
       name: ctx.firstName,
       plan: ctx.planTitle,
-      frontendUrl: ctx.frontendUrl,
+      frontendUrl: CLIENT_APP_DOMAIN,
       currentYear: ctx.currentYear,
     },
   },
@@ -249,7 +249,7 @@ const serviceSelectionStepMails = (ctx: StepMailContext): StepMail[] => [
     templateData: {
       name: ctx.firstName,
       plan: ctx.planTitle,
-      frontendUrl: ctx.frontendUrl,
+      frontendUrl: CLIENT_APP_DOMAIN,
       currentYear: ctx.currentYear,
     },
   },
@@ -283,8 +283,8 @@ const checkinStepMails = (weekLabel: string) => (ctx: StepMailContext): StepMail
     templateData: {
       name: ctx.firstName,
       weekLabel,
-      bookingUrl: `${ctx.frontendUrl}/dashboard/sessions/booking`,
-      frontendUrl: ctx.frontendUrl,
+      bookingUrl: `${CLIENT_APP_DOMAIN}/dashboard/sessions/booking`,
+      frontendUrl: CLIENT_APP_DOMAIN,
       currentYear: ctx.currentYear,
     },
   },
@@ -338,8 +338,8 @@ const expirationNoticeMails = (milestoneDays: number) => (
         name: ctx.firstName,
         daysLabel: clientDaysLabel,
         expiresOn,
-        renewalUrl: `${ctx.frontendUrl}/dashboard/plan-and-pricing`,
-        frontendUrl: ctx.frontendUrl,
+        renewalUrl: `${CLIENT_APP_DOMAIN}/dashboard/plan-and-pricing`,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -379,7 +379,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "campaign-launched-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -408,7 +408,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "first-application-submitted-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -446,7 +446,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "interview-milestone-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -475,8 +475,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "interview-pack-dispatched-client.ejs",
       templateData: {
         name: ctx.firstName,
-        downloadUrl: ctx.details?.downloadUrl || `${ctx.frontendUrl}/dashboard/profile`,
-        frontendUrl: ctx.frontendUrl,
+        downloadUrl: ctx.details?.downloadUrl || `${CLIENT_APP_DOMAIN}/dashboard/profile`,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -492,7 +492,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "offer-placement-recorded-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -524,7 +524,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
         decision: decisionLabel(ctx.details?.outcome),
         note: ctx.details?.note || "",
         plan: ctx.planTitle,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -543,8 +543,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateData: {
         name: ctx.firstName,
         journeySummary: ctx.journeySummary ?? [],
-        surveyUrl: `${ctx.frontendUrl}/dashboard/exit-survey`,
-        frontendUrl: ctx.frontendUrl,
+        surveyUrl: `${CLIENT_APP_DOMAIN}/dashboard/exit-survey`,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -575,8 +575,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateData: {
         name: ctx.firstName,
         referralLink: ctx.referralLink,
-        referralsUrl: `${ctx.frontendUrl}/dashboard/referrals`,
-        frontendUrl: ctx.frontendUrl,
+        referralsUrl: `${CLIENT_APP_DOMAIN}/dashboard/referrals`,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -595,8 +595,8 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
         name: ctx.firstName,
         plan: ctx.planTitle,
         tiers: ctx.pricingTiers ?? [],
-        pricingUrl: `${ctx.frontendUrl}/dashboard/plan-and-pricing`,
-        frontendUrl: ctx.frontendUrl,
+        pricingUrl: `${CLIENT_APP_DOMAIN}/dashboard/plan-and-pricing`,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -608,7 +608,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "profile-alignment-confirmed-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -620,7 +620,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "campaign-readiness-confirmed-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -630,7 +630,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "campaign-launch-ready-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -646,7 +646,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "cv-variant-dispatched-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -672,7 +672,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateName: "cv-variant-uploaded-client.ejs",
       templateData: {
         name: ctx.firstName,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -688,7 +688,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
       templateData: {
         name: ctx.firstName,
         dateTime: formatDateTime(ctx.details?.scheduledAt),
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
       attachments: ctx.details?.scheduledAt
@@ -707,7 +707,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
           ? formatDateTime(ctx.details.scheduledAt)
           : undefined,
         note: ctx.details?.note,
-        frontendUrl: ctx.frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
         currentYear: ctx.currentYear,
       },
     },
@@ -729,7 +729,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
               ? formatDateTime(ctx.details.scheduledAt)
               : undefined,
             note: ctx.details?.note,
-            frontendUrl: ctx.frontendUrl,
+            frontendUrl: CLIENT_APP_DOMAIN,
             currentYear: ctx.currentYear,
           },
         },
@@ -744,7 +744,7 @@ const STEP_MAILS: Record<string, (ctx: StepMailContext) => StepMail[]> = {
         templateData: {
           name: ctx.firstName,
           dateTime: formatDateTime(scheduledAt),
-          frontendUrl: ctx.frontendUrl,
+          frontendUrl: CLIENT_APP_DOMAIN,
           currentYear: ctx.currentYear,
         },
         attachments: scheduledAt ? [preferenceReviewIcs(scheduledAt)] : [],
