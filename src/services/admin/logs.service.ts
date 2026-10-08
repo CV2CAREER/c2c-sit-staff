@@ -167,8 +167,6 @@ export class LogsService {
           type: type,
           summary: data.summary
         });
-
-        logger.debug(`📝 Logged: ${data.title}`);
       } catch (error: any) {
         logger.warn(`⚠️ Log write failed: ${error.message}`);
       }

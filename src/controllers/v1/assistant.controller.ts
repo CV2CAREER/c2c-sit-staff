@@ -1,3 +1,4 @@
+import { assertClientAccess } from "../../services/assistant/client-access";
 import { Request, Response } from "express";
 import { ClientsAssignedService } from "../../services/assistant/clients-assigned.service";
 
@@ -10,6 +11,22 @@ export class AssistantController {
    * GET
    * Returns assigned clients and statistics for authenticated assistant
    */
+  /**
+   * GET /client-access/:clientId — whether the signed-in staff member may open
+   * this client's page. Admins always can; PCs only for clients assigned to them.
+   */
+  static async checkClientAccess(req: Request, res: Response) {
+    try {
+      await assertClientAccess((req as any).user, String(req.params.clientId));
+      return res.status(200).json({ success: true, data: { allowed: true } });
+    } catch (error: any) {
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "We couldn't check your access to this client.",
+      });
+    }
+  }
+
   static async getClientsAssigned(req: Request, res: Response) {
     try {
       // Get authenticated user id from request (set by auth middleware)

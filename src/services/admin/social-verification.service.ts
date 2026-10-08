@@ -67,6 +67,24 @@ const summariseUser = (
   };
 };
 
+// Same completion rule the queue summariser applies: exempted users
+// count as complete; everyone else needs a captured row (verified or not)
+// for every required platform. Exported so downstream flows (e.g.
+// credential-approval auto-activation) can gate on the same definition
+// without duplicating the check inline.
+export async function isSocialVerificationCompleteForUser(userId: string): Promise<boolean> {
+  const user = await User.findByPk(userId, {
+    attributes: ["id", "socialVerificationExempt"],
+  });
+  if (!user) return false;
+  if ((user as any).socialVerificationExempt) return true;
+  const rows = await SocialVerification.findAll({
+    where: { userId },
+    attributes: ["platform"],
+  });
+  return SOCIAL_PLATFORM_SLUGS.every((p) => rows.some((r) => r.platform === p));
+}
+
 export class AdminSocialVerificationService {
   // Queue view — paginated list of users who have submitted at least one
   // social handle. `status=pending` filters to users with any un-approved

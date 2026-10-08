@@ -126,6 +126,7 @@ import cecComplaintRouterV1 from "./cec-complaint.route";
 import cecReferralPayoutRouterV1 from "./cec-referral-payout.route";
 import cecSalesOutreachRouterV1 from "./cec-sales-outreach.route";
 import cecAmbassadorScoutRouterV1 from "./cec-ambassador-scout.route";
+import jobsiteVerificationRouterV1 from "./jobsite-verification.route";
 const adminRouterV1 = Router();
 
 // Baseline role gates for routes defined directly in this file: GET reads are

@@ -117,6 +117,9 @@ import { CECComplaint } from '../models/v1/cec-complaint.model';
 import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
 import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
 import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
+import { JobsiteVerification } from '../models/v1/jobsite-verification.model';
+import { JobsiteConfig } from '../models/v1/jobsite-config.model';
+import { JobsiteRejectReason } from '../models/v1/jobsite-reject-reason.model';
 
 export const modelList = [
   User,
@@ -240,4 +243,7 @@ export const modelList = [
   CECReferralPayout,
   CECSalesOutreach,
   CECAmbassadorScout,
+  JobsiteVerification,
+  JobsiteConfig,
+  JobsiteRejectReason,
 ];

@@ -153,6 +153,8 @@ export class VaChatController {
         userId,
         jobUrl,
         type,
+        // Admins use the admin VA; assistants are Placement Controllers.
+        askedBy: (req as any).user?.role === "admin" ? "admin" : "pc",
       });
 
       return res.status(200).json({ success: true, data: result });
