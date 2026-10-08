@@ -62,8 +62,11 @@ export default function JobsiteReviewView() {
   const [exemptModalData, setExemptModalData] = useState<{
     isOpen: boolean;
     isBulk: boolean;
+    id?: string;
     clientId?: string;
     clientName?: string;
+    jobsiteId?: string;
+    country?: string;
   }>({
     isOpen: false,
     isBulk: false,
@@ -77,9 +80,9 @@ export default function JobsiteReviewView() {
   const items = listDomain.items;
   const stats = listDomain.stats;
 
-  // Real-time client-side combined filter
+  // Real-time client-side combined filter with date sorting (newest first)
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = [...items];
 
     if (statusFilter !== "all") {
       result = result.filter((item) => item.status === statusFilter);
@@ -94,6 +97,13 @@ export default function JobsiteReviewView() {
         return name.includes(q) || email.includes(q) || jobsite.includes(q);
       });
     }
+
+    // Sort newest first by submittedAt or createdAt
+    result.sort((a, b) => {
+      const timeA = new Date(a.submittedAt || (a.createdAt as any) || 0).getTime();
+      const timeB = new Date(b.submittedAt || (b.createdAt as any) || 0).getTime();
+      return timeB - timeA;
+    });
 
     return result;
   }, [items, statusFilter, searchTerm]);
@@ -166,28 +176,32 @@ export default function JobsiteReviewView() {
     }
   };
 
-  const handleConfirmExempt = async (reason: string) => {
+  const handleConfirmExempt = async (reason: string, note?: string) => {
     try {
-      if (exemptModalData.isBulk) {
-        const clientIdsToExempt = Array.from(
-          new Set(
-            filteredItems
-              .filter((item) => selectedIds.includes(item.id))
-              .map((item) => item.clientId)
-          )
-        );
+      const finalReason = note ? `${reason} (Note: ${note})` : reason;
 
-        for (const cId of clientIdsToExempt) {
-          await actions.exempt({ clientId: cId, exemptReason: reason });
+      if (exemptModalData.isBulk) {
+        const selectedItems = filteredItems.filter((item) => selectedIds.includes(item.id));
+        for (const it of selectedItems) {
+          await actions.exempt({
+            id: it.id,
+            clientId: it.clientId,
+            jobsiteId: it.jobsiteId,
+            country: it.country,
+            exemptReason: finalReason,
+          });
         }
-        toast.success("Selected clients exempted");
+        toast.success("Selected verifications exempted");
         setSelectedIds([]);
-      } else if (exemptModalData.clientId) {
+      } else if (exemptModalData.id || exemptModalData.clientId) {
         await actions.exempt({
+          id: exemptModalData.id,
           clientId: exemptModalData.clientId,
-          exemptReason: reason,
+          jobsiteId: exemptModalData.jobsiteId,
+          country: exemptModalData.country,
+          exemptReason: finalReason,
         });
-        toast.success("Client exempted");
+        toast.success(`Exempted ${exemptModalData.jobsiteId || "verification"}`);
       }
       setExemptModalData({ isOpen: false, isBulk: false });
     } catch (err: any) {
@@ -198,6 +212,7 @@ export default function JobsiteReviewView() {
   const handleRemoveExemption = async (item: JobsiteVerification) => {
     try {
       await actions.unexempt({
+        id: item.id,
         clientId: item.clientId,
         jobsiteId: item.jobsiteId,
         country: item.country,
@@ -477,7 +492,7 @@ export default function JobsiteReviewView() {
                                 onClick={() => handleRemoveExemption(item)}
                                 className="cursor-pointer text-xs font-semibold text-[#1e9ff2] hover:bg-[#eaf6fe] focus:bg-[#eaf6fe] rounded-md px-3 py-2 transition"
                               >
-                                Remove Exemption
+                                Remove exemption
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem
@@ -485,13 +500,16 @@ export default function JobsiteReviewView() {
                                   setExemptModalData({
                                     isOpen: true,
                                     isBulk: false,
+                                    id: item.id,
                                     clientId: item.clientId,
                                     clientName,
+                                    jobsiteId: item.jobsiteId,
+                                    country: item.country,
                                   })
                                 }
                                 className="cursor-pointer text-xs font-semibold text-[#14143c] hover:bg-gray-50 focus:bg-gray-50 rounded-md px-3 py-2 transition"
                               >
-                                Exempt
+                                Exempt client
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

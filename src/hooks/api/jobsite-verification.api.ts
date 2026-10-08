@@ -85,7 +85,8 @@ export function useJobsiteVerificationQueue(opts: {
 
   const exemptMutation = useMutation({
     mutationFn: async (payload: {
-      clientId: string;
+      id?: string;
+      clientId?: string;
       jobsiteId?: string;
       country?: string;
       exemptReason?: string;
@@ -101,7 +102,8 @@ export function useJobsiteVerificationQueue(opts: {
 
   const unexemptMutation = useMutation({
     mutationFn: async (payload: {
-      clientId: string;
+      id?: string;
+      clientId?: string;
       jobsiteId?: string;
       country?: string;
     }) => {
