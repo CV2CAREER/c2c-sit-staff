@@ -101,10 +101,11 @@ export const rejectJobsiteVerification = catchAsyncError(
  */
 export const exemptJobsiteVerification = catchAsyncError(
   async (req: Request, res: Response) => {
-    const { clientId, jobsiteId, country, exemptReason } = req.body;
+    const { id, clientId, jobsiteId, country, exemptReason } = req.body;
     const reviewer = req.user?.id || req.user?.email || "staff";
 
     const result = await jobsiteVerificationService.exemptVerification({
+      id,
       clientId,
       jobsiteId,
       country,
@@ -121,10 +122,11 @@ export const exemptJobsiteVerification = catchAsyncError(
  */
 export const unexemptJobsiteVerification = catchAsyncError(
   async (req: Request, res: Response) => {
-    const { clientId, jobsiteId, country } = req.body;
+    const { id, clientId, jobsiteId, country } = req.body;
     const reviewer = req.user?.id || req.user?.email || "staff";
 
     const result = await jobsiteVerificationService.unexemptVerification({
+      id,
       clientId,
       jobsiteId,
       country,
