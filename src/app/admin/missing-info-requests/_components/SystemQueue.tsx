@@ -156,6 +156,17 @@ export default function SystemQueue() {
                         {entry.resolutionNote}
                       </span>
                     )}
+                    {entry.resolutionAttachment && (
+                      <a
+                        href={entry.resolutionAttachment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={entry.resolutionAttachment.name}
+                        className="block text-[11px] font-semibold text-[#0B96D6] hover:underline"
+                      >
+                        View proof
+                      </a>
+                    )}
                   </td>
                   <td className="px-4 py-3.5">
                     {isOpen ? (

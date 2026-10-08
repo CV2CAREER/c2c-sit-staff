@@ -43,7 +43,7 @@ export const tableColumns: GridColDef[] = [
     valueGetter: (_value, row) => getRoleLabel(row?.role),
     valueFormatter: (value) => (value ? String(value) : "Not Set"),
   },
-  { field: "customerClass", headerName: "Customer Class", width: 200 },
+  { field: "staffPerception", headerName: "Staff Perception", width: 200 },
   { field: "plan", headerName: "Plan", width: 150 },
   { field: "signUpAs", headerName: "Sign Up As", width: 160 },
   { field: "referralsCount", headerName: "Referrals", width: 120 },

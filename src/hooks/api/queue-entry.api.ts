@@ -16,6 +16,8 @@ export type QueueEntry = {
   resolvedById: string | null;
   resolvedByName: string | null;
   resolutionNote: string | null;
+  /** Optional proof (image or PDF) uploaded when the entry was actioned */
+  resolutionAttachment: { url: string; name: string; size: number; mimeType: string } | null;
   clientId: string | null;
   clientName: string | null;
   clientEmail: string | null;
@@ -90,11 +92,18 @@ export function useQueueEntryActions() {
   });
 
   const resolve = useMutation({
-    mutationFn: async (payload: { id: string; note?: string }) => {
-      const { id, ...data } = payload;
+    mutationFn: async (payload: { id: string; note?: string; file?: File | null }) => {
+      const { id, file, ...data } = payload;
+      // With a proof file the request is multipart; without one it stays plain JSON.
+      let body: any = data;
+      if (file) {
+        body = new FormData();
+        if (data.note) body.append("note", data.note);
+        body.append("file", file);
+      }
       const response = await axiosInstance.post<ApiSuccess<{ entry: QueueEntry }>>(
         endpoints.QUEUE_ENTRY_RESOLVE(id),
-        data,
+        body,
       );
       return response.data.data.entry;
     },

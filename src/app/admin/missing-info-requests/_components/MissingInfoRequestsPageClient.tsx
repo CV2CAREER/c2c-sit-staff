@@ -5,30 +5,36 @@ import {
   useOutstandingRequests,
   useRequestStats,
   useBulkReminder,
+  useResolveRequest,
   useRequestResponses,
   OutstandingRequest,
+  RequestStats,
 } from "@/hooks/api/missing-info-template.api";
 import AgeIndicator from "./AgeIndicator";
 import BulkReminderModal from "./BulkReminderModal";
 import ViewResponsesModal from "./ViewResponsesModal";
+import ResolveRequestModal from "./ResolveRequestModal";
 import EmptyState from "./EmptyState";
 import StaffQueue from "./StaffQueue";
 import SystemQueue from "./SystemQueue";
 import { useQueueEntries } from "@/hooks/api/queue-entry.api";
 
-const AGE_FILTERS = [
-  { key: "", label: "All pending" },
-  { key: "3", label: ">3 days" },
-  { key: "7", label: ">7 days" },
+// One filter group, one active button. Counts come from the stats endpoint; "age" keys filter the
+// outstanding list by how long ago the request was sent.
+type FilterKey = "" | "pending" | "viewed" | "in_progress" | "submitted" | "age3" | "age7";
+
+const FILTERS: { key: FilterKey; label: string; count: (s: RequestStats) => number }[] = [
+  { key: "", label: "All outstanding", count: (s) => s.outstanding },
+  { key: "pending", label: "Pending", count: (s) => s.pending },
+  { key: "viewed", label: "Viewed", count: (s) => s.viewed },
+  { key: "in_progress", label: "In progress", count: (s) => s.in_progress },
+  { key: "submitted", label: "Submitted", count: (s) => s.submitted },
+  { key: "age3", label: ">3 days", count: (s) => s.olderThan3 },
+  { key: "age7", label: ">7 days", count: (s) => s.olderThan7 },
 ];
 
-const STATUS_FILTERS = [
-  { key: "", label: "All requests" },
-  { key: "pending", label: "Pending" },
-  { key: "viewed", label: "Viewed" },
-  { key: "in_progress", label: "In progress" },
-  { key: "submitted", label: "Submitted" },
-];
+// Only these can be resolved (the backend enforces the same rule); a submitted request has nothing left to resolve.
+const OPEN_STATUSES = ["pending", "viewed", "in_progress"];
 
 type Queue = "customer" | "staff" | "system";
 
@@ -52,19 +58,20 @@ export default function MissingInfoRequestsPageClient({
     if (staffQueueFocus > 0) setQueue("staff");
   }, [staffQueueFocus]);
   const [search, setSearch] = useState("");
-  const [ageFilter, setAgeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [filter, setFilter] = useState<FilterKey>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [viewResponsesId, setViewResponsesId] = useState<string | null>(null);
 
-  const { data: requests, pagination, isLoading } = useOutstandingRequests({
-    age: ageFilter || undefined,
-    status: statusFilter || undefined,
+  const { data: requests, pagination, isLoading, refetch: refetchRequests } = useOutstandingRequests({
+    age: filter === "age3" ? "3" : filter === "age7" ? "7" : undefined,
+    status: filter && !filter.startsWith("age") ? filter : undefined,
   });
 
   const { stats } = useRequestStats();
   const { sendBulkReminder, isSending } = useBulkReminder();
+  const { resolveRequest, isResolving } = useResolveRequest();
+  const [resolveTarget, setResolveTarget] = useState<OutstandingRequest | null>(null);
   // Same query key StaffQueue uses — one fetch shared by pill and table.
   const { entries: staffEntries } = useQueueEntries("staff");
   const { entries: systemEntries } = useQueueEntries("system");
@@ -118,16 +125,24 @@ export default function MissingInfoRequestsPageClient({
     }
   };
 
-  const handleResend = async (req: OutstandingRequest) => {
+  // The Resolve button only opens the confirmation dialog; this runs when it is confirmed.
+  const confirmResolve = async () => {
+    if (!resolveTarget) return;
+    const req = resolveTarget;
     const toast = (await import("react-hot-toast")).default;
-    const toastId = toast.loading(`Resending to ${req.clientName}...`);
+    const toastId = toast.loading(`Resolving ${req.clientName}'s request...`);
     try {
-      await sendBulkReminder([req.id]);
+      await resolveRequest(req.id);
       toast.dismiss(toastId);
-      toast.success(`Reminder sent to ${req.clientName}.`);
-    } catch {
+      toast.success(`Request for ${req.clientName} resolved. No automation ran.`);
+      setResolveTarget(null);
+    } catch (e: any) {
       toast.dismiss(toastId);
-      toast.error("Failed to resend.");
+      toast.error(e?.response?.data?.message || "Failed to resolve request.");
+      if (e?.response?.status === 409) {
+        setResolveTarget(null);
+        refetchRequests();
+      }
     }
   };
 
@@ -136,7 +151,7 @@ export default function MissingInfoRequestsPageClient({
   };
 
   const queueCounts: Record<Queue, number> = {
-    customer: stats.total,
+    customer: stats.outstanding,
     staff: staffEntries.filter((e) => e.status === "open").length,
     system: systemEntries.filter((e) => e.status === "open").length,
   };
@@ -185,7 +200,7 @@ export default function MissingInfoRequestsPageClient({
             <div className="flex items-center justify-center py-20">
               <p className="text-[#9CA3AF] text-[13px]">Loading requests...</p>
             </div>
-          ) : !requests || requests.length === 0 ? (
+          ) : (!requests || requests.length === 0) && filter === "" ? (
             <EmptyState onNewRequest={() => onSwitchScreen?.("templates")} />
           ) : (
             <>
@@ -198,31 +213,17 @@ export default function MissingInfoRequestsPageClient({
                   onChange={(e) => setSearch(e.target.value)}
                   className="flex-0-0-[260px] border border-[#E5E9EF] rounded-lg px-3 py-2 text-[13px] bg-white focus:outline-none focus:border-[#0B96D6]"
                 />
-                {AGE_FILTERS.map((f) => (
+                {FILTERS.map((f) => (
                   <button
-                    key={f.key}
-                    onClick={() => setAgeFilter(f.key)}
+                    key={f.key || "all"}
+                    onClick={() => setFilter(f.key)}
                     className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
-                      ageFilter === f.key
+                      filter === f.key
                         ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
                         : "bg-white border border-[#E5E9EF] text-[#1F2937]"
                     }`}
                   >
-                    {f.label}
-                  </button>
-                ))}
-                <div className="w-px h-5 bg-[#E5E9EF]" />
-                {STATUS_FILTERS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setStatusFilter(f.key)}
-                    className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
-                      statusFilter === f.key
-                        ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
-                        : "bg-white border border-[#E5E9EF] text-[#1F2937]"
-                    }`}
-                  >
-                    {f.label}
+                    {f.label} <span className="ml-0.5 opacity-70">{f.count(stats)}</span>
                   </button>
                 ))}
                 <div className="flex-1" />
@@ -259,6 +260,13 @@ export default function MissingInfoRequestsPageClient({
                     </tr>
                   </thead>
                   <tbody>
+                    {filteredRequests.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-[13px] text-[#9CA3AF]">
+                          No requests match this filter.
+                        </td>
+                      </tr>
+                    )}
                     {filteredRequests.map((req) => {
                       const isChecked = selectedIds.has(req.id);
                       return (
@@ -290,12 +298,14 @@ export default function MissingInfoRequestsPageClient({
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleResend(req)}
-                                className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-                              >
-                                Resend
-                              </button>
+                              {OPEN_STATUSES.includes(req.status) && (
+                                <button
+                                  onClick={() => setResolveTarget(req)}
+                                  className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                                >
+                                  Resolve
+                                </button>
+                              )}
                               {req.status === "submitted" && (
                                 <button
                                   onClick={() => handleViewResponses(req.id)}
@@ -362,6 +372,14 @@ export default function MissingInfoRequestsPageClient({
         selectedRequests={filteredRequests.filter((r) => selectedIds.has(r.id))}
         onConfirm={handleBulkReminder}
         isSending={isSending}
+      />
+
+      {/* Resolve confirmation */}
+      <ResolveRequestModal
+        request={resolveTarget}
+        onClose={() => setResolveTarget(null)}
+        onConfirm={confirmResolve}
+        isResolving={isResolving}
       />
 
       {/* View Responses Modal */}

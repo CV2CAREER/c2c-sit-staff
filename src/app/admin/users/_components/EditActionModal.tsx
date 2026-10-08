@@ -45,7 +45,6 @@ import {
 } from "@/components/ui/form-field";
 import {
   COMMUNICATION_OPTIONS,
-  CUSTOMER_CLASS_OPTIONS,
   GENDER_OPTIONS,
   HERITAGE_OPTIONS,
   PLAN_OPTIONS,
@@ -89,7 +88,7 @@ const formSchema = z.object({
   currentCityOfResidence: z.string().optional(),
   signUpAs: z.string().optional(),
   plan: z.string().optional(),
-  customerClass: z.string().optional(),
+  staffPerception: z.string().optional(),
   isActive: z.boolean().optional(),
   isUserSubscribed: z.boolean().optional(),
   applicationStatus: z.string().optional(),
@@ -183,7 +182,7 @@ email: user.email,
            currentCityOfResidence: user.currentCityOfResidence ?? "",
       signUpAs: user.signUpAs ?? "",
       plan: user.plan ?? "",
-      customerClass: user.customerClass,
+      staffPerception: user.staffPerception,
       isActive: Boolean(user.isActive),
       isUserSubscribed: Boolean(user.isUserSubscribed),
       phoneNumber: user.phoneNumber,
@@ -624,24 +623,24 @@ email: user.email,
                 />
                 <FormField
                   control={form.control}
-                  name="customerClass"
+                  name="staffPerception"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Class</FormLabel>
+                      <FormLabel>Staff Perception</FormLabel>
                       <FormControl>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Customer Class" />
+                            <SelectValue placeholder="Select Staff Perception" />
                           </SelectTrigger>
                           <SelectContent>
-                            {CUSTOMER_CLASS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Advocate">Advocate</SelectItem>
+                            <SelectItem value="Satisfied">Satisfied</SelectItem>
+                            <SelectItem value="Blacklisted">Blacklisted</SelectItem>
+                            <SelectItem value="TBD">TBD</SelectItem>
                           </SelectContent>
                         </Select>
                       </FormControl>
