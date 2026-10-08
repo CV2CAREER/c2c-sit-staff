@@ -63,7 +63,7 @@ paths:
                         description: >
                           Present when target is a client/guest. Navigate the browser here to
                           establish a session in the client app.
-                        example: "https://app.cvtocareer.com/api/auth/view-as-user-login?token=eyJ..."
+                        example: "https://app.cvtocareer.com/view-as-user?token=eyJ..."
                       email:
                         type: string
                         format: email
@@ -86,7 +86,7 @@ paths:
                     statusCode: 200
                     data:
                       success: true
-                      redirectUrl: "https://app.cvtocareer.com/api/auth/view-as-user-login?token=eyJ..."
+                      redirectUrl: "https://app.cvtocareer.com/view-as-user?token=eyJ..."
                 internal_staff:
                   summary: Internal staff — re-auth required
                   value:
