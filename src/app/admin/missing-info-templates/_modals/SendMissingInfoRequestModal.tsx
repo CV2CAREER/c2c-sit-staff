@@ -23,7 +23,13 @@ interface Client {
   email: string;
   phoneNumber?: string | null;
   whatsappNumber?: string | null;
+  role?: string;
 }
+
+const clientLabel = (c: Client) =>
+  `${c.firstName ?? ""} ${c.middleName ?? ""} ${c.lastName ?? ""}`.trim() +
+  (c.role === "guest" ? " (Guest)" : "") +
+  ` — ${c.email}`;
 
 interface SendMissingInfoRequestModalProps {
   open: boolean;
@@ -116,7 +122,7 @@ export default function SendMissingInfoRequestModal({
 
   const clientOptions = clients.map((c) => ({
     ...c,
-    label: `${c.firstName ?? ""} ${c.middleName ?? ""} ${c.lastName ?? ""}`.trim() + ` — ${c.email}`,
+    label: clientLabel(c),
     value: c.id,
   }));
 
@@ -133,7 +139,7 @@ export default function SendMissingInfoRequestModal({
           <Label className="text-[12px] font-semibold text-[#1F2937] mt-0 mb-1.5">Client *</Label>
           <Rselect
             styles={rsStyles}
-            value={selectedClient ? { ...selectedClient, label: `${selectedClient.firstName ?? ""} ${selectedClient.middleName ?? ""} ${selectedClient.lastName ?? ""}`.trim() + ` — ${selectedClient.email}`, value: selectedClient.id } : null}
+            value={selectedClient ? { ...selectedClient, label: clientLabel(selectedClient), value: selectedClient.id } : null}
             options={clientOptions}
             getOptionLabel={(u: any) => u?.label || ""}
             getOptionValue={(u: any) => u?.value || ""}
