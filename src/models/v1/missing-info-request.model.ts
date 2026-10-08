@@ -32,6 +32,7 @@ export const MISSING_INFO_REQUEST_STATUSES = [
   "declined",
   "failed",
   "expired",
+  "resolved",
 ] as const;
 export type MissingInfoRequestStatus = (typeof MISSING_INFO_REQUEST_STATUSES)[number];
 
@@ -135,6 +136,19 @@ export class MissingInfoRequest extends Model {
   @AllowNull(true)
   @Column(DataType.DATE)
   fulfilledAt!: Date;
+
+  // Manual "Resolve" from the Outstanding Requests screen (no client submission, no email)
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  resolvedById!: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  resolvedByName!: string | null;
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  resolvedAt!: Date | null;
 
   @AllowNull(true)
   @Column(DataType.STRING)

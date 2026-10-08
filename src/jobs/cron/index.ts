@@ -16,8 +16,9 @@ import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 import { createBlogPublishJob } from './blog-publish.job';
 import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
-import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
-import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
+// DISABLED (AI Discovery Agent): scheduled discovery runs, the daily Slack summary and the startup stale-run reaper
+// import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
+// import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
 import { createApplicationsStartedJob } from './applications-started.job';
 import { createCheckinSchedulerJob } from './checkin-scheduler.job';
 import { createOfferPlacementWatchJob } from './offer-placement-watch.job';
@@ -35,11 +36,12 @@ let jobInstances: NamedJob[] = [];
 export async function startAllCronJobs() {
   logger.info('Starting cron jobs...');
 
-  // Reap any discovery runs orphaned by a previous server restart. This is
-  // async but intentionally awaited so the scheduler starts clean.
-  await reapStaleRunsOnStartup().catch((err: any) => {
-    logger.error(`Startup stale-run reaper failed: ${err.message}`);
-  });
+  // DISABLED (AI Discovery Agent): startup stale-run reaper
+  // // Reap any discovery runs orphaned by a previous server restart. This is
+  // // async but intentionally awaited so the scheduler starts clean.
+  // await reapStaleRunsOnStartup().catch((err: any) => {
+  //   logger.error(`Startup stale-run reaper failed: ${err.message}`);
+  // });
 
   jobInstances = [
     { name: 'Token Clean Up Job', task: createTokenCleanUpJob() },
@@ -72,14 +74,15 @@ export async function startAllCronJobs() {
       name: 'Missing Info Expiry Job',
       task: createMissingInfoExpiryJob(),
     },
-    {
-      name: 'Discovery Schedule Job',
-      task: createDiscoveryScheduleJob(),
-    },
-    {
-      name: 'Discovery Daily Summary Job',
-      task: createDiscoveryDailySummaryJob(),
-    },
+    // DISABLED (AI Discovery Agent): Discovery Schedule Job (every 5 min) and Discovery Daily Summary Job (23:55, Slack)
+    // {
+    //   name: 'Discovery Schedule Job',
+    //   task: createDiscoveryScheduleJob(),
+    // },
+    // {
+    //   name: 'Discovery Daily Summary Job',
+    //   task: createDiscoveryDailySummaryJob(),
+    // },
     // SPR-21-13-003 — derives the applications_started journey tick from the
     // shared `applications` table (written by the external extractor); runs on
     // every environment so IAT exercises the same path prod will.

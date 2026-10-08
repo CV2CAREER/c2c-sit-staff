@@ -31,6 +31,13 @@ export const getRequestStats = catchAsyncError(async (req: any, res: Response) =
   return res.apiSuccess(stats, "Stats fetched", 200);
 });
 
+export const resolveRequest = catchAsyncError(async (req: any, res: Response) => {
+  const { id } = req.params;
+  logger.info(`Resolve request triggered by: ${req.user?.email ?? "unknown"}, request: ${id}`);
+  const result = await MissingInfoRequestStaffService.resolveRequest(id, req.user);
+  return res.apiSuccess(result, "Request resolved", 200);
+});
+
 export const getRequestResponses = catchAsyncError(async (req: any, res: Response) => {
   const { id } = req.params;
   logger.info(`Fetching responses for request ${id}`);

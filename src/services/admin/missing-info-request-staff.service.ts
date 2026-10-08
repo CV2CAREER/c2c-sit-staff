@@ -248,6 +248,11 @@ export class MissingInfoRequestStaffService {
     } else {
       where.status = { [Op.in]: ["pending", "viewed", "in_progress"] };
     }
+    // "Older than N days" filter (">3 days" / ">7 days" in the UI)
+    const olderThanDays = filters?.age ? parseInt(filters.age, 10) : NaN;
+    if (Number.isFinite(olderThanDays) && olderThanDays > 0) {
+      where.createdAt = { [Op.lt]: new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000) };
+    }
 
     const page = filters?.page || 1;
     const limit = filters?.limit || 50;
@@ -298,7 +303,7 @@ export class MissingInfoRequestStaffService {
   static async getRequestStats() {
     const [all, templateCount] = await Promise.all([
       MissingInfoRequest.findAll({
-        attributes: ["status"],
+        attributes: ["status", "createdAt"],
       }),
       MissingInfoTemplate.count({ where: { status: "published" } }),
     ]);
@@ -308,13 +313,26 @@ export class MissingInfoRequestStaffService {
       viewed: 0,
       in_progress: 0,
       submitted: 0,
+      resolved: 0,
+      // outstanding = what the Customer list shows by default; the age counts are over that same set
+      outstanding: 0,
+      olderThan3: 0,
+      olderThan7: 0,
       total: all.length,
       templateCount,
     };
 
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
     all.forEach((req: any) => {
       if (req.status in stats) {
         (stats as any)[req.status]++;
+      }
+      if (["pending", "viewed", "in_progress"].includes(req.status)) {
+        stats.outstanding++;
+        const age = now - new Date(req.createdAt).getTime();
+        if (age > 3 * dayMs) stats.olderThan3++;
+        if (age > 7 * dayMs) stats.olderThan7++;
       }
     });
 
@@ -607,6 +625,30 @@ export class MissingInfoRequestStaffService {
         responseCount: counts[req.id] || 0,
       };
     });
+  }
+
+  /**
+   * Manual resolve of an outstanding customer request (the Customer-queue counterpart of the
+   * Staff queue "Resolve"). Nothing is sent to the client and no automation runs.
+   */
+  static async resolveRequest(id: string, user: any) {
+    const request = await MissingInfoRequest.findByPk(id);
+    if (!request) {
+      throw new ErrorHandler("Request not found", 404);
+    }
+    if (!["pending", "viewed", "in_progress"].includes(request.status)) {
+      throw new ErrorHandler("Only outstanding requests can be resolved", 409);
+    }
+
+    const staffName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || user?.email || "Unknown";
+    await request.update({
+      status: "resolved",
+      resolvedById: user?.id || "unknown",
+      resolvedByName: staffName,
+      resolvedAt: new Date(),
+    });
+
+    return { id: request.id, status: "resolved", resolvedByName: staffName };
   }
 
   static async cancelRequest(id: string, user: any, host?: string, protocol?: string) {

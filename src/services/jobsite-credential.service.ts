@@ -19,7 +19,7 @@ import { User } from "../models/v1/user.model";
 import { Credentials } from "../models/v1/credentials.model";
 import { Plan } from "../models/v1/plan.model";
 import { SlackService } from "./slack.service";
-import { PROD_FRONTEND_URL, TEAM_EMAIL } from "../config/env";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "../config/env";
 import { activateCoralPlan, activateEmeraldPlan } from "./admin-plan.service";
 import { isSocialVerificationCompleteForUser } from "./admin/social-verification.service";
 import { Partner } from "../models/v1/partner.model";
@@ -121,7 +121,7 @@ async function sendSubmittedNotifications(
   credential: JobsiteCredential,
   client: User,
 ): Promise<void> {
-  const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+  const frontendUrl = CLIENT_APP_DOMAIN;
   const currentYear = new Date().getFullYear();
   const clientEmail = await resolveClientEmail(client);
 
@@ -710,7 +710,7 @@ async function sendActiveNotifications(
   host: string,
 ): Promise<void> {
   const client = (credential as any).client as User;
-  const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+  const frontendUrl = CLIENT_APP_DOMAIN;
   const currentYear = new Date().getFullYear();
   const clientEmail = await resolveClientEmail(client);
 
@@ -848,7 +848,7 @@ async function sendRejectedNotifications(
   note: string | undefined,
 ): Promise<void> {
   const client = (credential as any).client as User;
-  const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+  const frontendUrl = CLIENT_APP_DOMAIN;
   const currentYear = new Date().getFullYear();
   const clientEmail = await resolveClientEmail(client);
 

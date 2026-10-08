@@ -25,11 +25,11 @@ import { EmailTestSendLog } from '../models/v1/email-test-send-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
-import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
-import { DiscoveryJob } from '../models/v1/discovery-job.model';
-import { DiscoveryMatch } from '../models/v1/discovery-match.model';
-import { DiscoveryRun } from '../models/v1/discovery-run.model';
-import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
+// import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+// import { DiscoveryJob } from '../models/v1/discovery-job.model';
+// import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+// import { DiscoveryRun } from '../models/v1/discovery-run.model';
+// import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 import { CECDailyLog } from '../models/v1/cec-daily-log.model';
 import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
 import { CECComplaint } from '../models/v1/cec-complaint.model';
@@ -99,11 +99,11 @@ export const connectDB = async (): Promise<void> => {
         // table so admin BE boots cleanly regardless of whether customer BE
         // ran first. Remove after first deploy.
         await SocialVerification.sync({ force: false });
-        await DiscoverySourceRegister.sync({ force: false });
-        await DiscoveryJob.sync({ force: false });
-        await DiscoveryMatch.sync({ force: false });
-        await DiscoveryRun.sync({ force: false });
-        await DiscoverySchedule.sync({ force: false });
+        // await DiscoverySourceRegister.sync({ force: false });
+        // await DiscoveryJob.sync({ force: false });
+        // await DiscoveryMatch.sync({ force: false });
+        // await DiscoveryRun.sync({ force: false });
+        // await DiscoverySchedule.sync({ force: false });
         await CECDailyLog.sync({ force: false });
         await CECIssueBurndown.sync({ force: false });
         await CECComplaint.sync({ force: false });

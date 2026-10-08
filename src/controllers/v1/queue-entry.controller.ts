@@ -1,4 +1,6 @@
+import fs from "fs/promises";
 import { Request, Response } from "express";
+import formidable, { type File as FormidableFile } from "formidable";
 import catchAsyncError from "../../utils/catchAsyncError";
 import { queueEntryService } from "../../services/admin/queue-entry.service";
 import { QUEUE_ENTRY_QUEUES, QueueEntryQueue } from "../../models/v1/queue-entry.model";
@@ -57,9 +59,54 @@ export const assignQueueEntry = catchAsyncError(async (req: Request, res: Respon
   return res.apiSuccess({ entry }, "Queue entry assigned", 200);
 });
 
-/** POST /api/v1/queue-entries/:id/resolve  { note? } */
+const PROOF_MAX_BYTES = 10 * 1024 * 1024;
+const PROOF_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "application/pdf"]);
+
+const parseProofForm = (req: Request) =>
+  new Promise<{ fields: formidable.Fields; files: formidable.Files }>((resolve, reject) => {
+    formidable({ keepExtensions: true, maxFiles: 1, maxFileSize: PROOF_MAX_BYTES }).parse(req, (err, fields, files) =>
+      err ? reject(err) : resolve({ fields, files }),
+    );
+  });
+
+/** POST /api/v1/queue-entries/:id/resolve  { note? }  or multipart { note, file? } (proof: image or PDF, max 10 MB) */
 export const resolveQueueEntry = catchAsyncError(async (req: Request, res: Response) => {
-  const note = bodyValue(req.body, "note");
-  const entry = await queueEntryService.resolveEntry(req.params.id, req.user, note);
+  let note: string | undefined;
+  let file: { buffer: Buffer; name: string; mimeType: string } | null = null;
+
+  if ((req.headers["content-type"] || "").includes("multipart/form-data")) {
+    let parsed;
+    try {
+      parsed = await parseProofForm(req);
+    } catch (e: any) {
+      const tooBig = e?.code === 1009 || /maxFileSize/i.test(e?.message || "");
+      return res.apiError(new ErrorHandler(tooBig ? "The proof file must be 10 MB or smaller" : "Could not read the upload", 400));
+    }
+    const rawNote = parsed.fields.note;
+    note = (Array.isArray(rawNote) ? rawNote[0] : rawNote)?.toString().trim();
+    const upload = ([] as FormidableFile[]).concat((parsed.files.file as any) || [])[0];
+    if (upload) {
+      try {
+        const mimeType = upload.mimetype || "";
+        if (!PROOF_TYPES.has(mimeType)) {
+          return res.apiError(new ErrorHandler("The proof must be a PNG, JPG, WEBP image or a PDF", 400));
+        }
+        if (upload.size > PROOF_MAX_BYTES) {
+          return res.apiError(new ErrorHandler("The proof file must be 10 MB or smaller", 400));
+        }
+        file = {
+          buffer: await fs.readFile(upload.filepath),
+          name: upload.originalFilename || upload.newFilename || "proof",
+          mimeType,
+        };
+      } finally {
+        await fs.unlink(upload.filepath).catch(() => undefined);
+      }
+    }
+  } else {
+    note = bodyValue(req.body, "note");
+  }
+
+  const entry = await queueEntryService.resolveEntry(req.params.id, req.user, note, file);
   return res.apiSuccess({ entry }, "Queue entry resolved", 200);
 });

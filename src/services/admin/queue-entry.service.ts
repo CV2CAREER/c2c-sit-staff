@@ -4,7 +4,8 @@ import { activePcsService } from "./active-pcs.service";
 import ErrorHandler from "../../utils/errorHandler";
 import { getServiceLogger } from "../../utils/createLogger";
 import { sendMail } from "../../config/sendGrid";
-import { getFrontendUrl } from "../../utils/helpers";
+import { CLIENT_APP_DOMAIN } from "../../config/env";
+import { generateUniqueFilename, uploadBufferToStorage } from "../../utils/fileUpload";
 
 const logger = getServiceLogger("queue-entry-service");
 
@@ -128,6 +129,7 @@ export class QueueEntryService {
     id: string,
     user: AuthUser,
     note?: string,
+    file?: { buffer: Buffer; name: string; mimeType: string } | null,
   ): Promise<QueueEntry> {
     const entry = await QueueEntry.findByPk(id);
     if (!entry) {
@@ -148,6 +150,15 @@ export class QueueEntryService {
     entry.resolvedById = (user as any)?.id || "unknown";
     entry.resolvedByName = displayName(user);
     if (trimmed) entry.resolutionNote = trimmed;
+    // Optional proof: uploaded only after every check above passed, and before the save, so a
+    // failed upload leaves the entry open instead of half-resolved.
+    if (file) {
+      const uploaded = await uploadBufferToStorage(file.buffer, generateUniqueFilename(file.name), {
+        folder: `queue-proofs/${id}`,
+        mimeType: file.mimeType,
+      });
+      entry.resolutionAttachment = { url: uploaded.url, name: file.name, size: uploaded.size, mimeType: uploaded.mimeType };
+    }
     await entry.save();
 
     // SPR-21-51-003 DoD: the client always receives an "actioned" confirmation
@@ -169,7 +180,7 @@ export class QueueEntryService {
             templateData: {
               name: clientName,
               changeType,
-              frontendUrl: getFrontendUrl(),
+              frontendUrl: CLIENT_APP_DOMAIN,
               currentYear: new Date().getFullYear(),
             },
           });

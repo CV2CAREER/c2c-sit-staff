@@ -105,11 +105,12 @@ import { JustCallAppointmentLog } from '../models/v1/justcall-appointment-log.mo
 import { SendGridEvent } from '../models/v1/sendgrid-event.model';
 import { SendGridEventLog } from '../models/v1/sendgrid-event-log.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
-import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
-import { DiscoveryJob } from '../models/v1/discovery-job.model';
-import { DiscoveryMatch } from '../models/v1/discovery-match.model';
-import { DiscoveryRun } from '../models/v1/discovery-run.model';
-import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
+// DISABLED (AI Discovery Agent): models are no longer registered with Sequelize (the discovery_* tables stay in the database untouched)
+// import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+// import { DiscoveryJob } from '../models/v1/discovery-job.model';
+// import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+// import { DiscoveryRun } from '../models/v1/discovery-run.model';
+// import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 import { CECDailyLog } from '../models/v1/cec-daily-log.model';
 import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
 import { CECComplaint } from '../models/v1/cec-complaint.model';
@@ -230,11 +231,12 @@ export const modelList = [
   SendGridEvent,
   SendGridEventLog,
   SocialVerification,
-  DiscoverySourceRegister,
-  DiscoveryJob,
-  DiscoveryMatch,
-  DiscoveryRun,
-  DiscoverySchedule,
+  // DISABLED (AI Discovery Agent): discovery models
+  // DiscoverySourceRegister,
+  // DiscoveryJob,
+  // DiscoveryMatch,
+  // DiscoveryRun,
+  // DiscoverySchedule,
   CECDailyLog,
   CECIssueBurndown,
   CECComplaint,

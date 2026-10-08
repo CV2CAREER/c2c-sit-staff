@@ -119,7 +119,7 @@ import clientContentRouterV1 from "./client-content.route";
 import faqRouterV1 from "./faq.route";
 import clientAllocationRouterV1 from "./client-allocation.route";
 import discoveryTrackerRouterV1 from "./discovery-tracker.route";
-import adminDiscoveryRouterV1 from "./admin-discovery.route";
+// DISABLED (AI Discovery Agent): import adminDiscoveryRouterV1 from "./admin-discovery.route";
 import cecDailyLogRouterV1 from "./cec-daily-log.route";
 import cecIssueBurndownRouterV1 from "./cec-issue-burndown.route";
 import cecComplaintRouterV1 from "./cec-complaint.route";
@@ -872,12 +872,13 @@ adminRouterV1.use(
   discoveryTrackerRouterV1,
 );
 
-adminRouterV1.use(
-  "/discovery",
-  checkBlacklistedTokens,
-  isUserAuthenticated,
-  adminDiscoveryRouterV1,
-);
+// DISABLED (AI Discovery Agent): route /api/v1/admin/discovery
+// adminRouterV1.use(
+//   "/discovery",
+//   checkBlacklistedTokens,
+//   isUserAuthenticated,
+//   adminDiscoveryRouterV1,
+// );
 
 adminRouterV1.use("/cec/daily-log", checkBlacklistedTokens, isUserAuthenticated, cecDailyLogRouterV1);
 adminRouterV1.use("/cec/issue-burndown", checkBlacklistedTokens, isUserAuthenticated, cecIssueBurndownRouterV1);
