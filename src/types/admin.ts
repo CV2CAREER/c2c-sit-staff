@@ -17,7 +17,6 @@ export type UsersQueriedDataType = {
   gender: "Female" | "Male" | "Prefer Not to Say" | undefined;
   currentCityOfResidence: string;
   referralsCount: number;
-  customerClass: string;
   staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
