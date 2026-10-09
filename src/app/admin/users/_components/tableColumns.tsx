@@ -3,7 +3,10 @@ import UsersTableActions from "./Actions";
 import { Switch } from "@mui/material";
 import Link from "next/link";
 import { UpdateSelect } from "@/components/AdminUsersComponent/filter-select";
-import { PreProgress } from "@/types/enum";
+import { getRoleLabel } from "@/constants/persona";
+import { PROGRESS_OPTIONS } from '@/utils/enum-options';
+import { AuditRequiredToggle, AuditFindingsInput } from "@/components/AuditFields/AuditCells";
+import PerceptionCell, { PerceptionBadge } from "@/components/PerceptionSelect/PerceptionCell";
 
 /**
  * @title Table Columns
@@ -26,13 +29,21 @@ export const tableColumns: GridColDef[] = [
     },
     width: 230,
   },
-  { field: "firstName", headerName: "First Name", width: 150 },
-  { field: "middleName", headerName: "Middle Name", width: 150 },
-  { field: "lastName", headerName: "Last Name", width: 150 },
+  // SPR-21-02-002: First/Middle/Last Name columns removed — Full Name is the
+  // single name column; values stay in the row data.
+  // { field: "firstName", headerName: "First Name", width: 150 },
+  // { field: "middleName", headerName: "Middle Name", width: 150 },
+  // { field: "lastName", headerName: "Last Name", width: 150 },
   { field: "isActive", headerName: "Active", width: 100 },
   { field: "email", headerName: "Email", width: 200 },
-  { field: "role", headerName: "Persona", width: 150 },
-  { field: "customerClass", headerName: "Customer Class", width: 200 },
+  {
+    field: "role",
+    headerName: "Persona",
+    width: 150,
+    valueGetter: (_value, row) => getRoleLabel(row?.role),
+    valueFormatter: (value) => (value ? String(value) : "Not Set"),
+  },
+  { field: "staffPerception", headerName: "Staff Perception", width: 200 },
   { field: "plan", headerName: "Plan", width: 150 },
   { field: "signUpAs", headerName: "Sign Up As", width: 160 },
   { field: "referralsCount", headerName: "Referrals", width: 120 },
@@ -79,6 +90,26 @@ export const tableColumns: GridColDef[] = [
   { field: "progress", headerName: "Progress", width: 150 },
   { field: "createdAt", headerName: "Created At", width: 180 },
   { field: "updatedBy", headerName: "Updated By", width: 150 },
+  { field: "updatedAt", headerName: "Updated At", width: 180 },
+  // SPR-21-33-001: audit columns, always last
+  {
+    field: "auditRequired",
+    headerName: "Audit Required",
+    width: 150,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditRequiredToggle target="user" rowId={params.row.id} value={params.row.auditRequired} />
+    ),
+  },
+  {
+    field: "auditFindings",
+    headerName: "Audit Findings",
+    width: 280,
+    sortable: false,
+    renderCell: (params: any) => (
+      <AuditFindingsInput target="user" rowId={params.row.id} value={params.row.auditFindings} />
+    ),
+  },
 ];
 
 /**
@@ -136,6 +167,26 @@ export const modifyTableActionsColAndRows = (
       return [...acc, fullNameEl]
     }
 
+    // SPR-21-33-002: Staff Perception can be changed straight from the grid in Edit mode
+    if (el.field === "staffPerception") {
+      const perceptionEl: GridColDef = {
+        ...el,
+        editable: false,
+        // Plain text normally; the dropdown only appears while Edit mode is on
+        renderCell: (params) =>
+          isVisible ? (
+            <PerceptionCell
+              userId={params.row.id}
+              field="staffPerception"
+              value={params.value}
+            />
+          ) : (
+            <PerceptionBadge value={params.value} />
+          ),
+      };
+      return [...acc, perceptionEl];
+    }
+
     if (el.field.toLowerCase() === "progress"){
       const progress: GridColDef = {
         ...el,
@@ -143,84 +194,7 @@ export const modifyTableActionsColAndRows = (
           return (
             <UpdateSelect
               placeholder="N/A"
-              options={[
-                {
-                  label: PreProgress.SIGNEDUP,
-                  value: PreProgress.SIGNEDUP,
-                },
-                {
-                  label: PreProgress.PREFERENCEINSERTED,
-                  value: PreProgress.PREFERENCEINSERTED,
-                },
-                {
-                  label: PreProgress.UPLOADEDDOC,
-                  value: PreProgress.UPLOADEDDOC,
-                },
-                {
-                  label: 'Email Verified',
-                  value: 'Email Verified',
-                },
-                {
-                  label: 'Documents Accepted',
-                  value: 'Documents Accepted',
-                },
-                {
-                  label: 'Documents Declined',
-                  value: 'Documents Declined',
-                },
-                {
-                  label: 'CV/Resume Uplifted',
-                  value: 'CV/Resume Uplifted',
-                },
-                {
-                  label: 'Service Selected',
-                  value: 'Plan Selected',
-                },
-                {
-                  label: 'Payment Confirmed',
-                  value: 'Payment Confirmed',
-                },
-                {
-                  label: 'Login Credentials Verified',
-                  value: 'Login Credentials Verified',
-                },
-                {
-                  label: 'Sample Results Dispatched',
-                  value: 'Sample Results Dispatched',
-                },
-                {
-                  label: 'Sample Results Accepted',
-                  value: 'Sample Results Accepted',
-                },
-                {
-                  label: 'Preparatory Session Accepted',
-                  value: 'Preparatory Session Accepted',
-                },
-                {
-                  label: 'Preparatory Session Declined',
-                  value: 'Preparatory Session Declined',
-                },
-                {
-                  label: 'Application Commenced',
-                  value: 'Application Commenced',
-                },
-                {
-                  label: 'Application Hold',
-                  value: 'Application Hold',
-                },
-                {
-                  label: 'Application Expired',
-                  value: 'Application Expired',
-                },
-                {
-                  label: 'Offer Notification Received',
-                  value: 'Offer Notification Received',
-                },
-                {
-                  label: 'Campaign Ended',
-                  value: 'Campaign Ended',
-                },
-              ]}
+              options={PROGRESS_OPTIONS}
               value={params?.value}
               onValueChange={(value: any) => {
                 handleUserProgress(value, params?.row?.progress, params?.row);
@@ -251,6 +225,8 @@ export const modifyTableActionsColAndRows = (
     };
     const personaCol: GridColDef = {
       ...el,
+      valueGetter: (_value, row) => getRoleLabel(row?.role),
+      valueFormatter: (value: unknown) => (value ? String(value) : "Not Set"),
       renderCell: (params: any) => {
         const val = params?.row?.role;
         const entry = val ? roleConfig[val] : null;

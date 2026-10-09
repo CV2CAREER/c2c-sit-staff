@@ -1,6 +1,6 @@
 import { ClientJourneyPhaseKey, ClientJourneyStepRow } from "@/types/client-journey.types";
 
-// Canonical 39-step client journey registry — duplicated by hand from the
+// Canonical 40-step client journey registry — duplicated by hand from the
 // staff backend's src/utils/clientJourneySteps.ts (which itself mirrors the
 // customer backend's registry), same manual-sync convention used for every
 // other table/enum shared across these repos.
@@ -58,23 +58,24 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
   { order: 23, phaseKey: "campaign-live", stepKey: "campaign_launched", perTour: true, label: "Campaign launched" },
   { order: 24, phaseKey: "campaign-live", stepKey: "applications_started", perTour: true, label: "Applications started" },
   { order: 25, phaseKey: "campaign-live", stepKey: "week4_checkin", perTour: true, label: "Week 4 check-in" },
-  { order: 26, phaseKey: "campaign-live", stepKey: "interview_milestone", perTour: true, label: "Interview milestone" },
-  { order: 27, phaseKey: "campaign-live", stepKey: "interview_prep_pack_dispatched", perTour: true, label: "Interview prep pack dispatched" },
-  { order: 28, phaseKey: "campaign-live", stepKey: "offer_placement_recorded", perTour: true, label: "Offer/placement recorded" },
+  { order: 26, phaseKey: "campaign-live", stepKey: "week12_checkin", perTour: true, label: "Week 12 check-in" },
+  { order: 27, phaseKey: "campaign-live", stepKey: "interview_milestone", perTour: true, label: "Interview milestone" },
+  { order: 28, phaseKey: "campaign-live", stepKey: "interview_prep_pack_dispatched", perTour: true, label: "Interview prep pack dispatched" },
+  { order: 29, phaseKey: "campaign-live", stepKey: "offer_placement_recorded", perTour: true, label: "Offer/placement recorded" },
 
   // Phase 6 — Campaign Review (tour-scoped)
-  { order: 29, phaseKey: "campaign-review", stepKey: "expiration_notice_14day", perTour: true, label: "Expiration notice (14 day)" },
-  { order: 30, phaseKey: "campaign-review", stepKey: "expiration_notice_7day", perTour: true, label: "Expiration notice (7 day)" },
-  { order: 31, phaseKey: "campaign-review", stepKey: "extension_eligibility_check", perTour: true, label: "Extension eligibility check" },
-  { order: 32, phaseKey: "campaign-review", stepKey: "extension_decision_made", perTour: true, label: "Extension decision made" },
-  { order: 33, phaseKey: "campaign-review", stepKey: "extension_granted", perTour: true, label: "Extension granted" },
-  { order: 34, phaseKey: "campaign-review", stepKey: "expiration_notice_0day", perTour: true, label: "Expiration notice (0 day)" },
+  { order: 30, phaseKey: "campaign-review", stepKey: "expiration_notice_14day", perTour: true, label: "Expiration notice (14 day)" },
+  { order: 31, phaseKey: "campaign-review", stepKey: "expiration_notice_7day", perTour: true, label: "Expiration notice (7 day)" },
+  { order: 32, phaseKey: "campaign-review", stepKey: "extension_eligibility_check", perTour: true, label: "Extension eligibility check" },
+  { order: 33, phaseKey: "campaign-review", stepKey: "extension_decision_made", perTour: true, label: "Extension decision made" },
+  { order: 34, phaseKey: "campaign-review", stepKey: "extension_granted", perTour: true, label: "Extension granted" },
+  { order: 35, phaseKey: "campaign-review", stepKey: "expiration_notice_0day", perTour: true, label: "Expiration notice (0 day)" },
 
   // Phase 7 — Campaign Ended (tour-scoped)
-  { order: 35, phaseKey: "campaign-ended", stepKey: "campaign_ended", perTour: true, label: "Campaign ended" },
-  { order: 36, phaseKey: "campaign-ended", stepKey: "exit_survey", perTour: true, label: "Exit survey" },
-  { order: 37, phaseKey: "campaign-ended", stepKey: "referral_eligibility", perTour: true, label: "Referral eligibility" },
-  { order: 38, phaseKey: "campaign-ended", stepKey: "renewal_offered", perTour: true, label: "Renewal offered" },
+  { order: 36, phaseKey: "campaign-ended", stepKey: "campaign_ended", perTour: true, label: "Campaign ended" },
+  { order: 37, phaseKey: "campaign-ended", stepKey: "exit_survey", perTour: true, label: "Exit survey" },
+  { order: 38, phaseKey: "campaign-ended", stepKey: "referral_eligibility", perTour: true, label: "Referral eligibility" },
+  { order: 39, phaseKey: "campaign-ended", stepKey: "renewal_offered", perTour: true, label: "Renewal offered" },
 ];
 
 // Steps with no code path anywhere that completes them automatically —
@@ -83,39 +84,74 @@ export const CLIENT_JOURNEY_STEPS: ClientJourneyStepDefinition[] = [
 // deliberately left unwired due to a race risk with the payment webhook, so
 // they're treated the same as the fully-manual ones. Every newly added step
 // also starts here — none of them have a real automatic trigger yet.
+// job_credentials_provided dropped out (SPR-21-11-011): the customer's own
+// credential submission now completes it. cv_uploaded dropped out
+// (SPR-21-11-008): a resume upload now completes it. cv_variant_dispatch,
+// cv_approved and cv_variant_uploaded dropped out (SPR-21-11-009): admin save
+// of the variant and the client's approving re-upload now complete them.
+// week4_checkin dropped out (SPR-21-13-001): the campaign day-28 / day-84
+// check-in cron now completes it and its new week12_checkin sibling, so
+// neither one joins this set. renewal_offered dropped out (SPR-21-13-008):
+// a fresh campaign_ended completion now cascades into it, so the row shows
+// as a client step with the outline attest button rather than needing
+// admin attestation. The expiration notice trio dropped out (SPR-21-13-009):
+// the expiration-notice cron now fires at T-14 / T-7 / day 0, so those rows
+// are treated the same way.
 export const NO_AUTO_TRIGGER_STEP_KEYS = new Set<string>([
   "account_signup",
-  "payment_receipt_sent",
   "welcome_call_scheduled",
   "welcome_call_completed",
   "confirmation_sent",
-  "cv_uploaded",
-  "cv_variant_dispatch",
-  "cv_approved",
-  "cv_variant_uploaded",
-  "rtr_dispatched",
   "preference_review_session",
-  "job_credentials_provided",
   "jobsite_verification",
   "jobsite_credentials_approved",
   "profile_alignment_check",
   "campaign_readiness_confirmed",
   "campaign_launched",
   "applications_started",
-  "week4_checkin",
   "interview_milestone",
   "interview_prep_pack_dispatched",
   "offer_placement_recorded",
-  "expiration_notice_14day",
-  "expiration_notice_7day",
   "extension_eligibility_check",
   "extension_decision_made",
   "extension_granted",
-  "expiration_notice_0day",
   "exit_survey",
   "referral_eligibility",
-  "renewal_offered",
 ]);
+
+// Payment stage step keys that don't apply to non-paying personas
+// (Ambassador guests on Coral, partner-referred Emerald trial guests).
+// Neither persona ever passes through a service-selection or payment
+// gate — Coral and Emerald are auto-activated post credential + social
+// verification. Rendering these steps on their journey inflates the
+// stepper count and lets an admin attempt a manual attest that silently
+// fails downstream because the underlying payment state never exists.
+const NON_PAYING_HIDDEN_STEP_KEYS = new Set<string>([
+  "service_selection",
+  "payment_confirmed",
+  "payment_receipt_sent",
+]);
+
+// Persona-aware step filter. Emerald and Ambassador collapse Phase 1
+// from 7 steps to 4 by dropping the payment stages; every other persona
+// (paying guest, converted client) sees the full 39-step registry.
+export function getStepsForPersona(
+  persona:
+    | { isAmbassador?: boolean | null; plan?: string | null; isEmeraldCandidate?: boolean | null }
+    | null
+    | undefined,
+): ClientJourneyStepDefinition[] {
+  if (!persona) return CLIENT_JOURNEY_STEPS;
+  const isAmbassador = persona.isAmbassador === true;
+  // Pre-approval Emerald candidates have plan === null until credential
+  // approval creates the Plan row — but we still need to hide payment steps
+  // for them, so persona-aware filtering reads either marker.
+  const isEmerald =
+    persona.isEmeraldCandidate === true ||
+    (typeof persona.plan === "string" && persona.plan.toLowerCase() === "emerald");
+  if (!isAmbassador && !isEmerald) return CLIENT_JOURNEY_STEPS;
+  return CLIENT_JOURNEY_STEPS.filter((step) => !NON_PAYING_HIDDEN_STEP_KEYS.has(step.stepKey));
+}
 
 export type DerivedStepState = "done" | "current" | "awaiting";
 export type DerivedPhaseState = "done" | "current" | "pending";
@@ -136,14 +172,21 @@ export interface DerivedPhase {
 // everything before it is "done", everything after is "awaiting" — the
 // same derivation the customer side uses, kept here so the stepper and the
 // sub-step list can never disagree.
-export function deriveJourneyState(steps: ClientJourneyStepRow[]): {
+export function deriveJourneyState(
+  steps: ClientJourneyStepRow[],
+  // Optional persona-filtered step list. Defaults to the full 39-step
+  // registry so all pre-existing call sites keep their previous behaviour;
+  // callers that need to hide payment steps for Emerald / Ambassador
+  // pass the result of getStepsForPersona(persona) here.
+  stepDefinitions: ClientJourneyStepDefinition[] = CLIENT_JOURNEY_STEPS,
+): {
   phases: DerivedPhase[];
   currentPhaseKey: ClientJourneyPhaseKey;
 } {
   const completionByKey = new Map(steps.map((row) => [row.stepKey, row]));
 
   let currentFound = false;
-  const derivedSteps: DerivedStep[] = CLIENT_JOURNEY_STEPS.map((def) => {
+  const derivedSteps: DerivedStep[] = stepDefinitions.map((def) => {
     const completion = completionByKey.get(def.stepKey) ?? null;
 
     if (completion) {

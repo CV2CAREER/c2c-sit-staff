@@ -90,14 +90,16 @@ export default function GenerateCoverLetterButton({
     setIsRejecting(false);
   };
 
-  const handleDownloadPreview = async () => {
+  const [previewingFormat, setPreviewingFormat] = useState<SaveCoverLetterFormat | null>(null);
+  const handleDownloadPreview = async (format: SaveCoverLetterFormat) => {
     const toastId = toast.loading("Preparing preview...");
+    setPreviewingFormat(format);
     try {
       const { blob, filename } = await previewCoverLetter({
         userId,
         resumeUploadId,
         coverLetter,
-        format: "pdf",
+        format,
       });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -113,6 +115,8 @@ export default function GenerateCoverLetterButton({
         ? error?.response?.data?.message || "Failed to generate preview"
         : error?.message || "Failed to generate preview";
       toast.error(message);
+    } finally {
+      setPreviewingFormat(null);
     }
   };
 
@@ -245,9 +249,16 @@ export default function GenerateCoverLetterButton({
                 <Button
                   variant="outline"
                   disabled={isPreviewing || isRejecting}
-                  onClick={handleDownloadPreview}
+                  onClick={() => handleDownloadPreview("docx")}
                 >
-                  {isPreviewing ? "Preparing..." : "Download"}
+                  {isPreviewing && previewingFormat === "docx" ? "Preparing..." : "Download DOC"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={() => handleDownloadPreview("pdf")}
+                >
+                  {isPreviewing && previewingFormat === "pdf" ? "Preparing..." : "Download PDF"}
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"

@@ -13,6 +13,13 @@ interface VACellProps {
     // actually persisted — only on clicking "Update" — so this cell no longer
     // calls the assignment API itself.
     onSelectionChange?: (email: string | null) => void;
+    // SPR-21-41-015: marker naming the campaign grid column this cell edits
+    // (VaName, VetName, CompletedName, InterimDPCName, InterimSPCName). It is
+    // read by scripts/check-campaign-modal-bindings.mjs to prove each retained
+    // column is represented, and is deliberately not used for rendering. PC
+    // assignments are staged and saved via savePcChanges, never as part of the
+    // react-hook-form payload.
+    field?: string;
 }
 
 export const VACell = ({ data = null, variant = 'DPC', onSelectionChange }: VACellProps) => {

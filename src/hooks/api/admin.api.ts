@@ -9,7 +9,7 @@ import { useClientSampleQueries, useClientSampleMutations } from "./admin/client
 import { useDocumentsQueries, useDocumentsMutations } from "./admin/documents";
 import { useSystemQueries, useSystemMutations } from "./admin/system";
 import { useUnsubscribedUsersQueries, useUnsubscribedUsersMutations } from "./admin/unsubscribed-users";
-import { useChatbotQueries, useChatbotMutations } from "./admin/chatbot";
+import { useChatbotQueries } from "./admin/chatbot";
 import { useJobsiteCredentialQueries, useJobsiteCredentialMutations } from "./admin/jobsite-credential";
 import { useClientJourneyQueries, useClientJourneyMutations } from "./admin/client-journey";
 import { usePlacementAssignmentsQueries, usePlacementAssignmentsMutations } from "./admin/placement-assignments";
@@ -59,7 +59,6 @@ export const useAdminMutations = () => {
   const clientSample = useClientSampleMutations();
   const documents = useDocumentsMutations();
   const system = useSystemMutations();
-  const chatbot = useChatbotMutations();
 
   return {
     ...users,
@@ -70,7 +69,6 @@ export const useAdminMutations = () => {
     ...documents,
     ...system,
     ...useUnsubscribedUsersMutations(),
-    ...chatbot,
     ...useJobsiteCredentialMutations(),
     ...useClientJourneyMutations(),
     ...usePlacementAssignmentsMutations(),

@@ -4,8 +4,8 @@ import { motion, type Variants } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminQueries } from "@/hooks/api/admin.api";
 import AdminUserHeader from "../_components/AdminUserHeader";
+import UserAccountOptions from "../_components/UserAccountOptions";
 import { AdminUserDetailProvider, useAdminUserDetailContext } from "../context/userDetailContext";
-import TriggerApplicationAction from "../_components/ApplicationAction";
 import ClientDocument from "../_components/ClientDocuments";
 import AdminProfileInfo from "../_components/AdminUsersProfileInfo";
 import AdminUserJobsiteCredential from "../_components/AdminUserJobsiteCredential";
@@ -14,7 +14,9 @@ import AdminUserJobPreferenceHistory from "../_components/AdminUserJobPreference
 import AdminUsersReferralHistory from "../_components/AdminUsersReferralHistory";
 import AdminClientJourney from "../_components/AdminClientJourney";
 import AdminMissingInfoRequests from "../_components/AdminMissingInfoRequests";
+import AdminUserVerification from "../_components/AdminUserVerification";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 
 type ClientPageParams = Promise<{ id: string }>;
 
@@ -43,10 +45,12 @@ const TAB_DEFS = [
     { value: "documents", label: "Documents" },
     { value: "jobsite-credential", label: "Jobsite Credential" },
     { value: "missing-info", label: "Missing Info" },
+    { value: "verification", label: "Verification" },
     { value: "job-preferences", label: "Job Preferences" },
     { value: "preference-history", label: "Preference History" },
     { value: "referral-history", label: "Referral History" },
 ];
+
 
 // Inner component that has access to context
 function UserDetailsContent({ userId }: { userId: string }) {
@@ -121,13 +125,18 @@ function UserDetailsContent({ userId }: { userId: string }) {
             animate="show"
             className="flex flex-col gap-6 mt-6 w-full pb-4"
         >
-            <motion.div variants={itemVariants} className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-                <div className="flex-1 min-w-0">
-                    <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
-                </div>
-                <div className="w-full lg:w-80 shrink-0">
-                    <TriggerApplicationAction/>
-                </div>
+            {/* SPR-21-02-006: the standalone Trigger Action card is gone —
+                Commence/End now live in their phase headers inside
+                AdminClientJourney below. */}
+            <motion.div variants={itemVariants}>
+                <AdminUserHeader userId={currentUserId} setIsUserId={setIsUserId}/>
+            </motion.div>
+            {/* Simulation order: identity card -> Upgrade/Export btnrow ->
+                journey. UserAccountOptions no longer lives inside the
+                identity header; same card chrome as its neighbours so the
+                row is centred/full-width like the other sections. */}
+            <motion.div variants={itemVariants} className="rounded-xl border border-primary/15 bg-white p-4 shadow-[0_1px_10px_rgba(0,142,211,0.10)] md:p-6">
+                <UserAccountOptions userId={currentUserId} />
             </motion.div>
             <motion.div variants={itemVariants}>
                 <AdminClientJourney userId={currentUserId}/>
@@ -150,6 +159,9 @@ function UserDetailsContent({ userId }: { userId: string }) {
                     </TabsContent>
                     <TabsContent value="missing-info">
                         <AdminMissingInfoRequests userId={currentUserId} />
+                    </TabsContent>
+                    <TabsContent value="verification">
+                        <AdminUserVerification userId={currentUserId} />
                     </TabsContent>
                     <TabsContent value="job-preferences">
                         <AdminUsersJobPreferences userId={currentUserId}/>

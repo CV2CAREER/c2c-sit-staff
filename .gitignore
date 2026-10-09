@@ -7,3 +7,8 @@ out/
 dist/
 *.log
 .DS_Store
+scripts/check-modal-bindings.mjs
+scripts/check-campaign-locked-fields.mjs
+scripts/check-campaign-modal-bindings.mjs
+scripts/sync-campaign-calculator.mjs
+scripts/test-campaign-calculator.mjs

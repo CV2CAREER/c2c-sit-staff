@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -14,9 +13,14 @@ import {
   useMissingInfoTemplates,
   useSendRequest,
 } from "@/hooks/api/missing-info-template.api";
+import { useQueueEntryActions } from "@/hooks/api/queue-entry.api";
 import TemplateCard from "./TemplateCard";
 import EmptyState from "./EmptyState";
 import SendMissingInfoRequestModal from "../_modals/SendMissingInfoRequestModal";
+import RaiseStaffTaskModal from "../_modals/RaiseStaffTaskModal";
+import HousekeepingTemplateModal, {
+  HousekeepingTemplateValues,
+} from "../_modals/HousekeepingTemplateModal";
 
 type Client = {
   id: string;
@@ -30,14 +34,22 @@ type Client = {
   isEmailVerified?: boolean;
 };
 
-export default function TemplatesClient() {
+export default function TemplatesClient({
+  onTaskRaised,
+}: {
+  /** Called after a Housekeeping task is raised so the host can show the Staff queue. */
+  onTaskRaised?: () => void;
+}) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("all");
   const [activeCategory, setActiveCategory] = useState<string | undefined>(undefined);
   const [deleteConfirm, setDeleteConfirm] = useState<MissingInfoTemplate | null>(null);
   const [sendModalTemplate, setSendModalTemplate] = useState<MissingInfoTemplate | null>(null);
+  const [raiseModalTemplate, setRaiseModalTemplate] = useState<MissingInfoTemplate | null>(null);
+  // Housekeeping task form: "new" while creating, a template while editing, null when closed.
+  const [housekeepingModal, setHousekeepingModal] = useState<MissingInfoTemplate | "new" | null>(null);
 
-  const { data: usersData, isLoading: usersLoading } = useFetchData<{ users: Client[]; count: number }>({
+  const { data: usersData } = useFetchData<{ users: Client[]; count: number }>({
     method: "GET",
     url: endpoints.USER_ALL,
     queryKey: ["missing-info-users"],
@@ -47,7 +59,7 @@ export default function TemplatesClient() {
   const clients = useMemo(() => {
     const users = usersData?.data?.users ?? [];
     return users
-      .filter((user) => user.role === "client" && user.isEmailVerified !== false)
+      .filter((user) => (user.role === "client" || user.role === "guest") && user.isEmailVerified !== false)
       .sort((a, b) => {
         const nameA = `${a.firstName ?? ""} ${a.middleName ?? ""} ${a.lastName ?? ""}`.trim().toLowerCase();
         const nameB = `${b.firstName ?? ""} ${b.middleName ?? ""} ${b.lastName ?? ""}`.trim().toLowerCase();
@@ -56,6 +68,7 @@ export default function TemplatesClient() {
   }, [usersData]);
 
   const { sendRequest, isSending } = useSendRequest();
+  const { raiseTask, isRaising } = useQueueEntryActions();
 
   const { templatesDomain, actions } = useMissingInfoTemplates(
     activeCategory ? { category: activeCategory } : undefined,
@@ -87,6 +100,11 @@ export default function TemplatesClient() {
   const hasAnyTemplates = templates.length > 0;
 
   const handleNewTemplate = async () => {
+    // Housekeeping templates are internal tasks: use the simple task form, not the customer builder.
+    if (activeCategory === "housekeeping") {
+      setHousekeepingModal("new");
+      return;
+    }
     const toastId = toast.loading("Creating template...");
     try {
       const allRes = await axiosInstance.get(templateEndpoints.MISSING_INFO_TEMPLATES);
@@ -107,7 +125,7 @@ export default function TemplatesClient() {
       if (created?.id) {
         router.push(`/admin/missing-info-templates/builder/${created.id}`);
       } else {
-        router.push("/admin/missing-info-templates");
+        router.push("/admin/missing-information");
       }
     } catch (e: any) {
       toast.dismiss(toastId);
@@ -116,6 +134,10 @@ export default function TemplatesClient() {
   };
 
   const handleEdit = (template: MissingInfoTemplate) => {
+    if (template?.category === "housekeeping") {
+      setHousekeepingModal(template);
+      return;
+    }
     if (template?.id) {
       router.push(`/admin/missing-info-templates/builder/${template.id}`);
     }
@@ -151,6 +173,55 @@ export default function TemplatesClient() {
     setSendModalTemplate(template);
   };
 
+  const handleRaiseTask = (template: MissingInfoTemplate) => {
+    setRaiseModalTemplate(template);
+  };
+
+  const handleConfirmRaiseTask = async (owner: { ownerId: string; ownerName: string }) => {
+    if (!raiseModalTemplate) return;
+    const template = raiseModalTemplate;
+    try {
+      await raiseTask({ templateId: template.id, ...owner });
+      toast.success(`"${template.name}" raised as a staff task.`);
+      setRaiseModalTemplate(null);
+      onTaskRaised?.();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || e?.message || "Failed to raise staff task.");
+    }
+  };
+
+  const handleSaveHousekeeping = async (values: HousekeepingTemplateValues) => {
+    const editing = housekeepingModal && housekeepingModal !== "new" ? housekeepingModal : null;
+    const toastId = toast.loading(editing ? "Saving changes..." : "Creating template...");
+    try {
+      if (editing) {
+        await actions.updateTemplate({
+          id: editing.id,
+          name: values.name,
+          category: "housekeeping",
+          description: values.description,
+          status: values.status,
+        });
+      } else {
+        const created = await actions.createTemplate({
+          name: values.name,
+          category: "housekeeping",
+          type: "free_form",
+          description: values.description,
+        });
+        if (values.status === "published" && created?.id) {
+          await actions.publishTemplate(created.id);
+        }
+      }
+      toast.dismiss(toastId);
+      toast.success(editing ? "Changes saved." : "Template created.");
+      setHousekeepingModal(null);
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      toast.error(e?.response?.data?.message || e?.message || "Failed to save template.");
+    }
+  };
+
   const handleSendRequest = async (payload: {
     clientId: string;
     templateId: string;
@@ -179,20 +250,7 @@ export default function TemplatesClient() {
   };
 
   return (
-    <div className="bg-[#F3F4F6] flex flex-col gap-0 p-0 min-h-screen">
-      {/* Header */}
-      <div className="bg-white px-7 py-4 border-b border-[#E5E9EF]">
-        <div className="flex items-center gap-3">
-          <a
-            href="/admin/dashboard"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#F3F4F6] hover:bg-[#E5E9EF] transition-colors text-[#10365A]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </a>
-          <h1 className="text-[20px] font-bold text-[#10365A] m-0">Missing Information</h1>
-        </div>
-      </div>
-
+    <div className="bg-[#F3F4F6] flex flex-col gap-0 p-0">
       {/* Tab bar */}
       <div className="flex items-center gap-6 bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
         <button
@@ -244,23 +302,13 @@ export default function TemplatesClient() {
         >
           Most Used
         </button>
-        <Link
-          href="/admin/missing-info-requests"
-          className={`text-[13px] font-semibold pb-1 transition-colors ${
-            activeTab === "outstanding"
-              ? "text-[#0B96D6] border-b-2 border-[#0B96D6]"
-              : "text-[#6B7280] hover:text-[#1F2937]"
-          }`}
-        >
-          Outstanding Requests
-        </Link>
         <div className="flex-1" />
-        <Link
-          href="/admin/missing-info-requests"
-          className="inline-flex items-center gap-1.5 border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+        <button
+          onClick={() => setHousekeepingModal("new")}
+          className="inline-flex items-center gap-1.5 bg-white text-[#6D4FD4] border border-[#6D4FD4] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F1EDFC] transition-colors"
         >
-          View Outstanding Requests
-        </Link>
+          + New Housekeeping Task
+        </button>
         <button
           onClick={handleNewTemplate}
           className="inline-flex items-center gap-1.5 bg-[#0B96D6] text-white rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#0a86c0] transition-colors"
@@ -283,7 +331,7 @@ export default function TemplatesClient() {
           >
             All
           </button>
-          {["identity", "work_rights", "references", "certifications", "banking"].map((cat) => (
+          {["identity", "work_rights", "references", "certifications", "banking", "housekeeping"].map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(activeCategory === cat ? undefined : cat)}
@@ -323,6 +371,7 @@ export default function TemplatesClient() {
                 onDelete={setDeleteConfirm}
                 onPublish={handlePublish}
                 onSend={handleSend}
+                onRaiseTask={handleRaiseTask}
               />
             ))}
             <button
@@ -364,6 +413,26 @@ export default function TemplatesClient() {
           isSending={isSending}
         />
       )}
+
+      {/* Raise as staff task modal (Housekeeping templates) */}
+      {raiseModalTemplate && (
+        <RaiseStaffTaskModal
+          open
+          onClose={() => setRaiseModalTemplate(null)}
+          template={raiseModalTemplate}
+          onRaise={handleConfirmRaiseTask}
+          isRaising={isRaising}
+        />
+      )}
+
+      {/* Housekeeping task form (replaces the customer builder for this category) */}
+      <HousekeepingTemplateModal
+        open={housekeepingModal !== null}
+        onClose={() => setHousekeepingModal(null)}
+        template={housekeepingModal && housekeepingModal !== "new" ? housekeepingModal : null}
+        onSave={handleSaveHousekeeping}
+        isSaving={actions.isMutating}
+      />
     </div>
   );
 }

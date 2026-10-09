@@ -29,7 +29,7 @@ export interface User {
   gender: string;
   middleName: string;
   businessName: string | null;
-  customerClass: string;
+  staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
   profilePicture: string | null;
@@ -132,6 +132,9 @@ export const useGetAllUsers = (options: {
     users: (usersQuery.data as any)?.data?.users || [],
     totalCount: (usersQuery.data as any)?.data?.count || 0,
     isLoading: usersQuery.isLoading,
+    // True during background refetches too (e.g. after an edit), when
+    // isLoading stays false because data is already cached.
+    isFetching: usersQuery.isFetching,
     isSuccess: usersQuery.isSuccess,
     isError: usersQuery.isError,
     error: usersQuery.error,
@@ -139,6 +142,7 @@ export const useGetAllUsers = (options: {
   }), [
     usersQuery.data,
     usersQuery.isLoading,
+    usersQuery.isFetching,
     usersQuery.isSuccess,
     usersQuery.isError,
     usersQuery.error,
@@ -156,6 +160,23 @@ export const useUpdateUser = () => {
     url: "/api/v1/user-management/users",
     mutationKey: ["update-user"],
     paramKey: "id",
+    onSuccess: () => {
+    },
+    onError: () => {
+    },
+  });
+};
+
+/**
+ * Mutation hook for the C/R (hasResume) and C/L (hasCoverLetter) overrides.
+ * Endpoint: PATCH /v1/user-management/users/{userId}/document-flags
+ * Open to admin and PC; null clears an override so the value follows uploads.
+ */
+export const useUpdateDocumentFlags = () => {
+  return useMutateData<any, { id: string; hasResume?: boolean | null; hasCoverLetter?: boolean | null }>({
+    method: "PATCH",
+    url: (data) => `/api/v1/user-management/users/${data.id}/document-flags`,
+    mutationKey: ["update-user-document-flags"],
     onSuccess: () => {
     },
     onError: () => {
@@ -212,6 +233,9 @@ export const useGetUserPendingDocuments = (userId: string, options: { enabled?: 
     url: userId ? `/api/v1/user-management/users/${userId}/documents/pending` : "",
     queryKey,
     enabled: enabled && !!userId,
+    // Near-live visibility: a client CV upload must tick this list without
+    // the admin hard-refreshing (pairs with the journey panel's 30s poll).
+    refetchInterval: 30_000,
   });
 };
 

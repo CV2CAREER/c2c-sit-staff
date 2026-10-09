@@ -29,7 +29,7 @@ export interface User {
   gender: string;
   middleName: string;
   businessName: string | null;
-  customerClass: string;
+  staffPerception: string;
   phoneNumber: string;
   whatsappNumber: string;
   profilePicture: string | null;
@@ -192,6 +192,23 @@ export const useUpdateUser = () => {
 };
 
 /**
+ * Mutation hook for the C/R (hasResume) and C/L (hasCoverLetter) overrides.
+ * Endpoint: PATCH /v1/user-management/users/{userId}/document-flags
+ * Open to admin and PC; null clears an override so the value follows uploads.
+ */
+export const useUpdateDocumentFlags = () => {
+  return useMutateData<any, { id: string; hasResume?: boolean | null; hasCoverLetter?: boolean | null }>({
+    method: "PATCH",
+    url: (data) => `/api/v1/user-management/users/${data.id}/document-flags`,
+    mutationKey: ["update-user-document-flags"],
+    onSuccess: () => {
+    },
+    onError: () => {
+    },
+  });
+};
+
+/**
  * Approve user document
  * Endpoint: POST /v1/user-management/users/documents/{documentId}/approve
  */
@@ -240,6 +257,9 @@ export const useGetUserPendingDocuments = (userId: string, options: { enabled?: 
     url: userId ? `/api/v1/user-management/users/${userId}/documents/pending` : "",
     queryKey,
     enabled: enabled && !!userId,
+    // Near-live visibility: a client CV upload must tick this list without
+    // the PC hard-refreshing (pairs with the journey panel's 30s poll).
+    refetchInterval: 30_000,
   });
 };
 

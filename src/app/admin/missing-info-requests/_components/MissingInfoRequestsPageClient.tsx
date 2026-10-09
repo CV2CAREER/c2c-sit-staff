@@ -1,50 +1,80 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   useOutstandingRequests,
   useRequestStats,
   useBulkReminder,
+  useResolveRequest,
   useRequestResponses,
   OutstandingRequest,
+  RequestStats,
 } from "@/hooks/api/missing-info-template.api";
-import RequestStatusBadge from "./RequestStatusBadge";
 import AgeIndicator from "./AgeIndicator";
 import BulkReminderModal from "./BulkReminderModal";
 import ViewResponsesModal from "./ViewResponsesModal";
+import ResolveRequestModal from "./ResolveRequestModal";
 import EmptyState from "./EmptyState";
+import StaffQueue from "./StaffQueue";
+import SystemQueue from "./SystemQueue";
+import { useQueueEntries } from "@/hooks/api/queue-entry.api";
 
-const AGE_FILTERS = [
-  { key: "", label: "All pending" },
-  { key: "3", label: ">3 days" },
-  { key: "7", label: ">7 days" },
+// One filter group, one active button. Counts come from the stats endpoint; "age" keys filter the
+// outstanding list by how long ago the request was sent.
+type FilterKey = "" | "pending" | "viewed" | "in_progress" | "submitted" | "age3" | "age7";
+
+const FILTERS: { key: FilterKey; label: string; count: (s: RequestStats) => number }[] = [
+  { key: "", label: "All outstanding", count: (s) => s.outstanding },
+  { key: "pending", label: "Pending", count: (s) => s.pending },
+  { key: "viewed", label: "Viewed", count: (s) => s.viewed },
+  { key: "in_progress", label: "In progress", count: (s) => s.in_progress },
+  { key: "submitted", label: "Submitted", count: (s) => s.submitted },
+  { key: "age3", label: ">3 days", count: (s) => s.olderThan3 },
+  { key: "age7", label: ">7 days", count: (s) => s.olderThan7 },
 ];
 
-const STATUS_FILTERS = [
-  { key: "", label: "All requests" },
-  { key: "pending", label: "Pending" },
-  { key: "viewed", label: "Viewed" },
-  { key: "in_progress", label: "In progress" },
-  { key: "submitted", label: "Submitted" },
+// Only these can be resolved (the backend enforces the same rule); a submitted request has nothing left to resolve.
+const OPEN_STATUSES = ["pending", "viewed", "in_progress"];
+
+type Queue = "customer" | "staff" | "system";
+
+const QUEUE_TABS: { key: Queue; label: string; accent: string }[] = [
+  { key: "customer", label: "Customer", accent: "#0B96D6" },
+  { key: "staff", label: "Staff", accent: "#7C3AED" },
+  { key: "system", label: "System", accent: "#D97706" },
 ];
 
-export default function MissingInfoRequestsPageClient() {
+export default function MissingInfoRequestsPageClient({
+  onSwitchScreen,
+  staffQueueFocus = 0,
+}: {
+  onSwitchScreen?: (screen: "templates" | "requests") => void;
+  /** Bumped by the parent (e.g. after raising a staff task) to jump to the Staff queue. */
+  staffQueueFocus?: number;
+}) {
+  const [queue, setQueue] = useState<Queue>("customer");
+
+  useEffect(() => {
+    if (staffQueueFocus > 0) setQueue("staff");
+  }, [staffQueueFocus]);
   const [search, setSearch] = useState("");
-  const [ageFilter, setAgeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [filter, setFilter] = useState<FilterKey>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [viewResponsesId, setViewResponsesId] = useState<string | null>(null);
 
-  const { data: requests, pagination, isLoading } = useOutstandingRequests({
-    age: ageFilter || undefined,
-    status: statusFilter || undefined,
+  const { data: requests, pagination, isLoading, refetch: refetchRequests } = useOutstandingRequests({
+    age: filter === "age3" ? "3" : filter === "age7" ? "7" : undefined,
+    status: filter && !filter.startsWith("age") ? filter : undefined,
   });
 
   const { stats } = useRequestStats();
   const { sendBulkReminder, isSending } = useBulkReminder();
+  const { resolveRequest, isResolving } = useResolveRequest();
+  const [resolveTarget, setResolveTarget] = useState<OutstandingRequest | null>(null);
+  // Same query key StaffQueue uses — one fetch shared by pill and table.
+  const { entries: staffEntries } = useQueueEntries("staff");
+  const { entries: systemEntries } = useQueueEntries("system");
 
   const { data: responsesData, isLoading: isResponsesLoading } = useRequestResponses(
     viewResponsesId || ""
@@ -95,16 +125,24 @@ export default function MissingInfoRequestsPageClient() {
     }
   };
 
-  const handleResend = async (req: OutstandingRequest) => {
+  // The Resolve button only opens the confirmation dialog; this runs when it is confirmed.
+  const confirmResolve = async () => {
+    if (!resolveTarget) return;
+    const req = resolveTarget;
     const toast = (await import("react-hot-toast")).default;
-    const toastId = toast.loading(`Resending to ${req.clientName}...`);
+    const toastId = toast.loading(`Resolving ${req.clientName}'s request...`);
     try {
-      await sendBulkReminder([req.id]);
+      await resolveRequest(req.id);
       toast.dismiss(toastId);
-      toast.success(`Reminder sent to ${req.clientName}.`);
-    } catch {
+      toast.success(`Request for ${req.clientName} resolved. No automation ran.`);
+      setResolveTarget(null);
+    } catch (e: any) {
       toast.dismiss(toastId);
-      toast.error("Failed to resend.");
+      toast.error(e?.response?.data?.message || "Failed to resolve request.");
+      if (e?.response?.status === 409) {
+        setResolveTarget(null);
+        refetchRequests();
+      }
     }
   };
 
@@ -112,229 +150,221 @@ export default function MissingInfoRequestsPageClient() {
     setViewResponsesId(id);
   };
 
-  if (isLoading) {
-    return (
-      <div className="bg-[#F3F4F6] min-h-screen">
-        <div className="bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
-          <h1 className="text-[20px] font-bold text-[#10365A] m-0">Missing Information Request</h1>
-        </div>
-        <div className="flex items-center justify-center py-20">
-          <p className="text-[#9CA3AF] text-[13px]">Loading requests...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!requests || requests.length === 0) {
-    return (
-      <div className="bg-[#F3F4F6] min-h-screen">
-        <div className="bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
-          <h1 className="text-[20px] font-bold text-[#10365A] m-0">Missing Information Request</h1>
-        </div>
-        <EmptyState />
-      </div>
-    );
-  }
+  const queueCounts: Record<Queue, number> = {
+    customer: stats.outstanding,
+    staff: staffEntries.filter((e) => e.status === "open").length,
+    system: systemEntries.filter((e) => e.status === "open").length,
+  };
 
   return (
-    <div className="bg-[#F3F4F6] min-h-screen">
-      {/* Header */}
-      <div className="bg-white px-7 py-4 border-b border-[#E5E9EF]">
-        <div className="flex items-center gap-3">
-          <a
-            href="/admin/missing-info-templates"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#F3F4F6] hover:bg-[#E5E9EF] transition-colors text-[#10365A]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </a>
-          <h1 className="text-[20px] font-bold text-[#10365A] m-0">Missing Information Request</h1>
-        </div>
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex items-center gap-6 bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
-        <span className="text-[13px] font-semibold text-[#0B96D6] border-b-2 border-[#0B96D6] pb-1">
-          All Requests{" "}
-          <span className="ml-1 px-1.5 py-0.5 text-[11px] rounded-full bg-[#0B96D6] text-white">
-            {stats.total}
-          </span>
-        </span>
-        <Link
-          href="/admin/missing-info-templates"
-          className="text-[13px] font-semibold text-[#6B7280] hover:text-[#1F2937] pb-1 transition-colors"
-        >
-          Templates{" "}
-          <span className="ml-1 px-1.5 py-0.5 text-[11px] rounded-full bg-[#EAF4FE] text-[#0B96D6]">
-            {stats.templateCount}
-          </span>
-        </Link>
+    <div className="bg-[#F3F4F6]">
+      {/* Queue tabs */}
+      <div className="flex items-center gap-2.5 bg-white px-7 py-3.5 border-b border-[#E5E9EF]">
+        {QUEUE_TABS.map((tab) => {
+          const active = queue === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setQueue(tab.key)}
+              className={`px-3.5 py-1.5 text-[12px] font-semibold rounded-lg border transition-colors ${
+                active ? "text-white" : "bg-white text-[#1F2937] border-[#E5E9EF] hover:border-[#0B96D6]"
+              }`}
+              style={active ? { backgroundColor: tab.accent, borderColor: tab.accent } : undefined}
+            >
+              {tab.label}{" "}
+              <span
+                className={`ml-1 px-1.5 py-0.5 text-[11px] rounded-full ${
+                  active ? "bg-white/20 text-white" : "bg-[#F3F4F6] text-[#6B7280]"
+                }`}
+              >
+                {queueCounts[tab.key]}
+              </span>
+            </button>
+          );
+        })}
         <div className="flex-1" />
-        <Link
-          href="/admin/missing-info-templates"
-          className="inline-flex items-center gap-1.5 border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-          View All Templates{" "}
-          <span className="ml-0.5 text-[#9CA3AF]">{stats.templateCount}</span>
-        </Link>
-        <Link
-          href="/admin/missing-info-templates"
-          className="inline-flex items-center gap-1.5 bg-[#0B96D6] text-white rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#0a86c0] transition-colors"
-        >
-          + New Request
-        </Link>
-      </div>
-
-      <div className="px-7 py-5">
-        {/* Filters row */}
-        <div className="flex items-center gap-2.5 mb-4">
-          <input
-            type="text"
-            placeholder="Search by client or template..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-0-0-[260px] border border-[#E5E9EF] rounded-lg px-3 py-2 text-[13px] bg-white focus:outline-none focus:border-[#0B96D6]"
-          />
-          {AGE_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setAgeFilter(f.key)}
-              className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
-                ageFilter === f.key
-                  ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
-                  : "bg-white border border-[#E5E9EF] text-[#1F2937]"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-          <div className="w-px h-5 bg-[#E5E9EF]" />
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setStatusFilter(f.key)}
-              className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
-                statusFilter === f.key
-                  ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
-                  : "bg-white border border-[#E5E9EF] text-[#1F2937]"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-          <div className="flex-1" />
-          {selectedIds.size > 0 && (
-            <button
-              onClick={() => setBulkModalOpen(true)}
-              className="inline-flex items-center border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-            >
-              Bulk reminder
-            </button>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="bg-white border border-[#E5E9EF] rounded-xl overflow-hidden">
-          <table className="w-full border-collapse text-[13px]">
-            <thead>
-              <tr className="border-b border-[#E5E9EF]">
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold w-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4"
-                  />
-                </th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Client</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Template</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Requested By</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Sent</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Age</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Reminders</th>
-                <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRequests.map((req) => {
-                const isChecked = selectedIds.has(req.id);
-                return (
-                  <tr
-                    key={req.id}
-                    className={`border-b border-[#E5E9EF] last:border-b-0 transition-colors ${
-                      isChecked ? "bg-[#EAF6FF]" : "hover:bg-[#F9FAFB]"
-                    }`}
-                  >
-                    <td className="px-4 py-3.5">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleSelect(req.id)}
-                        className="h-4 w-4"
-                      />
-                    </td>
-                    <td className="px-4 py-3.5 font-semibold text-[#1F2937]">{req.clientName}</td>
-                    <td className="px-4 py-3.5 text-[#6B7280]">{req.templateName || req.templateId?.slice(0, 8)}...</td>
-                    <td className="px-4 py-3.5 text-[#6B7280]">{req.requestedByName || "\u2014"}</td>
-                    <td className="px-4 py-3.5 text-[#6B7280]">
-                      {new Date(req.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <AgeIndicator ageDays={req.ageDays} />
-                    </td>
-                    <td className="px-4 py-3.5 text-[#6B7280]">
-                      {req.reminderCount > 0 ? `${req.reminderCount} sent` : "\u2014"}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleResend(req)}
-                          className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
-                        >
-                          Resend
-                        </button>
-                        {req.status === "submitted" && (
-                          <button
-                            onClick={() => handleViewResponses(req.id)}
-                            className="border border-[#E5E9EF] bg-white text-[#0B96D6] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#EAF6FF] transition-colors"
-                          >
-                            View Responses
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4">
-            <span className="text-[12px] text-[#9CA3AF]">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={pagination.page <= 1}
-                className="px-3 py-1 text-[12px] bg-[#F3F4F6] rounded-lg disabled:opacity-40 font-medium"
-              >
-                Previous
-              </button>
-              <button
-                disabled={pagination.page >= pagination.totalPages}
-                className="px-3 py-1 text-[12px] bg-[#F3F4F6] rounded-lg disabled:opacity-40 font-medium"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+        {queue === "customer" && onSwitchScreen && (
+          <button
+            onClick={() => onSwitchScreen("templates")}
+            className="inline-flex items-center gap-1.5 bg-[#0B96D6] text-white rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#0a86c0] transition-colors"
+          >
+            + New Request
+          </button>
         )}
       </div>
 
-       {/* Bulk reminder modal */}
+      {/* Customer queue — the existing outstanding-requests list */}
+      {queue === "customer" && (
+        <div className="px-7 py-5">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <p className="text-[#9CA3AF] text-[13px]">Loading requests...</p>
+            </div>
+          ) : (!requests || requests.length === 0) && filter === "" ? (
+            <EmptyState onNewRequest={() => onSwitchScreen?.("templates")} />
+          ) : (
+            <>
+              {/* Filters row */}
+              <div className="flex items-center gap-2.5 mb-4">
+                <input
+                  type="text"
+                  placeholder="Search by client or template..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-0-0-[260px] border border-[#E5E9EF] rounded-lg px-3 py-2 text-[13px] bg-white focus:outline-none focus:border-[#0B96D6]"
+                />
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.key || "all"}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-3.5 py-1.5 text-[12px] font-medium rounded-full transition-colors ${
+                      filter === f.key
+                        ? "bg-[#EAF6FF] border border-[#0B96D6] text-[#0B96D6] font-semibold"
+                        : "bg-white border border-[#E5E9EF] text-[#1F2937]"
+                    }`}
+                  >
+                    {f.label} <span className="ml-0.5 opacity-70">{f.count(stats)}</span>
+                  </button>
+                ))}
+                <div className="flex-1" />
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={() => setBulkModalOpen(true)}
+                    className="inline-flex items-center border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-4 py-2 text-[13px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                  >
+                    Bulk reminder
+                  </button>
+                )}
+              </div>
+
+              {/* Table */}
+              <div className="bg-white border border-[#E5E9EF] rounded-xl overflow-hidden">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="border-b border-[#E5E9EF]">
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
+                          onChange={toggleSelectAll}
+                          className="h-4 w-4"
+                        />
+                      </th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Client</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Template</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Requested By</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Sent</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Age</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Reminders</th>
+                      <th className="text-left text-[11px] text-[#6B7280] uppercase tracking-wider px-4 py-3 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRequests.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-[13px] text-[#9CA3AF]">
+                          No requests match this filter.
+                        </td>
+                      </tr>
+                    )}
+                    {filteredRequests.map((req) => {
+                      const isChecked = selectedIds.has(req.id);
+                      return (
+                        <tr
+                          key={req.id}
+                          className={`border-b border-[#E5E9EF] last:border-b-0 transition-colors ${
+                            isChecked ? "bg-[#EAF6FF]" : "hover:bg-[#F9FAFB]"
+                          }`}
+                        >
+                          <td className="px-4 py-3.5">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelect(req.id)}
+                              className="h-4 w-4"
+                            />
+                          </td>
+                          <td className="px-4 py-3.5 font-semibold text-[#1F2937]">{req.clientName}</td>
+                          <td className="px-4 py-3.5 text-[#6B7280]">{req.templateName || req.templateId?.slice(0, 8)}...</td>
+                          <td className="px-4 py-3.5 text-[#6B7280]">{req.requestedByName || "\u2014"}</td>
+                          <td className="px-4 py-3.5 text-[#6B7280]">
+                            {new Date(req.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <AgeIndicator ageDays={req.ageDays} />
+                          </td>
+                          <td className="px-4 py-3.5 text-[#6B7280]">
+                            {req.reminderCount > 0 ? `${req.reminderCount} sent` : "\u2014"}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-1.5">
+                              {OPEN_STATUSES.includes(req.status) && (
+                                <button
+                                  onClick={() => setResolveTarget(req)}
+                                  className="border border-[#E5E9EF] bg-white text-[#10365A] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#F9FAFB] transition-colors"
+                                >
+                                  Resolve
+                                </button>
+                              )}
+                              {req.status === "submitted" && (
+                                <button
+                                  onClick={() => handleViewResponses(req.id)}
+                                  className="border border-[#E5E9EF] bg-white text-[#0B96D6] rounded-lg px-3 py-1 text-[12px] font-semibold hover:bg-[#EAF6FF] transition-colors"
+                                >
+                                  View Responses
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {pagination && pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <span className="text-[12px] text-[#9CA3AF]">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={pagination.page <= 1}
+                      className="px-3 py-1 text-[12px] bg-[#F3F4F6] rounded-lg disabled:opacity-40 font-medium"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={pagination.page >= pagination.totalPages}
+                      className="px-3 py-1 text-[12px] bg-[#F3F4F6] rounded-lg disabled:opacity-40 font-medium"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Staff queue — SPR-21-51-002 */}
+      {queue === "staff" && (
+        <div className="px-7 py-5">
+          <StaffQueue />
+        </div>
+      )}
+
+      {/* System queue — SPR-21-51-003 */}
+      {queue === "system" && (
+        <div className="px-7 py-5">
+          <SystemQueue />
+        </div>
+      )}
+
+      {/* Bulk reminder modal */}
       <BulkReminderModal
         open={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
@@ -342,6 +372,14 @@ export default function MissingInfoRequestsPageClient() {
         selectedRequests={filteredRequests.filter((r) => selectedIds.has(r.id))}
         onConfirm={handleBulkReminder}
         isSending={isSending}
+      />
+
+      {/* Resolve confirmation */}
+      <ResolveRequestModal
+        request={resolveTarget}
+        onClose={() => setResolveTarget(null)}
+        onConfirm={confirmResolve}
+        isResolving={isResolving}
       />
 
       {/* View Responses Modal */}

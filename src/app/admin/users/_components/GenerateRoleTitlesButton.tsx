@@ -7,6 +7,7 @@ import {
   useRoleTitleGeneration,
   type RoleTitleGenerationResult,
 } from "@/hooks/useRoleTitleGeneration";
+import { downloadRoleTitleCsv } from "@/components/DocumentUpload/roleTitleCsv";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,7 +40,10 @@ const LOADING_STEPS = [
 /**
  * Flow behind the "Generate" button in the Generate RTR column:
  * 1. Show a loading modal while AI generates Role Title Recommendations.
- * 2. Show the parsed roles (+ candidate name / QA flags) for admin review.
+ * 2. Show the parsed roles (+ candidate name / QA flags) for admin review —
+ *    Reject, Download as CSV (same headers as the manual-upload template,
+ *    so it can be edited and re-uploaded through that same flow), or
+ *    Continue to save.
  * 3. Save to DB — persists as a ClientSupportDocument
  *    (category: roleTitleRecommendations), same as a manual CSV upload.
  */
@@ -53,10 +57,9 @@ export default function GenerateRoleTitlesButton({
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [result, setResult] = useState<RoleTitleGenerationResult | null>(null);
   const [loadingStep, setLoadingStep] = useState(0);
-  // "review" = Reject/Continue gate; "confirm" = the actual Save step. Keeps
-  // generating something and it becoming visible to the client as two
-  // distinct, deliberate actions. No Download here — RTR doesn't produce a
-  // rendered file, just a reviewable table.
+  // "review" = Reject/Download/Continue gate; "confirm" = the actual Save
+  // step. Keeps generating something and it becoming visible to the client
+  // as two distinct, deliberate actions.
   const [reviewStage, setReviewStage] = useState<"review" | "confirm">("review");
   const [isRejecting, setIsRejecting] = useState(false);
 
@@ -100,6 +103,12 @@ export default function GenerateRoleTitlesButton({
     toast.dismiss(toastId);
     toast.success("Role title recommendations rejected");
     setIsRejecting(false);
+  };
+
+  const handleDownload = () => {
+    if (!result?.roles?.length) return;
+    downloadRoleTitleCsv(result.roles, result.candidate_name);
+    toast.success("Role title recommendations downloaded");
   };
 
   const handleSave = async () => {
@@ -243,6 +252,13 @@ export default function GenerateRoleTitlesButton({
                   onClick={handleReject}
                 >
                   {isRejecting ? "Rejecting..." : "Reject"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isRejecting}
+                  onClick={handleDownload}
+                >
+                  Download
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"

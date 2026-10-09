@@ -19,6 +19,34 @@ export const countSelectedFiles = (values: UploadFormValues): number =>
     0,
   );
 
+function getFriendlyUploadErrorMessage(error: any): string {
+  const rawMessage = error?.response?.data?.message || error?.message || "";
+  const status = error?.response?.status;
+
+  // Catch database errors, enum errors, SQL errors, or 500 internal server errors
+  const isTechnicalError =
+    status === 500 ||
+    /enum|sequelize|database|syntax error|relation|column|internal server error|invalid input value|foreign key|constraint/i.test(
+      rawMessage,
+    );
+
+  if (isTechnicalError) {
+    return "Unable to upload document(s) due to a server error. Please try again later or contact support.";
+  }
+
+  // Network / connection errors
+  if (/network error|timeout|econnreset|econnrefused/i.test(rawMessage)) {
+    return "Network error. Please check your connection and try again.";
+  }
+
+  // User-facing validation messages from backend
+  if (rawMessage && typeof rawMessage === "string" && rawMessage.length < 150) {
+    return rawMessage;
+  }
+
+  return "An error occurred while uploading the document(s). Please try again.";
+}
+
 /**
  * Shared submit logic for the client documents upload modal, used by both the
  * admin and assistant screens.
@@ -90,13 +118,7 @@ export const useDocumentUploadSubmit = (
         queryKey: ["client-support-documents", userId],
       });
     } catch (error: any) {
-      // Surface the server's rejection reason (e.g. a CSV that failed
-      // validation) instead of a generic message.
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "An error occurred while processing document";
-      toast.error(message);
+      toast.error(getFriendlyUploadErrorMessage(error));
     }
   };
 

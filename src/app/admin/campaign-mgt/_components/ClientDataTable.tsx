@@ -9,9 +9,14 @@ import ManualApplicationsModal from '@/components/modals/ManualApplication';
 import JobMatchTriggerModal from '@/components/modals/MatchJobs';
 import LoadingSpinner from '@/components/reusable/LoadingSpinner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -22,7 +27,6 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { TimeRangeSelector } from '@/components/ui/time-range-selector';
 import {
-  SlidersHorizontal,
   PlayCircle,
   RefreshCcw,
   ArrowUpCircle,
@@ -35,6 +39,7 @@ import {
   Upload,
   ListRestart,
   Save,
+  ChevronDown,
 } from 'lucide-react';
 import { useAdminMutations, useAdminQueries } from '@/hooks/api/admin.api';
 import { useCampaignMutations } from '@/hooks/api/admin/campaign';
@@ -66,7 +71,9 @@ import {
   SeekFillDropDownModal,
 } from './CampaignFillDown';
 import { singleCampaignColumns } from './clientCampaignTableColumns';
+import ClientAvatarAndInsights from './ClientAvatarAndInsights';
 import UpdateJobStatusModal from './JobStatusModal';
+import ManualAssuranceCell from './ManualAssuranceCell';
 import { modifyCampaignActionsColAndRows } from './tableColumns';
 // Add these imports at the top
 
@@ -284,6 +291,8 @@ const ClientDataTable: React.FC<{
       fetchCampaignSheet: tableDisplay === 'aggregator',
       fetchClientApplications: dataOption?.value === 'job_applications',
       fetchClientTours: true,
+      fetchRegexQueue: true,
+      userId: String(clientId),
       campaignOptions: {
         active: aggregatorDataState === 'active' ? 'true' : 'false',
         aggregator: selectedAggregator?.value,
@@ -315,6 +324,7 @@ const ClientDataTable: React.FC<{
     aggregatorsDomain,
     clientApplicationsDomain,
     clientToursDomain,
+    regexQueueDomain,
   } = useAdminQueries(adminQueriesOptions);
 
   const aiVettingConfigQuery = useFetchData<any>({
@@ -331,6 +341,8 @@ const ClientDataTable: React.FC<{
     dispatchSampleMutation,
     updateCampaignSheetMutation,
     deleteCampaignSheetMutation,
+    generatePasswordMutation,
+    updateRegexQueueMutation,
   } = useAdminMutations();
 
   const {
@@ -362,6 +374,42 @@ const ClientDataTable: React.FC<{
     (clientInfo as unknown as Client) || null
   );
   const showSecondarySwitch = canUseSecondaryProfile;
+
+  // SPR-21-02-004: two-stat metaline values + collapsed-filters drawer count.
+  const applicationsCount = (clientInfo as any)?.totalApplications ?? 0;
+  const isSubExpired =
+    (clientInfo as any)?.seekExternalCredentials?.SeekSubExpired === 'YES';
+  const activeFiltersCount =
+    (selectedAggregator ? 1 : 0) +
+    (aggregatorDataState === 'recycle' ? 1 : 0) +
+    (sampleRunEnvironment === 'LIVE' ? 1 : 0) +
+    (jobApplicationsStatusFilter ? 1 : 0);
+
+  // SPR-21-02-005: hoisted header-label values (the Client/Country columns
+  // are commented out of the Submissions table).
+  const clientFullName =
+    [
+      (clientInfo as any)?.seekExternalCredentials?.First_Name,
+      (clientInfo as any)?.seekExternalCredentials?.Middle_Name,
+      (clientInfo as any)?.seekExternalCredentials?.Last_Name,
+    ]
+      .filter(Boolean)
+      .join(' ') ||
+    (clientInfo as any)?.seekExternalCredentials?.Full_Name ||
+    (clientInfo as any)?.name ||
+    '';
+  const clientCountry =
+    (clientInfo as any)?.currentCity || tableData[0]?.Country || '';
+
+  // SPR-21-02-004: server-backed "Trigger regex" switch for this client
+  // (variant = clientId, same endpoints the header control already uses).
+  const [triggerValue, setTriggerValue] = useState(false);
+
+  useEffect(() => {
+    if (regexQueueDomain.data) {
+      setTriggerValue(regexQueueDomain.data.data === 'True');
+    }
+  }, [regexQueueDomain.data]);
 
   // Force primary profile if user doesn't have premium access
   useEffect(() => {
@@ -590,14 +638,23 @@ const ClientDataTable: React.FC<{
       Job_Type: item?.Job_Type ?? 'N/A',
       Application_Status: toTitleCase(item?.Status || 'Unattended'),
       Status_Reason: item?.StatusReason?.trim() || 'N/A',
+      // A skipped row keeps the score it was vetted with (LQA is "a quality score on a
+      // skipped entry"), so show it instead of hiding it behind N/A (SPR-21-58-003).
+      // Expired rows, and skipped rows with no score, still show N/A.
       Quality_Score:
         (item?.Status || 'unattended').toLowerCase() === 'Unattended'
           ? 'TBD'
-          : ['skipped', 'expired'].includes(
-                (item?.Status || 'unattended').toLowerCase()
-              )
-            ? 'N/A'
-            : (item?.QualityScore ?? ''),
+          : (item?.Status || '').toLowerCase() === 'skipped' && item?.QualityScore
+            ? item.QualityScore
+            : ['skipped', 'expired'].includes(
+                  (item?.Status || 'unattended').toLowerCase()
+                )
+              ? 'N/A'
+              : (item?.QualityScore ?? ''),
+      // SPR-21-58-001: assurance result + who + when (server-stamped)
+      Assurance_Status: item?.AssuranceStatus ?? null,
+      Assured_By: item?.AssuredBy ?? null,
+      Assurance_Date: item?.AssuranceDate ?? null,
       Discovered_By: item?.DiscoveredBy ?? 'N/A',
       Timestamp_Discovered: item?.DiscoveryDate ?? 'N/A',
       Vetted_By: item?.VettedBy ?? 'N/A',
@@ -776,6 +833,23 @@ const ClientDataTable: React.FC<{
         headerName: 'Timestamp Submitted',
         width: 210,
       },
+      // SPR-21-58-001: assurance result (dropdown rendered in the `columns` memo so it can
+      // update this table's rows), plus who set it and when (server-stamped, read-only).
+      { field: 'Assurance_Status', headerName: 'Assurance', width: 190, sortable: false },
+      {
+        field: 'Assured_By',
+        headerName: 'Assured By',
+        width: 160,
+        renderCell: (params: any) => <span>{params.value || '—'}</span>,
+      },
+      {
+        field: 'Assurance_Date',
+        headerName: 'Assurance Date',
+        width: 190,
+        renderCell: (params: any) => (
+          <span>{params.value ? new Date(params.value).toLocaleString() : '—'}</span>
+        ),
+      },
       { field: 'Date_Advertised', headerName: 'Date Advertised', width: 200 },
       { field: 'Advertiser', headerName: 'Advertiser', width: 200 },
       { field: 'External_Jobsite', headerName: 'External Jobsite', width: 180 },
@@ -881,6 +955,10 @@ const ClientDataTable: React.FC<{
   const isManualDiscoveryView =
     tableDisplay === 'data-option' && dataOption?.value === 'manual_discovery';
 
+  // SPR-21-02-005: the Submissions table shows the hoisted header label.
+  const isJobApplicationsView =
+    tableDisplay === 'data-option' && dataOption?.value === 'job_applications';
+
   const columns = useMemo(() => {
     let value;
 
@@ -924,7 +1002,38 @@ const ClientDataTable: React.FC<{
                 {params.value
                   ? params.value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
                   : 'Unattended'}
+                {/* Display-only: the stored status stays SKIPPED, the label shows why. */}
+                {String(params.value || '').toLowerCase() === 'skipped' &&
+                String(params.row?.Quality_Score || '').toUpperCase() === 'LQA'
+                  ? ' (LQA)'
+                  : ''}
               </div>
+            ),
+          };
+        }
+
+        if (col.field === 'Assurance_Status') {
+          return {
+            ...col,
+            renderCell: (params: any) => (
+              <ManualAssuranceCell
+                row={params.row}
+                readOnly={!isEditable}
+                onSaved={(saved) =>
+                  setTableData((prev: any[]) =>
+                    prev.map((r) =>
+                      r.id === params.row.id
+                        ? {
+                            ...r,
+                            Assurance_Status: saved.AssuranceStatus,
+                            Assured_By: saved.AssuredBy,
+                            Assurance_Date: saved.AssuranceDate,
+                          }
+                        : r
+                    )
+                  )
+                }
+              />
             ),
           };
         }
@@ -980,6 +1089,9 @@ const ClientDataTable: React.FC<{
       Application_Status: 150,
       Status_Reason: 170,
       Quality_Score: 120,
+      Assurance_Status: 170,
+      Assured_By: 130,
+      Assurance_Date: 150,
       Discovered_By: 130,
       Timestamp_Discovered: 160,
       Vetted_By: 120,
@@ -1249,62 +1361,57 @@ const ClientDataTable: React.FC<{
   }
 
   /* ---- Render ---- */
+  // SPR-21-02-004: Generate Password moved out of the retired button row into
+  // the consolidated card's metaline.
+  async function handleGeneratePassword(userId: string) {
+    try {
+      toast.loading('Generating password...');
+      await generatePasswordMutation.mutateAsync({ userId });
+      toast.success('Password generated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to generate password');
+    }
+  }
+
   return (
     <main className="flex flex-col gap-4 mb-10">
-      {/* Filters */}
+      {/* SPR-21-02-004: one consolidated card above the table — identity,
+          two stats, Generate Password, visible filters + collapsed Filters
+          drawer, kept action row and kept control row. */}
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardHeader className="p-4 pb-3">
-          <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <SlidersHorizontal size={18} className="text-primary" />
-            View &amp; Filters
-          </CardTitle>
-          <CardDescription>
-            Choose an aggregator or data source to inspect for this client.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="flex w-full flex-wrap gap-4">
-            <Combobox
-              list={jobsiteAggregatorsList ?? []}
-              placeholder="Select Aggregator"
-              selectedItem={selectedAggregator}
-              setSelectedItem={(agg) => {
-                if (typeof agg === 'object') {
-                  setSelectedAggregator(agg);
-                  setDataOption(null);
-                  setMakeQuery(true);
-                  setTableDisplay('aggregator');
-                }
-              }}
-              loading={isJobsiteAggregatorsLoading}
-              noItemsMessage="No Jobsite Aggregator found"
-              btnTriggerStyles="w-full sm:w-[200px] justify-between"
-            />
-            <Select
-              onValueChange={(value) => {
-                if (value === 'active') {
-                  setAggregatorDataState('active');
-                  setMakeQuery(true);
-                } else {
-                  setAggregatorDataState('recycle');
-                  setMakeQuery(true);
-                }
-              }}
+        <CardContent className="flex flex-col gap-4 p-4">
+          <ClientAvatarAndInsights clientId={clientId} />
+
+          {/* Design .metaline: stats · Generate Password · Submissions ·
+              Range · Tour · Filters (n active) */}
+          <div className="flex items-center gap-[18px] overflow-x-auto border-t border-gray-100 pt-4">
+            <span className="shrink-0 whitespace-nowrap text-[11.5px] text-[#5B6B7C]">
+              <b className="mr-1 font-bold text-[#0F1E2E]">Applications</b>
+              {applicationsCount}
+            </span>
+            <span className="shrink-0 whitespace-nowrap text-[11.5px] text-[#5B6B7C]">
+              <b className="mr-1 font-bold text-[#0F1E2E]">Active Subscription</b>
+              {isSubExpired ? (
+                <span className="text-[#DC2626]">✗ Expired</span>
+              ) : (
+                <span className="text-[#15803D]">✓ Active</span>
+              )}
+            </span>
+
+            <Button
+              type="button"
+              className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] bg-[#0B96D6] px-3.5 py-2 text-xs font-semibold text-white shadow-none hover:bg-[#0876A8]"
+              onClick={() =>
+                openConfirmationModal({
+                  title: 'Generate Password',
+                  description:
+                    'Are you sure you want to generate password for this client?',
+                  onConfirm: () => handleGeneratePassword(String(clientId)),
+                })
+              }
             >
-              <SelectTrigger className="w-full sm:w-[180px] bg-white">
-                <SelectValue
-                  placeholder={
-                    aggregatorDataState === 'active'
-                      ? 'Active Data'
-                      : 'Recycle Bin'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active Data</SelectItem>
-                <SelectItem value="recycle">Recycle Bin</SelectItem>
-              </SelectContent>
-            </Select>
+              Generate Password
+            </Button>
             <Combobox
               list={dataOptionsList}
               placeholder="Select Data Option"
@@ -1336,48 +1443,10 @@ const ClientDataTable: React.FC<{
                 }
               }}
               noItemsMessage="No option found"
-              btnTriggerStyles="w-full sm:w-[200px] justify-between"
+              btnTriggerStyles="h-auto shrink-0 whitespace-nowrap justify-between rounded-[7px] border-[1.5px] border-[#0B96D6] bg-white px-[11px] text-[11px] text-[#5B6B7C] shadow-none hover:bg-white"
             />
-            <Select
-              onValueChange={(value) =>
-                value === 'LIVE'
-                  ? setSampleRunEnvironment('LIVE')
-                  : setSampleRunEnvironment('TEST')
-              }
-            >
-              <SelectTrigger className="w-full sm:w-[180px] bg-white">
-                <SelectValue
-                  placeholder={
-                    sampleRunEnvironment === 'LIVE' ? 'Live' : 'Test'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LIVE">Live</SelectItem>
-                <SelectItem value="TEST">Test</SelectItem>
-              </SelectContent>
-            </Select>
-            {dataOption?.value === 'job_applications' && (
-              <Select
-                onValueChange={(value) => {
-                  if (value === 'Successful') {
-                    setJobApplicationsStatusFilter('Successful');
-                    setMakeQuery(true);
-                  } else if (value === 'Failed') {
-                    setJobApplicationsStatusFilter('Failed');
-                    setMakeQuery(true);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-[180px] bg-white">
-                  <SelectValue placeholder="Application Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Successful">Successful</SelectItem>
-                  <SelectItem value="Failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+
+            <TimeRangeSelector styles="!h-auto !w-auto !shrink-0 !rounded-[7px] !border-[#0B96D6] !bg-white !px-[11px] !py-1.5 !text-[11px] !text-[#5B6B7C] !shadow-none" />
             {(dataOption?.value === 'job_applications' ||
               dataOption?.value === 'manual_discovery') && (
               <Select
@@ -1390,7 +1459,7 @@ const ClientDataTable: React.FC<{
                   setMakeQuery(true);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[180px] bg-white shadow-md">
+                <SelectTrigger className="h-auto w-auto shrink-0 whitespace-nowrap rounded-[7px] border border-[#0B96D6] bg-white px-[11px] py-1.5 text-[11px] text-[#5B6B7C] shadow-none hover:bg-white [&>span]:truncate">
                   <SelectValue placeholder="All Tour" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1402,11 +1471,113 @@ const ClientDataTable: React.FC<{
                 </SelectContent>
               </Select>
             )}
-            <TimeRangeSelector styles="bg-white" />
+
+            {/* SPR-21-02-004: Aggregator / Data state / Test / Status
+                collapsed into the Filters (n active) drawer. */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex h-auto shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[7px] border border-[#0B96D6] bg-white px-[11px] py-1.5 text-[11px] font-medium text-[#5B6B7C] shadow-none hover:bg-white hover:text-[#5B6B7C]"
+                >
+                  Filters ({activeFiltersCount} active)
+                  <ChevronDown size={12} className="opacity-70" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-[300px] rounded-lg border-[#E5E9EF] p-3"
+              >
+                <div className="flex flex-col gap-3">
+                  <Combobox
+                    list={jobsiteAggregatorsList ?? []}
+                    placeholder="Select Aggregator"
+                    selectedItem={selectedAggregator}
+                    setSelectedItem={(agg) => {
+                      if (typeof agg === 'object') {
+                        setSelectedAggregator(agg);
+                        setDataOption(null);
+                        setMakeQuery(true);
+                        setTableDisplay('aggregator');
+                      }
+                    }}
+                    loading={isJobsiteAggregatorsLoading}
+                    noItemsMessage="No Jobsite Aggregator found"
+                    btnTriggerStyles="h-auto w-full justify-between rounded-[7px] border-[1.5px] border-[#0B96D6] bg-white px-[11px] text-[11px] text-[#5B6B7C] shadow-none hover:bg-white"
+                  />
+                  <Select
+                    onValueChange={(value) => {
+                      if (value === 'active') {
+                        setAggregatorDataState('active');
+                        setMakeQuery(true);
+                      } else {
+                        setAggregatorDataState('recycle');
+                        setMakeQuery(true);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-full bg-white">
+                      <SelectValue
+                        placeholder={
+                          aggregatorDataState === 'active'
+                            ? 'Active Data'
+                            : 'Recycle Bin'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active Data</SelectItem>
+                      <SelectItem value="recycle">Recycle Bin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    onValueChange={(value) =>
+                      value === 'LIVE'
+                        ? setSampleRunEnvironment('LIVE')
+                        : setSampleRunEnvironment('TEST')
+                    }
+                  >
+                    <SelectTrigger className="h-9 w-full bg-white">
+                      <SelectValue
+                        placeholder={
+                          sampleRunEnvironment === 'LIVE' ? 'Live' : 'Test'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LIVE">Live</SelectItem>
+                      <SelectItem value="TEST">Test</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {dataOption?.value === 'job_applications' && (
+                    <Select
+                      onValueChange={(value) => {
+                        if (value === 'Successful') {
+                          setJobApplicationsStatusFilter('Successful');
+                          setMakeQuery(true);
+                        } else if (value === 'Failed') {
+                          setJobApplicationsStatusFilter('Failed');
+                          setMakeQuery(true);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-9 w-full bg-white">
+                        <SelectValue placeholder="Application Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Successful">Successful</SelectItem>
+                        <SelectItem value="Failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {(tableDisplay === 'aggregator' || tableDisplay === 'data-option') && (
-            <div className="mt-4 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
               {tableDisplay === 'aggregator' && (
                 <Button
                   className="w-full gap-2 bg-green-700 hover:bg-green-800 md:w-fit"
@@ -1534,17 +1705,10 @@ const ClientDataTable: React.FC<{
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Regex Trigger, Allow Editing & Profile Section */}
-      <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-end">
-          {isLoadingClient ? (
-            <div className="px-4 py-2 rounded-lg bg-gray-100 text-gray-500 text-sm">
-              Loading client info...
-            </div>
-          ) : showSecondarySwitch ? (
+        {/* SPR-21-02-004: kept controls, border-separated below the metaline;
+            the retired plan-requirement notice is gone. */}
+        <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-end">
+          {showSecondarySwitch && (
             <button
               onClick={() => setIsPrimary((prev) => !prev)}
               className={`px-4 py-2 rounded-xl text-sm font-medium shadow-sm transition-colors ${
@@ -1555,15 +1719,30 @@ const ClientDataTable: React.FC<{
             >
               {isPrimary ? 'Using Primary Profile' : 'Using Secondary Profile'}
             </button>
-          ) : (
-            <div className="px-4 py-2 rounded-xl bg-gray-50 text-gray-500 text-sm">
-              Gold or Platinum plan required for secondary profile
-            </div>
           )}
           <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
             <RadioTower size={16} className="text-primary" />
             Trigger regex for this user
-            <Switch />
+            <Switch
+              checked={triggerValue}
+              onCheckedChange={(checked) => {
+                setTriggerValue(checked);
+                updateRegexQueueMutation.mutate(
+                  {
+                    value: checked ? 'True' : 'False',
+                    variant: String(clientId),
+                  },
+                  {
+                    onSuccess: (data: any) =>
+                      toast.success(data?.message || 'Trigger updated'),
+                    onError: () => {
+                      setTriggerValue(!checked);
+                      toast.error('Failed to update trigger');
+                    },
+                  }
+                );
+              }}
+            />
           </label>
           <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5">
             <Checkbox
@@ -1573,19 +1752,31 @@ const ClientDataTable: React.FC<{
             <PencilLine size={16} className="text-primary" />
             Allow Editing
           </label>
+        </div>
         </CardContent>
       </Card>
 
       {/* Client Table Section */}
       <Card className="rounded-xl border-primary/15 shadow-[0_1px_10px_rgba(0,142,211,0.10)]">
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-4 space-y-0 border-b border-gray-100 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-1 items-center gap-3">
             <CardTitle className="text-lg font-bold text-gray-900">
               {selectedAggregator?.label ??
                 dataOption?.label ??
                 table.charAt(0).toUpperCase() + table.slice(1).replace('_', ' ')}{' '}
               Table
+              {isJobApplicationsView && (
+                <span className="ml-2 font-normal text-[#5B6B7C]">
+                  · {tableData.length}
+                </span>
+              )}
             </CardTitle>
+            {isJobApplicationsView && (
+              <span className="ml-auto inline-block whitespace-nowrap rounded-md px-2.5 py-1 text-[10.5px] text-[#5B6B7C]">
+                Submissions for {clientFullName}
+                {clientCountry && <> · {clientCountry}</>}
+              </span>
+            )}
           </div>
           {isEditable && (
             <div className="flex flex-row flex-wrap gap-3 w-full md:w-auto">

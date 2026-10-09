@@ -11,6 +11,7 @@ export const MISSING_INFO_REQUESTS_STAFF_RESPONSES = (id: string) => `/api/v1/mi
 export const MISSING_INFO_REQUESTS_STAFF_CLIENT = (targetUserId: string) => `/api/v1/missing-info-requests/client/${targetUserId}`;
 export const MISSING_INFO_REQUESTS_STAFF_REMINDER = (id: string) => `/api/v1/missing-info-requests/${id}/reminder`;
 export const MISSING_INFO_REQUESTS_STAFF_CANCEL = (id: string) => `/api/v1/missing-info-requests/${id}/cancel`;
+export const MISSING_INFO_REQUESTS_STAFF_RESOLVE = (id: string) => `/api/v1/missing-info-requests/${id}/resolve`;
 export const MISSING_INFO_REQUESTS_STAFF_DECLINE = (id: string) => `/api/v1/missing-info-requests/${id}/decline`;
 export const MISSING_INFO_REQUESTS_STAFF_REUSE = (id: string) => `/api/v1/missing-info-requests/${id}/reuse`;
 export const MISSING_INFO_REQUESTS_STAFF_COPY_AUDIT = (id: string) => `/api/v1/missing-info-requests/${id}/copy-audit`;

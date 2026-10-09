@@ -45,7 +45,7 @@ const LOADING_STEPS = [
  * 2. Show the AI's own HTML live, directly editable in place (not a rich
  *    -text editor like TipTap — that would normalize the AI's markup into
  *    its own limited style vocabulary and strip anything outside it) with
- *    Reject / Download / Continue.
+ *    Reject / Download as DOC or PDF / Continue.
  * 3. Save as PDF or DOC — uploads to Firebase, records a new `resume`
  *    Upload, and advances the client's onboarding progress bar.
  * 4. Show a download link for the saved file.
@@ -250,22 +250,24 @@ export default function GenerateCvVariantButton({
     setIsRejecting(false);
   };
 
-  // Renders the current (possibly edited) HTML to a real PDF on demand —
+  // Renders the current (possibly edited) HTML to a real PDF/DOCX on demand —
   // there's no standing preview blob anymore since the review modal shows
-  // the live editable HTML directly, not a pre-rendered PDF.
-  const handleDownloadPreview = async () => {
+  // the live editable HTML directly, not a pre-rendered file.
+  const [previewingFormat, setPreviewingFormat] = useState<SaveCvVariantFormat | null>(null);
+  const handleDownloadPreview = async (format: SaveCvVariantFormat) => {
     const html = syncEditedHtml();
+    setPreviewingFormat(format);
     try {
       const { blob } = await previewCvVariant({
         userId,
         resumeUploadId,
         cvVariant: html,
-        format: "pdf",
+        format,
       });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.href = url;
-      link.download = "CV_Variant_Preview.pdf";
+      link.download = `CV_Variant_Preview.${format}`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error: any) {
@@ -276,6 +278,8 @@ export default function GenerateCvVariantButton({
         ? error?.response?.data?.message || "Failed to render preview"
         : error?.message || "Failed to render preview";
       toast.error(message);
+    } finally {
+      setPreviewingFormat(null);
     }
   };
 
@@ -576,9 +580,16 @@ export default function GenerateCvVariantButton({
                 <Button
                   variant="outline"
                   disabled={isPreviewing || isRejecting}
-                  onClick={handleDownloadPreview}
+                  onClick={() => handleDownloadPreview("docx")}
                 >
-                  {isPreviewing ? "Rendering…" : "Download"}
+                  {isPreviewing && previewingFormat === "docx" ? "Rendering…" : "Download DOC"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={isPreviewing || isRejecting}
+                  onClick={() => handleDownloadPreview("pdf")}
+                >
+                  {isPreviewing && previewingFormat === "pdf" ? "Rendering…" : "Download PDF"}
                 </Button>
                 <Button
                   className="bg-[#0D9F6E] rounded-full hover:bg-[#0b8a5f]"

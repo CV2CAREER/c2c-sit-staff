@@ -68,7 +68,7 @@ export interface Pagination {
     whatsappNumber: string;
     isDocumentApproved: boolean;
     isDocumentUploaded: boolean;
-    customerClass: string;
+    staffPerception: string;
     updatedBy: string;
     socials: string[];
     slackId: string;

@@ -29,12 +29,22 @@ export function JobPreferenceProvider({ children }: { children: React.ReactNode 
   const [jobPreferenceDataState, setJobPreferenceDataState] = useState<DiscoveryState>("active");
   const [selectedField, setSelectedField] = useState<OptionType | null>(null);
   const [selectedValue, setSelectedValue] = useState<string>("Any");
-  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 50 });
+
+  // A new state/filter is a different result set: go back to the first page.
+  const filterKey = `${jobPreferenceDataState}|${selectedField?.value ?? ""}|${selectedValue}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
+    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
+  }
 
   const tracker = useDiscoveryTracker({
     state: jobPreferenceDataState,
     field: selectedField?.value,
     value: selectedValue !== "Any" ? selectedValue : undefined,
+    page: paginationModel.page,
+    pageSize: paginationModel.pageSize,
   });
 
   return (

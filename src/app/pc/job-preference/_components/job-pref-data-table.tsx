@@ -12,6 +12,8 @@ import getColumnsForTable, { renderActionsMenu } from "./table-columns";
 import { useJobPreferenceData } from "./context";
 import { DISCOVERY_FILTER_FIELDS } from "@/hooks/useDiscoveryTracker";
 
+const ASSURANCE_FIELDS = ["AssuranceStatus", "AssuredBy", "AssuranceDate"];
+
 export default function JobPreferenceDataTable() {
   const [isEditable, setIsEditable] = React.useState(false);
   const {
@@ -110,6 +112,9 @@ export default function JobPreferenceDataTable() {
         <StyledDataGridPro
           slots={{ toolbar: GridToolbar }}
           showToolbar
+          paginationMode="server"
+          rowCount={tracker.totalCount}
+          pageSizeOptions={[25, 50, 100]}
           paginationModel={paginationModel as GridPaginationModel}
           onPaginationModelChange={(next) => setPaginationModel({ page: next.page, pageSize: next.pageSize })}
           rows={tracker.rows}
@@ -119,9 +124,14 @@ export default function JobPreferenceDataTable() {
           rowBufferPx={100}
           pagination
           columns={renderActionsMenu(
-            getColumnsForTable().map((column) => ({
+            getColumnsForTable(isEditable).map((column) => ({
               ...column,
-              editable: column.field !== "actions" && column.field !== "id" && isEditable,
+              // Assurance columns are set from the dropdown (server stamps who/when), never cell-edited.
+              editable:
+                column.field !== "actions" &&
+                column.field !== "id" &&
+                !ASSURANCE_FIELDS.includes(column.field) &&
+                isEditable,
             })),
             jobPreferenceDataState,
             {

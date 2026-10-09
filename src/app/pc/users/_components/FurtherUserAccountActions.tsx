@@ -82,9 +82,9 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
         <>
             <Menu placement="bottom-end">
                 <MenuHandler>
-                    <button className="bg-primary/10 flex items-center justify-center w-[2.75rem] h-[2.75rem] rounded-lg transition-colors hover:bg-primary/20">
-                        <Icon name="more" />
-                    </button>
+          <button className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20">
+            <Icon name="more" />
+          </button>
                 </MenuHandler>
                 <MenuList
                     placeholder=""
@@ -123,7 +123,7 @@ const FurtherUserAccountActions = ({ userId }: { userId: string }) => {
 export default FurtherUserAccountActions;
 
 
-const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonStyles, userId }: { open: boolean, setIsOpen: (open: boolean) => void, actionText: string, action: string, affirmButtonStyles: string, userId: string }) => {
+const MutateAccountModal = ({ open, setIsOpen, actionText, action, affirmButtonStyles: _affirmButtonStyles, userId }: { open: boolean, setIsOpen: (open: boolean) => void, actionText: string, action: string, affirmButtonStyles: string, userId: string }) => {
 
 
     const { accountActionMutation: acceptMutation, permanentDeleteUserMutation: deleteMutation } = useAdminMutations();

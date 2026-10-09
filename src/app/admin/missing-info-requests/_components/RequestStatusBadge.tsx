@@ -11,6 +11,7 @@ const STATUS_STYLES: Record<string, string> = {
   declined: "text-[#7C3AED]",
   failed: "text-[#DC2626]",
   expired: "text-[#9CA3AF]",
+  resolved: "text-[#0B7A5A]",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   declined: "Declined",
   failed: "Failed",
   expired: "Expired",
+  resolved: "Resolved",
 };
 
 export default function RequestStatusBadge({ status }: RequestStatusBadgeProps) {

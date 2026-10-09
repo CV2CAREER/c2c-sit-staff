@@ -8,9 +8,10 @@ import { ApiSuccess } from "@/types/apiResponse.types";
 export type MissingInfoTemplate = {
   id: string;
   name: string;
-  category: "identity" | "work_rights" | "references" | "certifications" | "banking";
+  category: "identity" | "work_rights" | "references" | "certifications" | "banking" | "housekeeping";
   type: "referee_block" | "free_form";
   status: "draft" | "published";
+  description?: string | null;
   createdById: string;
   publishCount: number;
   fields?: MissingInfoTemplateField[];
@@ -39,6 +40,8 @@ type CreateTemplatePayload = {
   name: string;
   category: string;
   type: string;
+  description?: string | null;
+  status?: "draft" | "published";
   fields?: Partial<MissingInfoTemplateField>[];
 };
 
@@ -220,6 +223,11 @@ export type RequestStats = {
   viewed: number;
   in_progress: number;
   submitted: number;
+  resolved: number;
+  /** pending + viewed + in_progress: what the Customer queue lists by default */
+  outstanding: number;
+  olderThan3: number;
+  olderThan7: number;
   total: number;
   templateCount: number;
 };
@@ -335,9 +343,27 @@ export function useRequestStats() {
   });
 
   return {
-    stats: query.data?.data ?? { pending: 0, viewed: 0, in_progress: 0, submitted: 0, total: 0, templateCount: 0 },
+    stats: query.data?.data ?? { pending: 0, viewed: 0, in_progress: 0, submitted: 0, resolved: 0, outstanding: 0, olderThan3: 0, olderThan7: 0, total: 0, templateCount: 0 },
     isLoading: query.isLoading,
   };
+}
+
+/** Manual "Resolve" for an outstanding customer request: no email, no automation. */
+export function useResolveRequest() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      const response = await axiosInstance.post<ApiSuccess<any>>(endpoints.MISSING_INFO_REQUESTS_STAFF_RESOLVE(requestId));
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-outstanding"] });
+      await queryClient.invalidateQueries({ queryKey: ["missing-info-stats"] });
+    },
+  });
+
+  return { resolveRequest: mutation.mutateAsync, isResolving: mutation.isPending };
 }
 
 export function useBulkReminder() {
