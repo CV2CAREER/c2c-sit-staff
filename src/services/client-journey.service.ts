@@ -291,7 +291,7 @@ export async function attestClientJourneyStep(
   }
 
   if (shouldNotify && !wasCompleted) {
-    notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId, undefined, details);
+    notifySubscriptionStepCompletedByAdmin(userId, stepKey, adminId, host, details);
   }
 
   // SPR-21-13-008 — campaign end cascades into the renewal offer step: the

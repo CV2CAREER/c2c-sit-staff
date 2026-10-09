@@ -840,6 +840,8 @@ export const notifySubscriptionStepCompletedByAdmin = (
       const userEmail = await fieldEncryption.getUserEmail(userId);
       const fullName = getFullName(user);
       const planTitle = user.plan || user.selectedPlan || "Your plan";
+      const actor = actorId ? await User.findByPk(actorId) : null;
+      const actorName = actor ? `${actor.firstName || ""} ${actor.lastName || ""}`.trim() : "";
       const frontendUrl = getFrontendUrl();
       const currentYear = new Date().getFullYear();
 
@@ -988,7 +990,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
         );
       }
 
-      const slackHost = host || "localhost";
+      const slackHost = host || CLIENT_APP_DOMAIN;
       // 010's single step has two moments — pick the headline that matches
       // what the admin recorded on the attest form. 006's two outcome steps
       // embed the picker value (eligibility result / approved-vs-declined).
@@ -1026,7 +1028,7 @@ export const notifySubscriptionStepCompletedByAdmin = (
         trigger: `${stepKey} completed by admin: ${userEmail || userId}`,
         body: `${headline ? `${headline}\n` : ""}An admin completed the "${stepKey}" journey step.
 User: ${fullName} (${userEmail || userId})
-Completed by (admin id): ${actorId}
+Completed by: ${actorName || actorId}
 Plan: ${planTitle}${whenLine}${noteLine}${mailNotSentLine}`,
       });
 
