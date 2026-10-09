@@ -32,7 +32,11 @@ import {
   getSlackIdOrName,
 } from '../utils/slack-helpers';
 import { getConnectedRedis } from '../config/redis';
-import { calculateCampaignFields } from '../utils/campaign-calculator';
+import { calculateCampaignFields, parseDate } from '../utils/campaign-calculator';
+import {
+  resolveGoverningPlan,
+  resolveValidityPeriod,
+} from '../utils/plan-resolution';
 import { Op, Sequelize } from 'sequelize';
 
 const logger = getServiceLogger('campaign-service');
@@ -44,17 +48,34 @@ const formatClientName = (user?: {
 } | null): string =>
   [user?.firstName, user?.middleName, user?.lastName].filter(Boolean).join(' ');
 
+// Looks up the real account email (User.email) for each clientId, so Slack
+// notifications show the client's own email rather than the jobsite alias.
+// Instances (not raw) so User's @AfterFind decrypts the PII email field.
+const getUserEmailMap = async (
+  clientIds: Array<string | null | undefined>
+): Promise<Map<string, string>> => {
+  const ids = [...new Set(clientIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return new Map();
+  const users = await User.findAll({
+    where: { id: ids },
+    attributes: ['id', 'email'],
+    paranoid: false,
+  });
+  return new Map(users.map((u) => [u.id, u.email]));
+};
+
 // Derives a display name/email for a Credentials row for use in Slack notifications,
 // mirroring the same derivation landOrLaunchCampaign uses for flight status messages.
 const getCredentialContactInfo = (
-  cred: { seekEmail?: string; seekExternalCredentials?: any } | null | undefined,
-  fallbackId: string
+  cred: { clientId?: string; seekExternalCredentials?: any } | null | undefined,
+  fallbackId: string,
+  emailByUserId: Map<string, string>
 ): { name: string; email: string } => {
   const jsonb = cred?.seekExternalCredentials || {};
   const name =
     `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
     `Client #${fallbackId}`;
-  const email = jsonb.Alias_Email || cred?.seekEmail || 'unknown';
+  const email = (cred?.clientId && emailByUserId.get(cred.clientId)) || 'unknown';
   return { name, email };
 };
 
@@ -2239,7 +2260,15 @@ export const submitJobMatchRequest = async (
  * time, so the countdown reflects "today" without ever mutating the stored
  * SeekSubDurDays (which stays fixed as the plan's total duration).
  */
-const enrichCampaignFields = (client: any) => {
+/**
+ * Plan selection lives in utils/plan-resolution so the read paths and the save
+ * path resolve the governing plan the same way, and so the rule is unit tested.
+ */
+
+const enrichCampaignFields = (
+  client: any,
+  validityPeriod?: string | null
+) => {
   const cred = client.seekExternalCredentials ?? {};
 
   const computed = calculateCampaignFields({
@@ -2247,6 +2276,7 @@ const enrichCampaignFields = (client: any) => {
     createdAt: client.createdAt,
     SeekSubDurDays: cred.SeekSubDurDays,
     GraceDuration: cred.GraceDuration,
+    ValidityPeriod: validityPeriod,
   });
 
   return {
@@ -2255,7 +2285,18 @@ const enrichCampaignFields = (client: any) => {
     SeekSubStartDate: computed.SeekSubStartDate ?? client.SeekSubStartDate,
     seekExternalCredentials: {
       ...cred,
-      SeekSubEndDate: cred.SeekSubEndDate,
+      // Echo the resolved duration so the edit modal can show Sub Duration Days.
+      // Undefined when the plan could not supply a period, in which case the
+      // stored value is left as-is.
+      ...(computed.SeekSubDurDays !== undefined
+        ? { SeekSubDurDays: computed.SeekSubDurDays }
+        : {}),
+      // Read-only marker telling the modal whether the plan is driving that
+      // duration. Never persisted - the save path writes its fields explicitly.
+      ...(computed.SeekSubDurDaysFromPlan !== undefined
+        ? { SeekSubDurDaysFromPlan: computed.SeekSubDurDaysFromPlan }
+        : {}),
+      SeekSubEndDate: computed.SeekSubEndDate ?? cred.SeekSubEndDate,
       CampaignEnd: computed.CampaignEnd ?? cred.CampaignEnd,
       SeekSubRemainingDays: computed.SeekSubRemainingDays,
       SeekSubToExpireDays: computed.SeekSubToExpireDays,
@@ -2388,8 +2429,37 @@ export const getCampaignClients = async (
     }
   }
 
+  // SPR-21-41-019: fetch plans for all clients in a single query so Sub Duration
+  // Days can auto-fill from the plan's validityPeriod. Without this the modal
+  // showed a blank duration and Sub End Date was derived from a duration of 0.
+  const plansByUserId = new Map<string, any[]>();
+  if (clientIds.length) {
+    try {
+      const allPlans = await Plan.findAll({
+        where: { userId: { [Op.in]: clientIds } },
+        order: [['createdAt', 'DESC']],
+        raw: true,
+      });
+      for (const plan of allPlans as any[]) {
+        const list = plansByUserId.get(plan.userId) ?? [];
+        list.push(plan);
+        plansByUserId.set(plan.userId, list);
+      }
+    } catch (err) {
+      logger.warn('Could not fetch plans for campaign clients:', err);
+    }
+  }
+
   const campaignsWithAggregators = campaigns.map((client) => ({
-    ...enrichCampaignFields(client),
+    ...enrichCampaignFields(
+      client,
+      client.clientId
+        ? resolveValidityPeriod(
+            plansByUserId.get(client.clientId) ?? [],
+            (client.seekExternalCredentials ?? {}).Plan
+          )
+        : null
+    ),
     aggregators: client.clientId
       ? (aggregatorsByUserId.get(client.clientId) ?? [])
       : [],
@@ -2471,8 +2541,30 @@ export const getCampaignClientById = async (clientId: string) => {
     jobsiteCredentialEmail = jobsiteCredential?.email ?? null;
   }
 
+  // SPR-21-41-019: same plan lookup the list path batches, done singly here so
+  // Sub Duration Days auto-fills in the modal opened from this endpoint too.
+  let validityPeriod: string | null = null;
+  if (clientData.clientId) {
+    try {
+      const plans = await Plan.findAll({
+        where: { userId: clientData.clientId },
+        order: [['createdAt', 'DESC']],
+        raw: true,
+      });
+      validityPeriod = resolveValidityPeriod(
+        plans as any[],
+        (clientData.seekExternalCredentials ?? {}).Plan
+      );
+    } catch (err) {
+      logger.warn(
+        `Could not fetch plans for client ${clientData.clientId}:`,
+        err
+      );
+    }
+  }
+
   return {
-    ...enrichCampaignFields(clientData),
+    ...enrichCampaignFields(clientData, validityPeriod),
     ...applicationCounts,
     aggregators,
     jobsiteCredentialEmail,
@@ -2565,7 +2657,8 @@ export const landOrLaunchCampaign = async (
   const clientName =
     `${jsonb.First_Name || ''} ${jsonb.Last_Name || ''}`.trim() ||
     `Client #${clientId}`;
-  const clientEmail = jsonb.Alias_Email || credData.seekEmail || 'unknown';
+  const clientEmail =
+    (await getUserEmailMap([credData.clientId])).get(credData.clientId) || 'unknown';
   const planName = jsonb.Plan || 'Unknown';
 
   let message: string;
@@ -2731,6 +2824,71 @@ export const createCampaignClient = async (data: any) => {
  * exist as direct columns on the Credentials model. This function routes each incoming
  * field to the right destination so the update actually persists.
  */
+/**
+ * SPR-21-41-020 AC4: columns that must never arrive in a campaign client update
+ * payload.
+ *
+ * The edit modal renders these read-only, but a read-only input is a UI
+ * convention, not a guarantee: a stale client bundle, a future regression, or a
+ * hand-crafted request can still post them. Application timestamps are audit
+ * data written by the applicant pipeline, and the subscription dates are derived
+ * server-side, so accepting them would let a caller silently overwrite values
+ * the system owns.
+ *
+ * The five Placement Controller name columns belong here too. They are assigned
+ * through the dedicated placement-controller endpoint, never through this one.
+ *
+ * `updatedBy` / `updatedAt` are deliberately NOT listed: they are audit metadata
+ * this service consumes and strips itself (see the destructure below), not
+ * modal-locked columns. `updateBy` is a different column and is rejected.
+ *
+ * Kept in sync with the frontend's NEVER_WRITABLE set by
+ * scripts/check-campaign-locked-fields.mjs, which fails the build on drift.
+ */
+export const CAMPAIGN_LOCKED_FIELDS: ReadonlySet<string> = new Set([
+  // Identity / audit columns with no user-editable value.
+  'id',
+  'CustomerId',
+  'Full_Name',
+  'createdAt',
+  'updateBy',
+  'First_Application',
+  'Last_Application',
+  // Derived server-side from SeekSubStartDate + duration + grace.
+  'SeekSubEndDate',
+  'CampaignEnd',
+  'SeekSubToExpireDays',
+  'SeekSubExpired',
+  // Placement Controllers are assigned via the placement-controller endpoint.
+  'VaName',
+  'VetName',
+  'CompletedName',
+  'InterimDPCName',
+  'InterimSPCName',
+]);
+
+/**
+ * Reject a payload that tries to write a locked column.
+ *
+ * Rejecting rather than silently dropping is deliberate: if a caller thinks it
+ * changed First_Application and the write is quietly discarded, the record and
+ * the caller's understanding of it diverge with no signal. A 400 says plainly
+ * that the field is not writable.
+ */
+export const assertNoLockedFields = (
+  payload: Record<string, unknown>
+): void => {
+  const offending = Object.keys(payload ?? {}).filter(
+    (key) => CAMPAIGN_LOCKED_FIELDS.has(key) && key !== 'updatedAt'
+  );
+  if (offending.length > 0) {
+    throw new ErrorHandler(
+      `Cannot edit read-only field(s): ${offending.join(', ')}`,
+      400
+    );
+  }
+};
+
 export interface UpdateCampaignClientPayload {
   First_Name?: string;
   Middle_Name?: string;
@@ -2785,6 +2943,12 @@ export const updateCampaignClient = async (
   // Handle nested data payload structure (fields may be inside a .data wrapper)
   const actualData = data.data || data;
 
+  // SPR-21-41-020 AC4: reject read-only columns before touching the record, so a
+  // payload that includes one cannot overwrite audit or derived data. Runs ahead
+  // of every write below, including the server's own subscription recalculation
+  // - that derivation happens after this point and is not part of the payload.
+  assertNoLockedFields(actualData as Record<string, unknown>);
+
   // Use a loose record so delete and string-trim operations are type-safe
   const updateData: Record<string, unknown> = { ...actualData };
 
@@ -2795,7 +2959,7 @@ export const updateCampaignClient = async (
     ?.trim()
     .toUpperCase();
   const isFlightTrigger =
-    incomingCapitalized === 'HOLD' ||
+    // incomingCapitalized === 'HOLD' ||
     incomingCapitalized === 'FLIGHT' ||
     incomingCapitalized === 'INFLIGHT';
   if (isFlightTrigger) {
@@ -2843,6 +3007,8 @@ export const updateCampaignClient = async (
     'AssignedVetEmail',
     'AssignedCompletedName',
     'AssignedCompletedEmail',
+    'auditRequired', // SPR-21-33-001
+    'auditFindings', // SPR-21-33-001
   ]);
 
   // Form field names that must be renamed to match the actual Credentials column name
@@ -2850,6 +3016,16 @@ export const updateCampaignClient = async (
     Capitalized: 'capitalized', // form sends PascalCase, column is camelCase
     Seek_Aggregator: 'SeekAggregator', // form uses underscore, column does not
   };
+
+  // SPR-21-33-001: audit fields are real columns; reject bad values instead of silently storing them
+  if (fieldsToUpdate['auditRequired'] !== undefined && typeof fieldsToUpdate['auditRequired'] !== 'boolean') {
+    throw new Error('auditRequired must be true or false');
+  }
+  if (fieldsToUpdate['auditFindings'] !== undefined && fieldsToUpdate['auditFindings'] !== null) {
+    if (typeof fieldsToUpdate['auditFindings'] !== 'string' || (fieldsToUpdate['auditFindings'] as string).length > 2000) {
+      throw new Error('auditFindings must be text of at most 2000 characters');
+    }
+  }
 
   const directUpdates: Record<string, any> = {};
   const jsonbUpdates: Record<string, any> = {};
@@ -2894,84 +3070,100 @@ export const updateCampaignClient = async (
     await userInfo.update(directUpdates as any);
   }
 
-  // When SeekSubStartDate changes, find the user's plan via Credentials.clientId,
-  // use plan.validityPeriod to compute the new end date, and sync all date/duration fields
-  if (fieldsToUpdate.SeekSubStartDate && userInfo.clientId) {
-    const rawDate = fieldsToUpdate.SeekSubStartDate as string;
-    // Accepts DD-MM-YYYY (datepicker) or ISO YYYY-MM-DD
-    const parts =
-      rawDate.includes('-') && rawDate.split('-')[0].length === 2
-        ? rawDate.split('-')
-        : null;
-    const startDate = parts
-      ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
-      : new Date(rawDate);
+  // SPR-21-41-019 AC2: recalculate the four derived subscription fields on save
+  // using the SAME calculateCampaignFields the modal previews live and the read
+  // path uses, so what staff saw before pressing Save is what gets stored.
+  //
+  // SPR-21-41-019: recompute on every save, not just when a subscription field was
+  // submitted.
+  //
+  // This block previously derived the duration from plan.validityPeriod instead,
+  // which silently overwrote the Sub Duration Days staff had just typed, set
+  // CampaignEnd equal to Sub End Date (discarding Grace Duration entirely), and
+  // never wrote SeekSubToExpireDays / SeekSubExpired at all - so the grid
+  // disagreed with the modal.
+  //
+  // It also ran only when SeekSubStartDate was submitted. The modal sends a diff,
+  // so extending just the grace period changed nothing on the server.
+  //
+  // It now runs unconditionally. The governing plan's validityPeriod is an input
+  // this modal does not own: a client can be upgraded without anything in the
+  // modal changing, and a gate on the submitted fields would leave the duration
+  // stale until someone happened to edit the subscription again. The cost is one
+  // extra indexed lookup per save.
+  // Read post-update state: SeekSubStartDate is a direct column while the
+  // duration and grace values live in the seekExternalCredentials JSONB, and
+  // any of them may have just been merged above.
+  const fresh = userInfo.toJSON() as any;
+  const freshJsonb = fresh.seekExternalCredentials || {};
 
-    if (!isNaN(startDate.getTime())) {
-      // Use the plan title stored in seekExternalCredentials (e.g. "Bronze", "Silver")
-      // so we always match the client's current plan, not an old/different one
-      const currentJsonb =
-        (userInfo.toJSON() as any).seekExternalCredentials || {};
-      const planTitle = currentJsonb.Plan as string | undefined;
+  // Resolve the governing plan up front so the duration can auto-fill from its
+  // validityPeriod before anything is computed. Matching the read path's
+  // resolution keeps the modal preview and the stored value identical.
+  //
+  // Load every plan row for this client, not just the newest: Plan rows are
+  // append-only, so a client who upgraded holds one row per plan, and the
+  // authoritative one is whichever title seekExternalCredentials.Plan points at.
+  // Fetching only the newest row made the title match miss, which silently
+  // skipped the duration auto-fill and then stamped the derived end date onto
+  // the newest row regardless of whether it was the governing plan.
+  let validityPeriod: string | null = null;
+  let plan: any = null;
+  if (userInfo.clientId) {
+    const plans = await Plan.findAll({
+      where: { userId: userInfo.clientId },
+      order: [['createdAt', 'DESC']],
+    });
+    plan = resolveGoverningPlan(plans as any[], freshJsonb.Plan);
+    validityPeriod = resolveValidityPeriod(plans as any[], freshJsonb.Plan);
+    if (freshJsonb.Plan && !plan) {
+      logger.warn(
+        `Client ${userInfo.clientId} references plan "${freshJsonb.Plan}" but no such plan row was found - duration not auto-filled`
+      );
+    }
+  }
 
-      const plan = await Plan.findOne({
-        where: {
-          userId: userInfo.clientId,
-          ...(planTitle ? { title: planTitle } : {}),
-        },
-        order: [['createdAt', 'DESC']],
+  const computed = calculateCampaignFields({
+    SeekSubStartDate: fresh.SeekSubStartDate,
+    createdAt: fresh.createdAt,
+    SeekSubDurDays: freshJsonb.SeekSubDurDays,
+    GraceDuration: freshJsonb.GraceDuration,
+    ValidityPeriod: validityPeriod,
+  });
+
+  if (computed.SeekSubEndDate) {
+    await userInfo.update({
+      seekExternalCredentials: {
+        ...freshJsonb,
+        // Persist the auto-filled duration so the next read does not have to
+        // re-derive it, and so the grid shows the same number the modal did.
+        ...(computed.SeekSubDurDays !== undefined
+          ? { SeekSubDurDays: computed.SeekSubDurDays }
+          : {}),
+        SeekSubEndDate: computed.SeekSubEndDate,
+        CampaignEnd: computed.CampaignEnd,
+        SeekSubRemainingDays: computed.SeekSubRemainingDays,
+        SeekSubToExpireDays: computed.SeekSubToExpireDays,
+        SeekSubExpired: computed.SeekSubExpired,
+      },
+    } as any);
+
+    // Keep the governing plan's expiry aligned with the subscription end date.
+    // If no plan row was found the subscription dates are still correct; only
+    // the plan-side bookkeeping is skipped.
+    const subEnd = parseDate(computed.SeekSubEndDate);
+    if (plan && subEnd) {
+      // Derive hasExpired from the end date rather than hard-coding false:
+      // an end date already in the past would otherwise leave a lapsed plan
+      // flagged active, and Plan.userHasValidPlan() reads this flag.
+      await plan.update({
+        expiresAt: subEnd,
+        hasExpired: subEnd.getTime() <= Date.now(),
       });
-
-      if (plan?.validityPeriod) {
-        // validityPeriod examples: "6 months", "12 months", "30 days", "1 year"
-        const [rawAmount, rawUnit = ''] = plan.validityPeriod
-          .trim()
-          .split(/\s+/);
-        const amount = parseInt(rawAmount, 10);
-        const unit = rawUnit.toLowerCase();
-        const expiry = new Date(startDate);
-
-        if (unit.startsWith('day')) {
-          expiry.setDate(expiry.getDate() + amount);
-        } else if (unit.startsWith('month')) {
-          expiry.setMonth(expiry.getMonth() + amount);
-        } else {
-          expiry.setFullYear(expiry.getFullYear() + amount);
-        }
-
-        const durationDays = Math.round(
-          (expiry.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        // Format expiry as DD-MM-YYYY to match the existing date style
-        const dd = String(expiry.getDate()).padStart(2, '0');
-        const mm = String(expiry.getMonth() + 1).padStart(2, '0');
-        const yyyy = expiry.getFullYear();
-        const endDateStr = `${dd}-${mm}-${yyyy}`;
-
-        await plan.update({ expiresAt: expiry, hasExpired: false });
-
-        await userInfo.update({
-          seekExternalCredentials: {
-            ...currentJsonb,
-            SeekSubDurDays: durationDays,
-            SeekSubEndDate: endDateStr,
-            CampaignEnd: endDateStr,
-          },
-        } as any);
-
-        logger.info(
-          `Plan expiry set to ${endDateStr} (${durationDays} days) for user ${userInfo.clientId} [${planTitle ?? 'unknown plan'}]`
-        );
-      } else if (plan) {
-        logger.warn(
-          `Plan found for user ${userInfo.clientId} but has no validityPeriod — expiry not updated`
-        );
-      } else {
-        logger.warn(
-          `No plan found for user ${userInfo.clientId} — expiry not updated`
-        );
-      }
+    } else if (!plan && userInfo.clientId) {
+      logger.warn(
+        `No plan found for user ${userInfo.clientId} - plan expiry not updated`
+      );
     }
   }
 
@@ -3040,7 +3232,12 @@ export const softDeleteCampaignClient = async (id: string, requestorName?: strin
   }
 
   const cred = await Credentials.findOne({ where: { id } });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.update(
     { isDeleted: true },
@@ -3083,7 +3280,12 @@ export const restoreCampaignClient = async (id: string, requestorName?: string, 
   }
 
   const cred = await Credentials.findOne({ where: { id }, paranoid: false });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.update(
     { isDeleted: false },
@@ -3126,7 +3328,12 @@ export const permanentDeleteCampaignClient = async (id: string, requestorName?: 
   }
 
   const cred = await Credentials.findOne({ where: { id }, paranoid: false });
-  const { name: clientName, email: clientEmail } = getCredentialContactInfo(cred?.toJSON() as any, id);
+  const credJson = cred?.toJSON() as any;
+  const { name: clientName, email: clientEmail } = getCredentialContactInfo(
+    credJson,
+    id,
+    await getUserEmailMap([credJson?.clientId])
+  );
 
   const response = await Credentials.destroy({
     where: { id },
@@ -3170,7 +3377,10 @@ export const softDeleteCampaignClientsBulk = async (ids: string[], requestorName
   }
 
   const creds = await Credentials.findAll({ where: { id: ids } });
-  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+  const emailByUserId = await getUserEmailMap(creds.map((c) => c.clientId));
+  const clients = creds.map((c) =>
+    getCredentialContactInfo(c.toJSON() as any, c.id, emailByUserId)
+  );
 
   const [affectedCount] = await Credentials.update(
     { isDeleted: true },
@@ -3219,7 +3429,10 @@ export const deleteCampaignClientsBulk = async (ids: string[], requestorName?: s
   }
 
   const creds = await Credentials.findAll({ where: { id: ids }, paranoid: false });
-  const clients = creds.map((c) => getCredentialContactInfo(c.toJSON() as any, c.id));
+  const emailByUserId = await getUserEmailMap(creds.map((c) => c.clientId));
+  const clients = creds.map((c) =>
+    getCredentialContactInfo(c.toJSON() as any, c.id, emailByUserId)
+  );
 
   const response = await Credentials.destroy({
     where: { id: ids },

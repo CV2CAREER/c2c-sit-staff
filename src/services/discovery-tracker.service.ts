@@ -11,6 +11,7 @@ import {
   SlackSeverity,
 } from "../utils/enum";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
+import { buildAssuranceUpdate, parseAssuranceStatus } from "../utils/assurance";
 
 const logger = getServiceLogger("discovery-tracker-service");
 
@@ -78,12 +79,23 @@ const parseJobTitle = (raw: string | undefined | null): { label: string; url: st
   return { label, url };
 };
 
+// The table holds ~200k rows (~250 MB as JSON), so the grid is paged on the server.
+export const DEFAULT_PAGE_SIZE = 50;
+export const MAX_PAGE_SIZE = 200;
+
 export const listManualApplications = async (params: {
   field?: string;
   value?: string;
   isDeleted: boolean;
+  page?: number; // 0-based
+  pageSize?: number;
 }) => {
   const { field, value, isDeleted } = params;
+  const page = Number.isInteger(params.page) && (params.page as number) >= 0 ? (params.page as number) : 0;
+  const pageSize =
+    Number.isInteger(params.pageSize) && (params.pageSize as number) > 0
+      ? Math.min(params.pageSize as number, MAX_PAGE_SIZE)
+      : DEFAULT_PAGE_SIZE;
 
   const where: Record<string, any> = { isDeleted };
 
@@ -96,7 +108,8 @@ export const listManualApplications = async (params: {
     }
   }
 
-  const rows = await ManualApplication.findAll({
+  // totalCount is the filtered total across all pages, not the page length.
+  const { rows, count } = await ManualApplication.findAndCountAll({
     where,
     include: [
       {
@@ -105,10 +118,17 @@ export const listManualApplications = async (params: {
         attributes: ["id", "firstName", "lastName"],
       },
     ],
-    order: [["createdAt", "DESC"]],
+    // "id" is a stable tiebreaker so pages never repeat or skip rows.
+    order: [
+      ["createdAt", "DESC"],
+      ["id", "ASC"],
+    ],
+    limit: pageSize,
+    offset: page * pageSize,
+    distinct: true,
   });
 
-  return { rows, totalCount: rows.length };
+  return { rows, totalCount: count };
 };
 
 export const getManualApplicationFilterValues = async (field: string) => {
@@ -235,6 +255,32 @@ export const updateManualApplicationRecord = async (
   const action =
     isDeletedChange === true ? "soft-deleted" : isDeletedChange === false ? "restored" : "updated";
   notifyManualApplicationChange(record, action, actor, host, changedFields.length ? changedFields : undefined);
+
+  return record;
+};
+
+/**
+ * Record the assurance result for a manual application (SPR-21-58-001). Narrow on
+ * purpose: only the three assurance columns, so any admin/assistant can use it
+ * without the admin-only edit rights of updateManualApplicationRecord. The server
+ * stamps who (the actor's full name) and when; `assuranceStatus` is "ASSURED",
+ * "FAILED", or null to clear the row.
+ */
+export const setManualApplicationAssurance = async (
+  id: string,
+  assuranceStatus: unknown,
+  actor: Actor,
+) => {
+  const record = await ManualApplication.findOne({ where: { id } });
+  if (!record) {
+    throw new Error("Manual application not found");
+  }
+
+  const status = parseAssuranceStatus(assuranceStatus);
+  await record.update(buildAssuranceUpdate(status, actor.name));
+  logger.info(
+    `Manual application ${id} assurance ${status ?? "cleared"} by ${actor.name}`,
+  );
 
   return record;
 };

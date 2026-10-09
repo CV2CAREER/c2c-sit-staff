@@ -14,8 +14,9 @@ import { authorizeRoles } from "@/middlewares/authorizeRoles";
 
 const supportRouterV1 = Router();
 
-// All support routes require authentication
-supportRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin"));
+// All support routes require authentication. Human Support is in both the
+// admin and PC Communication menus, so assistants answer clients too.
+supportRouterV1.use(checkBlacklistedTokens, isUserAuthenticated, authorizeRoles("admin", "assistant"));
 
 supportRouterV1.post("/", createSupportSession);
 supportRouterV1.post("/:sessionId/messages", sendSupportMessage);

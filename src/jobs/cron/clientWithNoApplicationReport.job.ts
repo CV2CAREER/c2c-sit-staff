@@ -102,7 +102,8 @@ function hasValidName(value: string | null | undefined): boolean {
 
 async function fetchAllActiveClients(): Promise<ClientInfo[]> {
   const credentials = await Credentials.findAll({
-    where: { Active: true, deletedAt: null, capitalized: 'FLIGHT' },
+    // where: { Active: true, deletedAt: null, capitalized: 'FLIGHT' },
+    where: { Active: true, deletedAt: null, capitalized: 'INFLIGHT' },
     include: [
       {
         model: User,

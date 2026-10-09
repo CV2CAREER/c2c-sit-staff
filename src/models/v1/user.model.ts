@@ -24,7 +24,7 @@ import {
 import { Op } from "sequelize";
 import {
   ApplicationStatus,
-  CustomerClass,
+  Perception,
   Gender,
   PaymentStatus,
   Progress,
@@ -147,9 +147,18 @@ export class User extends Model {
   businessName?: string;
 
   @AllowNull(false)
-  @Default(CustomerClass.NA)
-  @Column(DataType.ENUM(...Object.values(CustomerClass)))
-  customerClass!: CustomerClass;
+  @Default(Perception.TBD)
+  @Column(DataType.ENUM(...Object.values(Perception)))
+  staffPerception!: Perception;
+
+  @AllowNull(false)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  auditRequired!: boolean;
+
+  @AllowNull(true)
+  @Column(DataType.TEXT)
+  auditFindings?: string | null;
 
   @Column(DataType.VIRTUAL(DataType.STRING))
   get phoneNumber(): string | undefined {
@@ -200,6 +209,10 @@ export class User extends Model {
   @AllowNull(true)
   @Column(DataType.STRING)
   slackId?: string;
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  heritage?: string;
 
   @HasOne(() => Referrer, "userId")
   referrer?: Referrer;
@@ -285,6 +298,14 @@ export class User extends Model {
   @Column(DataType.BOOLEAN)
   isRestricted?: boolean;
 
+  // Partner-referred Emerald persona marker. Mirrored from customer BE —
+  // shared DB. Staff BE reads this to drive admin UI persona display and
+  // may flip it to false when a paid plan is manually assigned to the user.
+  @AllowNull(true)
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  isEmeraldCandidate?: boolean;
+
   @AllowNull(false)
   @Default(false)
   @Column(DataType.BOOLEAN)
@@ -299,6 +320,19 @@ export class User extends Model {
   @Default(false)
   @Column(DataType.BOOLEAN)
   isDocumentUploaded!: boolean;
+
+  // C/R and C/L staff overrides. NULL means "not overridden": the users list
+  // then derives the value from the client's resume / cover letter uploads.
+  // true/false is an explicit Admin/PC decision and wins over the uploads.
+  @AllowNull(true)
+  @Default(null)
+  @Column(DataType.BOOLEAN)
+  hasResume?: boolean | null;
+
+  @AllowNull(true)
+  @Default(null)
+  @Column(DataType.BOOLEAN)
+  hasCoverLetter?: boolean | null;
 
   @AllowNull(false)
   @Default(false)

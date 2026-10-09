@@ -786,16 +786,21 @@ export const getDocumentReview = catchAsyncError(
 /**
  * Manually trigger subscription expiry reminder job (for testing)
  * POST /api/v1/campaigns/jobs/subscription-expiry-reminder/run
+ * Add ?dryRun=true to preview who would be notified without sending anything.
  */
 export const triggerSubscriptionExpiryReminder = catchAsyncError(
-  async (_req: Request, res: Response) => {
-    logger.info('Manual trigger: subscription expiry reminder job');
+  async (req: Request, res: Response) => {
+    const dryRun = req.query.dryRun === 'true';
+    logger.info(`Manual trigger: subscription expiry reminder job${dryRun ? ' (dry run)' : ''}`);
     const { runSubscriptionExpiryReminderJob } =
       await import('../../jobs/cron/subscription-expiry-reminder.job');
-    await runSubscriptionExpiryReminderJob();
+    const preview = await runSubscriptionExpiryReminderJob({ dryRun });
     res.status(200).json({
       success: true,
-      message: 'Subscription expiry reminder job executed successfully',
+      message: dryRun
+        ? 'Subscription expiry reminder dry run — nothing was sent or changed'
+        : 'Subscription expiry reminder job executed successfully',
+      ...(preview && { data: preview }),
     });
   }
 );

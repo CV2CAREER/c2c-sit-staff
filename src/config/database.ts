@@ -25,17 +25,20 @@ import { EmailTestSendLog } from '../models/v1/email-test-send-log.model';
 import { CredentialsComment } from '../models/v1/credentials-comment.model';
 import { UserSegmentFilter } from '../models/v1/user-segment-filter.model';
 import { SocialVerification } from '../models/v1/social-verification.model';
-import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
-import { DiscoveryJob } from '../models/v1/discovery-job.model';
-import { DiscoveryMatch } from '../models/v1/discovery-match.model';
-import { DiscoveryRun } from '../models/v1/discovery-run.model';
-import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
+// import { DiscoverySourceRegister } from '../models/v1/discovery-source-register.model';
+// import { DiscoveryJob } from '../models/v1/discovery-job.model';
+// import { DiscoveryMatch } from '../models/v1/discovery-match.model';
+// import { DiscoveryRun } from '../models/v1/discovery-run.model';
+// import { DiscoverySchedule } from '../models/v1/discovery-schedule.model';
 import { CECDailyLog } from '../models/v1/cec-daily-log.model';
 import { CECIssueBurndown } from '../models/v1/cec-issue-burndown.model';
 import { CECComplaint } from '../models/v1/cec-complaint.model';
 import { CECReferralPayout } from '../models/v1/cec-referral-payout.model';
 import { CECSalesOutreach } from '../models/v1/cec-sales-outreach.model';
 import { CECAmbassadorScout } from '../models/v1/cec-ambassador-scout.model';
+import { JobsiteVerification } from '../models/v1/jobsite-verification.model';
+import { JobsiteConfig } from '../models/v1/jobsite-config.model';
+import { JobsiteRejectReason, DEFAULT_JOBSITE_REJECT_REASONS } from '../models/v1/jobsite-reject-reason.model';
 
 
 const logger = getServiceLogger(`${ENVIRONMENTNAME} database`);
@@ -71,10 +74,9 @@ export const connectDB = async (): Promise<void> => {
 
         // ✅ ADD YOUR TARGETED SYNCS HERE — remove after deployment
         // await PreferenceQuestion.sync({ force: false }); // new table — remove after first deploy
-        // aiPromptSection added to vcs_prompts — force:false only CREATEs
-        // missing tables, it won't ALTER an existing one to add a column, so
-        // this needs alter:true specifically. Remove after first deploy.
         // await VCSPrompt.sync({ alter: true });
+        // model column added to vcs_prompt_simulation_runs — remove after first deploy
+        // await VCSPromptSimulationRun.sync({ alter: true });
         // await JustCallEvent.sync({ force: false }); // new table — remove after first deploy
         // await JustCallEventLog.sync({ force: false }); // new table (FK -> justcall_events) — remove after first deploy
         // await JustCallMessageEvent.sync({ force: false }); // new table — remove after first deploy
@@ -97,17 +99,20 @@ export const connectDB = async (): Promise<void> => {
         // table so admin BE boots cleanly regardless of whether customer BE
         // ran first. Remove after first deploy.
         await SocialVerification.sync({ force: false });
-        await DiscoverySourceRegister.sync({ force: false });
-        await DiscoveryJob.sync({ force: false });
-        await DiscoveryMatch.sync({ force: false });
-        await DiscoveryRun.sync({ force: false });
-        await DiscoverySchedule.sync({ force: false });
+        // await DiscoverySourceRegister.sync({ force: false });
+        // await DiscoveryJob.sync({ force: false });
+        // await DiscoveryMatch.sync({ force: false });
+        // await DiscoveryRun.sync({ force: false });
+        // await DiscoverySchedule.sync({ force: false });
         await CECDailyLog.sync({ force: false });
         await CECIssueBurndown.sync({ force: false });
         await CECComplaint.sync({ force: false });
         await CECReferralPayout.sync({ force: false });
         await CECSalesOutreach.sync({ force: false });
         await CECAmbassadorScout.sync({ force: false });
+        await JobsiteVerification.sync({ force: false });
+        await JobsiteConfig.sync({ force: false });
+        await JobsiteRejectReason.sync({ force: false });
 
         // NOTE: the CEC + AI Discovery schema changes (the plaintext `login`
         // purge and the campaignCredentialId / discovery_source_register columns)
@@ -124,46 +129,32 @@ export const connectDB = async (): Promise<void> => {
         } catch (colErr: any) {
           logger.warn(`discovery_method column check: ${colErr.message}`);
         }
+        // Add discovery_method column to manual_applications if missin
 
-        // SPR-19-07-005: add users.socialVerificationExempt column as a
-        // safety net if customer BE hasn't run first. Uses addColumn instead
-        // of User.sync({ alter: true }) because the users table has columns
-        // referenced by DB views/rules — a full alter fails with
-        // "cannot alter type of a column used by a view or rule".
-        // Remove after first deploy.
-        try {
-          const userCols = await queryInterface.describeTable("users");
-          if (!("socialVerificationExempt" in userCols)) {
-            await queryInterface.addColumn("users", "socialVerificationExempt", {
-              type: DataTypes.BOOLEAN,
-              allowNull: false,
-              defaultValue: false,
-            });
-            logger.info(
-              `${ENVIRONMENTNAME}: added users.socialVerificationExempt column`,
-            );
-          }
-        } catch (err: any) {
-          logger.error(
-            `${ENVIRONMENTNAME}: failed to add users.socialVerificationExempt column: ${err.message}`,
-          );
-        }
 
         // SPR-19-16-021: mirror sync for users.hear_about_us so admin BE
         // boots cleanly regardless of whether customer BE ran first.
         // Remove after first deploy.
+
+        // C/R + C/L overrides: users.hasResume / users.hasCoverLetter, nullable
+        // (NULL = derive from uploads). Same addColumn safety net as above;
+        // SQL in src/database/migrations/2026-10-07-add-hasResume-hasCoverLetter-to-users.sql.
+        // Remove after first deploy.
         try {
-          const userColsForHearAboutUs = await queryInterface.describeTable("users");
-          if (!("hear_about_us" in userColsForHearAboutUs)) {
-            await queryInterface.addColumn("users", "hear_about_us", {
-              type: DataTypes.STRING,
-              allowNull: true,
-            });
-            logger.info(`${ENVIRONMENTNAME}: added users.hear_about_us column`);
+          const userColsForDocFlags = await queryInterface.describeTable("users");
+          for (const column of ["hasResume", "hasCoverLetter"]) {
+            if (!(column in userColsForDocFlags)) {
+              await queryInterface.addColumn("users", column, {
+                type: DataTypes.BOOLEAN,
+                allowNull: true,
+                defaultValue: null,
+              });
+              logger.info(`${ENVIRONMENTNAME}: added users.${column} column`);
+            }
           }
         } catch (err: any) {
           logger.error(
-            `${ENVIRONMENTNAME}: failed to add users.hear_about_us column: ${err.message}`,
+            `${ENVIRONMENTNAME}: failed to add users.hasResume/hasCoverLetter columns: ${err.message}`,
           );
         }
 

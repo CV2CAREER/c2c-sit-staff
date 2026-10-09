@@ -11,7 +11,7 @@ import { Feature } from "../../models/v1/feature.model";
 import { Profile } from "../../models/v1/profile.model";
 import { UserPreferenceHistory } from "../../models/v1/user-preference-history.model";
 import { Referrer } from "../../models/v1/referrer.model";
-import { Role, UploadStatus, CustomerClass } from "../../utils/enum";
+import { Role, UploadStatus, Perception } from "../../utils/enum";
 import { SlackService } from "../slack.service";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
@@ -32,6 +32,48 @@ export interface IJobPreferenceQuery {
 
 
 const logger = getServiceLogger("user-management-service");
+
+export const TRACKED_PREFERENCE_FIELDS: Array<{ key: string; label: string }> = [
+  { key: "titles", label: "Role Titles to Include" },
+  { key: "titlesExcluded", label: "Role Titles to Exclude" },
+  { key: "keywords", label: "Keywords Within Role Titles" },
+  { key: "keywordsExcluded", label: "Keywords Excluded" },
+  { key: "situation", label: "Situation" },
+  { key: "situationIncluded", label: "Situation" },
+  { key: "country", label: "Country" },
+  { key: "state", label: "State/Territory/Province to Include" },
+  { key: "stateExcluded", label: "State/Territory/Province to Exclude" },
+  { key: "city", label: "City/Town/Suburb to Include" },
+  { key: "cityExcluded", label: "City/Town/Suburb Excluded" },
+  { key: "jobTypes", label: "Job Type" },
+  { key: "minSalary", label: "Min Salary" },
+  { key: "maxSalary", label: "Max Salary" },
+  { key: "currency", label: "Currency" },
+  { key: "workingRight", label: "Working Right" },
+  { key: "classifications", label: "Industries" },
+  { key: "classificationsExcluded", label: "Industries Excluded" },
+  { key: "advertisers", label: "Advertisers to Include" },
+  { key: "advertisersExcluded", label: "Advertisers Excluded" },
+  { key: "courseOfStudy", label: "Course of Study" },
+  { key: "craft", label: "Course of Study" },
+  { key: "isAiForCriteriaSelectionAllowed", label: "Allow AI for Criteria Selection" },
+  { key: "coverletterIncluded", label: "Include Cover Letter" },
+];
+
+export function arePreferenceValuesEqual(val1: any, val2: any): boolean {
+  if (val1 === val2) return true;
+  if (!val1 && !val2) return true;
+  if (Array.isArray(val1) && Array.isArray(val2)) {
+    if (val1.length !== val2.length) return false;
+    const s1 = [...val1].map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).sort();
+    const s2 = [...val2].map((x) => (typeof x === "object" ? JSON.stringify(x) : String(x))).sort();
+    return JSON.stringify(s1) === JSON.stringify(s2);
+  }
+  if (typeof val1 === "object" || typeof val2 === "object") {
+    return JSON.stringify(val1) === JSON.stringify(val2);
+  }
+  return String(val1 ?? "").trim() === String(val2 ?? "").trim();
+}
 
 class UserManagementService {
   /**
@@ -77,12 +119,20 @@ class UserManagementService {
     // Allow updating all user fields
     const allowedFields = [
       'firstName', 'middleName', 'lastName', 'gender',
-      'email', 'customerClass', 'phoneNumber', 'whatsappNumber',
+      'email', 'staffPerception', 'auditRequired', 'auditFindings', 'phoneNumber', 'whatsappNumber',
       'country', 'heritage', 'communication', 'role',
-      'returnCount', 'revenue', 'cl', 'cr',
-      'socials', 'progress', 'isActive', 'isEmailVerified',
-      'planId', 'phone', 'address', 'city', 'state',
-      'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl'
+      'returnCount', 'revenue',
+      // C/L + C/R staff overrides (NULL = derive from uploads).
+      'hasCoverLetter', 'hasResume',
+      'applicationStatus', 'prepSessionStatus', 'isSampleDispatched',
+      'socials', 'progress', 'isActive', 'isUserSubscribed', 'isEmailVerified',
+      'planId', 'plan', 'signUpAs', 'phone', 'address', 'city', 'state',
+      'zipCode', 'company', 'jobTitle', 'bio', 'website', 'linkedinUrl',
+      'zohoId', 'currentCityOfResidence',
+      // SPR-21-41-013 AC8: admin may record approval. AC7 is enforced by
+      // omission: isDocumentUploaded is deliberately NOT listed here, so the
+      // upload process stays the only thing that can set it.
+      'isDocumentApproved'
     ];
 
     // Map frontend field names to backend model columns
@@ -98,12 +148,22 @@ class UserManagementService {
       }
     }
 
-    // Validate customerClass if provided
-    if (updateData.customerClass !== undefined) {
-      const validClasses = Object.values(CustomerClass);
-      if (!validClasses.includes(updateData.customerClass)) {
+    // SPR-21-33-001: audit fields
+    if (updateData.auditRequired !== undefined && typeof updateData.auditRequired !== 'boolean') {
+      throw new ErrorHandler('auditRequired must be true or false', 400);
+    }
+    if (updateData.auditFindings !== undefined && updateData.auditFindings !== null) {
+      if (typeof updateData.auditFindings !== 'string' || updateData.auditFindings.length > 2000) {
+        throw new ErrorHandler('auditFindings must be text of at most 2000 characters', 400);
+      }
+    }
+
+    // Validate staffPerception if provided
+    if (updateData.staffPerception !== undefined) {
+      const validPerceptions = Object.values(Perception);
+      if (!validPerceptions.includes(updateData.staffPerception)) {
         throw new ErrorHandler(
-          `Invalid customerClass "${updateData.customerClass}". Allowed values: ${validClasses.join(', ')}`,
+          `Invalid staffPerception "${updateData.staffPerception}". Allowed values: ${validPerceptions.join(', ')}`,
           400
         );
       }
@@ -188,6 +248,67 @@ class UserManagementService {
   }
 
   /**
+   * Set the C/R (hasResume) and C/L (hasCoverLetter) overrides. Separate from
+   * updateUser so PC (assistant) can change only these two flags without
+   * getting write access to every user field.
+   * true/false = explicit override; null = clear it and derive from uploads.
+   */
+  async updateDocumentFlags(
+    userId: string,
+    flags: { hasResume?: boolean | null; hasCoverLetter?: boolean | null },
+    actorUserId: string,
+    actorEmail?: string,
+    fullName?: string,
+  ) {
+    if (!userId) {
+      throw new ErrorHandler("Invalid user ID.", 400);
+    }
+
+    const updates: Record<string, boolean | null> = {};
+    for (const field of ["hasResume", "hasCoverLetter"] as const) {
+      const value = flags[field];
+      if (value === undefined) continue;
+      if (value !== null && typeof value !== "boolean") {
+        throw new ErrorHandler(`${field} must be true, false or null.`, 400);
+      }
+      updates[field] = value;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      throw new ErrorHandler("Nothing to update: send hasResume and/or hasCoverLetter.", 400);
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new ErrorHandler("User not found.", 404);
+    }
+
+    const beforeState = user.toJSON();
+    await user.update({ ...updates, updatedBy: fullName || actorEmail || actorUserId });
+    await setCachedUser(userId, user);
+
+    setImmediate(async () => {
+      try {
+        await AuditTrail.create({
+          action: "ADMIN_USER_UPDATE",
+          actorUserId,
+          actorEmail: actorEmail || null,
+          targetType: "User",
+          targetKey: user.id,
+          before: { hasResume: beforeState.hasResume, hasCoverLetter: beforeState.hasCoverLetter },
+          after: { hasResume: user.hasResume, hasCoverLetter: user.hasCoverLetter },
+          metadata: { mode: "document-flags" },
+        });
+      } catch (err) {
+        logger.error(`❌ Audit trail failed for document flags update: ${err}`);
+      }
+    });
+
+    logger.info(`User ${userId} C/R + C/L updated by ${actorEmail || actorUserId}`);
+    return { id: user.id, hasResume: user.hasResume, hasCoverLetter: user.hasCoverLetter };
+  }
+
+  /**
    * Approve user document
    * @param userId ID of user
    * @param documentId Type of document to approve
@@ -269,6 +390,29 @@ class UserManagementService {
         logger.info(`✅ Document ${documentType} approved for user ${user.id}`);
       } catch (err) {
         logger.error(`❌ Slack notification failed: ${err}`);
+      }
+    });
+
+    // SPR-21-11-004: customer email confirming the document was accepted.
+    // The journey tick (markDocumentAccepted above) and the #town-crier Slack
+    // already fire for this approval — this adds the missing customer email.
+    setImmediate(async () => {
+      try {
+        const frontendUrl = PROD_FRONTEND_URL || "https://rat.customer.cvtocareer.com";
+        await sendMail({
+          email: user.email,
+          subject: "Your document has been accepted",
+          templateName: "document-accepted-user.ejs",
+          templateData: {
+            name: user.firstName,
+            documentType,
+            frontendUrl,
+            currentYear: new Date().getFullYear(),
+          },
+        });
+        logger.info(`Document accepted email sent to ${user.email}`);
+      } catch (err) {
+        logger.error(`Document accepted email failed for user ${user.id}: ${err}`);
       }
     });
 
@@ -1261,7 +1405,7 @@ class UserManagementService {
 📧 **Email**: ${user.email}
 🆔 **User ID**: ${user.id}
 🌍 **Country**: ${user.country}
-📊 **Customer Class**: ${user.customerClass}
+📊 **Staff Perception**: ${user.staffPerception}
 👑 **Role**: ${user.role}
 ✅ **Active**: ${user.isActive ? 'Yes' : 'No'}
 📧 **Verified**: ${user.isEmailVerified ? 'Yes' : 'No'}
@@ -1339,30 +1483,206 @@ class UserManagementService {
   /**
    * Get job preferences history for user
    * @param userId ID of user
+   * @param queryParams Filter, search, and pagination parameters
    */
-  async getJobPreferencesHistory(userId: string) {
+  async getJobPreferencesHistory(
+    userId: string,
+    queryParams?: { field?: string; search?: string; page?: number; limit?: number }
+  ) {
     if (!userId) {
       throw new ErrorHandler("Invalid user ID.", 400);
     }
 
     logger.info(`Retrieving job preferences history for user ID: ${userId}`);
 
-    const user = await User.findByPk(userId);
+    let user: any = null;
+    try {
+      user = await User.findByPk(userId);
+    } catch (err: any) {
+      logger.warn(`Database connection error while checking user ${userId}: ${err?.message}`);
+      return {
+        history: [],
+        total: 0,
+        page: 1,
+        limit: queryParams?.limit || 50,
+        totalPages: 1,
+      };
+    }
+
     if (!user) {
       throw new ErrorHandler("User not found.", 404);
     }
 
-    // Get history from user-preference-history model
-    const history = await UserPreferenceHistory.findAll({
-      where: {
-        userId: userId
-      },
-      order: [['createdAt', 'DESC']],
-      limit: 50
-    });
+    let rawHistory: any[] = [];
+    try {
+      rawHistory = await UserPreferenceHistory.findAll({
+        where: { userId },
+        order: [['createdAt', 'DESC']],
+        limit: 200,
+      });
+    } catch (dbErr: any) {
+      logger.warn(`Failed to fetch history from DB: ${dbErr?.message}`);
+      rawHistory = [];
+    }
 
-    logger.info(`Retrieved ${history.length} history entries for user ${userId}`);
-    return { history };
+    const records: Array<{
+      id: string;
+      createdAt: Date;
+      fieldChanged: string;
+      previousValue: any;
+      newValue: any;
+    }> = [];
+
+    // 1. Process structured __fieldChanges stored in preferenceSnapshot (or fieldChanged if present)
+    for (const item of rawHistory) {
+      const snap = item.preferenceSnapshot;
+      if (snap && Array.isArray(snap.__fieldChanges) && snap.__fieldChanges.length > 0) {
+        for (const change of snap.__fieldChanges) {
+          records.push({
+            id: `${item.id}-${change.fieldChanged}`,
+            createdAt: item.createdAt,
+            fieldChanged: change.fieldChanged,
+            previousValue: change.previousValue ?? null,
+            newValue: change.newValue,
+          });
+        }
+      } else if ((item as any).fieldChanged) {
+        records.push({
+          id: item.id,
+          createdAt: item.createdAt,
+          fieldChanged: (item as any).fieldChanged,
+          previousValue: (item as any).previousValue ?? null,
+          newValue: (item as any).newValue,
+        });
+      }
+    }
+
+    // 2. Fallback: Reconstruct field diffs from legacy snapshot records if no fieldChanged rows exist
+    if (records.length === 0 && rawHistory.length > 0) {
+      const sortedSnapshots = [...rawHistory].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      let prevSnap: Record<string, any> | null = null;
+      for (const entry of sortedSnapshots) {
+        const currSnap = entry.preferenceSnapshot || {};
+        if (prevSnap) {
+          for (const { key, label } of TRACKED_PREFERENCE_FIELDS) {
+            const oldVal = prevSnap[key];
+            const newVal = currSnap[key];
+            if (!arePreferenceValuesEqual(oldVal, newVal)) {
+              records.push({
+                id: `${entry.id}-${key}`,
+                createdAt: entry.createdAt,
+                fieldChanged: label,
+                previousValue:
+                  oldVal === undefined ||
+                  oldVal === null ||
+                  (Array.isArray(oldVal) && oldVal.length === 0)
+                    ? null
+                    : oldVal,
+                newValue: newVal,
+              });
+            }
+          }
+        } else {
+          // Initial save: fields set for the first time have previousValue = null ("Not set")
+          for (const { key, label } of TRACKED_PREFERENCE_FIELDS) {
+            const val = currSnap[key];
+            if (
+              val !== undefined &&
+              val !== null &&
+              (!Array.isArray(val) || val.length > 0)
+            ) {
+              records.push({
+                id: `${entry.id}-${key}`,
+                createdAt: entry.createdAt,
+                fieldChanged: label,
+                previousValue: null,
+                newValue: val,
+              });
+            }
+          }
+        }
+        prevSnap = currSnap;
+      }
+      records.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }
+
+    // 3. Fallback: If no history recorded yet, synthesize onboarding preferences from Profile
+    if (records.length === 0) {
+      try {
+        const profile = await Profile.findOne({
+          where: { userId, name: 'primary' },
+        });
+
+        if (profile) {
+          const currentSnap = profile.toJSON ? profile.toJSON() : profile.get();
+          for (const { key, label } of TRACKED_PREFERENCE_FIELDS) {
+            const val = currentSnap[key];
+            if (
+              val !== undefined &&
+              val !== null &&
+              (!Array.isArray(val) || val.length > 0)
+            ) {
+              records.push({
+                id: `onboarding-${profile.id}-${key}`,
+                createdAt: profile.createdAt || new Date(),
+                fieldChanged: label,
+                previousValue: null,
+                newValue: val,
+              });
+            }
+          }
+        }
+      } catch (profileErr: any) {
+        logger.warn(`Could not fetch profile for onboarding history synthesis: ${profileErr?.message}`);
+      }
+    }
+
+    // Filter by field
+    let filtered = records;
+    if (queryParams?.field && queryParams.field !== 'all') {
+      const targetField = queryParams.field.toLowerCase();
+      filtered = filtered.filter(
+        (r) => r.fieldChanged.toLowerCase() === targetField
+      );
+    }
+
+    // Search filter across field name, previous value, and new value
+    if (queryParams?.search && queryParams.search.trim()) {
+      const q = queryParams.search.trim().toLowerCase();
+      filtered = filtered.filter((r) => {
+        const prevText = Array.isArray(r.previousValue)
+          ? r.previousValue.join(' ')
+          : String(r.previousValue ?? '');
+        const newText = Array.isArray(r.newValue)
+          ? r.newValue.join(' ')
+          : String(r.newValue ?? '');
+        return (r.fieldChanged + ' ' + prevText + ' ' + newText)
+          .toLowerCase()
+          .includes(q);
+      });
+    }
+
+    const total = filtered.length;
+    const page = queryParams?.page || 1;
+    const limit = queryParams?.limit || 50;
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+
+    logger.info(
+      `Retrieved ${paginated.length} of ${total} preference history entries for user ${userId}`
+    );
+    return {
+      history: paginated,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
   }
 
   /**
@@ -1390,7 +1710,7 @@ class UserManagementService {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'customerClass']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'createdAt', 'isActive', 'isDocumentApproved', 'staffPerception']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -1568,6 +1888,9 @@ class UserManagementService {
       });
       logger.info(`Initialized empty ${profileType} profile shell for user: ${userId}`);
     }
+
+    // Capture stored state before applying any incoming changes for field-level comparison
+    const previousSnapshot = JSON.parse(JSON.stringify(profile.toJSON ? profile.toJSON() : profile.get()));
 
     // Handle step mapping for all profiles
     let updatedSteps: string[] = [];
@@ -1769,19 +2092,45 @@ class UserManagementService {
     }
 
     await profile.save();
+    const newSnapshot = JSON.parse(JSON.stringify(profile.toJSON ? profile.toJSON() : profile.get()));
 
-    // Save history record in background
+    // Field-level comparison: identify each field that actually changed
+    const changedFields: Array<{ fieldChanged: string; previousValue: any; newValue: any }> = [];
+    for (const { key, label } of TRACKED_PREFERENCE_FIELDS) {
+      const oldVal = previousSnapshot[key];
+      const newVal = newSnapshot[key];
+      if (!arePreferenceValuesEqual(oldVal, newVal)) {
+        changedFields.push({
+          fieldChanged: label,
+          previousValue:
+            oldVal === undefined || oldVal === null || (Array.isArray(oldVal) && oldVal.length === 0)
+              ? null
+              : oldVal,
+          newValue: newVal,
+        });
+      }
+    }
+
+    // Save preference history record containing snapshot and field-level diffs
     setImmediate(async () => {
       try {
+        const saveTimestamp = new Date();
+        const historySnapshot = {
+          ...newSnapshot,
+          __fieldChanges: changedFields,
+        };
+
         await UserPreferenceHistory.create({
           userId,
           profileId: profile.id,
           profileType,
           updatedFields: updatedSteps,
           updateSource: 'user_update',
-          preferenceSnapshot: profile.get()
+          createdAt: saveTimestamp,
+          preferenceSnapshot: historySnapshot,
         });
-        logger.debug(`Preference history saved for user: ${userId}, profile: ${profileType}`);
+
+        logger.debug(`Saved preference history with ${changedFields.length} changed fields for user: ${userId}`);
       } catch (historyError) {
         logger.error(`Failed to save preference history: ${historyError}`);
       }

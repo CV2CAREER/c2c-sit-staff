@@ -348,6 +348,35 @@ export const sendCoralActiveEmail = async (
   });
 };
 
+interface EmeraldActiveEmailOptions {
+  name: string;
+  email: string;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  partnerName: string;
+  frontendUrl: string;
+  convertCtaUrl: string;
+}
+
+// Activation email for partner-referred (Emerald) guests. Fires from
+// activateEmeraldPlan the moment the Plan row is written at credential
+// approval. Names the plan, its start + end dates, the enrolling partner
+// and a convert-to-paid CTA.
+export const sendEmeraldActiveEmail = async (
+  options: EmeraldActiveEmailOptions,
+): Promise<void> => {
+  await sendMail({
+    email: options.email,
+    subject: `Your Emerald trial with CVtoCAREER is live`,
+    templateName: "emerald-active.ejs",
+    templateData: {
+      ...options,
+      currentYear: new Date().getFullYear(),
+    },
+  });
+};
+
 interface PlanChangedEmailOptions {
   name: string;
   email: string;

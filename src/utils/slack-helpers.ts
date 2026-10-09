@@ -1,4 +1,5 @@
 import {
+  CLIENT_APP_DOMAIN,
   IAT_FRONTEND_URL,
   LOCAL_FRONTEND_URL,
   NODE_ENV,
@@ -23,7 +24,7 @@ const logger = getServiceLogger('slack-helpers');
  * host. Maps the currently running NODE_ENV to the matching frontend URL so
  * pre-prod deployments never leak a bare "localhost" into Slack.
  */
-const getDefaultHost = (): string => {
+export const getDefaultHost = (): string => {
   const envHostMap: Record<string, string | undefined> = {
     rat: RAT_FRONTEND_URL,
     iat: IAT_FRONTEND_URL,
@@ -35,7 +36,7 @@ const getDefaultHost = (): string => {
     local: LOCAL_FRONTEND_URL,
   };
   const env = (NODE_ENV || '').toLowerCase();
-  return envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
+  return CLIENT_APP_DOMAIN || envHostMap[env] || LOCAL_FRONTEND_URL || 'localhost';
 };
 
 export const getEnvironmentFromHost = (host?: string): SlackLocation => {

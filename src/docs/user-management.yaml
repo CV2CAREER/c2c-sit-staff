@@ -44,9 +44,10 @@ paths:
                   type: string
                   format: email
                   description: User's email address
-                customerClass:
+                staffPerception:
                   type: string
-                  description: Customer classification tier
+                  enum: [Critical, Advocate, Satisfied, Blacklisted, TBD]
+                  description: How staff perceive the customer
                 voiceNumber:
                   type: string
                   description: Voice contact phone number
@@ -128,7 +129,7 @@ paths:
                 lastName: "Doe"
                 role: "coach"
                 isActive: true
-                customerClass: "Premium"
+                staffPerception: "Advocate"
       responses:
         '200':
           description: User updated successfully

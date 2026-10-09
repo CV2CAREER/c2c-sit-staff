@@ -191,6 +191,23 @@ const parseHtmlToBlocks = (html: string): Block[] => {
         // Preserve intentional blank paragraphs (spacing) but skip nothing —
         // an empty block still renders as a blank line.
         blocks.push({ type: "paragraph", runs, align });
+      } else if (tag === "pre") {
+        // Interview Pack's technical-practice code examples come through as
+        // <pre><code>...</code></pre> (see interviewPackFormat.ts). This tag
+        // isn't handled by any branch above, so it used to fall through
+        // silently and the code example vanished from the document
+        // entirely — not just unstyled, genuinely absent. One block per
+        // line (rather than one block for the whole snippet, keeping "\n"
+        // inside a single run) since a bare "\n" inside one run renders
+        // correctly in the PDF path (pdfkit respects it) but is silently
+        // collapsed by the DOCX path (Word needs an explicit line break
+        // between runs, not a literal newline character).
+        $el
+          .text()
+          .split("\n")
+          .forEach((line) => {
+            blocks.push({ type: "paragraph", runs: [{ text: line, ...noFlags }], align: "left" });
+          });
       }
     });
 

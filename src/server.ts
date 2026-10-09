@@ -10,7 +10,7 @@ import "./config/dns-cache";
 import http from "http";
 import { app } from "./app";
 import dotenv from "dotenv";
-import { PORT } from "./config/env";
+import { PORT, CLIENT_APP_DOMAIN } from "./config/env";
 import { getServiceLogger } from "./utils/createLogger";
 import { connectDB, disconnectDB, startDbWatchdog } from "./config/database";
 import {
@@ -28,6 +28,10 @@ import { getDbReady } from "./middlewares/dbReady";
 dotenv.config();
 
 const logger = getServiceLogger("server");
+
+// Fail-visible domain resolution: ops can confirm at boot that emailed links
+// point at the real client app (never localhost outside local).
+logger.info(`Resolved client app domain: ${CLIENT_APP_DOMAIN}`);
 
 // create server
 export const server = http.createServer(app);

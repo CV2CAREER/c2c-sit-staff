@@ -24,6 +24,14 @@ export const MISSING_INFO_FIELD_TYPES = [
   "file",
   "radio",
   "checkbox",
+  // SPR-21-52-001: sends the customer to an external process (e.g. an Indeed appeal) and
+  // records only that they completed it. Its settings live in `options` (an object).
+  // Needs: ALTER TYPE "enum_missing_info_template_fields_fieldType" ADD VALUE 'external_action'.
+  "external_action",
+  // Display-only free text the admin writes for the customer (text in `options.body`, links
+  // allowed). Never required; the only answer it can store is "read" (instructions-only templates).
+  // Needs: ALTER TYPE "enum_missing_info_template_fields_fieldType" ADD VALUE 'instructions'.
+  "instructions",
 ] as const;
 
 export type MissingInfoFieldType = (typeof MISSING_INFO_FIELD_TYPES)[number];

@@ -32,13 +32,31 @@ import {
 import { sendMail } from "../../config/sendGrid";
 import { getFullName, getFrontendUrl } from "../../utils/helpers";
 import { TEAM_EMAIL } from "../../config/env";
+import { markRtrDispatched } from "../client-journey.service";
 
 const logger = getServiceLogger("client-support-document-service");
+
+// SPR-21-11-003: fire-and-forget journey tick for "RTR Dispatched".
+// Tour-scoped, so a client without an active tour logs and is skipped rather
+// than failing the upload/activation that already succeeded.
+const recordRtrDispatched = (userId: string, actorId?: string): void => {
+  setImmediate(async () => {
+    try {
+      await markRtrDispatched(userId, actorId || "system");
+    } catch (err: any) {
+      logger.error(
+        `Failed to record rtr_dispatched journey step for user ${userId}: ${err.message}`,
+      );
+    }
+  });
+};
 
 /** Human-readable labels for notification copy. */
 const CATEGORY_LABELS: Record<ClientSupportDocumentCategory, string> = {
   [ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS]:
     "Role Title Recommendations",
+  [ClientSupportDocumentCategory.INTERVIEW_INTELLIGENCE_PACK]:
+    "Interview Intelligence Pack",
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: "Support Images",
   [ClientSupportDocumentCategory.SUPPORT_SPREADSHEETS]: "Support Spreadsheets",
 };
@@ -191,6 +209,10 @@ const ALLOWED_EXTENSIONS: Record<ClientSupportDocumentCategory, string[]> = {
     "xlsx",
     "pdf",
   ],
+  [ClientSupportDocumentCategory.INTERVIEW_INTELLIGENCE_PACK]: [
+    "pdf",
+    "docx",
+  ],
   [ClientSupportDocumentCategory.SUPPORT_IMAGES]: [
     "png",
     "jpg",
@@ -267,6 +289,22 @@ const extractRoleTitles = async (
   return { rows, rowCount, extractionMethod: "csv" };
 };
 
+let enumEnsured = false;
+const ensureCategoryEnum = async () => {
+  if (enumEnsured) return;
+  try {
+    const sequelize = ClientSupportDocument.sequelize;
+    if (sequelize) {
+      await sequelize.query(`
+        ALTER TYPE "enum_client_support_documents_category" ADD VALUE IF NOT EXISTS 'interviewIntelligencePack';
+      `);
+      enumEnsured = true;
+    }
+  } catch (err: any) {
+    logger.warn(`Failed to auto-ensure enum_client_support_documents_category: ${err.message}`);
+  }
+};
+
 /**
  * Uploads each file to Firebase Storage under the client's folder and records
  * it against the client. Role Title files are content-validated/extracted
@@ -278,6 +316,8 @@ export const uploadClientSupportDocuments = async ({
   files,
   isActive = true,
 }: UploadSupportDocumentsInput): Promise<ClientSupportDocument[]> => {
+  await ensureCategoryEnum();
+
   const client = await User.findByPk(clientId, {
     attributes: ["id", "firstName", "lastName", "email"],
   });
@@ -357,6 +397,17 @@ export const uploadClientSupportDocuments = async ({
   // they can't see yet.
   if (isActive) {
     notifyUpload(client, created, uploadedBy);
+
+    // SPR-21-11-003: an active upload of Role Title Recommendations is the
+    // customer-visible "RTR Dispatched" event.
+    if (
+      created.some(
+        (doc) =>
+          doc.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS,
+      )
+    ) {
+      recordRtrDispatched(client.id, uploadedBy);
+    }
   }
 
   return created;
@@ -530,6 +581,14 @@ export const activateClientSupportDocument = async (
 
   if (client) {
     notifyUpload(client, [document], activatedBy);
+
+    // SPR-21-11-003: activation is when an AI-generated RTR becomes
+    // customer-visible — the real "RTR Dispatched" moment for that path.
+    if (
+      document.category === ClientSupportDocumentCategory.ROLE_TITLE_RECOMMENDATIONS
+    ) {
+      recordRtrDispatched(document.clientId, activatedBy);
+    }
   } else {
     logger.warn(
       `Activated client support document ${id} but client ${document.clientId} was not found — skipped client notification`,

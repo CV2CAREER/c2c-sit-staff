@@ -9,14 +9,20 @@ import { createTokenCleanUpJob } from './token-cleanup.job';
 import { createSubscriptionCheckJob } from './subscription-check.job';
 import { createSupportSessionCleanupJob } from './support-session-cleanup.job';
 import { createSubscriptionExpiryReminderJob } from './subscription-expiry-reminder.job';
+import { createExpirationNoticeJob } from './expiration-notice.job';
 import { createPlacPipelineOpsReportJob } from './placementPipelineOpsReport.job';
 import { createPipelineLeaderboardJob } from './pipelineLeaderboard.job';
 import { createUnsatisfiedClientsJob } from './clientWithNoApplicationReport.job';
 import { createAiVettingLearningReportJob } from './aiVettingLearningReport.job';
 import { createBlogPublishJob } from './blog-publish.job';
 import { createMissingInfoExpiryJob } from './missing-info-expiry.job';
-import { createDiscoveryScheduleJob } from './discovery-schedule.job';
-import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
+// DISABLED (AI Discovery Agent): scheduled discovery runs, the daily Slack summary and the startup stale-run reaper
+// import { createDiscoveryScheduleJob, reapStaleRunsOnStartup } from './discovery-schedule.job';
+// import { createDiscoveryDailySummaryJob } from './discovery-daily-summary.job';
+import { createApplicationsStartedJob } from './applications-started.job';
+import { createCheckinSchedulerJob } from './checkin-scheduler.job';
+import { createOfferPlacementWatchJob } from './offer-placement-watch.job';
+import { createMonthlyFollowupJob } from './monthly-followup.job';
 
 const logger = getServiceLogger('app-cron-jobs');
 
@@ -27,8 +33,15 @@ interface NamedJob {
 
 let jobInstances: NamedJob[] = [];
 
-export function startAllCronJobs() {
+export async function startAllCronJobs() {
   logger.info('Starting cron jobs...');
+
+  // DISABLED (AI Discovery Agent): startup stale-run reaper
+  // // Reap any discovery runs orphaned by a previous server restart. This is
+  // // async but intentionally awaited so the scheduler starts clean.
+  // await reapStaleRunsOnStartup().catch((err: any) => {
+  //   logger.error(`Startup stale-run reaper failed: ${err.message}`);
+  // });
 
   jobInstances = [
     { name: 'Token Clean Up Job', task: createTokenCleanUpJob() },
@@ -48,17 +61,60 @@ export function startAllCronJobs() {
       name: 'Subscription Expiry Reminder Job',
       task: createSubscriptionExpiryReminderJob(),
     },
+    // SPR-21-13-009 — T-14 / T-7 / day-0 expiration notices (audit steps
+    // 30/31/35). Per-client: recomputed end date -> completeJourneyStepOnce ->
+    // client email + delivery-team copy + #town-crier post. Plans of 7 days or
+    // fewer are skipped (SPR-21-59-018 owns that cadence). Every environment so
+    // IAT exercises the same path.
+    {
+      name: 'Expiration Notice Job',
+      task: createExpirationNoticeJob(),
+    },
     {
       name: 'Missing Info Expiry Job',
       task: createMissingInfoExpiryJob(),
     },
+    // DISABLED (AI Discovery Agent): Discovery Schedule Job (every 5 min) and Discovery Daily Summary Job (23:55, Slack)
+    // {
+    //   name: 'Discovery Schedule Job',
+    //   task: createDiscoveryScheduleJob(),
+    // },
+    // {
+    //   name: 'Discovery Daily Summary Job',
+    //   task: createDiscoveryDailySummaryJob(),
+    // },
+    // SPR-21-13-003 — derives the applications_started journey tick from the
+    // shared `applications` table (written by the external extractor); runs on
+    // every environment so IAT exercises the same path prod will.
     {
-      name: 'Discovery Schedule Job',
-      task: createDiscoveryScheduleJob(),
+      name: 'Applications Started Job',
+      task: createApplicationsStartedJob(),
     },
+    // SPR-21-13-001 — Week 4 / Week 12 check-in emails at campaign day 28 /
+    // day 84; eligibility is computed entirely in SQL (fresh 24h window,
+    // campaign still live, active plan for week 12) and ineligible rows get
+    // NO action at all. Every environment so IAT exercises the same path.
     {
-      name: 'Discovery Daily Summary Job',
-      task: createDiscoveryDailySummaryJob(),
+      name: 'Check-in Scheduler Job',
+      task: createCheckinSchedulerJob(),
+    },
+    // SPR-21-13-005 — offer/placement recordings (either side, shared
+    // client_journey_steps table) re-fire the Pipeline Performance
+    // Leaderboard within a minute; every environment so IAT can verify the
+    // "leaderboard update fires" DoD check (Slack routes to CRY_WOLF
+    // off-prod).
+    {
+      name: 'Offer Placement Leaderboard Watch Job',
+      task: createOfferPlacementWatchJob(),
+    },
+    // SPR-21-13-008 — monthly post-campaign follow-up (placement check-in +
+    // renewal prompt, stops on placement or opt-out); eligibility computed
+    // entirely in SQL (30-day cadence, campaign ended on/after the
+    // CADENCE_START cutoff). Every environment so IAT exercises the same
+    // path; the exported scan function also runs on demand.
+    {
+      name: 'Monthly Follow-up Job',
+      task: createMonthlyFollowupJob(),
     },
   ];
 

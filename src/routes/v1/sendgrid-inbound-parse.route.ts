@@ -1,6 +1,11 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { handleInboundParse } from '../../controllers/v1/sendgrid-inbound-parse.controller';
+// DISABLED (AI Discovery Agent): the original handler (sendgrid-inbound-parse.controller.ts) fed the discovery agent.
+// import { handleInboundParse } from '../../controllers/v1/sendgrid-inbound-parse.controller';
+// Stub: the URL still answers 200 so SendGrid does not keep retrying; the email is ignored and nothing is saved.
+const handleInboundParse = (_req: Request, res: Response) => {
+  res.status(200).json({ discovery: 'disabled' });
+};
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 

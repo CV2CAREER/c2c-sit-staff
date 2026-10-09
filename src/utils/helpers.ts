@@ -2,6 +2,7 @@ import { IUser, IUserRegistration } from "../types/user.types";
 import jwt from "jsonwebtoken";
 import { encryptData, encryptObjectData } from "./security";
 import {
+  CLIENT_APP_DOMAIN,
   IAT_FRONTEND_URL,
   JWT_VERIFICATION_SECRET_KEY,
   JWT_VERIFICATION_SECRET_KEY_EXPIRY,
@@ -81,8 +82,12 @@ export const getFrontendUrl = (): string => {
 
   const url = urlMap[NODE_ENV!];
 
+  // Missing per-env var used to throw, which silently killed the whole
+  // notification block (fire-and-forget callers log & drop). Fall back to the
+  // resolved client-app domain instead: env var → env-name convention, so a
+  // hosted environment never loses its links or degrades to localhost.
   if (!url) {
-    throw new Error(`No frontend URL configured for environment: ${NODE_ENV}`);
+    return CLIENT_APP_DOMAIN;
   }
 
   return url;

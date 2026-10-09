@@ -1,17 +1,9 @@
-export enum CustomerClass {
-  FAMILY = "family",
-  ENTHUSIASTIC = "enthusiastic",
-  SATISFIED = "satisfied",
-  UNSATISFIED = "unsatisfied",
-  UPSET = "upset",
-  UNCLASSIFIED = "unclassified",
-  BLACKLISTED = "blacklisted",
-  PROBONO = "probono",
-  INFLIGHT = "inflight",
-  UNTRACEABLE = "untraceable",
-  FRIENDLY = "friendly",
-  NA = "N/A",
-  WARM_LEAD = "Warm_Lead",
+export enum Perception {
+  CRITICAL = "Critical",
+  ADVOCATE = "Advocate",
+  SATISFIED = "Satisfied",
+  BLACKLISTED = "Blacklisted",
+  TBD = "TBD",
 }
 
 export enum ApplicationStatus {
@@ -29,25 +21,46 @@ export enum PaymentStatus {
 }
 
 export enum Progress {
+
+  // Milestone 0 - Frontend: Email Verification
   ONBOARDING = "Onboarding",
   EMAIL_VERIFIED = "Email Verified",
+  // Milestone 1 - Frontend: Document Accepted
   DOCUMENTS_ACCEPTED = "Documents Accepted",
   DOCUMENTS_DECLINED = "Documents Declined",
   CV_RESUME_UPLIFTED = "CV/Resume Uplifted",
-  PAYMENT_INITIATED = "Payment Initiated",
+  // Milestone 2 - Frontend: Preference Update
+  PREFERENCES_UPDATED = "Preferences Updated",
+  // Milestone 3 - Frontend: Service Selection
   PLAN_SELECTED = "Plan Selected",
-  FOLLOWED_ON_SOCIALS = "Followed on Socials",
+  SERVICE_SELECTED = "Service Selection",
+  // Milestone 4 - Frontend: Payment Confirmation
+  PAYMENT_INITIATED = "Payment Initiated",
   PAYMENT_CONFIRMED = "Payment Confirmed",
   LOGIN_CREDENTIALS_VERIFIED = "Login Credentials Verified",
+  // Milestone 5 - Frontend: Social Follow Verification
+  FOLLOWED_ON_SOCIALS = "Followed on Socials",
+  SOCIAL_FOLLOW_VERIFIED = "Social Follow Verification",
+  // Milestone 6 - Frontend: Jobsite Verification
+  JOBSITE_VERIFIED = "Jobsite Verification",
+  // Milestone 7 - Frontend: CV Variant Dispatch
+  CV_VARIANT_DISPATCHED = "CV Variant Dispatch",
+  // Milestone 8 - Frontend: Sample Results Review
   SAMPLE_RESULTS_DISPATCHED = "Sample Results Dispatched",
   SAMPLE_RESULTS_ACCEPTED = "Sample Results Accepted",
-  PREFERENCES_UPDATED = "Preferences Updated",
+  SAMPLE_RESULTS_REVIEWED = "Sample Results Review",
+  // Milestone 9 - Frontend: Preparatory Session
   PREPARATORY_SESSION_ACCEPTED = "Preparatory Session Accepted",
   PREPARATORY_SESSION_DECLINED = "Preparatory Session Declined",
+  PREPARATORY_SESSION_COMPLETED = "Preparatory Session",
+  // Milestone 10 - Frontend: Job Applications
   APPLICATION_COMMENCED = "Application Commenced",
   APPLICATION_HOLD = "Application Hold",
   APPLICATION_EXPIRED = "Application Expired",
+  JOB_APPLICATIONS_STARTED = "Job Applications",
+  // Pre-11th milestone: Offer Notification
   OFFER_NOTIFICATION_RECEIVED = "Offer Notification Received",
+  // Milestone 11 - Frontend: Campaign Ended
   CAMPAIGN_ENDED = "Campaign Ended",
   PROSPECT = "Prospect",
 }

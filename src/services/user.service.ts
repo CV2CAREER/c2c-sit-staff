@@ -7,7 +7,8 @@ import bcrypt from "bcryptjs";
 import { getCachedUser, setCachedUser } from "./cache/user.cache.service";
 import { hopeUserExists, hopeUserIdExists } from "../utils/user-helper";
 import { SlackService } from "./slack.service";
-import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../utils/enum";
+import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity, UploadType } from "../utils/enum";
+import { Upload } from "../models/v1/upload.model";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { validateSignInInput } from "../validators/input.validator";
 import { signInCredentials } from "./signin.service";
@@ -639,13 +640,37 @@ export const getAllUsers = async (query: {
     tourCountRows.map((t: any) => [t.credentialsId, t.count]),
   );
 
+  // C/R + C/L: which users have a resume / cover letter upload. Upload is
+  // paranoid, so soft-deleted uploads are already excluded.
+  const docUploadRows = userIds.length
+    ? await Upload.findAll({
+        where: {
+          userId: { [Op.in]: userIds },
+          type: { [Op.in]: [UploadType.RESUME, UploadType.COVER_LETTER] },
+        },
+        attributes: ["userId", "type"],
+        group: ["userId", "type"],
+        raw: true,
+      })
+    : [];
+  const resumeUserIds = new Set(
+    docUploadRows.filter((d: any) => d.type === UploadType.RESUME).map((d: any) => d.userId),
+  );
+  const coverLetterUserIds = new Set(
+    docUploadRows.filter((d: any) => d.type === UploadType.COVER_LETTER).map((d: any) => d.userId),
+  );
+
   const usersWithReferrals = users.map((u) => {
     const credentialsId = credentialsIdByClientId.get(u.id);
     const tourCount = credentialsId ? tourCountByCredentialsId.get(credentialsId) ?? 0 : 0;
+    const json = u.toJSON() as any;
     return {
-      ...u.toJSON(),
+      ...json,
       referralsCount: referralCountMap.get(u.email) || 0,
       tourCount,
+      // A staff override (true/false) wins; NULL falls back to the uploads.
+      hasResume: json.hasResume ?? resumeUserIds.has(u.id),
+      hasCoverLetter: json.hasCoverLetter ?? coverLetterUserIds.has(u.id),
     };
   });
 
@@ -659,7 +684,8 @@ export const getClientNameList = async () => {
 
   const clients = await User.findAll({
     where: { role: "client", isActive: true, isDeleted: false },
-    attributes: ["firstName", "lastName", "email"],
+    // "id" is required — the AfterFind hook only decrypts email for rows with an id
+    attributes: ["id", "firstName", "lastName", "email"],
     order: [
       ["firstName", "ASC"],
       ["lastName", "ASC"],
