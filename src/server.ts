@@ -31,7 +31,9 @@ const logger = getServiceLogger("server");
 
 // Fail-visible domain resolution: ops can confirm at boot that emailed links
 // point at the real client app (never localhost outside local).
-logger.info(`Resolved client app domain: ${CLIENT_APP_DOMAIN}`);
+logger.info(
+  `Resolved client app domain: ${CLIENT_APP_DOMAIN} (${process.env.CLIENT_APP_DOMAIN ? "from CLIENT_APP_DOMAIN env var" : "derived from NODE_ENV"}; NODE_ENV=${process.env.NODE_ENV})`,
+);
 
 // create server
 export const server = http.createServer(app);
