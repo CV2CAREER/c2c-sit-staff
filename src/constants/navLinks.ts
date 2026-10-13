@@ -16,6 +16,8 @@ import {
   Layers,
   Mail,
   FileSearch2,
+  GitCompareArrows,
+  DatabaseZap,
   ScanEye,
   ArrowLeftRight,
   MonitorCog,
@@ -164,6 +166,8 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     children: [
       { name: "Access Levels", href: "/admin/access-levels", icon: Users },
       { name: "Logs", href: "/admin/logs", icon: Layers },
+      { name: "Database Evaluation", href: "/admin/schema-compare", icon: GitCompareArrows },
+      { name: "Database Modifications", href: "/admin/schema-changes", icon: DatabaseZap },
       { name: 'Persona Settings', href: '/admin/switch-persona-settings', icon: Settings },
     ],
   },
