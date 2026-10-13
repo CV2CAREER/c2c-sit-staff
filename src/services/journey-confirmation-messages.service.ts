@@ -1,7 +1,8 @@
 import { getServiceLogger } from "../utils/createLogger";
 import { User } from "../models/v1/user.model";
 import { sendMail } from "../config/sendGrid";
-import { getFullName, getFrontendUrl } from "../utils/helpers";
+import { getFullName } from "../utils/helpers";
+import { CLIENT_APP_DOMAIN } from "../config/env";
 import { fieldEncryption } from "../utils/field-encryption";
 import {
   JourneyMessageLog,
@@ -64,7 +65,7 @@ export const dispatchConfirmationMessages = (userId: string, triggeredBy: string
         return;
       }
 
-      const frontendUrl = getFrontendUrl();
+      const frontendUrl = CLIENT_APP_DOMAIN;
       const currentYear = new Date().getFullYear();
 
       let sent = 0;

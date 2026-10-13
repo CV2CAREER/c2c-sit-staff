@@ -8,7 +8,8 @@ import {
 } from "../../models/v1/journey-message-log.model";
 import { sendMail } from "../../config/sendGrid";
 import { fieldEncryption } from "../../utils/field-encryption";
-import { getFullName, getFrontendUrl } from "../../utils/helpers";
+import { getFullName } from "../../utils/helpers";
+import { CLIENT_APP_DOMAIN } from "../../config/env";
 import { getServiceLogger } from "../../utils/createLogger";
 import { SlackService } from "../../services/slack.service";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
@@ -132,7 +133,7 @@ export async function runMonthlyFollowupScan(): Promise<void> {
         continue;
       }
 
-      const frontendUrl = getFrontendUrl();
+      const frontendUrl = CLIENT_APP_DOMAIN;
       const planTitle = user.plan || user.selectedPlan || "Your plan";
 
       let status = JourneyMessageLogStatus.SENT;

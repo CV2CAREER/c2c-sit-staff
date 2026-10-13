@@ -21,7 +21,7 @@ import { handleCampaignManagement } from "./admin-campaign.service";
 import { Credentials } from "../models/v1/credentials.model";
 import { getEnvironmentFromHost } from "../utils/slack-helpers";
 import { getFullName, getFrontendUrl } from "../utils/helpers";
-import { TEAM_EMAIL } from "../config/env";
+import { CLIENT_APP_DOMAIN, TEAM_EMAIL } from "../config/env";
 import { sendCoralActiveEmail, sendEmeraldActiveEmail, sendInternalReferralEmail, sendRCFollowUpTag, sendPlanChangedEmail, sendPlanChangedAdminEmail, sendPlanExtendedEmail } from "./email.service";
 import { Partner } from "../models/v1/partner.model";
 import { Referrer } from "../models/v1/referrer.model";
@@ -293,8 +293,8 @@ export const updateUserPlanByFeature = async (
                 startDate: planStartDate,
                 endDate: planEndDate,
                 partnerName: "CVtoCAREER",
-                frontendUrl,
-                convertCtaUrl: `${frontendUrl}/dashboard/account`,
+                frontendUrl: CLIENT_APP_DOMAIN,
+                convertCtaUrl: `${CLIENT_APP_DOMAIN}/dashboard/account`,
               })
             : sendMail({
                 email: userEmail,
@@ -305,7 +305,7 @@ export const updateUserPlanByFeature = async (
                   plan: feature.title,
                   startDate: planStartDate,
                   endDate: planEndDate,
-                  frontendUrl,
+                  frontendUrl: CLIENT_APP_DOMAIN,
                   currentYear: new Date().getFullYear(),
                 },
               }),
@@ -539,7 +539,7 @@ Next steps: CSM team follow up the customer and assign PC.`,
           previousPlan: previousPlanTitle,
           planTo: newPlanTitle,
           subEndDate: subEndTo,
-          frontendUrl: getFrontendUrl(),
+          frontendUrl: CLIENT_APP_DOMAIN,
         });
         logger.info(`[UpdateUserPlanByFeature] Plan-changed notification sent to ${userEmail}`);
       } catch (err: any) {
@@ -631,7 +631,7 @@ export const activateCoralPlan = async (
         email: userEmail,
         name: user.firstName,
         subEndDate,
-        frontendUrl,
+        frontendUrl: CLIENT_APP_DOMAIN,
       });
       logger.info(`[ActivateCoralPlan] Coral active email sent to ${userEmail}`);
     } catch (err: any) {
@@ -895,8 +895,8 @@ export const activateEmeraldPlan = async (
         startDate,
         endDate,
         partnerName,
-        frontendUrl,
-        convertCtaUrl: `${frontendUrl}/dashboard/account`,
+        frontendUrl: CLIENT_APP_DOMAIN,
+        convertCtaUrl: `${CLIENT_APP_DOMAIN}/dashboard/account`,
       });
       logger.info(`[ActivateEmeraldPlan] Emerald active email sent to ${userEmail}`);
     } catch (err: any) {
@@ -1347,7 +1347,7 @@ export const extendUserPlan = async (
           planTitle: activePlan.title,
           daysAdded: days,
           newExpiresAt: formattedNewSubEndDate,
-          frontendUrl: getFrontendUrl(),
+          frontendUrl: CLIENT_APP_DOMAIN,
         });
         logger.info(`[ExtendUserPlan] Plan-extended notification sent to ${userEmail}`);
       } catch (err: any) {

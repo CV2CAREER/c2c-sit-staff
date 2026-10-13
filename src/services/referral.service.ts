@@ -355,7 +355,7 @@ export class ReferralService {
               name: referrerUser.firstName,
               email: referrerUser.email,
               referrerName: refereeName,
-              frontendUrl,
+              frontendUrl: CLIENT_APP_DOMAIN,
             });
             logger.info(`✅ GRP confirmed email sent to ${referrerUser.email}`);
           }
@@ -660,7 +660,7 @@ export class ReferralService {
               name: referrerUser.firstName,
               email: referrerUser.email,
               payoutAmount: "$50",
-              frontendUrl,
+              frontendUrl: CLIENT_APP_DOMAIN,
             });
             logger.info(`✅ CRP paid email sent to referrer ${referrerUser.email}`);
           }
@@ -792,7 +792,7 @@ export class ReferralService {
               email: referrerUser.email,
               referrerName: refereeName,
               declinedReason: reason || "No reason provided",
-              frontendUrl,
+              frontendUrl: CLIENT_APP_DOMAIN,
             });
             logger.info(`✅ GRP declined email sent to ${referrerUser.email}`);
           }
@@ -1355,7 +1355,7 @@ Next step: Confirm referral claimed, process any applicable rewards for the refe
             lastName: user.lastName,
             middleName: user.middleName,
           }),
-          frontendUrl: getFrontendUrl(),
+          frontendUrl: CLIENT_APP_DOMAIN,
         });
       } catch (error) {
         logger.error("Failed to send email notification for referral claim:", error);
@@ -1604,7 +1604,7 @@ Skipped: ${failedEmails.length}`,
             name: `${referrerUser.firstName} ${referrerUser.lastName}`.trim(),
             email: referrerUser.email,
             payoutAmount: "$50",
-            frontendUrl: getFrontendUrl(),
+            frontendUrl: CLIENT_APP_DOMAIN,
           });
         }
         await sendInternalReferralEmail({
