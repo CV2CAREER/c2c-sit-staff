@@ -53,7 +53,35 @@ export const SCHEMA_MANAGED_TABLES = (process.env.SCHEMA_MANAGED_TABLES || '')
   .map((value) => value.trim())
   .filter(Boolean);
 
-export const BOT_SCRAPING_QUEUES = (process.env.BOT_SCRAPING_QUEUES || '')
+// SCHEMA COMPARE (Admin > System Controls > Database Evaluation)
+// Every database on the current cluster that DB_USER can CONNECT to is
+// discovered automatically. Databases on other clusters are added here as a
+// JSON array — passwords are never inlined, only the NAME of the env var that
+// holds them:
+//   [{"key":"prod","label":"PROD","host":"...","port":25060,
+//     "database":"c2c_prod","username":"doadmin","passwordEnv":"PROD_DB_PASSWORD"}]
+export const SCHEMA_DIFF_EXTRA_TARGETS = process.env.SCHEMA_DIFF_EXTRA_TARGETS || '';
+// Comma-separated database names to hide from discovery.
+export const SCHEMA_DIFF_EXCLUDE_DATABASES = (
+  process.env.SCHEMA_DIFF_EXCLUDE_DATABASES || '_dodb,postgres'
+)
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+export const SCHEMA_DIFF_STATEMENT_TIMEOUT = toInt(
+  process.env.SCHEMA_DIFF_STATEMENT_TIMEOUT,
+  180000
+);
+
+// SCHEMA CHANGES (Admin > Database Modifications): databases whose name contains
+// "prod" are always protected (a second admin must approve every change);
+// list any other database names that should be protected too.
+export const SCHEMA_CHANGE_PROTECTED_DATABASES = (process.env.SCHEMA_CHANGE_PROTECTED_DATABASES || '')
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
+
+export const BOT_SCRAPING_QUEUES =(process.env.BOT_SCRAPING_QUEUES || '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);

@@ -41,6 +41,25 @@ export class SettingService {
   }
 
   /**
+   * Check a candidate against the stored (bcrypt) master password. Returns
+   * false when it doesn't match or no master password has been set.
+   */
+  static async verifyMasterPassword(candidate: string): Promise<boolean> {
+    if (!candidate) return false;
+    const masterpass = await Setting.findOne({ where: { key: "masterpass" } });
+    if (!masterpass?.value) return false;
+    return bcrypt.compare(candidate, masterpass.value as string);
+  }
+
+  /**
+   * Alert the same channel as master-password changes whenever the master
+   * password is used to authorise something.
+   */
+  static notifyMasterPasswordUse(host: string, message: string, user: any) {
+    return this.notifySlack(host, "Master Password Used", message, user);
+  }
+
+  /**
    * Get Master Password details (without actual password value)
    */
   static async getMasterPassword() {

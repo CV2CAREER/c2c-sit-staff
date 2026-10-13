@@ -34,7 +34,7 @@ export class InterviewPrepEvidence extends Model {
   @Column(DataType.STRING)
   userId!: string;
 
-  @BelongsTo(() => User, "userId")
+  @BelongsTo(() => User, { foreignKey: "userId", onDelete: "CASCADE" })
   user?: User;
 
   @AllowNull(false)
