@@ -37,6 +37,23 @@ export const ADMIN_SCHEMA_DELETE_COLUMN = (
   tableName: string,
   columnName: string
 ) => `/api/v1/admin/schema/${tableName}/columns/${columnName}`;
+// Database Evaluation (read-only diff between two databases)
+export const ADMIN_SCHEMA_DIFF_TARGETS = '/api/v1/admin/schema-diff/targets';
+export const ADMIN_SCHEMA_DIFF_PING = '/api/v1/admin/schema-diff/ping';
+export const ADMIN_SCHEMA_DIFF_COMPARE = '/api/v1/admin/schema-diff/compare';
+export const ADMIN_SCHEMA_DIFF_AI = '/api/v1/admin/schema-diff/ai';
+export const ADMIN_SCHEMA_DIFF_TABLE_USAGE = '/api/v1/admin/schema-diff/table-usage';
+// Database Modifications (guided, reviewed changes to a database)
+export const ADMIN_SCHEMA_CHANGES = '/api/v1/admin/schema-changes';
+export const ADMIN_SCHEMA_CHANGE_STRUCTURE = '/api/v1/admin/schema-changes/structure';
+export const ADMIN_SCHEMA_CHANGE_PREVIEW = '/api/v1/admin/schema-changes/preview';
+export const ADMIN_SCHEMA_CHANGE_EXPLAIN = '/api/v1/admin/schema-changes/explain';
+export const ADMIN_SCHEMA_CHANGE_ROWS = '/api/v1/admin/schema-changes/rows';
+export const ADMIN_SCHEMA_CHANGE_IMPORT_LOAD = '/api/v1/admin/schema-changes/import/load';
+export const ADMIN_SCHEMA_CHANGE_IMPORT_INTERPRET = '/api/v1/admin/schema-changes/import/interpret';
+export const ADMIN_SCHEMA_CHANGE = (id: string) => `/api/v1/admin/schema-changes/${encodeURIComponent(id)}`;
+export const ADMIN_SCHEMA_CHANGE_ACTION = (id: string, action: string) =>
+  `/api/v1/admin/schema-changes/${encodeURIComponent(id)}/${action}`;
 export const ADMIN_THROTTLE = '/api/v1/admin/throttle';
 export const ADMIN_STATUS = '/api/v1/admin/status';
 export const ADMIN_JOBSITES = '/api/v1/aggregator';
