@@ -43,7 +43,7 @@ export class JobsiteCredential extends Model {
   @Column(DataType.STRING)
   clientId!: string;
 
-  @BelongsTo(() => User, "clientId")
+  @BelongsTo(() => User, { foreignKey: "clientId", onDelete: "CASCADE" })
   client!: User;
 
   // The client-supplied application email. Never the client's real

@@ -45,7 +45,7 @@ export class TrainingTracker extends Model {
   @Column(DataType.STRING)
   userId!: string;
 
-  @BelongsTo(() => User, { foreignKey: "userId", targetKey: "id" })
+  @BelongsTo(() => User, { foreignKey: "userId", targetKey: "id", onDelete: "SET NULL" })
   user!: User;
 
   @ForeignKey(() => TrainingTrackerSession)

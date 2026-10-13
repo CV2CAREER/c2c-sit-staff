@@ -127,6 +127,40 @@ import cecReferralPayoutRouterV1 from "./cec-referral-payout.route";
 import cecSalesOutreachRouterV1 from "./cec-sales-outreach.route";
 import cecAmbassadorScoutRouterV1 from "./cec-ambassador-scout.route";
 import jobsiteVerificationRouterV1 from "./jobsite-verification.route";
+import {
+  getSchemaDiffTargets,
+  postSchemaDiffAi,
+  postSchemaDiffCompare,
+  postSchemaDiffPing,
+  postSchemaDiffTableUsage,
+} from "../../controllers/v1/schema-diff.controller";
+import {
+  getSchemaChange,
+  getSchemaChangeStructure,
+  getSchemaChanges,
+  postSchemaChange,
+  postSchemaChangeApply,
+  postSchemaChangeApprove,
+  postSchemaChangeCancel,
+  postSchemaChangeExplain,
+  postSchemaChangePreview,
+  postSchemaChangeReject,
+  postSchemaChangeRevert,
+  postSchemaChangeRows,
+  postSchemaChangeImportLoad,
+  postSchemaChangeImportInterpret,
+} from "../../controllers/v1/schema-change.controller";
+import multer from "multer";
+
+// Change-request sheets for Database Modifications > Import.
+const sheetUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (/\.(xlsx|xls|csv)$/i.test(file.originalname)) cb(null, true);
+    else cb(new Error("Only .xlsx, .xls or .csv files can be imported."));
+  },
+});
 const adminRouterV1 = Router();
 
 // Baseline role gates for routes defined directly in this file: GET reads are
@@ -705,6 +739,143 @@ adminRouterV1.delete(
   isUserAuthenticated,
   writeAccess,
   deleteSchemaColumn,
+);
+// Database Evaluation — read-only, but admin-only on every verb (one side is
+// often PROD). POST is used for compare/ai because they carry a body.
+adminRouterV1.get(
+  "/schema-diff/targets",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  getSchemaDiffTargets,
+);
+adminRouterV1.post(
+  "/schema-diff/ping",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaDiffPing,
+);
+adminRouterV1.post(
+  "/schema-diff/compare",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaDiffCompare,
+);
+adminRouterV1.post(
+  "/schema-diff/ai",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaDiffAi,
+);
+adminRouterV1.post(
+  "/schema-diff/table-usage",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaDiffTableUsage,
+);
+// Database Modifications — admin-only on every verb; fixed paths before /:id.
+adminRouterV1.get(
+  "/schema-changes",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  getSchemaChanges,
+);
+adminRouterV1.get(
+  "/schema-changes/structure",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  getSchemaChangeStructure,
+);
+adminRouterV1.post(
+  "/schema-changes/preview",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangePreview,
+);
+adminRouterV1.post(
+  "/schema-changes/import/load",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  sheetUpload.single("file"),
+  postSchemaChangeImportLoad,
+);
+adminRouterV1.post(
+  "/schema-changes/import/interpret",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeImportInterpret,
+);
+adminRouterV1.post(
+  "/schema-changes/rows",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeRows,
+);
+adminRouterV1.post(
+  "/schema-changes/explain",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeExplain,
+);
+adminRouterV1.post(
+  "/schema-changes",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChange,
+);
+adminRouterV1.get(
+  "/schema-changes/:id",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  getSchemaChange,
+);
+adminRouterV1.post(
+  "/schema-changes/:id/approve",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeApprove,
+);
+adminRouterV1.post(
+  "/schema-changes/:id/reject",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeReject,
+);
+adminRouterV1.post(
+  "/schema-changes/:id/cancel",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeCancel,
+);
+adminRouterV1.post(
+  "/schema-changes/:id/apply",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeApply,
+);
+adminRouterV1.post(
+  "/schema-changes/:id/revert",
+  checkBlacklistedTokens,
+  isUserAuthenticated,
+  writeAccess,
+  postSchemaChangeRevert,
 );
 adminRouterV1.get(
   "/table-metadata/:tableName",
