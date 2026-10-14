@@ -8,7 +8,7 @@ const logger = getServiceLogger("placement-exceptions-service");
 
 // Broader than Assignments' in-flight-only population — Exceptions also
 // surfaces on-hold clients (the "On hold" reason).
-const EXCEPTION_STATUSES = ["INFLIGHT", "FLIGHT", "HOLD"];
+const EXCEPTION_STATUSES = ["INFLIGHT", "HOLD"];
 
 export type ExceptionLevel = "warn" | "bad";
 
@@ -76,7 +76,7 @@ class PlacementExceptionsService {
     });
 
     const holdList = resolved.filter((r) => r.capitalized === "HOLD");
-    const activeList = resolved.filter((r) => r.capitalized === "INFLIGHT" || r.capitalized === "FLIGHT");
+    const activeList = resolved.filter((r) => r.capitalized === "INFLIGHT");
     const lapsed = resolved.filter((r) => r.days !== null && r.days < 0);
     const w14 = resolved.filter((r) => r.days !== null && r.days >= 0 && r.days <= 14);
     const noDate = resolved.filter((r) => !r.subEnd);

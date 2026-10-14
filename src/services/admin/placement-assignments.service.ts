@@ -11,7 +11,7 @@ import { SlackService } from "../slack.service";
 const logger = getServiceLogger("placement-assignments-service");
 
 // Same in-flight population as the Pipeline card's "In-Flight" tile.
-const FLIGHT_STATUSES = ["INFLIGHT", "FLIGHT"];
+const FLIGHT_STATUSES = ["INFLIGHT"];
 
 // Placement controllers = every user with the "assistant" role — same
 // mapping the sidebar's Switch Persona list uses ("Placement Controller").
