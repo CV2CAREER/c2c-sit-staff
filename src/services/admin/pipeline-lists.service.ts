@@ -11,7 +11,7 @@ import {
 
 const logger = getServiceLogger("pipeline-lists-service");
 
-const FLIGHT_STATUSES = ["INFLIGHT", "FLIGHT"];
+const FLIGHT_STATUSES = ["INFLIGHT"];
 const LIST_LIMIT = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOT_YET_LIVE_DAY_THRESHOLD = 14;

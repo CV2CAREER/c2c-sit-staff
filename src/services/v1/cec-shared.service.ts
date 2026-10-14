@@ -47,7 +47,7 @@ function deriveSubscriptionStatus(cred: any, computed: { CampaignEnd?: string })
 
   if (expiredFlag || past) return "Expired";
   if (capitalized === "HOLD") return "Active-Paused";
-  if (capitalized === "INFLIGHT" || capitalized === "FLIGHT") return "Active-Inflight";
+  if (capitalized === "INFLIGHT") return "Active-Inflight";
   return "";
 }
 

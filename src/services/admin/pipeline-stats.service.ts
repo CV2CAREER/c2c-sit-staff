@@ -10,7 +10,7 @@ import {
 
 const logger = getServiceLogger("pipeline-stats-service");
 
-const FLIGHT_STATUSES = ["INFLIGHT", "FLIGHT"];
+const FLIGHT_STATUSES = ["INFLIGHT"];
 const NOT_YET_LIVE_DAY_THRESHOLD = 14;
 
 export type PipelineRangeKey = "today" | "week" | "month" | "quarter" | "year" | "all";
