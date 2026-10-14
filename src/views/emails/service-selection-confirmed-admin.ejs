@@ -3,222 +3,121 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500&family=Poppins&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: "Poppins", sans-serif;
-        color: #474747;
-        width: 100%;
-        background-color: #fff;
-        text-align: justify;
-        line-height: 1.6;
-      }
-
-      .header {
-        background-color: #004174;
-        background:
-          linear-gradient(90deg, #004174 0%, #00568f 100%);
-        width: 100%;
-        height: 112px;
-        text-align: center;
-        display: table;
-      }
-
-      .header-content {
-        display: table-cell;
-        vertical-align: middle;
-      }
-
-      .header img {
-        width: 149px;
-        height: 32px;
-      }
-
-      .content {
-        font-family: "Poppins", sans-serif;
-        padding: 20px;
+    <title>Service Selection Recorded</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f5;
+      padding: 40px;
+      color: #333;
+      margin: 0;
+      line-height: 1.6;
+    "
+  >
+    <div
+      style="
         max-width: 600px;
         margin: 0 auto;
-      }
-
-      .title {
-        font-size: 22px;
-        font-weight: 500;
-        line-height: 32px;
-        color: #474747;
-        text-transform: capitalize;
-        margin-bottom: 20px;
-      }
-
-      .body-content {
-        background-color: #fff;
-        width: 100%;
-      }
-
-      .body-content p {
-        margin-bottom: 16px;
-      }
-
-      .body-content b {
-        display: block;
-        margin-bottom: 16px;
-      }
-
-      .signature {
-        margin-top: 24px;
-      }
-
-      .contact-link {
-        color: #004174;
-        text-decoration: none;
-      }
-
-      .alert-box {
-        background-color: #e7f1ff;
-        border: 1px solid #c3d9f5;
+        background: #fff;
         border-radius: 8px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: center;
-      }
-
-      .alert-box h2 {
-        color: #004174;
-        margin-bottom: 10px;
-      }
-
-      .alert-icon {
-        font-size: 48px;
-        margin-bottom: 10px;
-      }
-
-      .customer-details {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 20px;
-        margin: 20px 0;
-      }
-
-      .customer-details h3 {
-        color: #004174;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #004174;
-        padding-bottom: 10px;
-      }
-
-      .detail-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 0;
-        border-bottom: 1px solid #e9ecef;
-      }
-
-      .detail-label {
-        font-weight: 600;
-        color: #6c757d;
-      }
-
-      .detail-value {
-        color: #004174;
-        font-weight: 500;
-      }
-
-      .cta-button {
-        display: inline-block;
-        background-color: #004174;
-        color: #ffffff;
-        padding: 12px 30px;
-        border-radius: 6px;
-        text-decoration: none;
-        font-weight: 500;
-        margin: 20px 0;
-      }
-
-      .cta-button:hover {
-        background-color: #00325a;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Header -->
-    <div class="header">
-      <div class="header-content">
-        <img
-          src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
-          alt="CV To Career"
-        />
-      </div>
-    </div>
-
-    <!-- Content -->
-    <div class="content">
-      <div class="alert-box">
-        <div class="alert-icon">📋</div>
-        <h2>Service Selection Recorded!</h2>
-        <p><%= plan %></p>
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      "
+    >
+      <!-- Header -->
+      <div
+        style="
+          background-color: #008ed3;
+          padding: 28px 32px;
+          text-align: center;
+        "
+      >
+        <div
+          style="
+            background-color: #ffffff;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          "
+        >
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/cvtocareer-394713.appspot.com/o/laigusbucket%2FC2C.png?alt=media&token=2c05d23e-1974-4a83-8143-99c1b6b96801"
+            alt="CVtoCAREER Logo"
+            style="display: block; width: 149px; height: 32px"
+          />
+        </div>
+        <h1 style="margin: 0; color: #fff; font-size: 22px">
+          Service Selection Recorded
+        </h1>
+        <p style="margin: 8px 0 0; color: #d0eaf9; font-size: 13px">
+          CVtoCAREER &mdash; Delivery Team Notification
+        </p>
       </div>
 
-      <h1 class="title">Service Selection Notification</h1>
+      <!-- Body -->
+      <div style="padding: 28px 32px">
+        <p style="margin: 0 0 16px">Hi team,</p>
 
-      <div class="body-content">
-        <b>Hello Admin,</b>
-
-        <p>
-          A client's service selection has been recorded. Below are the details:
+        <p style="margin: 0 0 16px">
+          A client's service selection has been recorded. Details below:
         </p>
 
-        <div class="customer-details">
-          <h3>Customer Information</h3>
-          <div class="detail-row">
-            <span class="detail-label">Customer Name:</span>
-            <span class="detail-value"><%= name %></span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Email:</span>
-            <span class="detail-value"><%= email %></span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Service Plan:</span>
-            <span class="detail-value"><%= plan %></span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Selection Date:</span>
-            <span class="detail-value"><%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Selection Status:</span>
-            <span class="detail-value" style="color: #004174;">Selected</span>
-          </div>
+        <div
+          style="
+            background-color: #f0f7fc;
+            border-left: 4px solid #008ed3;
+            padding: 14px 16px;
+            border-radius: 4px;
+            margin: 20px 0;
+          "
+        >
+          <p style="margin: 0 0 6px; color: #333">
+            <strong>Client:</strong> <%= name %>
+          </p>
+          <p style="margin: 0 0 6px; color: #333">
+            <strong>Email:</strong> <%= email %>
+          </p>
+          <p style="margin: 0 0 6px; color: #333">
+            <strong>Service plan:</strong> <%= plan %>
+          </p>
+          <p style="margin: 0 0 6px; color: #333">
+            <strong>Status:</strong> Selected
+          </p>
+          <p style="margin: 0; color: #333">
+            <strong>Selection date:</strong> <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+          </p>
         </div>
 
-        <p>
-          This notice confirms the client's <strong>service selection only</strong>.
-          Payment confirmation is tracked separately and triggers its own
-          activation notice when completed.
+        <p style="margin: 0 0 16px">
+          This notice confirms the client's <strong>service selection
+          only</strong>. Payment confirmation is tracked separately and
+          triggers its own activation notice when completed.
         </p>
 
-        <p>
-          You can view the customer's full profile and their journey progress from the admin dashboard.
+        <div style="text-align: center; margin: 28px 0 8px">
+          <a
+            href="<%= link %>"
+            style="
+              background-color: #008ed3;
+              color: #fff;
+              text-decoration: none;
+              font-weight: bold;
+              padding: 12px 32px;
+              border-radius: 6px;
+              display: inline-block;
+              font-size: 14px;
+            "
+          >
+            Open client profile &rarr;
+          </a>
+        </div>
+
+        <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 13px">
+          &mdash; CVtoCAREER System
         </p>
-
-        <div style="text-align: center;">
-          <a href="<%= link %>" class="cta-button">View Customer Profile</a>
-        </div>
-
-        <div class="signature">
-          <p>Best regards,<br />CVtoCAREER System</p>
-        </div>
       </div>
-    </div>
 
       <!-- Footer -->
       <% var siteUrl = (typeof frontendUrl !== "undefined" && frontendUrl) ? frontendUrl : "https://app.cvtocareer.com"; %>
@@ -332,5 +231,6 @@
           >
         </div>
       </div>
+    </div>
   </body>
 </html>

@@ -20,7 +20,13 @@ export async function assertClientAccess(actor: Actor, clientId: string) {
   const email = await fieldEncryption.getUserEmail(actor.id);
   if (!email) throw new ErrorHandler(NOT_ASSIGNED_MESSAGE, 403);
 
+  // Client pages identify the client differently: /pc/users/[id] uses the
+  // user's id (credentials.clientId), /pc/campaign-mgt/client/[id] uses the
+  // credential's own id. Either is fine — both only ever match credentials
+  // already assigned to this PC.
   const credentials = await fieldEncryption.findCredentialsByAssignedEmail(email);
-  const assigned = credentials.some((c: any) => String(c.clientId) === String(clientId));
+  const assigned = credentials.some(
+    (c: any) => String(c.clientId) === String(clientId) || String(c.id) === String(clientId),
+  );
   if (!assigned) throw new ErrorHandler(NOT_ASSIGNED_MESSAGE, 403);
 }

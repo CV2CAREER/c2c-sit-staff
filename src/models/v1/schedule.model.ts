@@ -66,7 +66,7 @@ export class Schedule extends Model {
   @Column(DataType.STRING)
   coachId!: string;
 
-  @BelongsTo(() => User, "coachId")
+  @BelongsTo(() => User, { foreignKey: "coachId", onDelete: "CASCADE" })
   coach!: User;
 
   @CreatedAt

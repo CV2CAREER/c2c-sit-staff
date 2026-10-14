@@ -31,7 +31,7 @@ export class UserPermission extends Model {
   @Column(DataType.STRING)
   userId!: string;
 
-  @BelongsTo(() => User)
+  @BelongsTo(() => User, { onDelete: "CASCADE" })
   user!: User;
 
   @ForeignKey(() => Resource) // Assuming Resource model exists

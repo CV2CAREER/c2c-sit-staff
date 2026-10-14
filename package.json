@@ -21,6 +21,7 @@
     "backfill:campaign:sub-end-date": "tsx scripts/backfill-campaign-sub-end-date.ts",
     "cleanup:justcall-duplicates": "tsx scripts/cleanup-justcall-duplicate-events.ts",
     "reencrypt:pii:aes256": "tsx src/scripts/reencrypt-cast5-to-aes256.ts",
+    "schema-usage:scan": "tsx src/scripts/generate-schema-table-usage.ts && tsx src/scripts/generate-schema-impact-index.ts",
     "reencrypt:pii:aes256:verify": "tsx src/scripts/reencrypt-cast5-to-aes256.ts --verify",
     "check-all": "",
     "prepare": "node scripts/setup-hooks.js"

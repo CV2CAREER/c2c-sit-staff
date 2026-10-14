@@ -102,7 +102,7 @@ export class CECIssueBurndown extends Model {
   @Column(DataType.STRING)
   deletedBy?: string;
 
-  @BelongsTo(() => User, "createdBy")
+  @BelongsTo(() => User, { foreignKey: "createdBy", onDelete: "SET NULL" })
   creator?: User;
 
   @CreatedAt

@@ -70,7 +70,7 @@ export class ClientAvailability extends Model {
   @Column(DataType.STRING)
   clientId!: string;
 
-  @BelongsTo(() => User, "clientId")
+  @BelongsTo(() => User, { foreignKey: "clientId", onDelete: "CASCADE" })
   client!: User;
 
   @AllowNull(true)
