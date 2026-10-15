@@ -169,6 +169,13 @@ export interface Standing {
   missed: string[];
 }
 
+export interface DpcClientProgress {
+  clientId: string;
+  name: string;
+  jobs: number;
+  assigned: boolean;
+}
+
 export interface DpcPerformanceRow {
   name: string;
   email: string | null;
@@ -180,6 +187,7 @@ export interface DpcPerformanceRow {
   lqaRate: number;
   standing: Standing;
   book: BookClient[];
+  clientProgress: DpcClientProgress[];
 }
 
 export interface VpcPerformanceRow {
@@ -205,8 +213,18 @@ export interface SpcPerformanceRow {
   queueScore: number;
   clientsClear: number;
   clientsAssigned: number;
+  handled: number;
+  handledBreakdown: SpcHandledBreakdown;
   standing: Standing;
   book: BookClient[];
+}
+
+export interface SpcHandledBreakdown {
+  submitted: number;
+  blocked: number;
+  pending: number;
+  expired: number;
+  skipped: number;
 }
 
 export interface DayCard {
