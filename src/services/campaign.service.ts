@@ -1574,6 +1574,14 @@ export const updateJobApplicationStatus = async (
     if (qualityScore) {
       updateData.QualityScore = qualityScore;
     }
+    // An LQA score from the vetting step is a vetting decision that lands as
+    // SKIPPED (LQA can't be Vetted) — stamp the VPC so it's credited like an
+    // HQA/MQA vet. Never overwrite an existing vetter.
+    const existingVetter = String(application.VettedBy || '').trim();
+    if (String(qualityScore || '').toUpperCase() === 'LQA' && (!existingVetter || existingVetter === 'N/A')) {
+      updateData.VettedBy = fullName || null;
+      updateData.VettedDate = currentDate;
+    }
     const emoji = '⏭️';
     const label = 'JOB SKIPPED';
     message = bullet([

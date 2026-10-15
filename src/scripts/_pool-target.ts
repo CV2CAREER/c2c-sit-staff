@@ -35,6 +35,31 @@ const PRESETS: Record<string, Omit<PoolTarget, "name" | "password"> & { password
     database: "c2c_rat",
     username: DATABASE_USERNAME!,
   },
+  iat: {
+    host: "unification-staging-db-do-user-12600817-0.f.db.ondigitalocean.com",
+    port: 25060,
+    database: "c2c_iat",
+    username: DATABASE_USERNAME!,
+  },
+  sit: {
+    host: "unification-staging-db-do-user-12600817-0.f.db.ondigitalocean.com",
+    port: 25060,
+    database: "c2c_sit",
+    username: DATABASE_USERNAME!,
+  },
+  uat: {
+    host: "unification-staging-db-do-user-12600817-0.f.db.ondigitalocean.com",
+    port: 25060,
+    database: "c2c_uat",
+    username: DATABASE_USERNAME!,
+  },
+  // Read-only source for replicate-user-account --source=prod.
+  prod: {
+    host: "unification-staging-db-do-user-12600817-0.f.db.ondigitalocean.com",
+    port: 25060,
+    database: "c2c_prod",
+    username: DATABASE_USERNAME!,
+  },
 };
 
 function flag(argv: string[], name: string): string | undefined {

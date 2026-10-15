@@ -4,11 +4,14 @@ import { resolvePoolTarget } from "./_pool-target";
 
 const logger = getServiceLogger("replicate-user-account");
 
-// One-off: finds a specific user by email on iat-pool (read-only, via the
-// same emailHash lookup find_user_by_email() uses) and replicates that
+// One-off: finds a specific user by email on the source DB (read-only, via
+// the same emailHash lookup find_user_by_email() uses) and replicates that
 // exact row — plus anything it references (profile/secondaryProfile/
-// location/plan, all nullable FKs on users) — onto sandbox and rat-pool.
-// Never writes to iat-pool. Upserts on "id", safe to re-run.
+// location/plan, all nullable FKs on users) — onto the target DBs.
+// Never writes to the source, and never writes to prod. Upserts on "id",
+// safe to re-run.
+//
+// --source=prod|iat|... (default iat), --targets=iat,sit,uat,rat,sandbox
 const EMAIL = process.argv.find((a) => a.startsWith("--email="))?.split("=").slice(1).join("=");
 // Pass --targets=rat (or sandbox, or both comma-separated) to restrict which
 // target(s) get written — useful when the other target already has its own
@@ -18,11 +21,7 @@ const EMAIL = process.argv.find((a) => a.startsWith("--email="))?.split("=").sli
 const targetsFlag = process.argv.find((a) => a.startsWith("--targets="));
 const TARGETS = targetsFlag ? targetsFlag.split("=").slice(1).join("=").split(",") : ["sandbox", "rat"];
 
-const IAT_SOURCE = {
-  host: "unification-staging-db-do-user-12600817-0.f.db.ondigitalocean.com",
-  port: 25060,
-  database: "c2c_iat",
-};
+const SOURCE_NAME = process.argv.find((a) => a.startsWith("--source="))?.split("=").slice(1).join("=") || "iat";
 
 const CONFIRMED = process.argv.includes("--force") || process.env.CONFIRM_DROP === "yes";
 
@@ -71,11 +70,14 @@ async function main() {
     throw new Error("Usage: --email=someone@example.com [--force]");
   }
 
-  const { DATABASE_USERNAME, DATABASE_PASSWORD } = await import("../config/env");
+  if (TARGETS.includes("prod") || TARGETS.includes(SOURCE_NAME)) {
+    throw new Error(`Refusing to write to prod or to the source ("${SOURCE_NAME}"). Targets: ${TARGETS.join(", ")}`);
+  }
 
-  const source = new Sequelize(IAT_SOURCE.database, DATABASE_USERNAME!, DATABASE_PASSWORD!, {
-    host: IAT_SOURCE.host,
-    port: IAT_SOURCE.port,
+  const SOURCE = resolvePoolTarget([`--target=${SOURCE_NAME}`]);
+  const source = new Sequelize(SOURCE.database, SOURCE.username, SOURCE.password, {
+    host: SOURCE.host,
+    port: SOURCE.port,
     dialect: "postgres",
     logging: false,
     dialectOptions: { ssl: { require: true, rejectUnauthorized: false } },
@@ -87,10 +89,10 @@ async function main() {
       { current_database: string }[],
       unknown,
     ];
-    if (current_database !== IAT_SOURCE.database) {
-      throw new Error(`Source connected to "${current_database}", expected "${IAT_SOURCE.database}" — aborting.`);
+    if (current_database !== SOURCE.database) {
+      throw new Error(`Source connected to "${current_database}", expected "${SOURCE.database}" — aborting.`);
     }
-    logger.info(`✅ Source: "${current_database}" @ ${IAT_SOURCE.host}:${IAT_SOURCE.port} (read-only)`);
+    logger.info(`✅ Source: "${current_database}" @ ${SOURCE.host}:${SOURCE.port} (read-only)`);
 
     // Same lookup find_user_by_email() itself performs — matching on the
     // deterministic emailHash rather than the (often-empty) legacy email col.
@@ -100,7 +102,7 @@ async function main() {
     )) as { id: string }[];
 
     if (!found.length) {
-      throw new Error(`No user found on iat-pool for email "${EMAIL}".`);
+      throw new Error(`No user found on ${SOURCE.database} for email "${EMAIL}".`);
     }
     const userId = found[0].id;
     logger.info(`Found user id=${userId} for ${EMAIL}`);
@@ -129,7 +131,7 @@ async function main() {
         referenced.push({ table, row, colTypes });
         logger.info(`  references ${table}.id=${fkValue} (via ${column}) — will also copy this row`);
       } else {
-        logger.warn(`  ${column}=${fkValue} but no matching row found in ${table} on iat-pool (leaving as-is)`);
+        logger.warn(`  ${column}=${fkValue} but no matching row found in ${table} on ${SOURCE.database} (leaving as-is)`);
       }
     }
 
@@ -160,19 +162,47 @@ async function main() {
         }
         logger.info(`\n➡️  Writing into "${destDb}" @ ${target.host}:${target.port} (${targetName})`);
 
+        // A different account (different id) already holding this email
+        // here would end up as a duplicate-email row — skip, don't clobber.
+        const existing = (await dest.query(
+          `SELECT id FROM users WHERE "emailHash" = ENCODE(DIGEST(LOWER(:email), 'sha256'), 'hex')`,
+          { replacements: { email: EMAIL }, type: QueryTypes.SELECT },
+        )) as { id: string }[];
+        const clash = existing.find((r) => String(r.id) !== String(userId));
+        if (clash) {
+          logger.warn(`⚠️  ${destDb} already has a different user id=${clash.id} for ${EMAIL} — skipping this target.`);
+          continue;
+        }
+
+        // Only write columns the target schema actually has (envs drift).
+        const destColumns = async (table: string, row: Record<string, any>) => {
+          const destTypes = await getColumnTypes(dest, table);
+          const dropped = Object.keys(row).filter((c) => !destTypes.has(c));
+          if (dropped.length) logger.warn(`  ${table}: target lacks column(s) ${dropped.join(", ")} — not copied`);
+          return Object.keys(row).filter((c) => destTypes.has(c));
+        };
+
         await dest.transaction(async (t) => {
-          // Referenced rows first (locations/profiles/plans), so the
-          // user's own FK columns don't violate a constraint.
+          const userColumns = await destColumns("users", userRow);
+          const userSql = buildUpsertSql("users", userColumns);
+
+          // profiles.userId -> users and users.profileId -> profiles is
+          // circular, so land the user first with its FK columns nulled,
+          // then the referenced rows, then the full user row below.
+          const fkColumns = new Set(FK_LOOKUPS.map((f) => f.column));
+          const userWithoutFks = Object.fromEntries(
+            Object.entries(userRow).map(([k, v]) => [k, fkColumns.has(k) ? null : v]),
+          );
+          await dest.query(userSql, { bind: buildBind(userWithoutFks, userColumns, userColTypes), transaction: t });
+
           for (const { table, row, colTypes } of referenced) {
-            const columns = Object.keys(row);
+            const columns = await destColumns(table, row);
             const sql = buildUpsertSql(table, columns);
             await dest.query(sql, { bind: buildBind(row, columns, colTypes), transaction: t });
             logger.info(`  ${table}: upserted referenced row id=${row.id}`);
           }
 
-          const columns = Object.keys(userRow);
-          const sql = buildUpsertSql("users", columns);
-          await dest.query(sql, { bind: buildBind(userRow, columns, userColTypes), transaction: t });
+          await dest.query(userSql, { bind: buildBind(userRow, userColumns, userColTypes), transaction: t });
           logger.info(`  users: upserted id=${userId} (${EMAIL})`);
         });
 
