@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { usePlacementPerformanceQuery } from "@/hooks/api/admin/placement-performance";
 import { BookClient, DayCard, DpcPerformanceRow, PerformanceRange, SpcPerformanceRow, Standing, VpcPerformanceRow } from "@/hooks/api/admin/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StyledDataGridPro } from "@/utils/table";
 import { TrendingUp } from "lucide-react";
@@ -129,6 +130,61 @@ function BookPanel({ book }: { book: BookClient[] }) {
   );
 }
 
+const CLIENTS_15_PLUS_THRESHOLD = 15;
+
+function ClientJobsList({ items, empty }: { items: DpcPerformanceRow["clientProgress"]; empty: string }) {
+  if (items.length === 0) return <p className="py-2 text-xs text-gray-400">{empty}</p>;
+  return (
+    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+      {items.map((c) => (
+        <li key={c.clientId} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-medium text-gray-800">{c.name}</span>
+            {!c.assigned && (
+              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10.5px] text-gray-500">not assigned</span>
+            )}
+          </span>
+          <span className="shrink-0 font-semibold text-gray-700">
+            {c.jobs} job{c.jobs === 1 ? "" : "s"}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Breakdown behind the DPC "Clients at 15+" count: clients that reached 15+
+// jobs this window, and the assigned clients still short of it.
+function ClientsAt15Dialog({ row, windowLabel, onClose }: { row: DpcPerformanceRow | null; windowLabel: string; onClose: () => void }) {
+  const progress = row?.clientProgress ?? [];
+  const reached = progress.filter((c) => c.jobs >= CLIENTS_15_PLUS_THRESHOLD);
+  const left = progress.filter((c) => c.assigned && c.jobs < CLIENTS_15_PLUS_THRESHOLD);
+  return (
+    <Dialog open={!!row} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{row?.name} — clients at 15+</DialogTitle>
+          <DialogDescription>Jobs discovered per client · {windowLabel}</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <section>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#157A20]">
+              Reached 15+ ({reached.length})
+            </p>
+            <ClientJobsList items={reached} empty="No client has reached 15 jobs yet." />
+          </section>
+          <section>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#C23434]">
+              Left — below 15 ({left.length})
+            </p>
+            <ClientJobsList items={left} empty="All assigned clients have reached 15 jobs." />
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Live replacement for the reference console's manual-export day strip —
 // real submitted-per-day totals for the last 5 calendar days, no upload
 // required. A quiet day shows 0 rather than "awaiting export".
@@ -198,6 +254,7 @@ export default function PerformanceTables() {
   const [dpcExpanded, setDpcExpanded] = useState<Set<GridRowId>>(new Set());
   const [vpcExpanded, setVpcExpanded] = useState<Set<GridRowId>>(new Set());
   const [spcExpanded, setSpcExpanded] = useState<Set<GridRowId>>(new Set());
+  const [clientsAt15Row, setClientsAt15Row] = useState<DpcPerformanceRow | null>(null);
 
   const dpcRows = useMemo(() => (data?.dpc ?? []).map((r) => ({ ...r, id: r.name })), [data]);
   const vpcRows = useMemo(() => (data?.vpc ?? []).map((r) => ({ ...r, id: r.name })), [data]);
@@ -229,8 +286,19 @@ export default function PerformanceTables() {
         width: 130,
         align: "right",
         headerAlign: "right",
-        renderCell: (params: GridRenderCellParams<DpcPerformanceRow>) =>
-          `${params.row.clientsAt15} / ${params.row.clientsAssigned}`,
+        renderCell: (params: GridRenderCellParams<DpcPerformanceRow>) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setClientsAt15Row(params.row);
+            }}
+            className="font-semibold text-primary underline-offset-2 hover:underline"
+            title="View clients at 15+ and clients left"
+          >
+            {params.row.clientsAt15} / {params.row.clientsAssigned}
+          </button>
+        ),
       },
       {
         field: "vetThrough",
@@ -324,6 +392,24 @@ export default function PerformanceTables() {
         align: "right",
         headerAlign: "right",
         renderCell: (params: GridRenderCellParams<SpcPerformanceRow>) => params.row.submitted,
+      },
+      {
+        field: "handled",
+        headerName: "Handled",
+        width: 100,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params: GridRenderCellParams<SpcPerformanceRow>) => {
+          const b = params.row.handledBreakdown;
+          return (
+            <span
+              className="cursor-help underline decoration-dotted underline-offset-2"
+              title={`Submitted ${b.submitted} · Blocked ${b.blocked} · Pending ${b.pending} · Expired ${b.expired} · Skipped ${b.skipped}`}
+            >
+              {params.row.handled}
+            </span>
+          );
+        },
       },
       {
         field: "queue",
@@ -468,6 +554,12 @@ export default function PerformanceTables() {
           </CardContent>
         </Card>
       ))}
+
+      <ClientsAt15Dialog
+        row={clientsAt15Row}
+        windowLabel={data?.windowLabel || ""}
+        onClose={() => setClientsAt15Row(null)}
+      />
     </div>
   );
 }
