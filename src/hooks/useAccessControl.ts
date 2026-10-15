@@ -29,9 +29,12 @@ export type AccessUser = {
   role?: string;
 };
 
-type MasterPasswordInfo = {
-  updated: string;
-  updatedBy: string;
+export type MasterKeyInfo = {
+  slot: number;
+  label: string;
+  isSet: boolean;
+  updated: string | null;
+  updatedBy: string | null;
 };
 
 const toApiError = (error: unknown): ApiError => {
@@ -110,11 +113,11 @@ export const useAccessControl = ({
     enabled: !!selectedUserId,
   });
 
-  const masterPasswordInfoQuery = useQuery<MasterPasswordInfo, ApiError>({
+  const masterPasswordInfoQuery = useQuery<MasterKeyInfo[], ApiError>({
     queryKey: ["access-levels-master-password"],
     queryFn: async () => {
       try {
-        const response = await axiosInstance.get<ApiSuccess<MasterPasswordInfo>>(`${ADMIN_ACCESS_LEVELS}/master-password`);
+        const response = await axiosInstance.get<ApiSuccess<MasterKeyInfo[]>>(`${ADMIN_ACCESS_LEVELS}/master-password`);
         return unwrap(response.data);
       } catch (error) {
         throw toApiError(error);
@@ -198,7 +201,7 @@ export const useAccessControl = ({
     onSuccess: invalidate,
   });
 
-  const updateMasterPassword = useMutation<ApiSuccess<unknown>, ApiError, { oldPassword: string; newPassword: string }>({
+  const updateMasterPassword = useMutation<ApiSuccess<unknown>, ApiError, { slot: number; currentKey: string; newPassword: string }>({
     mutationKey: ["update-master-password"],
     mutationFn: async (payload) => {
       try {
@@ -216,7 +219,7 @@ export const useAccessControl = ({
     allUsers: allUsersQuery.data ?? [],
     accessUsers: accessUsersQuery.data ?? [],
     userAccessLevels: userAccessQuery.data ?? [],
-    masterPasswordInfo: masterPasswordInfoQuery.data ?? null,
+    masterKeys: masterPasswordInfoQuery.data ?? [],
     isLoading:
       accessLevelsQuery.isLoading ||
       allUsersQuery.isLoading ||
