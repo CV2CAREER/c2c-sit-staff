@@ -76,12 +76,17 @@ export const deleteAccessRule = catchAsyncError(async (req: any, res: Response) 
 
 export const getAccessLevelsMasterPassword = catchAsyncError(async (req: any, res: Response) => {
   const details = await AccessLevelService.getMasterPasswordInfo();
-  return res.apiSuccess(details, "Master password details retrieved successfully", 200);
+  return res.apiSuccess(details, "Master keys retrieved successfully", 200);
 });
 
 export const updateAccessLevelsMasterPassword = catchAsyncError(async (req: any, res: Response) => {
-  const { oldPassword, newPassword } = req.body ?? {};
-  await AccessLevelService.updateMasterPassword(req, { oldPassword, newPassword }, req.user);
-  return res.apiSuccess({}, "Master password updated successfully.", 200);
+  // `oldPassword` is accepted for older clients, which only knew one key (Key 1).
+  const { slot = 1, currentKey, oldPassword, newPassword } = req.body ?? {};
+  await AccessLevelService.updateMasterPassword(
+    req,
+    { slot: Number(slot), currentKey: currentKey ?? oldPassword, newPassword },
+    req.user,
+  );
+  return res.apiSuccess({}, `Master Key ${Number(slot)} updated successfully.`, 200);
 });
 

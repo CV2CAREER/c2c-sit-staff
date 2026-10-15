@@ -1,12 +1,27 @@
 import bcrypt from "bcryptjs";
 
 import { getServiceLogger } from "../../utils/createLogger";
+import ErrorHandler from "../../utils/errorHandler";
 import { Setting } from "../../models/v1/settings.model";
 import { SlackService } from "../slack.service";
 import { getEnvironmentFromHost } from "../../utils/slack-helpers";
 import { SlackChannel, SlackEventType, SlackNode, SlackProvider, SlackSeverity } from "../../utils/enum";
 
 const logger = getServiceLogger("setting-service");
+
+/**
+ * Three interchangeable master keys. Any one of them unlocks everything the
+ * master key does, and any one can be used to change any of the others — so
+ * a key changed by someone who then leaves can be reset with another.
+ * Slot 1 keeps the original "masterpass" row so the existing key still works.
+ */
+export const MASTER_KEY_SLOTS = [
+  { slot: 1, key: "masterpass", label: "Key 1" },
+  { slot: 2, key: "masterpass_2", label: "Key 2" },
+  { slot: 3, key: "masterpass_3", label: "Key 3" },
+] as const;
+
+export const MASTER_KEY_SETTING_KEYS: string[] = MASTER_KEY_SLOTS.map((s) => s.key);
 
 /**
  * Setting Service
@@ -40,15 +55,114 @@ export class SettingService {
     });
   }
 
+  private static async loadMasterKeyRows() {
+    const rows = await Setting.findAll({ where: { key: MASTER_KEY_SETTING_KEYS } });
+    return MASTER_KEY_SLOTS.map((slot) => ({
+      ...slot,
+      row: rows.find((r) => r.key === slot.key) ?? null,
+    }));
+  }
+
   /**
-   * Check a candidate against the stored (bcrypt) master password. Returns
-   * false when it doesn't match or no master password has been set.
+   * Which master key slot (1-3) the candidate matches, or null when it
+   * matches none of them.
+   */
+  static async findMatchingMasterKeySlot(candidate: string): Promise<number | null> {
+    if (!candidate) return null;
+    for (const { slot, row } of await this.loadMasterKeyRows()) {
+      if (row?.value && (await bcrypt.compare(candidate, row.value))) return slot;
+    }
+    return null;
+  }
+
+  /**
+   * Check a candidate against the stored (bcrypt) master keys. Returns
+   * true when it matches any one of the three.
    */
   static async verifyMasterPassword(candidate: string): Promise<boolean> {
-    if (!candidate) return false;
-    const masterpass = await Setting.findOne({ where: { key: "masterpass" } });
-    if (!masterpass?.value) return false;
-    return bcrypt.compare(candidate, masterpass.value as string);
+    return (await this.findMatchingMasterKeySlot(candidate)) !== null;
+  }
+
+  /**
+   * Status of all three master keys (never the values).
+   */
+  static async getMasterKeys() {
+    return (await this.loadMasterKeyRows()).map(({ slot, label, row }) => ({
+      slot,
+      label,
+      isSet: !!row?.value,
+      updated: row?.updatedAt ?? null,
+      updatedBy: row?.updatedBy ?? null,
+    }));
+  }
+
+  /**
+   * Set or change one master key. Authorised by any of the three current
+   * keys; only when no key exists at all can one be set without it.
+   */
+  static async updateMasterKey(
+    req: any,
+    payload: { slot: number; currentKey?: string; newPassword: string },
+    user: any,
+  ) {
+    const host = req.headers.host || req.headers.origin || "localhost";
+    const { currentKey, newPassword } = payload;
+    const target = MASTER_KEY_SLOTS.find((s) => s.slot === Number(payload.slot));
+
+    if (!target) {
+      throw new ErrorHandler("Choose which master key to change (Key 1, 2 or 3).", 400);
+    }
+    if (!newPassword || newPassword.length < 8) {
+      logger.warn(`Attempt to set weak master key by ${user.email}`);
+      throw new ErrorHandler("New key must be at least 8 characters long", 400);
+    }
+
+    const slots = await this.loadMasterKeyRows();
+    const anySet = slots.some((s) => s.row?.value);
+
+    let authorisedBy: number | null = null;
+    if (anySet) {
+      if (!currentKey) {
+        throw new ErrorHandler("Enter any one of the current master keys to authorise this change.", 400);
+      }
+      authorisedBy = await this.findMatchingMasterKeySlot(currentKey);
+      if (authorisedBy === null) {
+        throw new ErrorHandler("That doesn't match any of the current master keys. Try again!", 400);
+      }
+    }
+
+    // Keep the three keys distinct, otherwise one person effectively holds two.
+    for (const { row, label } of slots) {
+      if (row?.value && (await bcrypt.compare(newPassword, row.value))) {
+        logger.warn(`Attempt to reuse an existing master key by ${user.email}`);
+        throw new ErrorHandler(`New key cannot be the same as ${label}.`, 400);
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const existing = slots.find((s) => s.slot === target.slot)!.row;
+    const isInit = !existing?.value;
+
+    if (existing) {
+      await existing.update({ value: hashedPassword, updatedBy: user.email, updatedAt: new Date() });
+    } else {
+      await Setting.create({ key: target.key, value: hashedPassword, updatedBy: user.email, updatedAt: new Date() });
+    }
+
+    const authorisedLabel = authorisedBy
+      ? MASTER_KEY_SLOTS.find((s) => s.slot === authorisedBy)!.label
+      : "none (first master key)";
+    const message = `
+🔒 *MASTER ${target.label.toUpperCase()} ${isInit ? "SET" : "CHANGED"}* 🔒
+• ${isInit ? "Set" : "Changed"} by: ${user.email}
+• Authorised with: ${authorisedLabel}
+• IP Address: ${req.ip}
+• Timestamp: ${new Date().toISOString()}
+    `;
+    void this.notifySlack(host, `Master ${target.label} ${isInit ? "Set" : "Changed"}`, message, user);
+
+    logger.info(`✅ Master ${target.label} ${isInit ? "set" : "updated"} by ${user.email} (authorised with ${authorisedLabel})`);
+    return true;
   }
 
   /**
@@ -88,102 +202,9 @@ export class SettingService {
   }
 
   /**
-   * Update Master Password
+   * Update Master Password (legacy /settings/masterpass route) — changes Key 1.
    */
   static async updateMasterPassword(req: any, oldPassword: string, newPassword: string, user: any) {
-    try {
-      const host = req.headers.host || req.headers.origin || "localhost";
-
-      if (!newPassword || newPassword.length < 8) {
-        logger.warn(`Attempt to set weak master password by ${user.email}`);
-        throw new Error("New password must be at least 8 characters long");
-      }
-
-      const masterpass = await Setting.findOne({
-        where: { key: "masterpass" }
-      });
-
-      // ✅ FIRST-TIME SETUP (DB is empty)
-      if (!masterpass) {
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        await Setting.create({
-          key: "masterpass",
-          value: hashedPassword,
-          updatedBy: user.email,
-          updatedAt: new Date()
-        });
-
-        logger.info(`✅ Master password initialized by ${user.email}`);
-
-        // Notify Slack (non-blocking)
-        const message = `
-🔒 *MASTER PASSWORD INITIALIZED* 🔒
-• Set by: ${user.email}
-• IP Address: ${req.ip}
-• Timestamp: ${new Date().toISOString()}
-        `;
-
-        setImmediate(async () => {
-          try {
-            await this.notifySlack(host, "Master Password Initialized", message, user);
-          } catch (err) {
-            logger.warn(`Could not send Slack notification: ${err}`);
-          }
-        });
-
-        return true;
-      }
-
-      if (!oldPassword || !newPassword) {
-        throw new Error("Old password and new password are required.");
-      }
-
-      // ✅ VALIDATE OLD PASSWORD
-      const isMatch = await bcrypt.compare(oldPassword, masterpass.value as string);
-
-      // Validate old password
-      if (!isMatch) {
-        throw new Error("Invalid old password. Try again!");
-      }
-
-      // Prevent reusing same password
-      const isSamePassword = await bcrypt.compare(newPassword, masterpass.value as string);
-      if (isSamePassword) {
-        logger.warn(`Attempt to reuse old master password by ${user.email}`);
-        throw new Error("New password cannot be the same as the old password");
-      }
-
-      // Hash new password and update record
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      // Update password
-      await masterpass.update({
-        value: hashedPassword,
-        updatedBy: user.email,
-        updatedAt: new Date()
-      });
-
-      // Send Slack notification ASYNCHRONOUSLY
-      setImmediate(async () => {
-        try {
-          const message = `
-🔒 *MASTER PASSWORD CHANGED* 🔒
-• Changed by: ${user.email}
-• IP Address: ${req.ip}
-• Timestamp: ${new Date().toISOString()}
-          `;
-          await this.notifySlack(host, "Master Password Changed", message, user);
-        } catch (err) {
-          logger.warn(`Could not send Slack notification: ${err}`);
-        }
-      });
-
-      logger.info(`✅ Master password updated by ${user.email}`);
-      return true;
-    } catch (error: any) {
-      logger.error(`❌ Failed to update master password: ${error.message}`);
-      throw error;
-    }
+    return this.updateMasterKey(req, { slot: 1, currentKey: oldPassword, newPassword }, user);
   }
 }

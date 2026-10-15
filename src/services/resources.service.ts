@@ -1,6 +1,7 @@
 import { Setting } from "../models/v1/settings.model";
 import { getServiceLogger } from "../utils/createLogger";
 import { Op } from "sequelize";
+import { MASTER_KEY_SETTING_KEYS } from "./admin/settings.service";
 
 const logger = getServiceLogger("resources-service");
 
@@ -35,7 +36,7 @@ export class ResourcesService {
         const settings = await Setting.findAll({
           where: {
             key: {
-              [Op.ne]: "masterpass",
+              [Op.notIn]: MASTER_KEY_SETTING_KEYS,
             },
           },
           order: [["createdAt", "DESC"]],

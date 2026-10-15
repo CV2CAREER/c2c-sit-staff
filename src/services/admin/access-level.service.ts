@@ -211,27 +211,21 @@ export class AccessLevelService {
   }
 
   static async getMasterPasswordInfo() {
-    return SettingService.getMasterPassword();
+    return SettingService.getMasterKeys();
   }
 
   static async updateMasterPassword(
     req: any,
-    payload: { oldPassword: string; newPassword: string },
+    payload: { slot: number; currentKey: string; newPassword: string },
     user: any,
   ) {
-    return SettingService.updateMasterPassword(
-      req,
-      payload.oldPassword,
-      payload.newPassword,
-      user,
-    );
+    return SettingService.updateMasterKey(req, payload, user);
   }
 
   static async ensureAccessLevelTablesAndSeed() {
     await AccessLevel.sync({ force: false });
     await AccessRule.sync({ force: false });
-    await UserAccessLevel.sync({ force: false });
-
+    await UserAccessLevel.sync({ force: false }); 
     const currentCount = await AccessLevel.count();
     if (currentCount > 0) {
       return;
