@@ -110,6 +110,14 @@ export const EMPTY_FILTERS: UserFilterState = {
   subscription: [],
 };
 
+export const DEFAULT_FILTERS: UserFilterState = {
+  persona: ["client"],
+  state: ["active"],
+  group: [],
+  loyalty: ["newcomer"],
+  subscription: [],
+};
+
 // Saved segments (locked presets + DB-backed custom ones) may still carry
 // the old single-value shape ({persona: "guest" | null}) from before
 // multi-select — normalize either shape into the current array form so old
