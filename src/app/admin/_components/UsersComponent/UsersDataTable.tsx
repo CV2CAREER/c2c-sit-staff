@@ -85,13 +85,27 @@ const groupLabel = (key: string): string => GROUP_OPTIONS.find((o) => o.key === 
 const loyaltyLabel = (key: string): string => LOYALTY_OPTIONS.find((o) => o.key === key)?.label ?? key;
 
 const UsersTableToolbar = () => (
-  <GridToolbarContainer>
-    <GridToolbarColumnsButton />
-    <GridToolbarFilterButton />
-    <GridToolbarDensitySelector />
-    <GridToolbarExport />
-    <GridToolbarQuickFilter debounceMs={500} />
+  <GridToolbarContainer className="flex flex-wrap items-center justify-between gap-2 p-2">
+    <div className="flex flex-wrap items-center gap-1">
+      <GridToolbarColumnsButton />
+      <GridToolbarFilterButton />
+      <GridToolbarDensitySelector />
+      <GridToolbarExport />
+    </div>
+    <GridToolbarQuickFilter
+      debounceMs={300}
+      placeholder="Search users..."
+      className="w-full sm:w-64"
+    />
   </GridToolbarContainer>
+);
+
+const EmptyUsersOverlay = () => (
+  <div className="flex h-full min-h-[240px] flex-col items-center justify-center p-8 text-center">
+    <Users2 className="h-10 w-10 text-gray-300 mb-2" />
+    <p className="text-sm font-semibold text-gray-800">No users match these filters</p>
+    <p className="text-xs text-gray-500 mt-1">Clear a filter to see more results</p>
+  </div>
 );
 
 /**
@@ -491,7 +505,11 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
                     paginationModel: { pageSize: 20 },
                   },
                 }}
-                slots={{ toolbar: GridToolbar, loadingOverlay: LoadingSpinner, }}
+                slots={{
+                  toolbar: UsersTableToolbar,
+                  loadingOverlay: LoadingSpinner,
+                  noRowsOverlay: EmptyUsersOverlay,
+                }}
                 showToolbar={true}
                 rows={tableData}
                 getRowId={(row) => row.id}
@@ -657,13 +675,13 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
             filters[key].map((value) => (
               <span
                 key={`${key}-${value}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#008ED3] bg-[#008ED3] px-2.5 py-1 text-xs font-semibold text-white shadow-xs"
               >
                 {prefix}: {label(value)}
                 <button
                   type="button"
                   onClick={() => setFilters({ ...filters, [key]: filters[key].filter((v) => v !== value) })}
-                  className="text-white/60 hover:text-white"
+                  className="text-white/80 hover:text-white"
                 >
                   <X size={12} />
                 </button>

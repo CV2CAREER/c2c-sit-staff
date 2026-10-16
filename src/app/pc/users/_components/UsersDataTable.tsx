@@ -599,13 +599,13 @@ const UsersDataTable: React.FC<UsersDataTableProps> = ({filters, setFilters, tab
             filters[key].map((value) => (
               <span
                 key={`${key}-${value}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#008ED3] bg-[#008ED3] px-2.5 py-1 text-xs font-semibold text-white shadow-xs"
               >
                 {prefix}: {label(value)}
                 <button
                   type="button"
                   onClick={() => setFilters({ ...filters, [key]: filters[key].filter((v) => v !== value) })}
-                  className="text-white/60 hover:text-white"
+                  className="text-white/80 hover:text-white"
                 >
                   <FiX size={12} />
                 </button>
