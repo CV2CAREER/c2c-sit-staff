@@ -23,9 +23,11 @@ export const tableColumns: GridColDef[] = [
   {
     field: "fullName",
     headerName: "Full Name",
+    valueGetter: (_value, row) =>
+      `${row?.firstName || ""} ${row?.middleName || ""} ${row?.lastName || ""}`.trim(),
     renderCell: (params) => {
-      const fullName = `${params.row.firstName} ${params.row.middleName || ""} ${params.row.lastName}`;
-      return <p className="capitalize">{fullName}</p>;
+      const fullName = `${params.row.firstName || ""} ${params.row.middleName || ""} ${params.row.lastName || ""}`.trim();
+      return <p className="capitalize">{fullName || "—"}</p>;
     },
     width: 230,
   },
